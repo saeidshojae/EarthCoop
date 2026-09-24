@@ -50,7 +50,7 @@ final class PendingLocationGroupRequestService
         ReferenceSettlementResidenceClaim $claim,
         LocationProposal $proposal,
     ): Collection {
-        return $this->syncForReferenceSettlementClaim($user, $claim, true)
+        return $this->syncForReferenceSettlementClaim($user, $claim, true, false)
             ->concat($this->syncForPendingResidence($user, $proposal, true))->values();
     }
 
@@ -130,9 +130,13 @@ final class PendingLocationGroupRequestService
         });
     }
 
-    public function syncForReferenceSettlementClaim(User $user, ReferenceSettlementResidenceClaim $claim, bool $preserveProposalRequests = false): Collection
-    {
-        return DB::transaction(function () use ($user, $claim, $preserveProposalRequests): Collection {
+    public function syncForReferenceSettlementClaim(
+        User $user,
+        ReferenceSettlementResidenceClaim $claim,
+        bool $preserveProposalRequests = false,
+        bool $isPendingBase = true,
+    ): Collection {
+        return DB::transaction(function () use ($user, $claim, $preserveProposalRequests, $isPendingBase): Collection {
             $lockedClaim = ReferenceSettlementResidenceClaim::query()
                 ->with('settlement')
                 ->whereKey($claim->id)
@@ -194,7 +198,7 @@ final class PendingLocationGroupRequestService
                                 'type_key' => $settlement->classification === 'verified_residential_village' ? 'village' : 'settlement',
                                 'canonical_name' => $displayName !== '' ? $displayName : $settlement->external_id,
                                 'source' => 'pending_reference_settlement_residence',
-                                'is_pending_base' => true,
+                                'is_pending_base' => $isPendingBase,
                                 'reference_settlement_external_id' => $settlement->external_id,
                                 'reference_settlement_parent_external_id' => $settlement->parent_external_id,
                                 'residential_eligibility' => $settlement->residential_eligibility,
@@ -649,7 +653,7 @@ final class PendingLocationGroupRequestService
     {
         return match ($type) {
             'neighborhood' => 9,
-            'urban_region', 'village' => 8,
+            'urban_region', 'village', 'settlement' => 8,
             'city', 'rural_district' => 7,
             default => 0,
         };
@@ -659,7 +663,7 @@ final class PendingLocationGroupRequestService
     {
         return match ($type) {
             'city', 'rural_district' => 'city',
-            'urban_region', 'village' => 'region',
+            'urban_region', 'village', 'settlement' => 'region',
             'neighborhood' => 'neighborhood',
             default => null,
         };
