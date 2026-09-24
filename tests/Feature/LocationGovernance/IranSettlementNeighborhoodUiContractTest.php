@@ -30,7 +30,7 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString('earthcoop-location-exception-open', $bridge);
         $this->assertStringContainsString('mount.appendChild(shell)', $bridge);
         $this->assertStringContainsString('shell.hidden = false', $bridge);
-        $this->assertStringContainsString('data-location-exception-panel', $selector);
+        $this->assertStringContainsString('dataset.locationExceptionPanel', $selector);
         $this->assertStringContainsString('روستا یا آبادی من در فهرست نیست', $selector);
         $this->assertStringNotContainsString('single_urban_region', $selector);
         $this->assertStringNotContainsString('single_neighborhood', $selector);
