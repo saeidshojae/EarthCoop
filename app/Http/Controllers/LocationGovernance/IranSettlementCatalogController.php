@@ -14,6 +14,7 @@ use App\Support\LocationDisplayName;
 use App\Models\LocationExternalId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 final class IranSettlementCatalogController extends Controller
 {
@@ -91,6 +92,13 @@ final class IranSettlementCatalogController extends Controller
     {
         abort_unless((bool) config('iran_settlement_catalog.enabled', false)
             && (bool) config('iran_settlement_catalog.claims_enabled', false), 404);
+
+        if (! Schema::hasColumn('location_structure_claims', 'reference_settlement_id')) {
+            return response()->json([
+                'message' => 'ساختار جدید آبادی‌ها هنوز روی این محیط به‌روزرسانی نشده است. ابتدا migrationهای مکان را اجرا کنید.',
+                'code' => 'reference_settlement_structure_migration_required',
+            ], 503);
+        }
         abort_unless((bool) preg_match('/^IR-1404-[1-9][0-9]*$/D', $externalId), 404);
 
         $settlement = ReferenceSettlement::query()
