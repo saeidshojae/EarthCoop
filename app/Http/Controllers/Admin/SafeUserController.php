@@ -167,6 +167,11 @@ class SafeUserController extends UserController
     /** @return array<int, string> */
     private function residenceHydrationPath(?Location $location, ?PendingResidenceIntent $intent): array
     {
+        $referenceAnchor = $this->referenceSettlementAnchor($intent);
+        if ($referenceAnchor instanceof Location) {
+            return $this->canonicalLocationPath($referenceAnchor);
+        }
+
         $proposal = $intent?->locationProposal;
         if (! $proposal instanceof LocationProposal) return $this->canonicalLocationPath($location);
         $proposalPath = []; $cursor = $proposal; $visited = []; $anchor = null;
@@ -177,6 +182,22 @@ class SafeUserController extends UserController
             $cursor = $cursor->parentProposal()->first();
         }
         return $anchor instanceof Location ? [...$this->canonicalLocationPath($anchor), ...$proposalPath] : $this->canonicalLocationPath($location);
+    }
+
+    private function referenceSettlementAnchor(?PendingResidenceIntent $intent): ?Location
+    {
+        $settlement = $intent?->referenceSettlementResidenceClaim?->settlement;
+        $parentExternalId = $settlement?->parent_external_id;
+        if (! is_string($parentExternalId) || $parentExternalId === '') {
+            return null;
+        }
+
+        return LocationExternalId::query()
+            ->with('location')
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', $parentExternalId)
+            ->first()?->location;
     }
 
     /** @return array<int, string> */
