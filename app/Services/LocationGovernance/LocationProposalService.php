@@ -83,13 +83,11 @@ class LocationProposalService
     ): LocationProposal {
         $this->guardOpen($parent);
 
-        if ($parent->parent_reference_settlement_id !== null) {
-            throw new DomainException('Deeper descendants below a reference settlement are blocked until the settlement is operationally promoted.');
-        }
-
         if (! $this->proposalPolicy->allowsProposalParentForResidence($parent, $type, $structuralClaims)) {
             throw new DomainException('The requested location type is not a permitted crowdsourced child of this proposal.');
         }
+
+        $referenceRoot = $parent->referenceSettlementRootProposal();
 
         $canonicalName = $this->canonicalName($data);
         $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
@@ -120,6 +118,8 @@ class LocationProposalService
             'status' => LocationProposalStatus::Pending,
             'metadata' => array_merge($data['metadata'] ?? [], [
                 'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'reference_settlement_root_proposal_id' => $referenceRoot?->id,
+                'reference_settlement_id' => $referenceRoot?->parent_reference_settlement_id,
             ]),
             'audit_log' => [],
         ]);
