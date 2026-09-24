@@ -32,19 +32,29 @@ final class IranSettlementCatalogController extends Controller
         }
 
         if ($parentLocationId !== null) {
-            $v1ExternalId = LocationExternalId::query()
+            $directV2ExternalId = LocationExternalId::query()
                 ->where('location_id', (int) $parentLocationId)
-                ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
-                ->where('dataset_version', config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1'))
+                ->where('source', 'earthcoop-reference')
+                ->where('dataset_version', 'v2')
                 ->value('external_id');
-            $mapping = $v1ExternalId ? config('iran_v1_v2_crosswalk.mappings.'.$v1ExternalId) : null;
-            if (! is_array($mapping) || ($mapping['status'] ?? null) !== 'verified_identity') {
-                return response()->json([
-                    'message' => 'این والد هنوز crosswalk قطعی به منبع ۱۴۰۴ ندارد.',
-                    'data' => [],
-                ], 422);
+
+            if (is_string($directV2ExternalId) && preg_match('/^IR-1404-[1-9][0-9]*$/D', $directV2ExternalId)) {
+                $parentExternalId = $directV2ExternalId;
+            } else {
+                $v1ExternalId = LocationExternalId::query()
+                    ->where('location_id', (int) $parentLocationId)
+                    ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+                    ->where('dataset_version', config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1'))
+                    ->value('external_id');
+                $mapping = $v1ExternalId ? config('iran_v1_v2_crosswalk.mappings.'.$v1ExternalId) : null;
+                if (! is_array($mapping) || ($mapping['status'] ?? null) !== 'verified_identity') {
+                    return response()->json([
+                        'message' => 'این والد هنوز شناسه قطعی در منبع ۱۴۰۴ ندارد.',
+                        'data' => [],
+                    ], 422);
+                }
+                $parentExternalId = (string) $mapping['v2'];
             }
-            $parentExternalId = (string) $mapping['v2'];
         }
 
         $query = ReferenceSettlement::query()
