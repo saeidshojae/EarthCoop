@@ -11,6 +11,20 @@ final class IranSettlementAnchorResolver
 {
     public function resolve(ReferenceSettlement $settlement): Location
     {
+        $directIdentity = LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', $settlement->parent_external_id)
+            ->with('location')
+            ->first();
+
+        $directLocation = $directIdentity?->location;
+        if ($directLocation instanceof Location
+            && $directLocation->status === 'active'
+            && $directLocation->country_code === 'IR') {
+            return $directLocation;
+        }
+
         $candidate = collect((array) config('iran_v1_v2_crosswalk.mappings', []))
             ->first(function (array $mapping) use ($settlement): bool {
                 return ($mapping['v2'] ?? null) === $settlement->parent_external_id
@@ -19,7 +33,7 @@ final class IranSettlementAnchorResolver
 
         if (! is_array($candidate)) {
             throw ValidationException::withMessages([
-                'reference_settlement_external_id' => 'والد این آبادی هنوز با ساختار مکانی فعلی ارث‌کوپ تطبیق قطعی ندارد و برای ثبت اقامت قابل استفاده نیست.',
+                'reference_settlement_external_id' => 'والد این آبادی هنوز به‌عنوان مکان canonical فعال در منبع ۱۴۰۴ موجود نیست.',
             ]);
         }
 
