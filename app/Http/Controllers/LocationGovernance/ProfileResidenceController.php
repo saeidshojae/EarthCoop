@@ -137,13 +137,23 @@ final class ProfileResidenceController extends Controller
                         'reference_settlement_external_id' => $settlement->external_id,
                     ]);
                 } elseif ((int) $current->location_id !== (int) $anchor->id) {
-                    $residenceService->transferPrimaryResidence(
+                    $reanchored = $residenceService->reanchorPrimaryResidenceIfVerifiedReferenceEquivalent(
                         $user,
                         $anchor,
-                        $user,
-                        'profile_reference_settlement_anchor',
-                        false,
+                        [
+                            'reference_settlement_external_id' => $settlement->external_id,
+                            'source' => 'profile_reference_settlement_anchor',
+                        ],
                     );
+                    if ($reanchored === null) {
+                        $residenceService->transferPrimaryResidence(
+                            $user,
+                            $anchor,
+                            $user,
+                            'profile_reference_settlement_anchor',
+                            false,
+                        );
+                    }
                 } else {
                     $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, []);
                 }
