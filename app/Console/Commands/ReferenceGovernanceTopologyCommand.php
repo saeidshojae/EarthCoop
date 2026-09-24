@@ -12,7 +12,8 @@ class ReferenceGovernanceTopologyCommand extends Command
         {country : ISO country code}
         {--dataset-version=v1 : Versioned reference dataset}
         {--dry-run : Compute the governance topology diff without writing}
-        {--apply : Apply the explicit governance topology}';
+        {--apply : Apply the explicit governance topology}
+        {--confirm= : Explicit confirmation required for Iran 1404 v2 UAT apply}';
 
     protected $description = 'Dry-run or apply an explicit, versioned Location-to-Governance reference topology.';
 
@@ -28,6 +29,15 @@ class ReferenceGovernanceTopologyCommand extends Command
         try {
             $country = strtoupper((string) $this->argument('country'));
             $version = (string) $this->option('dataset-version');
+
+            if ($apply && $country === 'IR' && $version === 'v2') {
+                if (! app()->environment(['local', 'testing'])
+                    || (string) $this->option('confirm') !== 'APPLY-GOV-IR-1404-V2-UAT') {
+                    $this->error('Iran 1404 v2 governance apply requires explicit local/testing UAT confirmation.');
+                    return self::FAILURE;
+                }
+            }
+
             $counts = $apply
                 ? $importer->apply($country, $version)
                 : $importer->diff($country, $version);
