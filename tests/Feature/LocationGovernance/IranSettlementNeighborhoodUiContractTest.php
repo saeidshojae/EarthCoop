@@ -19,7 +19,11 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString("item?.type_key !== 'rural_district'", $bridge);
         $this->assertStringContainsString('shell.hidden = false', $bridge);
         $this->assertStringContainsString('option.dataset.referenceSettlementOption', $bridge);
-        $this->assertStringContainsString("appendPath('آبادی ' + item.name_fa", $bridge);
+        $this->assertStringContainsString("appendPathSegment('آبادی ' + item.name_fa", $bridge);
+        $this->assertStringContainsString("segment.dataset.referenceSettlementPath", $bridge);
+        $this->assertStringContainsString("segment.dataset.referenceNeighborhoodPath", $bridge);
+        $this->assertStringNotContainsString("path.textContent =", $bridge);
+        $this->assertStringContainsString("presentSettlement(item, retries - 1)", $bridge);
         $this->assertStringContainsString('parent_reference_settlement_id', $bridge);
         $this->assertStringContainsString('proposalInput.value = String(id)', $bridge);
         $this->assertStringContainsString('registration-settlement-bridge.js', $app);

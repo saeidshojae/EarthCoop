@@ -39,7 +39,6 @@ const mountSettlementRegistrationBridge = (shell) => {
 
     let parentLocationId = '';
     let selectedSettlement = null;
-    let canonicalPath = '';
     let requestSerial = 0;
 
     const setStatus = (message, error = false) => {
@@ -61,12 +60,17 @@ const mountSettlementRegistrationBridge = (shell) => {
         }
     };
 
-    const resetPath = () => {
-        if (path && canonicalPath) path.textContent = canonicalPath;
+    const clearPresentedPath = () => {
+        path?.querySelectorAll('[data-reference-settlement-path], [data-reference-neighborhood-path]')
+            .forEach((node) => node.remove());
     };
-    const appendPath = (label) => {
+    const appendPathSegment = (label, kind) => {
         if (!path) return;
-        path.textContent = [canonicalPath || path.textContent || '', label].filter(Boolean).join(' / ');
+        const segment = document.createElement('span');
+        if (kind === 'settlement') segment.dataset.referenceSettlementPath = '';
+        if (kind === 'neighborhood') segment.dataset.referenceNeighborhoodPath = '';
+        segment.textContent = label;
+        path.appendChild(segment);
     };
 
     const clearNeighborhood = () => {
@@ -79,8 +83,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         results.innerHTML = '';
         clearNeighborhood();
         removePresentedSettlement();
-        resetPath();
-        canonicalPath = '';
+        clearPresentedPath();
     };
     const hide = () => {
         clearSettlement();
@@ -89,9 +92,9 @@ const mountSettlementRegistrationBridge = (shell) => {
         setStatus('');
     };
 
-    const presentSettlement = (item) => {
+    const presentSettlement = (item, retries = 4) => {
         removePresentedSettlement();
-        resetPath();
+        clearPresentedPath();
         const select = villageSelect();
         if (select) {
             const option = document.createElement('option');
@@ -101,16 +104,19 @@ const mountSettlementRegistrationBridge = (shell) => {
             option.dataset.typeKey = 'village';
             select.appendChild(option);
             select.value = option.value;
+        } else if (retries > 0) {
+            window.setTimeout(() => {
+                if (selectedSettlement?.external_id === item.external_id) presentSettlement(item, retries - 1);
+            }, 50);
         }
-        appendPath('آبادی ' + item.name_fa + ' (در انتظار بررسی)');
+        appendPathSegment('آبادی ' + item.name_fa + ' (در انتظار بررسی)', 'settlement');
     };
 
     const chooseNeighborhood = (id, label) => {
         proposalInput.value = String(id);
         if (submit) submit.disabled = false;
-        resetPath();
         presentSettlement(selectedSettlement);
-        appendPath('محله ' + label + ' (در انتظار تأیید)');
+        appendPathSegment('محله ' + label + ' (در انتظار تأیید)', 'neighborhood');
         setStatus('آبادی و محلهٔ انتخابی در انتظار بررسی می‌مانند؛ هیچ حوزهٔ حکمرانی رسمی خودکار ایجاد نمی‌شود.');
     };
 
@@ -142,7 +148,6 @@ const mountSettlementRegistrationBridge = (shell) => {
             const option = select.selectedOptions[0];
             if (!option?.value) {
                 proposalInput.value = '';
-                resetPath();
                 presentSettlement(selectedSettlement);
                 if (submit) submit.disabled = false;
                 return;
@@ -258,7 +263,6 @@ const mountSettlementRegistrationBridge = (shell) => {
         const item = event.detail?.item || null;
         if (item?.type_key !== 'rural_district' || !event.detail?.locationId) return;
         parentLocationId = String(event.detail.locationId);
-        canonicalPath = path?.textContent || '';
         try {
             if (!await requestSettlements('', false)) return;
             shell.hidden = false;
