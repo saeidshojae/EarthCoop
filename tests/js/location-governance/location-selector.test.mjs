@@ -487,3 +487,11 @@ test('reference settlement choice closes its exception panel and renders neighbo
     assert.match(core, /appendLevel\([\s\S]*anchorDepth \+ 2,[\s\S]*Number\(settlement\.id\),[\s\S]*String\(settlement\.external_id \|\| ''\)/);
     assert.match(core, /parentReferenceSettlementExternalId[\s\S]*reference-settlements/);
 });
+
+
+test('registration can terminate on a reference settlement only after the no-neighborhood structural path is effective', () => {
+    const core = coreSelectorSource();
+    assert.match(core, /item\.picker_kind === 'reference_settlement'[\s\S]*submit\.disabled = false/);
+    assert.match(core, /registrationEndpointAllowed[\s\S]*setRegistrationEndpoint\(parentItem\)/);
+    assert.match(core, /referenceSettlementExternalId[\s\S]*structure-claims/);
+});
