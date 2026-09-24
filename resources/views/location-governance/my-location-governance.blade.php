@@ -82,6 +82,7 @@
         'rural_district' => 'دهستان',
         'urban_region' => 'منطقه',
         'village' => 'روستا',
+        'settlement' => 'آبادی',
         'local' => 'حوزه محلی',
         'neighborhood' => 'محله',
     ];
@@ -225,6 +226,15 @@
                                         <div class="min-w-0">
                                             <div class="fw-semibold">{{ \App\Support\LocationDisplayName::for($proposal) }} <span class="badge bg-warning text-dark me-1">در انتظار تأیید</span></div>
                                             <div class="small text-muted">{{ $governanceTypeLabels[$proposal->type?->key] ?? $proposal->type?->key }}</div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                @foreach(($pendingReferenceSettlements ?? collect()) as $settlement)
+                                    <div class="governance-chain-item" data-pending-reference-settlement-chain="{{ $settlement->id }}">
+                                        <span class="governance-chain-dot" aria-hidden="true"></span>
+                                        <div class="min-w-0">
+                                            <div class="fw-semibold">{{ $settlement->name_fa ?: $settlement->external_id }} <span class="badge bg-warning text-dark me-1">در انتظار تأیید</span></div>
+                                            <div class="small text-muted">آبادی</div>
                                         </div>
                                     </div>
                                 @endforeach
