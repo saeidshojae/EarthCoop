@@ -24,6 +24,8 @@ const settlementNeighborhoodProposalPayload = (settlementId, typeId, name, local
 const mountSettlementRegistrationBridge = (shell) => {
     if (!shell) return;
     const form = shell.closest('form');
+    const originMarker = document.createComment('earthcoop-reference-settlement-picker-origin');
+    shell.parentNode?.insertBefore(originMarker, shell);
     const selector = form?.querySelector('[data-location-selector]');
     const selectorContext = selector?.dataset.locationSelectorContext || selector?.dataset.locationPurpose || '';
     if (!['registration', 'profile', 'admin-user-residence'].includes(selectorContext)) return;
@@ -104,11 +106,13 @@ const mountSettlementRegistrationBridge = (shell) => {
         delete selector.dataset.referenceBranchActive;
         shell.hidden = true;
         setStatus('');
+        if (originMarker.parentNode && shell.parentNode !== originMarker.parentNode) {
+            originMarker.parentNode.insertBefore(shell, originMarker.nextSibling);
+        }
     };
 
     const presentSettlement = (item, retries = 4) => {
         removePresentedSettlement();
-        if (selectorContext !== 'registration') return;
         const select = villageSelect();
         if (select) {
             const option = document.createElement('option');
