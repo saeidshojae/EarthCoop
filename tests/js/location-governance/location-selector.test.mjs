@@ -426,6 +426,12 @@ test('all residence contexts use one compact missing-option disclosure instead o
     assert.match(source, /earthcoop-location-exception-open/);
 });
 
+test('reference settlement selection preserves the rendered settlement level while replacing deeper levels', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /removeDeeperLevels\(anchorDepth \+ 1\)/);
+    assert.doesNotMatch(source, /removeDeeperLevels\(anchorDepth\);[\s\S]{0,200}?reference-settlement:/);
+});
+
 test('Iran settlement search is enabled by the active rural reference branch instead of a hard-coded form country', () => {
     const source = coreSelectorSource();
     assert.match(source, /host\.dataset\.referenceBranchActive === '1'/);
