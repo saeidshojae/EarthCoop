@@ -621,7 +621,7 @@ const initializeLocationSelector = async (host) => {
         });
     };
 
-    host.addEventListener('earthcoop-location-reference-structure-selected', (event) => {
+    host.addEventListener('earthcoop-location-reference-structure-selected', async (event) => {
         if (isProjectScope) return;
         const detail = event.detail || {};
         const anchorLocationId = String(detail.anchorLocationId || '');
@@ -656,13 +656,48 @@ const initializeLocationSelector = async (host) => {
             return;
         }
 
-        const payload = normalizePickerPayload(detail.payload || {});
-        if (shouldRenderNextLevel(payload)) {
-            appendLevel(payload, anchorDepth + 2, null, false, null, Number(settlement.id));
-            setStatus('بی‌محله بودن انتخاب شد. در صورت نیاز، خیابان و جزئیات دقیق‌تر نشانی را ادامه دهید.');
-        } else {
+        let payload = normalizePickerPayload(detail.payload || {});
+        if (!shouldRenderNextLevel(payload)) {
             setStatus('بی‌محله بودن انتخاب شد؛ گزینهٔ دقیق‌تری برای ادامه مسیر ثبت نشده است.');
+            return;
         }
+
+        let depth = anchorDepth + 2;
+        let parentReferenceSettlementId = Number(settlement.id);
+        let parentProposalId = null;
+        const savedPath = (Array.isArray(detail.proposalPath) ? detail.proposalPath : [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+        for (const savedProposalId of savedPath) {
+            appendLevel(payload, depth, null, false, parentProposalId, parentReferenceSettlementId);
+            const selected = pickerItems(payload).find((item) =>
+                item.picker_kind === 'proposal' && Number(item.id) === savedProposalId
+            );
+            const select = levels.querySelector(`[data-location-select="${depth}"]`);
+            if (!selected || !select) {
+                setPickerState(PICKER_STATES.stale, 'بخشی از جزئیات ذخیره‌شدهٔ نشانی دیگر در مسیر بی‌محله فعال نیست؛ مسیر معتبر فعلی حفظ شد.', true);
+                return;
+            }
+
+            select.value = selected.identity || 'proposal:' + selected.id;
+            selectedPath.set(depth, selected);
+            renderLocationPath();
+            setSelection(selected);
+            parentProposalId = Number(selected.id);
+            parentReferenceSettlementId = null;
+
+            const childrenUrl = selected.children_url || '/location/proposals/' + encodeURIComponent(selected.id) + '/children';
+            payload = await load(structuralClaimContextUrl(childrenUrl, form));
+            depth += 1;
+        }
+
+        if (shouldRenderNextLevel(payload)) {
+            appendLevel(payload, depth, null, false, parentProposalId, parentReferenceSettlementId);
+        }
+        setStatus(savedPath.length
+            ? 'نشانی بی‌محلهٔ فعلی بازیابی شد؛ می‌توانید آن را نگه دارید یا دقیق‌تر ادامه دهید.'
+            : 'بی‌محله بودن انتخاب شد. در صورت نیاز، خیابان و جزئیات دقیق‌تر نشانی را ادامه دهید.');
     });
 
     host.addEventListener('earthcoop-location-reference-selected', async (event) => {
