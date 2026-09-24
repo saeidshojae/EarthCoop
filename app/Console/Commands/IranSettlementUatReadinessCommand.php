@@ -50,6 +50,9 @@ final class IranSettlementUatReadinessCommand extends Command
                 ->where('source', (string) config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
                 ->where('dataset_version', (string) config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1'))
                 ->whereIn('external_id', $verifiedV1Ids)
+                ->whereHas('location', fn ($query) => $query
+                    ->where('country_code', 'IR')
+                    ->where('status', 'active'))
                 ->pluck('external_id')
                 ->values()
                 ->all()
