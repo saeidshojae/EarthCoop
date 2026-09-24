@@ -79,7 +79,8 @@ class IranCandidateConversionTests(unittest.TestCase):
             self.assertEqual(1, result['settlement_classification']['residential_eligibility_unverified'])
             self.assertNotIn('settlement', [type_['key'] for type_ in
                                            json.loads((out / 'schema.json').read_text(encoding='utf-8'))['types']])
-            self.assertTrue(main[-1]['metadata']['municipal_reconciliation_required'])
+            self.assertTrue(main[-1]['metadata']['governance_authorized'])
+            self.assertTrue(main[-1]['metadata']['source_authoritative'])
             self.assertEqual('v2', json.loads((out / 'schema.json').read_text(encoding='utf-8'))['version'])
             self.assertEqual('IR-1404-1', main[0]['external_id'])
             self.assertEqual(1404, main[0]['provenance']['dataset_year'])
