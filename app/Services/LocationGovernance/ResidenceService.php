@@ -331,7 +331,7 @@ class ResidenceService
                 ->get();
             $claimTypes = $referenceStructuralClaims->pluck('claim_type');
             $rootType = $referenceRoot?->type?->key;
-            $validRoot = $rootType === 'neighborhood'
+            $validRoot = ($rootType === 'neighborhood' && ! $claimTypes->contains('no_neighborhood'))
                 || ($rootType === 'street' && $claimTypes->contains('no_neighborhood'));
 
             if (! in_array($lockedClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
