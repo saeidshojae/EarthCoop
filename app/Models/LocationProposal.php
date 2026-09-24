@@ -92,6 +92,27 @@ class LocationProposal extends Model
         return $this->hasMany(PendingResidenceIntent::class);
     }
 
+    public function referenceSettlementRootProposal(): ?self
+    {
+        $cursor = $this;
+        $visited = [];
+
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) {
+                return null;
+            }
+            $visited[$cursor->id] = true;
+
+            if ($cursor->parent_reference_settlement_id !== null) {
+                return $cursor;
+            }
+
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        return null;
+    }
+
     public function nearestCanonicalParent(): ?Location
     {
         $cursor = $this;
