@@ -90,10 +90,12 @@ const mountSettlementRegistrationBridge = (shell) => {
         settlementNeighborhoodProposalId = '';
     };
     const clearSettlement = () => {
+        const hadReferenceSettlement = Boolean(selectedSettlement || settlementInput.value);
         settlementInput.value = '';
         selectedSettlement = null;
         results.innerHTML = '';
         clearNeighborhood();
+        if (hadReferenceSettlement) proposalInput.value = '';
         removePresentedSettlement();
     };
     const hide = () => {
