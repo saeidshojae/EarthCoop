@@ -477,7 +477,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         locationInput.value = '';
         proposalInput.value = '';
         settlementNeighborhoodProposalId = '';
-        if (submit) submit.disabled = false;
+        if (submit) submit.disabled = selectorContext === 'registration';
         presentSettlement(item);
         dispatchReferenceSelection(null);
         results.querySelectorAll('button[data-settlement-external-id]').forEach((button) => {
