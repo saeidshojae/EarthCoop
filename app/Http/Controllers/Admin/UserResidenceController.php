@@ -74,13 +74,7 @@ final class UserResidenceController extends Controller
                     'reference_settlement_external_id' => 'انتخاب آبادی مرجع در حال حاضر فعال نیست.',
                 ]);
             }
-            if ($structuralClaims !== []) {
-                throw ValidationException::withMessages([
-                    'location_structure_claim_ids' => 'ادعاهای ساختاری را نمی‌توان همزمان با آبادی مرجع ثبت کرد.',
-                ]);
-            }
-
-            [$settlementClaim, $settlementProposal] = DB::transaction(function () use (
+            [$settlementClaim, $settlementProposal, $settlementStructuralClaims] = DB::transaction(function () use (
                 $user,
                 $actor,
                 $proposalId,
@@ -88,6 +82,7 @@ final class UserResidenceController extends Controller
                 $settlementAnchorResolver,
                 $residenceService,
                 $reason,
+                $structuralClaims,
             ): array {
                 $settlement = ReferenceSettlement::query()
                     ->where('source', 'IranCountryDivisions/geo_1404')
@@ -106,6 +101,18 @@ final class UserResidenceController extends Controller
                 if (! $claimable || $settlement->governance_authorized || $settlement->operational_promotion_allowed) {
                     throw ValidationException::withMessages([
                         'reference_settlement_external_id' => 'این آبادی در وضعیت قابل انتخاب برای محل سکونت نیست.',
+                    ]);
+                }
+
+                $referenceStructuralClaims = collect($structuralClaims)
+                    ->filter(fn (LocationStructureClaim $claim): bool =>
+                        (int) $claim->reference_settlement_id === (int) $settlement->id
+                        && $claim->claim_type === 'no_neighborhood'
+                        && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+                    )->values();
+                if ($referenceStructuralClaims->count() !== count($structuralClaims)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'اعلام ساختاری انتخاب‌شده متعلق به همین آبادی مرجع نیست.',
                     ]);
                 }
 
@@ -183,6 +190,8 @@ final class UserResidenceController extends Controller
                             'source' => 'admin_reference_settlement_detail',
                             'actor_user_id' => $actor->id,
                             'reason' => $reason,
+                            'structural_claim_ids' => $referenceStructuralClaims
+                                ->pluck('id')->map(fn ($id) => (int) $id)->all(),
                         ],
                     );
                 } else {
@@ -194,12 +203,24 @@ final class UserResidenceController extends Controller
                             'source' => 'admin_reference_settlement',
                             'actor_user_id' => $actor->id,
                             'reason' => $reason,
+                            'structural_claim_ids' => $referenceStructuralClaims
+                                ->pluck('id')->map(fn ($id) => (int) $id)->all(),
                         ],
                     );
                 }
 
-                return [$claim, $proposal];
+                return [$claim, $proposal, $referenceStructuralClaims];
             });
+
+            foreach ($settlementStructuralClaims as $structuralClaim) {
+                app(\App\Services\LocationGovernance\LocationStructureClaimService::class)
+                    ->recordCommittedSupport($structuralClaim, $user, [
+                        'source' => 'admin_reference_settlement',
+                        'actor_user_id' => $actor->id,
+                        'reason' => $reason,
+                        'reference_settlement_external_id' => $referenceSettlementExternalId,
+                    ]);
+            }
 
             if ((bool) config('location-governance.groups_enabled', false)) {
                 app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
