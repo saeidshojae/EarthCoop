@@ -112,13 +112,11 @@ final class ProfileResidenceController extends Controller
 
                 $proposal = null;
                 if ($proposalId !== null) {
-                    $proposal = LocationProposal::query()->with('type')->whereKey($proposalId)->lockForUpdate()->first();
+                    $proposal = LocationProposal::query()->with(['type', 'parentProposal.type'])->whereKey($proposalId)->lockForUpdate()->first();
                     if ($proposal === null
-                        || ! in_array($proposal->status, [LocationProposalStatus::Pending, LocationProposalStatus::ReadyForReview, LocationProposalStatus::NeedsEvidence], true)
-                        || (int) $proposal->parent_reference_settlement_id !== (int) $settlement->id
-                        || $proposal->type?->key !== 'neighborhood') {
+                        || ! in_array($proposal->status, [LocationProposalStatus::Pending, LocationProposalStatus::ReadyForReview, LocationProposalStatus::NeedsEvidence], true)) {
                         throw ValidationException::withMessages([
-                            'location_proposal_id' => 'محلهٔ انتخاب‌شده متعلق به همین آبادی مرجع نیست.',
+                            'location_proposal_id' => 'جزئیات انتخاب‌شده دیگر در وضعیت قابل استفاده نیست.',
                         ]);
                     }
                 }
