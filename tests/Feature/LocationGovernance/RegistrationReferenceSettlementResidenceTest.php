@@ -150,6 +150,39 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
             );
     }
 
+    public function test_reference_settlement_can_anchor_directly_to_imported_v2_parent_without_crosswalk(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $anchor = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'rural_district',
+        ])->last();
+        LocationExternalId::query()->create([
+            'location_id' => $anchor->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-5555',
+            'metadata' => ['fixture' => true],
+        ]);
+        $settlement = $this->settlement('IR-1404-5555');
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+        ])->assertRedirect(route('home'));
+
+        $relationship = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($anchor->id, $relationship->location_id);
+        $this->assertDatabaseHas('reference_settlement_residence_claims', [
+            'reference_settlement_id' => $settlement->id,
+            'user_id' => $user->id,
+            'status' => 'pending',
+        ]);
+    }
+
     public function test_pending_settlement_base_has_no_canonical_active_base_area(): void
     {
         $this->anchor();
