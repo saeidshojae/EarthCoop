@@ -34,8 +34,10 @@ class LocationReferenceImportCommand extends Command
         // Safe default: an omitted mode behaves as dry-run rather than mutating data.
         $apply = $apply && ! $dryRun;
 
-        // A v2 candidate must never be imported into the UAT v1 database,
-        // an existing member database or Production. Dry-run remains available.
+        // IR v2 is version-isolated from v1. Production remains blocked here;
+        // local/testing may explicitly choose either an empty isolated pilot or
+        // the existing UAT database so the real 1404 hierarchy can replace v1
+        // in menus without deleting v1 identities or test history.
         if ($apply && strtoupper(trim((string) $this->argument('country'))) === 'IR'
             && trim((string) $this->option('dataset-version')) === 'v2') {
             $confirmation = (string) $this->option('confirm');
