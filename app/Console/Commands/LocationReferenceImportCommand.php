@@ -38,26 +38,30 @@ class LocationReferenceImportCommand extends Command
         // an existing member database or Production. Dry-run remains available.
         if ($apply && strtoupper(trim((string) $this->argument('country'))) === 'IR'
             && trim((string) $this->option('dataset-version')) === 'v2') {
-            if ($this->option('confirm') !== 'APPLY-IR-1404-V2-ISOLATED'
-                || ! app()->environment(['local', 'testing'])) {
-                $this->error('IR v2 apply requires explicit confirmation in local/testing only.');
+            $confirmation = (string) $this->option('confirm');
+            if (! app()->environment(['local', 'testing'])
+                || ! in_array($confirmation, ['APPLY-IR-1404-V2-ISOLATED', 'APPLY-IR-1404-V2-UAT'], true)) {
+                $this->error('IR v2 apply requires an explicit local/testing confirmation token.');
                 return self::FAILURE;
             }
-            $databaseName = (string) DB::connection()->getDatabaseName();
-            $isolatedName = preg_match('/(?:^|[_-])geo[_-]uat(?:$|[_-])/i', $databaseName) === 1
-                || (app()->environment('testing')
-                    && ($databaseName === ':memory:' || str_contains(strtolower($databaseName), 'test')));
-            if (! $isolatedName) {
-                $this->error('IR v2 apply requires an isolated geo_uat database name.');
-                return self::FAILURE;
-            }
-            if (Location::query()->where('country_code', 'IR')
-                    ->whereDoesntHave('schema', fn ($query) => $query->where('key', 'ir-reference-v2')->where('version', 'v2'))
-                    ->exists()
-                || UserLocationRelationship::query()->exists()
-                || GovernanceArea::query()->where('country_code', 'IR')->exists()) {
-                $this->error('IR v2 apply refused: legacy/non-v2 geography, residence history, or governance areas exist.');
-                return self::FAILURE;
+
+            if ($confirmation === 'APPLY-IR-1404-V2-ISOLATED') {
+                $databaseName = (string) DB::connection()->getDatabaseName();
+                $isolatedName = preg_match('/(?:^|[_-])geo[_-]uat(?:$|[_-])/i', $databaseName) === 1
+                    || (app()->environment('testing')
+                        && ($databaseName === ':memory:' || str_contains(strtolower($databaseName), 'test')));
+                if (! $isolatedName) {
+                    $this->error('IR v2 isolated apply requires an isolated geo_uat database name.');
+                    return self::FAILURE;
+                }
+                if (Location::query()->where('country_code', 'IR')
+                        ->whereDoesntHave('schema', fn ($query) => $query->where('key', 'ir-reference-v2')->where('version', 'v2'))
+                        ->exists()
+                    || UserLocationRelationship::query()->exists()
+                    || GovernanceArea::query()->where('country_code', 'IR')->exists()) {
+                    $this->error('IR v2 isolated apply refused: legacy/non-v2 geography, residence history, or governance areas exist.');
+                    return self::FAILURE;
+                }
             }
         }
 
