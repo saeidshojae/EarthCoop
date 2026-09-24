@@ -26,7 +26,7 @@ const mountSettlementRegistrationBridge = (shell) => {
     const form = shell.closest('form');
     const selector = form?.querySelector('[data-location-selector]');
     const selectorContext = selector?.dataset.locationSelectorContext || selector?.dataset.locationPurpose || '';
-    if (!['registration', 'profile'].includes(selectorContext)) return;
+    if (!['registration', 'profile', 'admin-user-residence'].includes(selectorContext)) return;
     const locationInput = form?.querySelector('[data-location-id][name="location_id"]');
     const proposalInput = form?.querySelector('[data-location-proposal-id][name="location_proposal_id"]');
     const settlementInput = form?.querySelector('[data-reference-settlement-external-id]');
@@ -67,18 +67,6 @@ const mountSettlementRegistrationBridge = (shell) => {
         }
     };
 
-    const clearPresentedPath = () => {
-        path?.querySelectorAll('[data-reference-settlement-path], [data-reference-neighborhood-path]')
-            .forEach((node) => node.remove());
-    };
-    const appendPathSegment = (label, kind) => {
-        if (!path) return;
-        const segment = document.createElement('span');
-        if (kind === 'settlement') segment.dataset.referenceSettlementPath = '';
-        if (kind === 'neighborhood') segment.dataset.referenceNeighborhoodPath = '';
-        segment.textContent = label;
-        path.appendChild(segment);
-    };
 
     const clearNeighborhood = () => {
         neighborhoodHost.innerHTML = '';
@@ -93,7 +81,6 @@ const mountSettlementRegistrationBridge = (shell) => {
         results.innerHTML = '';
         clearNeighborhood();
         removePresentedSettlement();
-        clearPresentedPath();
     };
     const hide = () => {
         clearSettlement();
@@ -104,7 +91,7 @@ const mountSettlementRegistrationBridge = (shell) => {
 
     const presentSettlement = (item, retries = 4) => {
         removePresentedSettlement();
-        clearPresentedPath();
+        if (selectorContext !== 'registration') return;
         const select = villageSelect();
         if (select) {
             const option = document.createElement('option');
@@ -119,16 +106,37 @@ const mountSettlementRegistrationBridge = (shell) => {
                 if (selectedSettlement?.external_id === item.external_id) presentSettlement(item, retries - 1);
             }, 50);
         }
-        appendPathSegment('آبادی ' + item.name_fa + ' (در انتظار بررسی)', 'settlement');
+    };
+    const dispatchReferenceSelection = (proposal = null) => {
+        if (!selectedSettlement || !parentLocationId) return;
+        selector.dispatchEvent(new CustomEvent('earthcoop-location-reference-selected', {
+            bubbles: true,
+            detail: {
+                anchorLocationId: parentLocationId,
+                settlement: selectedSettlement,
+                proposal,
+                context: selectorContext,
+            },
+        }));
     };
 
-    const chooseNeighborhood = (id, label) => {
+
+    const chooseNeighborhood = (id, label, proposal = null) => {
         settlementNeighborhoodProposalId = String(id);
         proposalInput.value = settlementNeighborhoodProposalId;
         if (submit) submit.disabled = false;
         presentSettlement(selectedSettlement);
-        appendPathSegment('محله ' + label + ' (در انتظار تأیید)', 'neighborhood');
-        setStatus('آبادی و محلهٔ انتخابی در انتظار بررسی می‌مانند؛ هیچ حوزهٔ حکمرانی رسمی خودکار ایجاد نمی‌شود.');
+        dispatchReferenceSelection({
+            ...(proposal || {}),
+            id: Number(id),
+            label,
+            canonical_name: proposal?.canonical_name || label,
+            type_key: 'neighborhood',
+            status: proposal?.status || 'pending',
+            selectable: true,
+            children_url: proposal?.children_url || '/location/proposals/' + encodeURIComponent(id) + '/children',
+        });
+        setStatus('آبادی و محلهٔ دقیق انتخاب شدند. جزئیات نشانی بعد از محله اختیاری است و می‌توانید مسیر را ادامه دهید.');
     };
 
     const renderNeighborhoods = (payload, preferredProposalId = '') => {
@@ -148,7 +156,9 @@ const mountSettlementRegistrationBridge = (shell) => {
         select.className = 'form-select';
         select.dataset.referenceSettlementNeighborhoodSelect = '';
         select.innerHTML = '<option value="">یک گزینه را انتخاب کنید</option>';
+        const proposalMap = new Map();
         (Array.isArray(payload?.proposals) ? payload.proposals : []).forEach((proposal) => {
+            proposalMap.set(String(proposal.id), proposal);
             const option = document.createElement('option');
             option.value = String(proposal.id);
             option.textContent = proposal.label + ' — در انتظار تأیید';
@@ -160,10 +170,15 @@ const mountSettlementRegistrationBridge = (shell) => {
             if (!option?.value) {
                 proposalInput.value = '';
                 presentSettlement(selectedSettlement);
+                dispatchReferenceSelection(null);
                 if (submit) submit.disabled = false;
                 return;
             }
-            chooseNeighborhood(option.value, option.textContent.replace(' — در انتظار تأیید', ''));
+            chooseNeighborhood(
+                option.value,
+                option.textContent.replace(' — در انتظار تأیید', ''),
+                proposalMap.get(String(option.value)) || null,
+            );
         });
 
         const proposalShell = document.createElement('div');
@@ -206,7 +221,7 @@ const mountSettlementRegistrationBridge = (shell) => {
                     select.appendChild(option);
                 }
                 select.value = option.value;
-                chooseNeighborhood(result.id, result.canonical_name || name);
+                chooseNeighborhood(result.id, result.canonical_name || name, result);
                 panel.classList.add('d-none'); feedback.textContent = '';
             } catch (error) {
                 feedback.textContent = error?.message || 'ثبت محله ممکن نشد.'; feedback.classList.add('text-danger');
@@ -219,7 +234,11 @@ const mountSettlementRegistrationBridge = (shell) => {
             const preferred = Array.from(select.options).find((option) => option.value === String(preferredProposalId));
             if (preferred) {
                 select.value = preferred.value;
-                chooseNeighborhood(preferred.value, preferred.textContent.replace(' — در انتظار تأیید', ''));
+                chooseNeighborhood(
+                    preferred.value,
+                    preferred.textContent.replace(' — در انتظار تأیید', ''),
+                    proposalMap.get(String(preferred.value)) || null,
+                );
             }
         }
     };
@@ -245,6 +264,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         settlementNeighborhoodProposalId = '';
         if (submit) submit.disabled = false;
         presentSettlement(item);
+        dispatchReferenceSelection(null);
         results.querySelectorAll('button[data-settlement-external-id]').forEach((button) => {
             button.setAttribute('aria-pressed', button.dataset.settlementExternalId === item.external_id ? 'true' : 'false');
         });
