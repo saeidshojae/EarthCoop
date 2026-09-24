@@ -63,8 +63,9 @@ final class IranV2IsolatedImportGuardTest extends TestCase
             '--dataset-version' => 'v2',
             '--dry-run' => true,
         ]));
-        $this->assertStringContainsString('create: 6158', Artisan::output());
-        $this->assertStringContainsString('conflict: 0', Artisan::output());
+        $dryRunOutput = Artisan::output();
+        $this->assertStringContainsString('create: 6158', $dryRunOutput);
+        $this->assertStringContainsString('conflict: 0', $dryRunOutput);
 
         $this->assertSame(0, Artisan::call('location:reference-import', [
             'country' => 'IR',
@@ -96,8 +97,9 @@ final class IranV2IsolatedImportGuardTest extends TestCase
             '--dataset-version' => 'v2',
             '--dry-run' => true,
         ]));
-        $this->assertStringContainsString('unchanged: 6158', Artisan::output());
-        $this->assertStringContainsString('deactivate: 0', Artisan::output());
+        $repeatOutput = Artisan::output();
+        $this->assertStringContainsString('unchanged: 6158', $repeatOutput);
+        $this->assertStringContainsString('deactivate: 0', $repeatOutput);
     }
 
     public function test_v2_apply_is_forbidden_in_production_even_with_confirmation(): void
