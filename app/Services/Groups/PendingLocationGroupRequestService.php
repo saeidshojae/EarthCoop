@@ -50,7 +50,10 @@ final class PendingLocationGroupRequestService
         ReferenceSettlementResidenceClaim $claim,
         LocationProposal $proposal,
     ): Collection {
-        return $this->syncForReferenceSettlementClaim($user, $claim, true, false)
+        $referenceRoot = $proposal->referenceSettlementRootProposal()?->loadMissing('type');
+        $settlementRemainsBase = $referenceRoot?->type?->key !== 'neighborhood';
+
+        return $this->syncForReferenceSettlementClaim($user, $claim, true, $settlementRemainsBase)
             ->concat($this->syncForPendingResidence($user, $proposal, true))->values();
     }
 
