@@ -174,7 +174,7 @@ const mountSettlementRegistrationBridge = (shell) => {
             },
         }));
     };
-    const dispatchReferenceStructureSelection = (claim, payload) => {
+    const dispatchReferenceStructureSelection = (claim, payload, proposalPath = []) => {
         if (!selectedSettlement || !parentLocationId || !claim) return;
         selector.dispatchEvent(new CustomEvent('earthcoop-location-reference-structure-selected', {
             bubbles: true,
@@ -183,6 +183,7 @@ const mountSettlementRegistrationBridge = (shell) => {
                 settlement: selectedSettlement,
                 claim,
                 payload,
+                proposalPath: Array.isArray(proposalPath) ? proposalPath : [],
                 context: selectorContext,
             },
         }));
@@ -304,7 +305,7 @@ const mountSettlementRegistrationBridge = (shell) => {
 
         if (effectiveNoNeighborhood) {
             neighborhoodHost.appendChild(structuralSection);
-            dispatchReferenceStructureSelection(structuralChoice, payload);
+            dispatchReferenceStructureSelection(structuralChoice, payload, persistedProposalPath);
             return;
         }
 
