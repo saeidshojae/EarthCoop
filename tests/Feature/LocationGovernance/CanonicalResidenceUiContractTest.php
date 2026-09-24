@@ -155,7 +155,13 @@ class CanonicalResidenceUiContractTest extends TestCase
         $wrapper = file_get_contents(resource_path('js/location-selector.js'));
         $this->assertStringContainsString('pendingStructuralClaimContextUrl', $wrapper);
         $this->assertStringContainsString('location_structure_claim_ids: pendingStructuralClaimIds(host)', $wrapper);
-        $this->assertStringContainsString('فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود', $wrapper);
+        $this->assertStringContainsString("['no_urban_region', 'no_neighborhood']", $wrapper);
+        $this->assertStringContainsString('این اعلام از مسیر فعلی شما برداشته شد', $wrapper);
+        $this->assertStringNotContainsString('single_urban_region', $wrapper);
+        $this->assertStringNotContainsString('single_neighborhood', $wrapper);
+        $this->assertStringNotContainsString('چند منطقه دارد', $wrapper);
+        $this->assertStringNotContainsString('چند محله دارد', $wrapper);
+        $this->assertStringNotContainsString('مسیر معمولی انتخاب شد', $wrapper);
     }
 
 }
