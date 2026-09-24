@@ -52,7 +52,14 @@
     @endif
 
     @php
-        $persistedProposalId = old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
+        $combinedReferenceSettlementIntent = $pendingResidenceIntent?->locationProposal?->parent_reference_settlement_id
+            && $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
+        // The canonical profile selector cannot replay a ReferenceSettlement identity
+        // as if it were a Location. In the combined pending state, hydrate from the
+        // canonical anchor and keep the exact settlement/neighborhood visible above.
+        $persistedProposalId = $combinedReferenceSettlementIntent
+            ? old('location_proposal_id')
+            : old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
         $persistedLocationId = $persistedProposalId
             ? old('location_id')
             : old('location_id', $primaryResidence?->location_id);

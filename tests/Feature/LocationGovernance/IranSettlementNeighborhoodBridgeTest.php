@@ -163,6 +163,21 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
         $this->assertSame($claim->id, $intent->reference_settlement_residence_claim_id);
         $this->assertSame($locationCount, Location::count());
         $this->assertSame($governanceCount, GovernanceArea::count());
+
+        $this->actingAs($user)->get(route('location-governance.me'))
+            ->assertOk()
+            ->assertSee('data-pending-reference-settlement', false)
+            ->assertSee('وری')
+            ->assertSee('محله وری');
+
+        $this->actingAs($user)->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('data-pending-reference-settlement-state', false)
+            ->assertSee('data-pending-residence-state', false)
+            ->assertSee('وری')
+            ->assertSee('محله وری')
+            ->assertSee('data-location-current-proposal-id=""', false)
+            ->assertSee('data-location-current-id="'.$anchor->id.'"', false);
     }
 
     public function test_registration_rejects_neighborhood_belonging_to_another_reference_settlement(): void
