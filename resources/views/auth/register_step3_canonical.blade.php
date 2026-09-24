@@ -66,7 +66,7 @@
                 <div data-location-levels></div><div class="text-xs sm:text-sm text-gray-500 mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
             </div>
             @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
-                <section class="mt-4 border rounded-lg p-3 bg-white/70" data-reference-settlement-picker hidden>
+                <section class="vstack gap-3" data-reference-settlement-picker hidden>
                     <h3 class="font-bold text-sm sm:text-base mb-1">جستجو در بانک آبادی‌های ۱۴۰۴</h3>
                     <p class="text-xs sm:text-sm text-gray-500 mb-3">نام آبادی را جستجو و گزینه درست را انتخاب کنید. انتخاب از بانک مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
                     <div class="flex flex-col sm:flex-row gap-2">
