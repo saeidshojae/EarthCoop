@@ -80,7 +80,7 @@ final class IranV1V2RuntimeAuditCommandTest extends TestCase
         $this->assertSame($before, $after);
     }
 
-    public function test_present_municipal_review_mapping_blocks_shared_cutover(): void
+    public function test_source_backed_sari_region_mapping_is_verified_and_does_not_block_without_dependencies(): void
     {
         $schema = LocationFixture::iranSchema();
         $location = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region'])->last();
@@ -96,9 +96,9 @@ final class IranV1V2RuntimeAuditCommandTest extends TestCase
         $report = json_decode(trim(Artisan::output()), true, 512, JSON_THROW_ON_ERROR);
         $row = collect($report['rows'])->firstWhere('v1_external_id', 'IR-SARI-URBAN-01');
 
-        $this->assertSame('municipal_review', $row['mapping_status']);
+        $this->assertSame('verified_identity', $row['mapping_status']);
         $this->assertSame('IR-1404-5984', $row['candidate_v2_external_id']);
-        $this->assertTrue($report['shared_cutover_blocked']);
+        $this->assertFalse($report['shared_cutover_blocked']);
     }
 
     public function test_unreviewed_v1_identity_blocks_shared_cutover_without_mutation(): void
