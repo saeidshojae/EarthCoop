@@ -255,6 +255,7 @@ jobs:
           php -l tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php
           php -l tests/Feature/Admin/LocationGovernanceControlCenterTest.php
           php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
+          php -l app/Services/LocationGovernance/ResidenceService.php
           php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
           php -l app/Services/Groups/PendingLocationGroupRequestService.php
           php -l app/Services/Groups/CanonicalGroupMembershipReconciler.php
