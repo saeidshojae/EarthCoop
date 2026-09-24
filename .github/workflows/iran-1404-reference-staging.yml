@@ -257,6 +257,7 @@ jobs:
           php -l app/Services/Groups/CanonicalGroupMembershipReconciler.php
           php -l app/Models/LocationScopedGroupRequest.php
           php -l database/migrations/2026_09_24_000005_link_pending_group_requests_to_reference_settlement_claims.php
+          php -l database/migrations/2026_09_24_000006_link_location_proposals_to_reference_settlements.php
           php -l routes/location-proposals.php
           php -l tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php
           php -l tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php

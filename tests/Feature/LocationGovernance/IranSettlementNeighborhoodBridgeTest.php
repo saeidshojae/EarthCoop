@@ -3,8 +3,6 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
-use App\Http\Middleware\AdminMiddleware;
-use App\Http\Middleware\PermissionMiddleware;
 use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationExternalId;
@@ -25,6 +23,7 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
         config([
             'location-governance.runtime_enabled' => true,
             'location-governance.registration_enabled' => true,
@@ -242,7 +241,6 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
         ])->assertRedirect(route('home'));
 
         $admin = User::factory()->create(['is_admin' => true]);
-        $this->withoutMiddleware([AdminMiddleware::class, PermissionMiddleware::class]);
         $this->actingAs($admin)->get('/admin/location-governance')
             ->assertOk()
             ->assertViewHas('healthDiagnostics', fn ($diagnostics) =>
