@@ -20,6 +20,7 @@ const selectorSource = () => [
     '../../../resources/js/location-selector-core.js',
     '../../../resources/js/location-selector.js',
 ].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
+const coreSelectorSource = () => readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
 
 test('normalizes active locations, open proposals, and allowed types without fixed depth', () => {
     const streetPayload = normalizePickerPayload({ data: [], proposals: [], allowed_types: [
@@ -275,7 +276,7 @@ test('breadcrumb uses typed display labels across the full residence path', () =
 });
 
 test('residence selector renders only absence structural actions while keeping backend payload support separate', () => {
-    const source = selectorSource();
+    const source = coreSelectorSource();
     assert.match(source, /structuralChoices/);
     assert.match(source, /locations\/structure-claims/);
     assert.match(source, /no_urban_region/);
@@ -344,7 +345,7 @@ test('structural-claim navigation sends only explicitly selected absence claim i
 });
 
 test('structural claim UI exposes only exceptional absence actions inside the disclosure', () => {
-    const source = selectorSource();
+    const source = coreSelectorSource();
     assert.match(source, /STRUCTURAL_CLAIM_GROUPS/);
     assert.match(source, /claimTypes: \['no_urban_region'\]/);
     assert.match(source, /claimTypes: \['no_neighborhood'\]/);
@@ -356,7 +357,7 @@ test('structural claim UI exposes only exceptional absence actions inside the di
 });
 
 test('absence choice can be toggled off without exposing a normal or multi-state button', () => {
-    const source = selectorSource();
+    const source = coreSelectorSource();
     assert.match(source, /forgetStructuralClaim/);
     assert.match(source, /این اعلام از مسیر فعلی شما برداشته شد/);
     assert.doesNotMatch(source, /مسیر معمولی انتخاب شد/);
