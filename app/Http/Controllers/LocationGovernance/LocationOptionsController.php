@@ -33,9 +33,22 @@ final class LocationOptionsController extends Controller
     {
         $this->assertRuntimeEnabled();
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
+        $preferIranV2 = $countryCode === 'IR'
+            && Location::query()
+                ->where('country_code', 'IR')
+                ->whereNull('parent_id')
+                ->where('status', 'active')
+                ->whereHas('schema', fn ($query) => $query->where('key', 'ir-reference-v2')->where('version', 'v2')->where('status', 'active'))
+                ->exists();
+
         $locations = Location::query()->with(['type', 'schema'])->whereNull('parent_id')->where('status', 'active')
             ->whereNotNull('location_schema_id')->whereNotNull('location_type_id')
-            ->whereHas('schema', fn ($query) => $query->where('status', 'active'))
+            ->whereHas('schema', function ($query) use ($preferIranV2): void {
+                $query->where('status', 'active');
+                if ($preferIranV2) {
+                    $query->where('key', 'ir-reference-v2')->where('version', 'v2');
+                }
+            })
             ->when($countryCode !== '', fn ($query) => $query->where('country_code', $countryCode))
             ->whereExists(function ($query) {
                 $query->selectRaw('1')->from('location_schema_types')
