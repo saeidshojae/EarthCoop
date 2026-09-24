@@ -7,6 +7,7 @@ use App\Http\Controllers\Profile\ProfileController;
 use App\Models\Address;
 use App\Models\ExperienceField;
 use App\Models\Location;
+use App\Models\LocationExternalId;
 use App\Models\LocationProposal;
 use App\Models\OccupationalField;
 use App\Models\PendingResidenceIntent;
@@ -135,6 +136,8 @@ final class ProfileEditController extends Controller
             return [];
         }
 
+        $location = $this->preferredHydrationLocation($location);
+
         $path = [];
         $cursor = $location;
         $visitedLocationIds = [];
@@ -160,4 +163,43 @@ final class ProfileEditController extends Controller
 
         return $path;
     }
+    private function preferredHydrationLocation(Location $location): Location
+    {
+        if ($location->country_code !== 'IR') {
+            return $location;
+        }
+
+        $alreadyV2 = LocationExternalId::query()
+            ->where('location_id', $location->id)
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->exists();
+        if ($alreadyV2) {
+            return $location;
+        }
+
+        $v1ExternalId = LocationExternalId::query()
+            ->where('location_id', $location->id)
+            ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+            ->where('dataset_version', config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1'))
+            ->value('external_id');
+        if (! is_string($v1ExternalId) || $v1ExternalId === '') {
+            return $location;
+        }
+
+        $mapping = config('iran_v1_v2_crosswalk.mappings.'.$v1ExternalId);
+        if (! is_array($mapping) || ($mapping['status'] ?? null) !== 'verified_identity') {
+            return $location;
+        }
+
+        $v2 = LocationExternalId::query()
+            ->with('location')
+            ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+            ->where('dataset_version', config('iran_v1_v2_crosswalk.v2_dataset_version', 'v2'))
+            ->where('external_id', (string) ($mapping['v2'] ?? ''))
+            ->first()?->location;
+
+        return $v2 instanceof Location && $v2->status === 'active' ? $v2 : $location;
+    }
+
 }
