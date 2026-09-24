@@ -24,6 +24,8 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString("['registration', 'profile'].includes(selectorContext)", $bridge);
         $this->assertStringContainsString('persistedSettlementExternalId', $bridge);
         $this->assertStringContainsString('persistedNeighborhoodProposalId', $bridge);
+        $this->assertStringContainsString("parentLocationId = String(event.detail.locationId);\n        shell.hidden = false;", $bridge);
+        $this->assertStringNotContainsString("if (!await requestSettlements('', false)) return;", $bridge);
         $this->assertStringContainsString("item?.type_key !== 'rural_district'", $bridge);
         $this->assertStringContainsString('shell.hidden = false', $bridge);
         $this->assertStringContainsString('option.dataset.referenceSettlementOption', $bridge);
