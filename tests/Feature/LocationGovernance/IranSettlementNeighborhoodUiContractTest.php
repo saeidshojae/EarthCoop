@@ -25,7 +25,9 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringNotContainsString("path.textContent =", $bridge);
         $this->assertStringContainsString("presentSettlement(item, retries - 1)", $bridge);
         $this->assertStringContainsString('parent_reference_settlement_id', $bridge);
-        $this->assertStringContainsString('proposalInput.value = String(id)', $bridge);
+        $this->assertStringContainsString("settlementNeighborhoodProposalId = String(id)", $bridge);
+        $this->assertStringContainsString("proposalInput.value === settlementNeighborhoodProposalId", $bridge);
+        $this->assertStringNotContainsString("const clearNeighborhood = () => {\n        neighborhoodHost.innerHTML = '';\n        proposalInput.value = '';", $bridge);
         $this->assertStringContainsString('registration-settlement-bridge.js', $app);
     }
 }

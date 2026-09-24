@@ -39,6 +39,7 @@ const mountSettlementRegistrationBridge = (shell) => {
 
     let parentLocationId = '';
     let selectedSettlement = null;
+    let settlementNeighborhoodProposalId = '';
     let requestSerial = 0;
 
     const setStatus = (message, error = false) => {
@@ -75,7 +76,10 @@ const mountSettlementRegistrationBridge = (shell) => {
 
     const clearNeighborhood = () => {
         neighborhoodHost.innerHTML = '';
-        proposalInput.value = '';
+        if (settlementNeighborhoodProposalId && proposalInput.value === settlementNeighborhoodProposalId) {
+            proposalInput.value = '';
+        }
+        settlementNeighborhoodProposalId = '';
     };
     const clearSettlement = () => {
         settlementInput.value = '';
@@ -113,7 +117,8 @@ const mountSettlementRegistrationBridge = (shell) => {
     };
 
     const chooseNeighborhood = (id, label) => {
-        proposalInput.value = String(id);
+        settlementNeighborhoodProposalId = String(id);
+        proposalInput.value = settlementNeighborhoodProposalId;
         if (submit) submit.disabled = false;
         presentSettlement(selectedSettlement);
         appendPathSegment('محله ' + label + ' (در انتظار تأیید)', 'neighborhood');
@@ -223,6 +228,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         settlementInput.value = item.external_id;
         locationInput.value = '';
         proposalInput.value = '';
+        settlementNeighborhoodProposalId = '';
         if (submit) submit.disabled = false;
         presentSettlement(item);
         results.querySelectorAll('button[data-settlement-external-id]').forEach((button) => {
