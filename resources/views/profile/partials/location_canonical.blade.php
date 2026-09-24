@@ -52,7 +52,7 @@
     @endif
 
     @php
-        $combinedReferenceSettlementIntent = $pendingResidenceIntent?->locationProposal?->parent_reference_settlement_id
+        $combinedReferenceSettlementIntent = $pendingResidenceIntent?->reference_settlement_residence_claim_id
             && $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
         // The canonical profile selector cannot replay a ReferenceSettlement identity
         // as if it were a Location. In the combined pending state, hydrate from the
@@ -63,9 +63,12 @@
         $persistedLocationId = $persistedProposalId
             ? old('location_id')
             : old('location_id', $primaryResidence?->location_id);
+        $defaultStructuralClaimIds = collect(data_get($primaryResidence?->metadata, 'structural_claim_ids', []))
+            ->merge(data_get($pendingResidenceIntent?->metadata, 'structural_claim_ids', []))
+            ->map(fn ($id) => (int) $id)->filter()->unique()->values()->all();
         $persistedStructuralClaimIds = collect(old(
             'location_structure_claim_ids',
-            data_get($primaryResidence?->metadata, 'structural_claim_ids', [])
+            $defaultStructuralClaimIds
         ))->map(fn ($id) => (int) $id)->filter()->unique()->values();
         $currentReferenceSettlement = $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
         $persistedReferenceSettlementExternalId = old(
