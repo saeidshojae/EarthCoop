@@ -616,7 +616,10 @@ const initializeLocationSelector = async (host) => {
         if (!anchorEntry) return;
 
         const anchorDepth = Number(anchorEntry[0]);
-        removeDeeperLevels(anchorDepth);
+        // Keep the next rendered level (the village/settlement select and its
+        // exception disclosure) mounted. The bridge lives inside that disclosure
+        // while a ReferenceSettlement is selected and must survive this transition.
+        removeDeeperLevels(anchorDepth + 1);
         [...selectedPath.keys()].filter((key) => key > anchorDepth).forEach((key) => selectedPath.delete(key));
 
         const settlementItem = {
