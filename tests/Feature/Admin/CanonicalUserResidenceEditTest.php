@@ -11,6 +11,9 @@ use App\Models\Group;
 use App\Models\Location;
 use App\Models\LocationExternalId;
 use App\Models\ReferenceSettlement;
+use App\Models\ReferenceSettlementResidenceClaim;
+use App\Models\PendingResidenceIntent;
+use App\Models\LocationSchema;
 use App\Models\User;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -101,6 +104,102 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertStringContainsString('data-location-current-path', $partial);
         $this->assertStringContainsString('residenceHydrationPath', $controller);
     }
+
+    public function test_admin_reference_settlement_hydration_prefers_v2_parent_anchor(): void
+    {
+        config([
+            'iran_settlement_catalog.enabled' => true,
+            'iran_settlement_catalog.claims_enabled' => true,
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $staleAnchor = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'rural_district'],
+            ['ایران قدیمی مدیر', 'مازندران قدیمی مدیر', 'ساری قدیمی مدیر', 'چهاردانگه قدیمی مدیر', 'دهستان قدیمی مدیر'],
+        )->last();
+
+        $v2Schema = LocationSchema::query()->create([
+            'key' => 'ir-reference-v2',
+            'country_code' => 'IR',
+            'name' => 'Iran 1404',
+            'version' => 'v2',
+            'status' => 'active',
+        ]);
+        $types = $schema->types->keyBy('key');
+        $parent = null;
+        $v2Path = collect();
+        foreach ([
+            ['country', 'ایران'],
+            ['province', 'مازندران'],
+            ['county', 'ساری'],
+            ['section', 'چهاردانگه'],
+            ['rural_district', 'دهستان چهاردانگه'],
+        ] as [$typeKey, $name]) {
+            $parent = Location::factory()->create([
+                'parent_id' => $parent?->id,
+                'location_schema_id' => $v2Schema->id,
+                'location_type_id' => $types[$typeKey]->id,
+                'country_code' => 'IR',
+                'name' => $name,
+                'canonical_name' => $name,
+                'localized_names' => ['fa' => $name],
+                'level' => $typeKey,
+                'status' => 'active',
+            ]);
+            $v2Path->push($parent);
+        }
+        $v2Anchor = $v2Path->last();
+        LocationExternalId::query()->create([
+            'location_id' => $v2Anchor->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-1938',
+            'metadata' => ['fixture' => true],
+        ]);
+
+        $settlement = ReferenceSettlement::query()->create([
+            'source' => 'IranCountryDivisions/geo_1404',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-99012',
+            'parent_external_id' => 'IR-1404-1938',
+            'source_code' => '99012',
+            'source_row_id' => 99012,
+            'name_fa' => 'آبادی مدیر مسیر بازیابی',
+            'search_name' => 'آبادی مدیر مسیر بازیابی',
+            'classification' => 'unverified_settlement',
+            'residential_eligibility' => 'unverified',
+            'governance_authorized' => false,
+            'operational_promotion_allowed' => false,
+            'provenance' => ['source' => 'fixture'],
+        ]);
+
+        $target = User::factory()->create();
+        $admin = User::factory()->create();
+        $relationship = app(ResidenceService::class)->setInitialPrimaryResidence($target, $staleAnchor, ['source' => 'test']);
+        $claim = ReferenceSettlementResidenceClaim::query()->create([
+            'reference_settlement_id' => $settlement->id,
+            'user_id' => $target->id,
+            'status' => 'pending',
+            'submitted_at' => now(),
+        ]);
+        PendingResidenceIntent::query()->create([
+            'user_id' => $target->id,
+            'anchor_relationship_id' => $relationship->id,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'status' => 'pending',
+            'selected_at' => now(),
+            'metadata' => [],
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.users.edit', $target))->assertOk();
+        $path = $response->viewData('residenceHydrationPath');
+
+        $this->assertSame('location:'.$v2Path->first()->id, $path[0]);
+        $this->assertSame('location:'.$v2Anchor->id, $path[array_key_last($path)]);
+        $this->assertNotContains('location:'.$staleAnchor->id, $path);
+    }
+
 
     public function test_admin_can_move_user_to_approved_residence_with_actor_and_reason(): void
     {
