@@ -337,6 +337,66 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, par
     return shell;
 };
 
+const buildExceptionDisclosure = ({
+    host,
+    payload,
+    parentLocationId,
+    parentProposalId,
+    depth,
+    structuralPanel,
+    proposalPanel,
+    enableReferenceSearch = false,
+}) => {
+    if (!structuralPanel && !proposalPanel && !enableReferenceSearch) return null;
+
+    const shell = document.createElement('div');
+    shell.className = 'location-exception-shell';
+    shell.dataset.locationExceptionShell = '';
+    shell.dataset.locationDepth = String(depth);
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'btn btn-link btn-sm p-0 mt-1 text-decoration-none align-self-start';
+    toggle.dataset.locationExceptionToggle = '';
+    toggle.textContent = exceptionLinkLabel(payload);
+    toggle.setAttribute('aria-expanded', 'false');
+
+    const panel = document.createElement('div');
+    panel.className = 'location-exception-panel border rounded-3 p-3 mt-2 bg-light d-none vstack gap-3';
+    panel.dataset.locationExceptionPanel = '';
+
+    let referenceSlot = null;
+    if (enableReferenceSearch) {
+        referenceSlot = document.createElement('div');
+        referenceSlot.dataset.locationReferenceExceptionSlot = '';
+        panel.appendChild(referenceSlot);
+    }
+    if (structuralPanel) panel.appendChild(structuralPanel);
+    if (proposalPanel) panel.appendChild(proposalPanel);
+
+    toggle.addEventListener('click', () => {
+        const opening = panel.classList.contains('d-none');
+        panel.classList.toggle('d-none', !opening);
+        toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+        if (!opening) return;
+
+        host.dispatchEvent(new CustomEvent('earthcoop-location-exception-open', {
+            bubbles: true,
+            detail: {
+                panel,
+                referenceSlot,
+                parentLocationId,
+                parentProposalId,
+                depth,
+                targetKeys: exceptionTargetKeys(payload),
+            },
+        }));
+    });
+
+    shell.append(toggle, panel);
+    return { shell, panel, toggle };
+};
+
 const initializeLocationSelector = async (host) => {
     const levels = host.querySelector('[data-location-levels]');
     const context = host.dataset.locationPurpose || host.dataset.locationSelectorContext || 'residence'; const isProjectScope = context === 'project-scope'; const isRegistration = context === 'registration';
