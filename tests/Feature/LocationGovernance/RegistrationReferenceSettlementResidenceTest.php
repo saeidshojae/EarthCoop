@@ -7,6 +7,7 @@ use App\Models\PendingResidenceIntent;
 use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\MembershipDimension;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\Membership\PublicDimensionResolver;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,6 +66,12 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         ]);
     }
 
+    private function noNeighborhoodClaim(ReferenceSettlement $settlement, User $user)
+    {
+        return app(LocationStructureClaimService::class)
+            ->findOrCreateOpenReferenceSettlementClaim($settlement, 'no_neighborhood', $user);
+    }
+
     public function test_step3_settlement_picker_is_visible_only_when_both_feature_flags_are_enabled(): void
     {
         $user = User::factory()->create();
@@ -96,8 +103,10 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         ]);
         $locationsBefore = DB::table('locations')->count();
 
+        $structuralClaim = $this->noNeighborhoodClaim($settlement, $user);
         $response = $this->actingAs($user)->post(route('register.step3.process'), [
             'reference_settlement_external_id' => $settlement->external_id,
+            'location_structure_claim_ids' => [$structuralClaim->id],
         ]);
 
         $response->assertRedirect(route('home'));
@@ -150,6 +159,24 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
             );
     }
 
+    public function test_reference_settlement_alone_cannot_finish_step3_without_neighborhood_decision(): void
+    {
+        $this->anchor();
+        $settlement = $this->settlement();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from(route('register.step3'))
+            ->post(route('register.step3.process'), [
+                'reference_settlement_external_id' => $settlement->external_id,
+            ])
+            ->assertRedirect(route('register.step3'))
+            ->assertSessionHasErrors('reference_settlement_external_id');
+
+        $this->assertSame(0, $user->fresh()->locationRelationships()->count());
+        $this->assertDatabaseCount('pending_residence_intents', 0);
+    }
+
     public function test_reference_settlement_can_anchor_directly_to_imported_v2_parent_without_crosswalk(): void
     {
         $schema = LocationFixture::iranSchema();
@@ -166,8 +193,10 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         $settlement = $this->settlement('IR-1404-5555');
         $user = User::factory()->create();
 
+        $structuralClaim = $this->noNeighborhoodClaim($settlement, $user);
         $this->actingAs($user)->post(route('register.step3.process'), [
             'reference_settlement_external_id' => $settlement->external_id,
+            'location_structure_claim_ids' => [$structuralClaim->id],
         ])->assertRedirect(route('home'));
 
         $relationship = $user->fresh()->locationRelationships()
@@ -197,8 +226,10 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
             'enabled' => true,
         ]);
 
+        $structuralClaim = $this->noNeighborhoodClaim($settlement, $user);
         $this->actingAs($user)->post(route('register.step3.process'), [
             'reference_settlement_external_id' => $settlement->external_id,
+            'location_structure_claim_ids' => [$structuralClaim->id],
         ])->assertRedirect(route('home'));
 
         $reconciler = app(\App\Services\Groups\CanonicalGroupMembershipReconciler::class);
