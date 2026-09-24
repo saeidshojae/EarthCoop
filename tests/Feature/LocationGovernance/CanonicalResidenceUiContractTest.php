@@ -45,8 +45,8 @@ class CanonicalResidenceUiContractTest extends TestCase
             $this->assertStringContainsString('data-reference-settlement-picker', $view);
         }
 
-        $this->assertStringContainsString('dataLocationExceptionToggle', $selector);
-        $this->assertStringContainsString('dataLocationExceptionPanel', $selector);
+        $this->assertStringContainsString('dataset.locationExceptionToggle', $selector);
+        $this->assertStringContainsString('dataset.locationExceptionPanel', $selector);
         $this->assertStringContainsString('earthcoop-location-exception-open', $selector);
         $this->assertStringContainsString('earthcoop-location-exception-open', $settlementBridge);
         $this->assertStringContainsString("['registration', 'profile', 'admin-user-residence']", $settlementBridge);
