@@ -48,7 +48,7 @@ const installResidenceStyles = () => {
 
 const FA_TYPE_LABELS = Object.freeze({
     global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان', county: 'شهرستان',
-    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه',
+    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', settlement: 'آبادی', urban_region: 'منطقه',
     neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
 });
 const typedLocationLabel = (label, typeKey) => {
