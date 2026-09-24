@@ -130,9 +130,10 @@ class LocationProposalService
         ReferenceSettlement $settlement,
         LocationType $type,
         array $data,
+        array $structuralClaims = [],
     ): LocationProposal {
-        if (! $this->proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $type)) {
-            throw new DomainException('Only a pending neighborhood may be proposed under this reference settlement.');
+        if (! $this->proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $type, $structuralClaims)) {
+            throw new DomainException('The requested pending child is not allowed under this reference settlement.');
         }
 
         $anchor = app(IranSettlementAnchorResolver::class)->resolve($settlement);
@@ -164,6 +165,8 @@ class LocationProposalService
             'metadata' => array_merge($data['metadata'] ?? [], [
                 'source' => 'reference_settlement_child',
                 'reference_settlement_external_id' => $settlement->external_id,
+                'structural_claim_ids' => collect($structuralClaims)
+                    ->pluck('id')->map(fn ($id) => (int) $id)->filter()->unique()->values()->all(),
             ]),
             'audit_log' => [],
         ]);
