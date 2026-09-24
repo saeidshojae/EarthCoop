@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Location;
+use App\Models\LocationExternalId;
 use App\Models\LocationProposal;
 use App\Models\PendingResidenceIntent;
 use App\Models\User;
@@ -28,10 +29,20 @@ class SafeUserController extends UserController
 
         $primaryResidence = $user->locationRelationships()
             ->where('relationship_type', 'primary_residence')->whereNull('ended_at')->with('location')->latest('started_at')->latest('id')->first();
-        $pendingResidenceIntent = $user->pendingResidenceIntents()->where('status', 'pending')->with('locationProposal')->latest('id')->first();
+        $pendingResidenceIntent = $user->pendingResidenceIntents()
+            ->where('status', 'pending')
+            ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement'])
+            ->latest('id')->first();
         $residenceHydrationPath = $this->residenceHydrationPath($primaryResidence?->location, $pendingResidenceIntent);
+        $referenceSettlementProposalPath = $this->referenceSettlementProposalPath($pendingResidenceIntent);
 
-        return view('admin.user.edit_canonical', compact('user', 'primaryResidence', 'pendingResidenceIntent', 'residenceHydrationPath'));
+        return view('admin.user.edit_canonical', compact(
+            'user',
+            'primaryResidence',
+            'pendingResidenceIntent',
+            'residenceHydrationPath',
+            'referenceSettlementProposalPath',
+        ));
     }
 
     public function update(Request $request, User $user)
@@ -172,6 +183,7 @@ class SafeUserController extends UserController
     private function canonicalLocationPath(?Location $location): array
     {
         if (! $location instanceof Location) return [];
+        $location = $this->preferredHydrationLocation($location);
         $path = []; $cursor = $location; $visited = []; $root = null;
         while ($cursor !== null) {
             if (isset($visited[$cursor->id])) return [];
@@ -183,6 +195,58 @@ class SafeUserController extends UserController
             if ($continent !== null) array_unshift($path, 'governance:'.$continent->id);
         }
         return $path;
+    }
+
+    /** @return array<int, int> */
+    private function referenceSettlementProposalPath(?PendingResidenceIntent $intent): array
+    {
+        if ($intent?->reference_settlement_residence_claim_id === null || ! $intent?->locationProposal instanceof LocationProposal) {
+            return [];
+        }
+
+        $path = [];
+        $cursor = $intent->locationProposal;
+        $visited = [];
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) return [];
+            $visited[$cursor->id] = true;
+            array_unshift($path, (int) $cursor->id);
+            if ($cursor->parent_reference_settlement_id !== null) return $path;
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        return [];
+    }
+
+    private function preferredHydrationLocation(Location $location): Location
+    {
+        if ($location->country_code !== 'IR') return $location;
+
+        $alreadyV2 = LocationExternalId::query()
+            ->where('location_id', $location->id)
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->exists();
+        if ($alreadyV2) return $location;
+
+        $v1ExternalId = LocationExternalId::query()
+            ->where('location_id', $location->id)
+            ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+            ->where('dataset_version', config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1'))
+            ->value('external_id');
+        if (! is_string($v1ExternalId) || $v1ExternalId === '') return $location;
+
+        $mapping = config('iran_v1_v2_crosswalk.mappings.'.$v1ExternalId);
+        if (! is_array($mapping) || ($mapping['status'] ?? null) !== 'verified_identity') return $location;
+
+        $v2 = LocationExternalId::query()
+            ->with('location')
+            ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+            ->where('dataset_version', config('iran_v1_v2_crosswalk.v2_dataset_version', 'v2'))
+            ->where('external_id', (string) ($mapping['v2'] ?? ''))
+            ->first()?->location;
+
+        return $v2 instanceof Location && $v2->status === 'active' ? $v2 : $location;
     }
 
 }
