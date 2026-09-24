@@ -174,6 +174,19 @@ const mountSettlementRegistrationBridge = (shell) => {
             },
         }));
     };
+    const dispatchReferenceStructureSelection = (claim, payload) => {
+        if (!selectedSettlement || !parentLocationId || !claim) return;
+        selector.dispatchEvent(new CustomEvent('earthcoop-location-reference-structure-selected', {
+            bubbles: true,
+            detail: {
+                anchorLocationId: parentLocationId,
+                settlement: selectedSettlement,
+                claim,
+                payload,
+                context: selectorContext,
+            },
+        }));
+    };
 
 
     const chooseNeighborhood = (id, label, proposal = null, proposalPath = []) => {
@@ -197,11 +210,115 @@ const mountSettlementRegistrationBridge = (shell) => {
 
     const renderNeighborhoods = (payload, preferredProposalId = '') => {
         neighborhoodHost.innerHTML = '';
+
+        const structuralChoice = (Array.isArray(payload?.structural_choices) ? payload.structural_choices : [])
+            .find((choice) => choice.claim_type === 'no_neighborhood') || null;
+        const effectiveNoNeighborhood = payload?.registration_endpoint_allowed === true
+            && structuralChoice?.selected === true;
+
+        const structuralSection = document.createElement('div');
+        structuralSection.className = 'border-top pt-3 mt-3';
+        const structuralButton = document.createElement('button');
+        structuralButton.type = 'button';
+        structuralButton.className = 'btn btn-outline-secondary btn-sm';
+        structuralButton.dataset.referenceSettlementNoNeighborhood = '';
+        structuralButton.textContent = 'این آبادی / روستا محله‌بندی ندارد';
+        structuralButton.setAttribute('aria-pressed', effectiveNoNeighborhood ? 'true' : 'false');
+        const structuralStatus = document.createElement('div');
+        structuralStatus.className = 'small text-secondary mt-2';
+        structuralStatus.setAttribute('aria-live', 'polite');
+        if (structuralChoice?.status === 'approved') {
+            structuralButton.disabled = true;
+            structuralStatus.textContent = 'بی‌محله بودن این آبادی قبلاً تأیید شده است.';
+        } else if (effectiveNoNeighborhood) {
+            structuralStatus.textContent = 'بی‌محله بودن برای مسیر فعلی شما انتخاب شده و در انتظار بررسی است.';
+        } else if (structuralChoice && structuralChoice.status !== 'available') {
+            structuralStatus.textContent = 'این اعلام قبلاً ثبت شده است؛ در صورت تطابق می‌توانید همان را انتخاب کنید.';
+        }
+        structuralSection.append(structuralButton, structuralStatus);
+
+        structuralButton.addEventListener('click', async () => {
+            const existingId = Number(structuralChoice?.claim_id);
+            const currentlySelected = Number.isInteger(existingId)
+                && selectedStructuralClaimIds().includes(existingId);
+
+            if (currentlySelected && structuralChoice?.status !== 'approved') {
+                forgetStructuralClaim(existingId);
+                structuralButton.setAttribute('aria-pressed', 'false');
+                structuralStatus.textContent = 'اعلام بی‌محله بودن از مسیر فعلی شما برداشته شد.';
+                try {
+                    const response = await fetch(settlementChildrenUrl(selectedSettlement.external_id, selectedStructuralClaimIds()), {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json' },
+                    });
+                    const refreshed = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(refreshed.message || 'بازیابی مسیر عادی ممکن نشد.');
+                    dispatchReferenceSelection(null);
+                    renderNeighborhoods(refreshed);
+                } catch (error) {
+                    structuralStatus.textContent = error?.message || 'بازیابی مسیر عادی ممکن نشد.';
+                    structuralStatus.classList.add('text-danger');
+                }
+                return;
+            }
+
+            structuralButton.disabled = true;
+            structuralStatus.classList.remove('text-danger');
+            structuralStatus.textContent = 'در حال ثبت اعلام بی‌محله بودن...';
+            const csrf = form.querySelector('input[name="_token"]')?.value || '';
+            try {
+                const response = await fetch(
+                    '/location/reference-settlements/' + encodeURIComponent(selectedSettlement.external_id) + '/structure-claims',
+                    {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                            ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                        },
+                        body: JSON.stringify({ claim_type: 'no_neighborhood' }),
+                    },
+                );
+                const claim = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(claim.message || 'ثبت اعلام بی‌محله بودن ممکن نشد.');
+
+                rememberStructuralClaim(claim);
+                const effectiveResponse = await fetch(
+                    settlementChildrenUrl(selectedSettlement.external_id, selectedStructuralClaimIds()),
+                    { credentials: 'same-origin', headers: { Accept: 'application/json' } },
+                );
+                const effectivePayload = await effectiveResponse.json().catch(() => ({}));
+                if (!effectiveResponse.ok) throw new Error(effectivePayload.message || 'ادامه مسیر بی‌محله دریافت نشد.');
+
+                structuralButton.setAttribute('aria-pressed', 'true');
+                structuralStatus.textContent = 'ثبت شد و در انتظار بررسی است.';
+                closeDisclosure();
+                dispatchReferenceStructureSelection(claim, effectivePayload);
+            } catch (error) {
+                structuralButton.disabled = false;
+                structuralStatus.textContent = error?.message || 'ثبت اعلام بی‌محله بودن ممکن نشد.';
+                structuralStatus.classList.add('text-danger');
+            }
+        });
+
+        if (effectiveNoNeighborhood) {
+            neighborhoodHost.appendChild(structuralSection);
+            dispatchReferenceStructureSelection(structuralChoice, payload);
+            return;
+        }
+
         const allowed = Array.isArray(payload?.allowed_types)
             ? payload.allowed_types.find((type) => type.key === 'neighborhood' && type.proposal_allowed === true)
             : null;
         if (!allowed) {
-            neighborhoodHost.innerHTML = '<div class="small text-muted">برای این آبادی فعلاً ادامهٔ محله قابل ثبت نیست.</div>';
+            neighborhoodHost.append(
+                Object.assign(document.createElement('div'), {
+                    className: 'small text-muted',
+                    textContent: 'برای این آبادی فعلاً ادامهٔ محله قابل ثبت نیست.',
+                }),
+                structuralSection,
+            );
             return;
         }
 
@@ -238,33 +355,67 @@ const mountSettlementRegistrationBridge = (shell) => {
         });
 
         const proposalShell = document.createElement('div');
-        proposalShell.className = 'border rounded-3 p-3 bg-light mt-2';
+        proposalShell.className = 'mt-2';
         const toggle = document.createElement('button');
-        toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm'; toggle.textContent = '+ افزودن محله جدید';
+        toggle.type = 'button';
+        toggle.className = 'btn btn-link btn-sm p-0 text-decoration-none';
+        toggle.textContent = '+ افزودن محله جدید';
         const panel = document.createElement('div');
         panel.className = 'vstack gap-2 mt-2 d-none';
         const input = document.createElement('input');
-        input.type = 'text'; input.className = 'form-control form-control-sm'; input.maxLength = 255; input.placeholder = 'نام محله';
-        const actions = document.createElement('div'); actions.className = 'd-flex gap-2';
-        const save = document.createElement('button'); save.type = 'button'; save.className = 'btn btn-primary btn-sm'; save.textContent = 'ثبت محله';
-        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn btn-link btn-sm'; cancel.textContent = 'انصراف';
-        const feedback = document.createElement('div'); feedback.className = 'small text-secondary';
-        actions.append(save, cancel); panel.append(input, actions, feedback); proposalShell.append(toggle, panel);
+        input.type = 'text';
+        input.className = 'form-control form-control-sm';
+        input.maxLength = 255;
+        input.placeholder = 'نام محله';
+        const actions = document.createElement('div');
+        actions.className = 'd-flex gap-2';
+        const save = document.createElement('button');
+        save.type = 'button';
+        save.className = 'btn btn-primary btn-sm';
+        save.textContent = 'ثبت محله';
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'btn btn-link btn-sm';
+        cancel.textContent = 'انصراف';
+        const feedback = document.createElement('div');
+        feedback.className = 'small text-secondary';
+        actions.append(save, cancel);
+        panel.append(input, actions, feedback);
+        proposalShell.append(toggle, panel);
         toggle.addEventListener('click', () => panel.classList.toggle('d-none'));
-        cancel.addEventListener('click', () => { panel.classList.add('d-none'); feedback.textContent = ''; });
+        cancel.addEventListener('click', () => {
+            panel.classList.add('d-none');
+            feedback.textContent = '';
+        });
 
         save.addEventListener('click', async () => {
             const name = input.value.trim();
             if (!name || !selectedSettlement) {
-                feedback.textContent = 'نام محله را وارد کنید.'; feedback.classList.add('text-danger'); return;
+                feedback.textContent = 'نام محله را وارد کنید.';
+                feedback.classList.add('text-danger');
+                return;
             }
-            save.disabled = true; feedback.classList.remove('text-danger'); feedback.textContent = 'در حال ثبت پیشنهاد محله...';
+            save.disabled = true;
+            feedback.classList.remove('text-danger');
+            feedback.textContent = 'در حال ثبت پیشنهاد محله...';
             const csrf = form.querySelector('input[name="_token"]')?.value || '';
             try {
                 const response = await fetch('/locations/proposals', {
-                    method: 'POST', credentials: 'same-origin',
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) },
-                    body: JSON.stringify(settlementNeighborhoodProposalPayload(selectedSettlement.id, allowed.id, name, document.documentElement.lang || 'fa')),
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    },
+                    body: JSON.stringify(
+                        settlementNeighborhoodProposalPayload(
+                            selectedSettlement.id,
+                            allowed.id,
+                            name,
+                            document.documentElement.lang || 'fa',
+                        )
+                    ),
                 });
                 const result = await response.json().catch(() => ({}));
                 if (!response.ok) throw new Error(result.message || 'ثبت محله ممکن نشد.');
@@ -278,13 +429,17 @@ const mountSettlementRegistrationBridge = (shell) => {
                 }
                 select.value = option.value;
                 chooseNeighborhood(result.id, result.canonical_name || name, result);
-                panel.classList.add('d-none'); feedback.textContent = '';
+                panel.classList.add('d-none');
+                feedback.textContent = '';
             } catch (error) {
-                feedback.textContent = error?.message || 'ثبت محله ممکن نشد.'; feedback.classList.add('text-danger');
-            } finally { save.disabled = false; }
+                feedback.textContent = error?.message || 'ثبت محله ممکن نشد.';
+                feedback.classList.add('text-danger');
+            } finally {
+                save.disabled = false;
+            }
         });
 
-        neighborhoodHost.append(label, select, proposalShell);
+        neighborhoodHost.append(label, select, proposalShell, structuralSection);
 
         if (preferredProposalId) {
             const preferred = Array.from(select.options).find((option) => option.value === String(preferredProposalId));
@@ -303,7 +458,10 @@ const mountSettlementRegistrationBridge = (shell) => {
     const loadNeighborhoods = async (item, preferredProposalId = '') => {
         neighborhoodHost.innerHTML = '<div class="small text-muted">در حال دریافت محله‌ها...</div>';
         try {
-            const response = await fetch(settlementChildrenUrl(item.external_id), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+            const response = await fetch(
+                settlementChildrenUrl(item.external_id, selectedStructuralClaimIds()),
+                { credentials: 'same-origin', headers: { Accept: 'application/json' } },
+            );
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.message || 'دریافت محله‌ها ممکن نشد.');
             renderNeighborhoods(payload, preferredProposalId);
