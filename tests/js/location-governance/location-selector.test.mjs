@@ -44,6 +44,16 @@ test('structural choices keep a sparse governance level renderable even before a
     assert.equal(shouldRenderNextLevel(normalized), true);
 });
 
+test('hidden single-state claims do not create an empty user-facing level', () => {
+    const normalized = normalizePickerPayload({
+        data: [],
+        proposals: [],
+        allowed_types: [],
+        structural_choices: [{ claim_type: 'single_neighborhood', status: 'available', claim_id: null }],
+    });
+    assert.equal(shouldRenderNextLevel(normalized), false);
+});
+
 test('changing a micro branch clears deeper selection state before rendering the new branch', () => {
     const source = selectorSource();
     assert.match(source, /removeDeeperLevels\(depth - 1\)/);
