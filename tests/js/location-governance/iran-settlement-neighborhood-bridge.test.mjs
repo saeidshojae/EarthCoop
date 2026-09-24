@@ -32,3 +32,10 @@ test('bridge supports profile/admin contexts and carries persisted deep proposal
   assert.match(source, /earthcoop-location-reference-selected/);
   assert.match(source, /referenceBranchActive/);
 });
+
+
+test('changing canonical ancestry clears any deepest proposal belonging to the reference-settlement branch', () => {
+  const source = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+  assert.match(source, /const hadReferenceSettlement = Boolean\(selectedSettlement \|\| settlementInput\.value\)/);
+  assert.match(source, /if \(hadReferenceSettlement\) proposalInput\.value = ''/);
+});
