@@ -130,8 +130,8 @@
                 data-reference-settlement-current-proposal-path='@json($referenceSettlementProposalPath->all())'
                 hidden
             >
-                <div class="fw-bold mb-1">آبادی / روستای دقیق</div>
-                <p class="small text-muted mb-3">نام آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو و انتخاب کنید. سپس محله و در صورت نیاز خیابان، کوچه، مجتمع یا ساختمان را ادامه دهید. وضعیت‌های در انتظار بررسی با برچسب مشخص نمایش داده می‌شوند.</p>
+                <div class="fw-bold mb-1">جستجو در بانک آبادی‌های ۱۴۰۴</div>
+                <p class="small text-muted mb-3">نام آبادی را جستجو و گزینه درست را انتخاب کنید. انتخاب از بانک مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
                 <div class="d-flex flex-column flex-sm-row gap-2">
                     <input type="search" minlength="2" maxlength="60" class="form-control" placeholder="نام آبادی" data-reference-settlement-query>
                     <button type="button" class="btn btn-outline-secondary" data-reference-settlement-search>جست‌وجوی آبادی</button>
