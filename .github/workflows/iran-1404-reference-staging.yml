@@ -278,6 +278,8 @@ jobs:
           php -l app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php
           php -l app/Http/Controllers/LocationGovernance/ProfileEditController.php
           php -l app/Http/Controllers/LocationGovernance/ProfileResidenceController.php
+          php -l app/Http/Controllers/LocationGovernance/ReferenceSettlementStructureClaimController.php
+          php -l database/migrations/2026_09_25_000001_allow_structural_claims_on_reference_settlements.php
           php -l tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php
           php -l tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php
           php -l tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php
