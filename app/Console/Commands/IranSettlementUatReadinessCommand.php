@@ -32,7 +32,7 @@ final class IranSettlementUatReadinessCommand extends Command
             fn (string $table): array => [$table => Schema::hasTable($table)]
         )->all();
 
-        $expectedSettlements = 99317;
+        $expectedSettlements = (int) config('iran_settlement_catalog.uat_expected_count', 99317);
         $settlementCount = Schema::hasTable('reference_settlements')
             ? DB::table('reference_settlements')
                 ->where('source', 'IranCountryDivisions/geo_1404')
