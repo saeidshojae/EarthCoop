@@ -241,6 +241,9 @@ jobs:
       - name: Syntax and targeted import safety regressions
         run: |
           php -l app/Console/Commands/LocationReferenceImportCommand.php
+          php -l app/Data/LocationGovernance/ReferenceDataset.php
+          php -l app/Console/Commands/ReferenceGovernanceTopologyCommand.php
+          php -l app/Services/LocationGovernance/Import/ReferenceGovernanceTopologyImporter.php
           php -l app/Console/Commands/ImportIranSettlementCatalog.php
           php -l app/Console/Commands/IranV1V2RuntimeAuditCommand.php
           php -l tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php
@@ -285,7 +288,9 @@ jobs:
           php artisan test \
             tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php \
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
-            tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php
+            tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php \
+            tests/Feature/LocationGovernance/ReferenceGovernanceTopologyImportTest.php \
+            tests/Feature/LocationGovernance/LocationSelectionApiTest.php
 
       - name: Download pinned NON-PRODUCTION v2 candidate
         uses: actions/download-artifact@v4
