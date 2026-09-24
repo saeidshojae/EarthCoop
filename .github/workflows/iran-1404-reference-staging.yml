@@ -256,6 +256,11 @@ jobs:
           php -l tests/Feature/Admin/LocationGovernanceControlCenterTest.php
           php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
           php -l app/Services/LocationGovernance/ResidenceService.php
+          php -l app/Services/LocationGovernance/LocationProposalService.php
+          php -l app/Models/LocationProposal.php
+          php -l app/Http/Controllers/Admin/SafeUserController.php
+          php -l app/Http/Controllers/Admin/UserResidenceController.php
+          php -l tests/Feature/Admin/CanonicalUserResidenceEditTest.php
           php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
           php -l app/Services/Groups/PendingLocationGroupRequestService.php
           php -l app/Services/Groups/CanonicalGroupMembershipReconciler.php
@@ -284,8 +289,8 @@ jobs:
           php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
           php artisan test tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
-          php artisan test tests/Feature/LocationGovernance/IranSettlementNeighborhoodBridgeTest.php tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php
-          node --test tests/js/location-governance/iran-settlement-neighborhood-bridge.test.mjs
+          php artisan test tests/Feature/LocationGovernance/IranSettlementNeighborhoodBridgeTest.php tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php tests/Feature/Admin/CanonicalUserResidenceEditTest.php
+          node --test tests/js/location-governance/iran-settlement-neighborhood-bridge.test.mjs tests/js/location-governance/location-selector.test.mjs
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
