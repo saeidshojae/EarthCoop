@@ -24,10 +24,16 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString("['registration', 'profile', 'admin-user-residence'].includes(selectorContext)", $bridge);
         $this->assertStringContainsString('persistedSettlementExternalId', $bridge);
         $this->assertStringContainsString('persistedNeighborhoodProposalId', $bridge);
-        $this->assertStringContainsString("parentLocationId = String(event.detail.locationId);\n        selector.dataset.referenceBranchActive = '1';\n        shell.hidden = false;", $bridge);
+        $this->assertStringContainsString("parentLocationId = String(event.detail.locationId);\n        selector.dataset.referenceBranchActive = '1';\n        shell.hidden = true;", $bridge);
         $this->assertStringNotContainsString("if (!await requestSettlements('', false)) return;", $bridge);
         $this->assertStringContainsString("item?.type_key !== 'rural_district'", $bridge);
+        $this->assertStringContainsString('earthcoop-location-exception-open', $bridge);
+        $this->assertStringContainsString('mount.appendChild(shell)', $bridge);
         $this->assertStringContainsString('shell.hidden = false', $bridge);
+        $this->assertStringContainsString('data-location-exception-panel', $selector);
+        $this->assertStringContainsString('روستا یا آبادی من در فهرست نیست', $selector);
+        $this->assertStringNotContainsString('single_urban_region', $selector);
+        $this->assertStringNotContainsString('single_neighborhood', $selector);
         $this->assertStringContainsString('option.dataset.referenceSettlementOption', $bridge);
         $this->assertStringNotContainsString("path.textContent =", $bridge);
         $this->assertStringContainsString('earthcoop-location-reference-selected', $bridge);
