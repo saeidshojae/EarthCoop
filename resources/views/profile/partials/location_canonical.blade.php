@@ -67,6 +67,14 @@
             'location_structure_claim_ids',
             data_get($primaryResidence?->metadata, 'structural_claim_ids', [])
         ))->map(fn ($id) => (int) $id)->filter()->unique()->values();
+        $currentReferenceSettlement = $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
+        $persistedReferenceSettlementExternalId = old(
+            'reference_settlement_external_id',
+            $currentReferenceSettlement?->external_id
+        );
+        $currentReferenceNeighborhoodProposalId = $combinedReferenceSettlementIntent
+            ? (string) $pendingResidenceIntent?->location_proposal_id
+            : '';
     @endphp
 
     <form method="POST" action="{{ route('profile.update.address') }}" data-location-form>
@@ -84,6 +92,7 @@
         >
             <input type="hidden" name="location_id" value="{{ $persistedLocationId }}" data-location-id>
             <input type="hidden" name="location_proposal_id" value="{{ $persistedProposalId }}" data-location-proposal-id>
+            <input type="hidden" name="reference_settlement_external_id" value="{{ $persistedReferenceSettlementExternalId }}" data-reference-settlement-external-id>
 
             @foreach ($persistedStructuralClaimIds as $claimId)
                 <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
@@ -109,10 +118,34 @@
             <p class="location-proposal-help small text-muted mt-2 mb-0">اگر در سطوح محلی مجاز، مکان دقیق شما در فهرست نبود، گزینهٔ «مکان من در فهرست نیست» نمایش داده می‌شود و می‌توانید آن را برای بررسی پیشنهاد کنید.</p>
         </div>
 
+        @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
+            <section
+                class="mt-3 border rounded-3 p-3 bg-light-subtle"
+                data-reference-settlement-picker
+                data-reference-settlement-current-external-id="{{ $persistedReferenceSettlementExternalId }}"
+                data-reference-settlement-current-name="{{ $currentReferenceSettlement?->name_fa }}"
+                data-reference-settlement-current-neighborhood-proposal-id="{{ $currentReferenceNeighborhoodProposalId }}"
+                hidden
+            >
+                <div class="fw-bold mb-1">آبادی یا روستای من در مسیر بالا نمایش داده نمی‌شود</div>
+                <p class="small text-muted mb-3">پس از انتخاب دهستان، نام آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو کنید. انتخاب آبادی مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                    <input type="search" minlength="2" maxlength="60" class="form-control" placeholder="نام آبادی" data-reference-settlement-query>
+                    <button type="button" class="btn btn-outline-secondary" data-reference-settlement-search>جست‌وجوی آبادی</button>
+                </div>
+                <div class="mt-3 small text-muted" data-reference-settlement-status aria-live="polite"></div>
+                <div class="mt-2 d-grid gap-2" data-reference-settlement-results></div>
+                <div class="mt-3" data-reference-settlement-neighborhood></div>
+            </section>
+        @endif
+
         @error('location_id')
             <div class="text-danger small mt-2">{{ $message }}</div>
         @enderror
         @error('location_proposal_id')
+            <div class="text-danger small mt-2">{{ $message }}</div>
+        @enderror
+        @error('reference_settlement_external_id')
             <div class="text-danger small mt-2">{{ $message }}</div>
         @enderror
 
