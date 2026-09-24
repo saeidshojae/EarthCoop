@@ -16,6 +16,7 @@ class ResidenceContinentTraversalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
         config([
             'location-governance.runtime_enabled' => true,
             'location-governance.registration_enabled' => true,
