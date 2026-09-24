@@ -39,3 +39,12 @@ test('changing canonical ancestry clears any deepest proposal belonging to the r
   assert.match(source, /const hadReferenceSettlement = Boolean\(selectedSettlement \|\| settlementInput\.value\)/);
   assert.match(source, /if \(hadReferenceSettlement\) proposalInput\.value = ''/);
 });
+
+
+test('selecting a deep pending descendant preserves the active reference-settlement branch', () => {
+  const source = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+  assert.match(source, /selectedSettlement && item\?\.picker_kind === 'proposal' && event\.detail\?\.proposalId/);
+  const guard = source.indexOf("selectedSettlement && item?.picker_kind === 'proposal'");
+  const hide = source.indexOf('hide();', guard);
+  assert.ok(guard >= 0 && hide > guard, 'reference branch preservation guard must run before hide()');
+});
