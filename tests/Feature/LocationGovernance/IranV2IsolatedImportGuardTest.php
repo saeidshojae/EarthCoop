@@ -42,6 +42,64 @@ final class IranV2IsolatedImportGuardTest extends TestCase
         $this->assertSame($existing, Location::query()->count());
     }
 
+
+    public function test_v2_uat_confirmation_can_add_1404_admin_levels_alongside_existing_v1_without_mutating_v1(): void
+    {
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v1',
+            '--apply' => true,
+        ]));
+        $v1Ids = \App\Models\LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v1')
+            ->pluck('external_id')
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v2',
+            '--dry-run' => true,
+        ]));
+        $this->assertStringContainsString('create: 6158', Artisan::output());
+        $this->assertStringContainsString('conflict: 0', Artisan::output());
+
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v2',
+            '--apply' => true,
+            '--confirm' => 'APPLY-IR-1404-V2-UAT',
+        ]), Artisan::output());
+
+        $this->assertSame(
+            6158,
+            \App\Models\LocationExternalId::query()
+                ->where('source', 'earthcoop-reference')
+                ->where('dataset_version', 'v2')
+                ->count(),
+        );
+        $this->assertSame(
+            $v1Ids,
+            \App\Models\LocationExternalId::query()
+                ->where('source', 'earthcoop-reference')
+                ->where('dataset_version', 'v1')
+                ->pluck('external_id')
+                ->sort()
+                ->values()
+                ->all(),
+        );
+
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v2',
+            '--dry-run' => true,
+        ]));
+        $this->assertStringContainsString('unchanged: 6158', Artisan::output());
+        $this->assertStringContainsString('deactivate: 0', Artisan::output());
+    }
+
     public function test_v2_apply_is_forbidden_in_production_even_with_confirmation(): void
     {
         $original = $this->app['env'];
