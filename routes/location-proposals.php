@@ -29,6 +29,11 @@ Route::middleware(Authenticate::class)->group(function () {
         ->middleware('throttle:10,1')
         ->name('location.reference-settlement-residence-claims.store');
 
+    Route::post('/location/reference-settlements/{externalId}/structure-claims', [\App\Http\Controllers\LocationGovernance\ReferenceSettlementStructureClaimController::class, 'store'])
+        ->where('externalId', 'IR-1404-[1-9][0-9]*')
+        ->middleware('throttle:10,1')
+        ->name('location.reference-settlements.structure-claims.store');
+
     Route::get('/location/reference-settlement-residence-claims', [\App\Http\Controllers\LocationGovernance\IranSettlementResidenceClaimController::class, 'index'])
         ->middleware('throttle:30,1')
         ->name('location.reference-settlement-residence-claims.index');
