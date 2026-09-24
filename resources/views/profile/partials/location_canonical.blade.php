@@ -72,8 +72,10 @@
             'reference_settlement_external_id',
             $currentReferenceSettlement?->external_id
         );
+        $referenceSettlementProposalPath = collect($referenceSettlementProposalPath ?? [])
+            ->map(fn ($id) => (int) $id)->filter()->values();
         $currentReferenceNeighborhoodProposalId = $combinedReferenceSettlementIntent
-            ? (string) $pendingResidenceIntent?->location_proposal_id
+            ? (string) ($referenceSettlementProposalPath->first() ?? '')
             : '';
     @endphp
 
@@ -125,10 +127,11 @@
                 data-reference-settlement-current-external-id="{{ $persistedReferenceSettlementExternalId }}"
                 data-reference-settlement-current-name="{{ $currentReferenceSettlement?->name_fa }}"
                 data-reference-settlement-current-neighborhood-proposal-id="{{ $currentReferenceNeighborhoodProposalId }}"
+                data-reference-settlement-current-proposal-path='@json($referenceSettlementProposalPath->all())'
                 hidden
             >
-                <div class="fw-bold mb-1">آبادی یا روستای من در مسیر بالا نمایش داده نمی‌شود</div>
-                <p class="small text-muted mb-3">پس از انتخاب دهستان، نام آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو کنید. انتخاب آبادی مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
+                <div class="fw-bold mb-1">آبادی / روستای دقیق</div>
+                <p class="small text-muted mb-3">نام آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو و انتخاب کنید. سپس محله و در صورت نیاز خیابان، کوچه، مجتمع یا ساختمان را ادامه دهید. وضعیت‌های در انتظار بررسی با برچسب مشخص نمایش داده می‌شوند.</p>
                 <div class="d-flex flex-column flex-sm-row gap-2">
                     <input type="search" minlength="2" maxlength="60" class="form-control" placeholder="نام آبادی" data-reference-settlement-query>
                     <button type="button" class="btn btn-outline-secondary" data-reference-settlement-search>جست‌وجوی آبادی</button>
