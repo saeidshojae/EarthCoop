@@ -279,6 +279,9 @@ jobs:
           php -l app/Http/Controllers/LocationGovernance/ProfileEditController.php
           php -l app/Http/Controllers/LocationGovernance/ProfileResidenceController.php
           php -l tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php
+          php -l tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php
+          php -l tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php
+          php -l tests/Feature/LocationGovernance/ResidencePickerDeepHardeningTest.php
           php -l routes/location-governance-admin.php
           php -l app/Models/ReferenceSettlementReview.php
           php -l database/migrations/2026_09_24_000003_create_reference_settlement_reviews.php
@@ -290,6 +293,7 @@ jobs:
           php artisan test tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementNeighborhoodBridgeTest.php tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php tests/Feature/Admin/CanonicalUserResidenceEditTest.php
+          php artisan test tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php tests/Feature/LocationGovernance/ResidencePickerDeepHardeningTest.php
           node --test tests/js/location-governance/iran-settlement-neighborhood-bridge.test.mjs tests/js/location-governance/location-selector.test.mjs
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
