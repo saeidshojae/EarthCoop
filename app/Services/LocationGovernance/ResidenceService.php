@@ -5,6 +5,7 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Exceptions\ResidenceTransferLimitExceeded;
 use App\Models\Location;
+use App\Models\LocationExternalId;
 use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
@@ -520,6 +521,89 @@ class ResidenceService
 
             return $resolvedCount;
         });
+    }
+
+
+    public function reanchorPrimaryResidenceIfVerifiedReferenceEquivalent(
+        User $user,
+        Location $to,
+        array $evidence = [],
+    ): ?UserLocationRelationship {
+        return DB::transaction(function () use ($user, $to, $evidence): ?UserLocationRelationship {
+            $current = UserLocationRelationship::query()
+                ->where('user_id', $user->id)
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($current === null) {
+                return null;
+            }
+            if ((int) $current->location_id === (int) $to->id) {
+                return $current;
+            }
+
+            $from = Location::query()->find($current->location_id);
+            if (! $from instanceof Location || ! $this->verifiedReferenceEquivalent($from, $to)) {
+                return null;
+            }
+
+            $at = now();
+            $current->forceFill(['ended_at' => $at])->save();
+
+            $next = UserLocationRelationship::query()->create([
+                'user_id' => $user->id,
+                'location_id' => $to->id,
+                'relationship_type' => 'primary_residence',
+                'started_at' => $at,
+                'ended_at' => null,
+                'evidence' => array_merge($evidence, ['source' => 'reference_dataset_identity_upgrade']),
+                'explicit_transfer' => false,
+                'transfer_override' => false,
+                'change_reason' => 'reference_dataset_identity_upgrade',
+                'metadata' => [
+                    'refined_from_relationship_id' => $current->id,
+                ],
+            ]);
+
+            $this->cancelPendingIntentRows($user, 'reference_dataset_identity_upgrade', $at);
+            $this->reconcileCanonicalGroupsIfEnabled($user, $to);
+
+            return $next;
+        });
+    }
+
+    private function verifiedReferenceEquivalent(Location $from, Location $to): bool
+    {
+        if ($from->country_code !== 'IR' || $to->country_code !== 'IR') {
+            return false;
+        }
+
+        $source = config('iran_v1_v2_crosswalk.source', 'earthcoop-reference');
+        $v1Version = config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1');
+        $v2Version = config('iran_v1_v2_crosswalk.v2_dataset_version', 'v2');
+
+        $fromV1 = LocationExternalId::query()
+            ->where('location_id', $from->id)
+            ->where('source', $source)
+            ->where('dataset_version', $v1Version)
+            ->value('external_id');
+        $toV2 = LocationExternalId::query()
+            ->where('location_id', $to->id)
+            ->where('source', $source)
+            ->where('dataset_version', $v2Version)
+            ->value('external_id');
+
+        if (! is_string($fromV1) || ! is_string($toV2)) {
+            return false;
+        }
+
+        $mapping = config('iran_v1_v2_crosswalk.mappings.'.$fromV1);
+
+        return is_array($mapping)
+            && ($mapping['status'] ?? null) === 'verified_identity'
+            && (string) ($mapping['v2'] ?? '') === $toV2;
     }
 
     public function transferPrimaryResidence(
