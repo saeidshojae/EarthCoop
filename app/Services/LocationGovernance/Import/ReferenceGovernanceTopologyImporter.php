@@ -119,6 +119,10 @@ class ReferenceGovernanceTopologyImporter
         $country = strtoupper($country);
         $path = database_path('reference/'.strtolower($country).'/'.$datasetVersion.'/governance.json');
         if (! is_file($path)) {
+            if ($country === 'IR' && $datasetVersion === 'v2') {
+                return $this->iran1404AdministrativeTopology();
+            }
+
             throw new RuntimeException('Reference governance topology dataset not found.');
         }
 
@@ -128,6 +132,106 @@ class ReferenceGovernanceTopologyImporter
         }
 
         return $dataset;
+    }
+
+    private function iran1404AdministrativeTopology(): array
+    {
+        $identities = LocationExternalId::query()
+            ->with(['location.type', 'location.parent'])
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->whereHas('location', fn ($query) => $query->where('country_code', 'IR')->where('status', 'active'))
+            ->get();
+
+        if ($identities->count() !== 6158) {
+            throw new RuntimeException('Iran 1404 v2 governance topology requires exactly 6158 imported administrative locations.');
+        }
+
+        $rankByType = [
+            'country' => 100,
+            'province' => 200,
+            'county' => 300,
+            'section' => 400,
+            'city' => 500,
+            'rural_district' => 500,
+            'urban_region' => 700,
+        ];
+        $keyFor = fn (string $externalId): string => 'ir-reference-v2-'.strtolower($externalId);
+
+        $externalByLocationId = $identities->mapWithKeys(
+            fn (LocationExternalId $identity): array => [(int) $identity->location_id => (string) $identity->external_id]
+        );
+
+        $ordered = $identities->sortBy(function (LocationExternalId $identity) use ($rankByType): string {
+            $type = (string) $identity->location?->type?->key;
+            $rank = $rankByType[$type] ?? 9999;
+            $tail = (int) preg_replace('/^IR-1404-/', '', (string) $identity->external_id);
+
+            return sprintf('%04d:%010d', $rank, $tail);
+        })->values();
+
+        $areas = [
+            [
+                'key' => 'earthcoop-global',
+                'parent_key' => null,
+                'country_code' => null,
+                'governance_type' => 'global',
+                'area_kind' => 'official',
+                'canonical_name' => 'EarthCoop Global',
+                'localized_names' => ['fa' => 'جهانی', 'en' => 'EarthCoop Global'],
+                'rank' => 0,
+                'status' => 'active',
+                'location_external_ids' => [],
+            ],
+            [
+                'key' => 'earthcoop-continent-asia',
+                'parent_key' => 'earthcoop-global',
+                'country_code' => null,
+                'governance_type' => 'continent',
+                'area_kind' => 'official',
+                'canonical_name' => 'Asia',
+                'localized_names' => ['fa' => 'آسیا', 'en' => 'Asia'],
+                'rank' => 50,
+                'status' => 'active',
+                'location_external_ids' => [],
+            ],
+        ];
+
+        foreach ($ordered as $identity) {
+            $location = $identity->location;
+            $type = (string) $location?->type?->key;
+            if ($location === null || ! isset($rankByType[$type])) {
+                throw new RuntimeException('Iran 1404 v2 contains a non-administrative location in the governance candidate.');
+            }
+
+            $parentKey = 'earthcoop-continent-asia';
+            if ($type !== 'country') {
+                $parentExternalId = $externalByLocationId->get((int) $location->parent_id);
+                if (! is_string($parentExternalId) || $parentExternalId === '') {
+                    throw new RuntimeException('Iran 1404 v2 governance parent identity is missing for '.$identity->external_id);
+                }
+                $parentKey = $keyFor($parentExternalId);
+            }
+
+            $areas[] = [
+                'key' => $keyFor((string) $identity->external_id),
+                'parent_key' => $parentKey,
+                'governance_type' => $type,
+                'area_kind' => 'official',
+                'canonical_name' => (string) $location->canonical_name,
+                'localized_names' => $location->localized_names ?? ['fa' => (string) $location->canonical_name],
+                'rank' => $rankByType[$type],
+                'status' => 'active',
+                'location_external_ids' => [(string) $identity->external_id],
+            ];
+        }
+
+        return [
+            'country' => 'IR',
+            'dataset_version' => 'v2',
+            'source' => 'earthcoop-reference-governance',
+            'areas' => $areas,
+        ];
     }
 
     private function locationsFor(array $definition, string $datasetVersion): ?array
