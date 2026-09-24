@@ -42,6 +42,10 @@ final class ReferenceGeographyImporter
             return $result;
         }
 
+        if ($result->conflicts > 0) {
+            throw new RuntimeException('Reference geography apply refused because the dry-run contains conflicts.');
+        }
+
         return DB::transaction(function () use ($dataset, $rows, $actions, $result): ReferenceImportResult {
             [$schema, $types] = $this->ensureSchema($dataset);
             $resolved = [];
