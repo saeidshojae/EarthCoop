@@ -6,6 +6,7 @@ use App\Models\ReferenceSettlement;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\LocationProposal;
+use App\Models\LocationStructureClaim;
 use App\Models\LocationScopedGroupRequest;
 use App\Models\ReferenceSettlementReview;
 use App\Models\User;
@@ -109,6 +110,19 @@ final class ReferenceSettlementReviewService
                     );
                     app(\App\Services\Groups\PendingLocationGroupRequestService::class)
                         ->rejectForReferenceSettlementClaim($claim);
+                }
+
+                $openStructuralClaims = LocationStructureClaim::query()
+                    ->where('reference_settlement_id', $locked->id)
+                    ->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)
+                    ->lockForUpdate()
+                    ->get();
+                foreach ($openStructuralClaims as $structuralClaim) {
+                    app(LocationStructureClaimService::class)->reject(
+                        $structuralClaim,
+                        $actor,
+                        'والد آبادی مرجع غیرمسکونی تشخیص داده شد: '.$reason,
+                    );
                 }
 
                 $openChildren = LocationProposal::query()
