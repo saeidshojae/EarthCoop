@@ -47,6 +47,13 @@ const mountSettlementRegistrationBridge = (shell) => {
     const persistedSettlementExternalId = String(shell.dataset.referenceSettlementCurrentExternalId || '');
     const persistedSettlementName = String(shell.dataset.referenceSettlementCurrentName || '');
     const persistedNeighborhoodProposalId = String(shell.dataset.referenceSettlementCurrentNeighborhoodProposalId || '');
+    let persistedProposalPath = [];
+    try {
+        const parsed = JSON.parse(shell.dataset.referenceSettlementCurrentProposalPath || '[]');
+        persistedProposalPath = Array.isArray(parsed) ? parsed.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0) : [];
+    } catch (error) {
+        persistedProposalPath = [];
+    }
 
     const setStatus = (message, error = false) => {
         status.textContent = message;
@@ -108,7 +115,7 @@ const mountSettlementRegistrationBridge = (shell) => {
             }, 50);
         }
     };
-    const dispatchReferenceSelection = (proposal = null) => {
+    const dispatchReferenceSelection = (proposal = null, proposalPath = []) => {
         if (!selectedSettlement || !parentLocationId) return;
         selector.dispatchEvent(new CustomEvent('earthcoop-location-reference-selected', {
             bubbles: true,
@@ -116,13 +123,14 @@ const mountSettlementRegistrationBridge = (shell) => {
                 anchorLocationId: parentLocationId,
                 settlement: selectedSettlement,
                 proposal,
+                proposalPath: Array.isArray(proposalPath) ? proposalPath : [],
                 context: selectorContext,
             },
         }));
     };
 
 
-    const chooseNeighborhood = (id, label, proposal = null) => {
+    const chooseNeighborhood = (id, label, proposal = null, proposalPath = []) => {
         settlementNeighborhoodProposalId = String(id);
         proposalInput.value = settlementNeighborhoodProposalId;
         if (submit) submit.disabled = false;
@@ -136,7 +144,7 @@ const mountSettlementRegistrationBridge = (shell) => {
             status: proposal?.status || 'pending',
             selectable: true,
             children_url: proposal?.children_url || '/location/proposals/' + encodeURIComponent(id) + '/children',
-        });
+        }, proposalPath);
         setStatus('آبادی و محلهٔ دقیق انتخاب شدند. جزئیات نشانی بعد از محله اختیاری است و می‌توانید مسیر را ادامه دهید.');
     };
 
@@ -239,6 +247,7 @@ const mountSettlementRegistrationBridge = (shell) => {
                     preferred.value,
                     preferred.textContent.replace(' — در انتظار تأیید', ''),
                     proposalMap.get(String(preferred.value)) || null,
+                    persistedProposalPath,
                 );
             }
         }
