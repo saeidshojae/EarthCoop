@@ -7,7 +7,7 @@ const MICRO_LOCATION_TYPES = new Set(['street', 'alley', 'complex', 'building'])
 const PICKER_STATES = Object.freeze({ loading: 'loading', empty: 'empty', error: 'error', stale: 'stale', ready: 'ready' });
 const TYPE_LABELS = Object.freeze({
     global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه',
-    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه',
+    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', settlement: 'آبادی', urban_region: 'منطقه',
     neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
 });
 const locationDisplayLabel = (item) => {
@@ -478,7 +478,7 @@ const initializeLocationSelector = async (host) => {
         const settlementItem = {
             identity: 'reference-settlement:' + String(settlement.external_id || ''),
             label: String(settlement.name_fa || settlement.label || ''),
-            type_key: 'village',
+            type_key: 'settlement',
             picker_kind: 'reference_settlement',
             status: 'pending',
         };
