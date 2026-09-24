@@ -621,6 +621,50 @@ const initializeLocationSelector = async (host) => {
         });
     };
 
+    host.addEventListener('earthcoop-location-reference-structure-selected', (event) => {
+        if (isProjectScope) return;
+        const detail = event.detail || {};
+        const anchorLocationId = String(detail.anchorLocationId || '');
+        const settlement = detail.settlement || null;
+        const claim = detail.claim || null;
+        if (!anchorLocationId || !settlement || claim?.claim_type !== 'no_neighborhood') return;
+
+        const anchorEntry = [...selectedPath.entries()].find(([, item]) =>
+            String(item?.identity || '') === 'location:' + anchorLocationId
+            || String(item?.id || '') === anchorLocationId
+        );
+        if (!anchorEntry) return;
+
+        const anchorDepth = Number(anchorEntry[0]);
+        removeDeeperLevels(anchorDepth + 1);
+        [...selectedPath.keys()].filter((key) => key > anchorDepth).forEach((key) => selectedPath.delete(key));
+
+        selectedPath.set(anchorDepth + 1, {
+            identity: 'reference-settlement:' + String(settlement.external_id || ''),
+            label: String(settlement.name_fa || settlement.label || ''),
+            type_key: 'settlement',
+            picker_kind: 'reference_settlement',
+            status: 'pending',
+        });
+        locationId.value = '';
+        if (proposalId) proposalId.value = '';
+        if (submit) submit.disabled = false;
+        renderLocationPath();
+
+        if (isRegistration) {
+            setStatus('این آبادی بدون محله برای مسیر ثبت‌نام شما انتخاب شد. ثبت‌نام می‌تواند در همین سطح پایان یابد.');
+            return;
+        }
+
+        const payload = normalizePickerPayload(detail.payload || {});
+        if (shouldRenderNextLevel(payload)) {
+            appendLevel(payload, anchorDepth + 2, null, false, null, Number(settlement.id));
+            setStatus('بی‌محله بودن انتخاب شد. در صورت نیاز، خیابان و جزئیات دقیق‌تر نشانی را ادامه دهید.');
+        } else {
+            setStatus('بی‌محله بودن انتخاب شد؛ گزینهٔ دقیق‌تری برای ادامه مسیر ثبت نشده است.');
+        }
+    });
+
     host.addEventListener('earthcoop-location-reference-selected', async (event) => {
         if (isProjectScope) return;
         const detail = event.detail || {};
