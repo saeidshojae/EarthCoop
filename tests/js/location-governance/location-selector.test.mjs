@@ -349,7 +349,7 @@ test('structural-claim navigation sends only explicitly selected absence claim i
     assert.match(source, /structuralClaimContextUrl\(baseUrl, form\)/);
     assert.match(source, /location_structure_claim_ids%5B%5D=/);
     assert.match(source, /pendingStructuralClaimContextUrl/);
-    assert.match(source, /removePendingStructuralClaimIds\(host, claimIds\)/);
+    assert.match(source, /removePendingStructuralClaimIds\(host,\s*\[claimId\]\)/);
     assert.match(source, /location_structure_claim_ids: pendingStructuralClaimIds\(host\)/);
     assert.doesNotMatch(source, /مسیر معمولی انتخاب شد/);
 });
