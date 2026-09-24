@@ -73,6 +73,29 @@ final class IranSettlementCatalogSearchTest extends TestCase
             ->assertJsonPath('data.0.external_id', 'IR-1404-201');
     }
 
+    public function test_registration_search_uses_direct_v2_parent_identity_without_crosswalk(): void
+    {
+        config()->set('iran_settlement_catalog.enabled', true);
+        $schema = LocationFixture::iranSchema();
+        $parent = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'rural_district',
+        ])->last();
+
+        LocationExternalId::query()->create([
+            'location_id' => $parent->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-5555',
+            'metadata' => ['fixture' => true],
+        ]);
+        $this->settlement('IR-1404-99001', 'IR-1404-5555', 'آبادی مستقیم نسخه دو');
+
+        $this->getJson('/location/reference-settlements?parent_location_id='.$parent->id.'&q='.rawurlencode('آبادی'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.external_id', 'IR-1404-99001');
+    }
+
     public function test_registration_search_fails_closed_for_unmapped_parent_location(): void
     {
         config()->set('iran_settlement_catalog.enabled', true);
