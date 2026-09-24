@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\ReferenceSettlement;
 use App\Models\LocationProposal;
+use App\Models\LocationStructureClaim;
 use App\Models\LocationType;
 use App\Services\LocationGovernance\LocationProposalPolicy;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Support\LocationDisplayName;
 use App\Models\LocationExternalId;
 use Illuminate\Http\JsonResponse;
@@ -104,6 +106,14 @@ final class IranSettlementCatalogController extends Controller
             ->where('location_type_id', $neighborhoodType->id)
             ->whereIn('status', $open)->orderBy('id')->get() : collect();
 
+        $noNeighborhoodClaim = LocationStructureClaim::query()
+            ->where('reference_settlement_id', $settlement->id)
+            ->where('claim_type', 'no_neighborhood')
+            ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+            ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->first();
+
         return response()->json([
             'reference_settlement' => ['id' => $settlement->id, 'external_id' => $settlement->external_id, 'name_fa' => $settlement->name_fa],
             'proposals' => $proposals->map(fn (LocationProposal $proposal): array => [
@@ -117,6 +127,11 @@ final class IranSettlementCatalogController extends Controller
             'allowed_types' => $allowed ? [[
                 'id' => $neighborhoodType->id, 'key' => 'neighborhood', 'label' => 'محله', 'proposal_allowed' => true,
             ]] : [],
+            'structural_choices' => [[
+                'claim_type' => 'no_neighborhood',
+                'status' => $noNeighborhoodClaim?->status ?? 'available',
+                'claim_id' => $noNeighborhoodClaim?->id,
+            ]],
             'registration_endpoint_allowed' => false,
             'governance_authorized' => false,
         ]);
