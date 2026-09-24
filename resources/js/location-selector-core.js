@@ -571,7 +571,7 @@ const initializeLocationSelector = async (host) => {
                 depth,
                 structuralPanel,
                 proposalPanel,
-                enableReferenceSearch: country === 'IR'
+                enableReferenceSearch: host.dataset.referenceBranchActive === '1'
                     && Boolean(parentLocationId)
                     && (targetKeys.includes('village') || targetKeys.includes('settlement')),
             });
