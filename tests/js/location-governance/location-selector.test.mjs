@@ -447,3 +447,30 @@ test('reference settlement neighborhood rejoins the shared deep picker through t
     assert.match(source, /dataLocationException|locationException|location-exception/i);
     assert.match(source, /enableReferenceSearch/);
 });
+
+
+test('missing-option UX is progressive disclosure and hides single/multi structural choices', () => {
+    const core = coreSelectorSource();
+    const bridge = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+
+    assert.match(core, /data\.locationExceptionShell|dataset\.locationExceptionShell/);
+    assert.match(core, /data\.locationExceptionToggle|dataset\.locationExceptionToggle/);
+    assert.match(core, /d-none vstack gap-3/);
+    assert.match(core, /no_urban_region/);
+    assert.match(core, /no_neighborhood/);
+    assert.doesNotMatch(core, /single_urban_region|single_neighborhood/);
+    assert.doesNotMatch(core, /چند منطقه دارد|چند محله دارد/);
+
+    assert.match(bridge, /referenceNeighborhoodExceptionToggle/);
+    assert.match(bridge, /محله من در فهرست نیست/);
+    assert.match(bridge, /افزودن محله جدید/);
+    assert.match(bridge, /این آبادی \/ روستا محله‌بندی ندارد/);
+});
+
+test('registration remains capped at neighborhood while profile and admin can continue to micro address levels', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /shouldStopRegistrationAtProposal[\s\S]*type_key === 'neighborhood'/);
+    assert.match(source, /registrationPayload[\s\S]*MICRO_LOCATION_TYPES/);
+    assert.match(source, /if \(isRegistration\)[\s\S]*ثبت‌نام می‌تواند در همین‌جا پایان یابد/);
+    assert.match(source, /if \(shouldRenderNextLevel\(children\)\)[\s\S]*appendLevel\(children, depth, null, false, parentProposalId\)/);
+});
