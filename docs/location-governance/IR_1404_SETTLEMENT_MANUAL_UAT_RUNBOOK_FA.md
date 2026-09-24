@@ -13,6 +13,20 @@ Feature flagهای لازم فقط در محیط UAT:
 
 در Production این دو flag باید خاموش بمانند تا مجوز release جداگانه صادر شود.
 
+## چک اولیهٔ آمادگی محیط
+
+پیش از بازکردن مرورگر، در همان محیط UAT اجرا کنید:
+
+    php artisan location:iran-settlement-uat-readiness
+
+یا برای خروجی قابل ذخیره/تحلیل:
+
+    php artisan location:iran-settlement-uat-readiness --json
+
+این command فقط‌خواندنی است و هیچ `INSERT/UPDATE/DELETE` انجام نمی‌دهد. اگر `ready: NO` یا exit code غیرصفر داد، UAT را شروع نکنید. blockerها باید ابتدا از مسیر صحیح محیط/داده رفع شوند؛ نه با SQL دستی.
+
+دو feature flag ممکن است در گزارش فقط به‌صورت **WARNING** ظاهر شوند؛ چون آمادگی داده و schema می‌تواند کامل باشد ولی flagها هنوز برای UAT خاموش باشند. flagها فقط در محیط UAT و درست پیش از تست UI روشن می‌شوند.
+
 ## دادهٔ آزمون پیشنهادی
 
 برای UAT دستیِ اولیه، از مسیرهایی استفاده کنید که parent crosswalk آن‌ها در قرارداد فعلی `verified_identity` است. مثال مناسب برای مسیر روستایی ساری:
