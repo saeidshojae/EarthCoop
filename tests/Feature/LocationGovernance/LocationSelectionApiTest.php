@@ -64,6 +64,52 @@ class LocationSelectionApiTest extends TestCase
         $response->assertJsonPath('data.0.status', 'active');
     }
 
+    public function test_ir_country_filter_prefers_active_v2_root_when_v1_and_v2_coexist(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $v1 = LocationFixture::iranSchema();
+        $countryType = $v1->types->firstWhere('key', 'country');
+        $v1Root = Location::factory()->create([
+            'location_schema_id' => $v1->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'Iran v1',
+            'canonical_name' => 'Iran v1',
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $v2 = LocationSchema::query()->create([
+            'key' => 'ir-reference-v2',
+            'country_code' => 'IR',
+            'name' => 'Iran 1404',
+            'version' => 'v2',
+            'status' => 'active',
+        ]);
+        $v2->types()->attach($countryType->id, [
+            'is_root' => true,
+            'is_residence_endpoint' => false,
+            'sort_order' => 10,
+            'metadata' => json_encode(['crowdsourced_proposal_allowed' => false]),
+        ]);
+        $v2Root = Location::factory()->create([
+            'location_schema_id' => $v2->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'ایران',
+            'canonical_name' => 'ایران',
+            'localized_names' => ['fa' => 'ایران'],
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $response = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $v2Root->id);
+        $this->assertNotSame($v1Root->id, (int) $response->json('data.0.id'));
+    }
+
     public function test_root_without_country_filter_exposes_active_roots_from_multiple_country_schemas(): void
     {
         config(['location-governance.runtime_enabled' => true]);
