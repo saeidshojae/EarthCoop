@@ -6,6 +6,7 @@ use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
+use App\Models\LocationExternalId;
 use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
@@ -69,7 +70,7 @@ class LocationGovernanceController extends Controller
             ]);
 
         $structureClaims = LocationStructureClaim::query()
-            ->with(['location.type', 'proposer'])
+            ->with(['location.type', 'locationProposal.type', 'referenceSettlement', 'proposer'])
             ->withCount('evidence')
             ->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)
             ->latest('id')
@@ -77,7 +78,7 @@ class LocationGovernanceController extends Controller
             ->get();
 
         $structureClaimPaths = $structureClaims->mapWithKeys(fn (LocationStructureClaim $claim): array => [
-            $claim->id => $this->locationPath($claim->location),
+            $claim->id => $this->structureClaimPath($claim),
         ]);
 
         $settlementClaimReviewThreshold = max(1, (int) config('iran_settlement_catalog.claim_review_threshold', 10));
@@ -146,10 +147,26 @@ class LocationGovernanceController extends Controller
                         && (int) $settlementClaim->user_id === (int) $intent->user_id
                         && in_array($settlementClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
                         && $settlementClaim->settlement !== null;
-                    $combinedValid = $proposalValid
-                        && $settlementClaimValid
-                        && $proposal->type?->key === 'neighborhood'
-                        && (int) $proposal->parent_reference_settlement_id === (int) $settlementClaim->reference_settlement_id;
+                    $combinedValid = false;
+                    if ($proposalValid && $settlementClaimValid) {
+                        $referenceRoot = $proposal->referenceSettlementRootProposal()?->loadMissing('type');
+                        $rootMatches = $referenceRoot !== null
+                            && (int) $referenceRoot->parent_reference_settlement_id === (int) $settlementClaim->reference_settlement_id;
+                        $structuralClaimIds = collect(($intent->metadata ?? [])['structural_claim_ids'] ?? [])
+                            ->map(fn ($id) => (int) $id)->filter()->unique()->values();
+                        $hasNoNeighborhood = $structuralClaimIds->isNotEmpty()
+                            && LocationStructureClaim::query()
+                                ->whereIn('id', $structuralClaimIds)
+                                ->where('reference_settlement_id', $settlementClaim->reference_settlement_id)
+                                ->where('claim_type', 'no_neighborhood')
+                                ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+                                ->exists();
+                        $combinedValid = $rootMatches
+                            && (
+                                ($referenceRoot->type?->key === 'neighborhood' && ! $hasNoNeighborhood)
+                                || ($referenceRoot->type?->key === 'street' && $hasNoNeighborhood)
+                            );
+                    }
                     $targetValid = ($proposalValid && $settlementClaim === null)
                         || ($settlementClaimValid && $proposal === null)
                         || $combinedValid;
@@ -403,6 +420,34 @@ class LocationGovernanceController extends Controller
         }
 
         return back()->with('success', 'بازبینی آبادی ثبت شد؛ این تصمیم به‌تنهایی حوزهٔ حکمرانی یا اقامت رسمی ایجاد نمی‌کند.');
+    }
+
+    /** @return array<int, string> */
+    private function structureClaimPath(LocationStructureClaim $claim): array
+    {
+        if ($claim->location instanceof Location) {
+            return $this->locationPath($claim->location);
+        }
+
+        if ($claim->locationProposal instanceof LocationProposal) {
+            return $this->proposalPath($claim->locationProposal);
+        }
+
+        if ($claim->referenceSettlement instanceof ReferenceSettlement) {
+            $anchor = LocationExternalId::query()
+                ->with('location')
+                ->where('source', 'earthcoop-reference')
+                ->where('dataset_version', 'v2')
+                ->where('external_id', $claim->referenceSettlement->parent_external_id)
+                ->first()?->location;
+            $path = $this->locationPath($anchor);
+            $name = trim((string) $claim->referenceSettlement->name_fa);
+            $path[] = $name === '' ? $claim->referenceSettlement->external_id : 'آبادی '.$name;
+
+            return $path;
+        }
+
+        return [];
     }
 
     /** @return array<int, string> */
