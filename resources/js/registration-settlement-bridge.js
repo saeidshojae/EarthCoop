@@ -59,6 +59,13 @@ const mountSettlementRegistrationBridge = (shell) => {
         status.textContent = message;
         status.classList.toggle('text-danger', error);
     };
+    const closeDisclosure = () => {
+        const panel = shell.closest('[data-location-exception-panel]');
+        if (!panel) return;
+        panel.classList.add('d-none');
+        const disclosure = panel.closest('[data-location-exception-shell]');
+        disclosure?.querySelector('[data-location-exception-toggle]')?.setAttribute('aria-expanded', 'false');
+    };
 
     const villageSelect = () => Array.from(selector.querySelectorAll('[data-location-select]')).find((select) => {
         const wrapper = select.closest('[data-location-depth]');
@@ -135,6 +142,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         proposalInput.value = settlementNeighborhoodProposalId;
         if (submit) submit.disabled = false;
         presentSettlement(selectedSettlement);
+        closeDisclosure();
         dispatchReferenceSelection({
             ...(proposal || {}),
             id: Number(id),
@@ -308,6 +316,22 @@ const mountSettlementRegistrationBridge = (shell) => {
         return items.length > 0;
     };
 
+    selector.addEventListener('earthcoop-location-exception-open', (event) => {
+        const detail = event.detail || {};
+        const targetKeys = Array.isArray(detail.targetKeys) ? detail.targetKeys : [];
+        const requestedParent = String(detail.parentLocationId || '');
+        if (!parentLocationId || requestedParent !== parentLocationId) return;
+        if (!targetKeys.includes('village') && !targetKeys.includes('settlement')) return;
+
+        const mount = detail.referenceSlot || detail.panel;
+        if (!(mount instanceof Element)) return;
+        mount.appendChild(shell);
+        shell.hidden = false;
+        setStatus(selectedSettlement
+            ? 'آبادی فعلی شما در همین بخش انتخاب شده است؛ می‌توانید آن را نگه دارید یا تغییر دهید.'
+            : 'نام آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو کنید. اگر پیدا نشد، از گزینهٔ افزودن روستا/آبادی جدید استفاده کنید.');
+    });
+
     selector.addEventListener('earthcoop-location-selection-changed', async (event) => {
         hide();
         const item = event.detail?.item || null;
@@ -315,8 +339,8 @@ const mountSettlementRegistrationBridge = (shell) => {
 
         parentLocationId = String(event.detail.locationId);
         selector.dataset.referenceBranchActive = '1';
-        shell.hidden = false;
-        setStatus('اگر آبادی شما در فهرست مسیر نیست، نام آن را در بانک مرجع جست‌وجو کنید.');
+        shell.hidden = true;
+        setStatus('');
 
         if (!persistedHydrationAttempted && persistedSettlementExternalId) {
             persistedHydrationAttempted = true;
