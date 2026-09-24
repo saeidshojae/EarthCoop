@@ -120,7 +120,7 @@
 
             <div class="vstack gap-3" data-location-levels></div>
             <p class="small text-muted mt-3 mb-0" data-location-status aria-live="polite">برای تغییر یا دقیق‌تر کردن محل سکونت، مسیر موردنظر را انتخاب کنید.</p>
-            <p class="location-proposal-help small text-muted mt-2 mb-0">اگر در سطوح محلی مجاز، مکان دقیق شما در فهرست نبود، گزینهٔ «مکان من در فهرست نیست» نمایش داده می‌شود و می‌توانید آن را برای بررسی پیشنهاد کنید.</p>
+            <p class="location-proposal-help small text-muted mt-2 mb-0">اگر گزینهٔ شما در فهرست نبود، لینک کوچک زیر همان منو امکانات جست‌وجو، پیشنهاد مکان یا اعلام ساختار استثنایی را باز می‌کند.</p>
         </div>
 
         @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
