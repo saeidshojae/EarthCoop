@@ -120,18 +120,13 @@ class Step3Controller extends Controller
                         'reference_settlement_external_id' => 'انتخاب آبادی مرجع در حال حاضر فعال نیست.',
                     ]);
                 }
-                if ($structuralClaims !== []) {
-                    throw ValidationException::withMessages([
-                        'location_structure_claim_ids' => 'ادعاهای ساختاری را نمی‌توان همزمان با آبادی مرجع ثبت کرد.',
-                    ]);
-                }
-
-                [$settlementClaim, $settlementProposal] = DB::transaction(function () use (
+                [$settlementClaim, $settlementProposal, $settlementStructuralClaims] = DB::transaction(function () use (
                     $user,
                     $proposalId,
                     $referenceSettlementExternalId,
                     $settlementAnchorResolver,
                     $residenceService,
+                    $structuralClaims,
                 ): array {
                     $settlement = ReferenceSettlement::query()
                         ->where('source', 'IranCountryDivisions/geo_1404')
@@ -151,6 +146,19 @@ class Step3Controller extends Controller
                         ]);
                     }
 
+                    $referenceStructuralClaims = collect($structuralClaims)
+                        ->filter(fn (LocationStructureClaim $claim): bool =>
+                            (int) $claim->reference_settlement_id === (int) $settlement->id
+                            && $claim->claim_type === 'no_neighborhood'
+                            && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+                        )->values();
+                    if ($referenceStructuralClaims->count() !== count($structuralClaims)) {
+                        throw ValidationException::withMessages([
+                            'location_structure_claim_ids' => 'اعلام ساختاری انتخاب‌شده متعلق به همین آبادی مرجع نیست.',
+                        ]);
+                    }
+                    $hasNoNeighborhood = $referenceStructuralClaims->contains('claim_type', 'no_neighborhood');
+
                     $anchor = $settlementAnchorResolver->resolve($settlement);
                     $claim = ReferenceSettlementResidenceClaim::query()->firstOrCreate(
                         ['reference_settlement_id' => $settlement->id, 'user_id' => $user->id],
@@ -166,11 +174,18 @@ class Step3Controller extends Controller
                         if ($proposal === null
                             || ! in_array($proposal->status, [LocationProposalStatus::Pending, LocationProposalStatus::ReadyForReview, LocationProposalStatus::NeedsEvidence], true)
                             || (int) $proposal->parent_reference_settlement_id !== (int) $settlement->id
-                            || $proposal->type?->key !== 'neighborhood') {
+                            || $proposal->type?->key !== 'neighborhood'
+                            || $hasNoNeighborhood) {
                             throw ValidationException::withMessages([
-                                'location_proposal_id' => 'محلهٔ انتخاب‌شده متعلق به همین آبادی مرجع نیست.',
+                                'location_proposal_id' => 'محلهٔ انتخاب‌شده متعلق به همین آبادی مرجع نیست یا با اعلام بی‌محله بودن تعارض دارد.',
                             ]);
                         }
+                    }
+
+                    if ($proposal === null && ! $hasNoNeighborhood) {
+                        throw ValidationException::withMessages([
+                            'reference_settlement_external_id' => 'برای تکمیل ثبت‌نام، محله را انتخاب کنید یا بی‌محله بودن آبادی را اعلام کنید.',
+                        ]);
                     }
 
                     $residenceService->setInitialPrimaryResidence($user, $anchor, [
@@ -180,16 +195,30 @@ class Step3Controller extends Controller
                     if ($proposal !== null) {
                         $residenceService->setPendingReferenceSettlementProposalIntent(
                             $user, $claim, $proposal, $anchor,
-                            ['source' => 'registration_step3_reference_settlement_neighborhood'],
+                            [
+                                'source' => 'registration_step3_reference_settlement_neighborhood',
+                                'structural_claim_ids' => $referenceStructuralClaims->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                            ],
                         );
                     } else {
                         $residenceService->setPendingReferenceSettlementIntent(
                             $user, $claim, $anchor,
-                            ['source' => 'registration_step3_reference_settlement'],
+                            [
+                                'source' => 'registration_step3_reference_settlement',
+                                'structural_claim_ids' => $referenceStructuralClaims->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                            ],
                         );
                     }
-                    return [$claim, $proposal];
+                    return [$claim, $proposal, $referenceStructuralClaims];
                 });
+
+                foreach ($settlementStructuralClaims as $structuralClaim) {
+                    app(\App\Services\LocationGovernance\LocationStructureClaimService::class)
+                        ->recordCommittedSupport($structuralClaim, $user, [
+                            'source' => 'registration_step3_reference_settlement',
+                            'reference_settlement_external_id' => $referenceSettlementExternalId,
+                        ]);
+                }
 
                 if ((bool) config('location-governance.groups_enabled', false)) {
                     app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
