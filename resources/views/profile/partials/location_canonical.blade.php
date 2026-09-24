@@ -125,7 +125,7 @@
 
         @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
             <section
-                class="mt-3 border rounded-3 p-3 bg-light-subtle"
+                class="vstack gap-3"
                 data-reference-settlement-picker
                 data-reference-settlement-current-external-id="{{ $persistedReferenceSettlementExternalId }}"
                 data-reference-settlement-current-name="{{ $currentReferenceSettlement?->name_fa }}"
