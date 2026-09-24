@@ -4,6 +4,7 @@ const selectors = typeof document !== 'undefined'
 
 const OPEN_PROPOSAL_STATUSES = new Set(['pending', 'ready_for_review', 'needs_evidence']);
 const MICRO_LOCATION_TYPES = new Set(['street', 'alley', 'complex', 'building']);
+const UI_STRUCTURAL_CLAIM_TYPES = new Set(['no_urban_region', 'no_neighborhood']);
 const PICKER_STATES = Object.freeze({ loading: 'loading', empty: 'empty', error: 'error', stale: 'stale', ready: 'ready' });
 const TYPE_LABELS = Object.freeze({
     global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه',
@@ -89,7 +90,7 @@ const shouldRenderNextLevel = (payload) => {
     const normalized = payload?.locations ? payload : normalizePickerPayload(payload);
     return normalized.locations.length > 0
         || normalized.proposals.length > 0
-        || normalized.structuralChoices.length > 0
+        || normalized.structuralChoices.some((choice) => UI_STRUCTURAL_CLAIM_TYPES.has(String(choice?.claim_type || '')))
         || normalized.allowedTypes.some((type) => type?.proposal_allowed === true);
 };
 const shouldStopRegistrationAtProposal = (context, item) =>
