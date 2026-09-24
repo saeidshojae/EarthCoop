@@ -267,6 +267,13 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
     public function test_combined_settlement_neighborhood_presentation_uses_neighborhood_as_only_active_base(): void
     {
         config()->set('location-governance.groups_enabled', true);
+        \App\Models\MembershipDimension::query()->create([
+            'key' => 'public',
+            'name' => 'Public',
+            'resolver_class' => \App\Services\Membership\PublicDimensionResolver::class,
+            'enabled' => true,
+        ]);
+
         [$schema, , $settlement] = $this->scenario();
         $user = User::factory()->create();
         $proposal = app(LocationProposalService::class)->proposeUnderReferenceSettlement(
