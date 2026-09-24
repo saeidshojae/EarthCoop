@@ -496,8 +496,9 @@ const initializeLocationSelector = async (host) => {
             if (typeChoice) { typeChoice.dataset.locationTypePayload = JSON.stringify(microContinuationTypes(payload).map((type) => ({ key: type.key, ids: [...payload.locations, ...payload.proposals].filter((item) => item.type_key === type.key).map((item) => String(item.identity || item.id)) }))); levels.appendChild(typeChoice); setStatus('نوع ادامه مسیر را انتخاب کنید.'); return; }
         }
         const { wrapper, select } = buildSelect(host, payload, depth); levels.appendChild(wrapper);
+        let exceptionPanel = null;
         const refreshAfterProposal = async (result) => {
-            if (result?.kind === 'proposal') { const identity = `proposal:${result.id}`; let option = Array.from(select.options).find((item) => item.value === identity); if (!option) { option = document.createElement('option'); option.value = identity; option.textContent = `${result.canonical_name || result.label || 'مکان پیشنهادی'} — در انتظار تأیید`; option.dataset.endpoint = result.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = '1'; option.dataset.typeKey = result.type_key || ''; option.dataset.pickerKind = 'proposal'; option.dataset.locationPendingBadge = ''; select.appendChild(option); } select.value = identity; const proposal = { ...result, identity, label: result.canonical_name || result.label, status: result.status || 'pending', selectable: true, picker_kind: 'proposal' }; selectedPath.set(depth, proposal); renderLocationPath(); setSelection(proposal);
+            if (result?.kind === 'proposal') { const identity = `proposal:${result.id}`; let option = Array.from(select.options).find((item) => item.value === identity); if (!option) { option = document.createElement('option'); option.value = identity; option.textContent = `${result.canonical_name || result.label || 'مکان پیشنهادی'} — در انتظار تأیید`; option.dataset.endpoint = result.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = '1'; option.dataset.typeKey = result.type_key || ''; option.dataset.pickerKind = 'proposal'; option.dataset.locationPendingBadge = ''; select.appendChild(option); } select.value = identity; const proposal = { ...result, identity, label: result.canonical_name || result.label, status: result.status || 'pending', selectable: true, picker_kind: 'proposal' }; selectedPath.set(depth, proposal); renderLocationPath(); setSelection(proposal); closeExceptionPanel(exceptionPanel);
                 if (shouldStopRegistrationAtProposal(context, proposal)) {
                     setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
                     return;
@@ -505,7 +506,7 @@ const initializeLocationSelector = async (host) => {
                 setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const childUrl = result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`; const children = await load(structuralClaimContextUrl(childUrl, form)); if (isRegistration && children.registrationEndpointAllowed) { setRegistrationEndpoint(proposal); return; } if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
             if (result?.kind === 'location' && parentLocationId) {
                 const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`); const matched = refreshed.locations.find((item) => Number(item.id) === Number(result.id));
-                if (matched) { setSelection(matched); if (matched.identity && !Array.from(select.options).some((option) => option.value === matched.identity)) { const option = document.createElement('option'); option.value = matched.identity; option.textContent = matched.label; select.appendChild(option); } select.value = matched.identity; }
+                if (matched) { setSelection(matched); closeExceptionPanel(exceptionPanel); if (matched.identity && !Array.from(select.options).some((option) => option.value === matched.identity)) { const option = document.createElement('option'); option.value = matched.identity; option.textContent = matched.label; select.appendChild(option); } select.value = matched.identity; }
                 else setPickerState(PICKER_STATES.stale, 'مکان ثبت‌شده در فهرست فعال این سطح دیده نشد؛ انتخاب قبلی شما حفظ شده است.', true);
             }
         };
@@ -521,12 +522,31 @@ const initializeLocationSelector = async (host) => {
                     setRegistrationEndpoint(parentItem);
                     return;
                 }
-                removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId, false, parentProposalId);
+                removeDeeperLevels(depth);
+                wrapper.remove();
+                appendLevel(refreshed, depth, parentLocationId, false, parentProposalId);
                 setStatus('وضعیت ساختاری مسیر به‌روزرسانی شد.');
             }, parentProposalId);
-            if (structuralPanel) wrapper.appendChild(structuralPanel);
+
             const proposalTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
-            const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal, parentProposalId); if (proposalPanel) wrapper.appendChild(proposalPanel);
+            const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal, parentProposalId);
+            const targetKeys = exceptionTargetKeys(payload);
+            const disclosure = buildExceptionDisclosure({
+                host,
+                payload,
+                parentLocationId,
+                parentProposalId,
+                depth,
+                structuralPanel,
+                proposalPanel,
+                enableReferenceSearch: country === 'IR'
+                    && Boolean(parentLocationId)
+                    && (targetKeys.includes('village') || targetKeys.includes('settlement')),
+            });
+            if (disclosure) {
+                exceptionPanel = disclosure.panel;
+                wrapper.appendChild(disclosure.shell);
+            }
         }
         select.addEventListener('change', async () => {
             if (!isProjectScope) clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth); [...selectedPath.keys()].filter((key) => key > depth).forEach((key) => selectedPath.delete(key)); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
