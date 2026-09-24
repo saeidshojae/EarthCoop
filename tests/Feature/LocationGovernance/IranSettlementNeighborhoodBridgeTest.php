@@ -264,6 +264,54 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
             );
     }
 
+    public function test_combined_settlement_neighborhood_presentation_uses_neighborhood_as_only_active_base(): void
+    {
+        config()->set('location-governance.groups_enabled', true);
+        [$schema, , $settlement] = $this->scenario();
+        $user = User::factory()->create();
+        $proposal = app(LocationProposalService::class)->proposeUnderReferenceSettlement(
+            $user,
+            $settlement,
+            $schema->types->firstWhere('key', 'neighborhood'),
+            ['canonical_name' => 'محله نمایشی وری'],
+        );
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+            'location_proposal_id' => $proposal->id,
+        ])->assertRedirect(route('home'));
+
+        $service = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+        $presented = $service->presentationGroups($service->openForUser($user))
+            ->where('dimension_key', 'public')
+            ->values();
+
+        $neighborhood = $presented->first(fn ($group) => (int) $group->presentation_rank === 9);
+        $settlementGroup = $presented->first(fn ($group) => (int) $group->presentation_rank === 8);
+
+        $this->assertNotNull($neighborhood);
+        $this->assertNotNull($settlementGroup);
+        $this->assertStringContainsString('محله نمایشی وری', $neighborhood->name);
+        $this->assertStringContainsString('وری', $settlementGroup->name);
+        $this->assertSame(1, (int) $neighborhood->pivot->role);
+        $this->assertSame(0, (int) $settlementGroup->pivot->role);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+        $response->assertOk()
+            ->assertViewHas('pendingReferenceSettlements', fn ($items): bool => collect($items)->count() === 1)
+            ->assertViewHas('membershipsByDimension', function ($memberships): bool {
+                $public = collect($memberships)->get('public');
+
+                return collect($public->get('active'))->contains(fn ($group) => (int) $group->presentation_rank === 9)
+                    && collect($public->get('observer'))->contains(fn ($group) => (int) $group->presentation_rank === 8);
+            })
+            ->assertSee('data-pending-reference-settlement-chain', false)
+            ->assertSee('آبادی');
+
+        $expectedLevels = collect($response->viewData('governanceAreas'))->count() + 2;
+        $this->assertSame($expectedLevels, $response->viewData('governanceLevelCount'));
+    }
+
     public function test_migration_rollback_fails_closed_while_reference_settlement_children_exist(): void
     {
         $source = file_get_contents(database_path(
