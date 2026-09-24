@@ -190,6 +190,14 @@ const selectedStructuralClaimIds = (form) => {
         .map((input) => Number(input.value))
         .filter((id) => Number.isInteger(id) && id > 0);
 };
+const forgetStructuralClaim = (form, claimId) => {
+    if (!form) return;
+    const id = Number(claimId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    form.querySelectorAll('[data-location-structure-claim-id]').forEach((input) => {
+        if (Number(input.value) === id) input.remove();
+    });
+};
 const structuralClaimContextUrl = (url, form) => {
     const ids = selectedStructuralClaimIds(form);
     if (!ids.length) return url;
@@ -231,15 +239,15 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
             button.setAttribute('aria-pressed', 'false');
 
             const statusValue = String(choice.status || 'available');
-            const claimId = Number(choice.claim_id);
-            const explicitlySelected = Number.isInteger(claimId) && claimId > 0 && selectedStructuralClaimIds(form).includes(claimId);
-            if (statusValue === 'approved' && claimId > 0) {
-                rememberStructuralClaim(host, claimId, depth, choice.claim_type);
+            let activeClaimId = Number(choice.claim_id);
+            const explicitlySelected = Number.isInteger(activeClaimId) && activeClaimId > 0 && selectedStructuralClaimIds(form).includes(activeClaimId);
+            if (statusValue === 'approved' && activeClaimId > 0) {
+                rememberStructuralClaim(host, activeClaimId, depth, choice.claim_type);
                 button.disabled = true;
                 button.setAttribute('aria-pressed','true');
                 state.textContent = 'این وضعیت قبلاً تأیید شده است.';
             } else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) {
-                if (explicitlySelected) rememberStructuralClaim(host, claimId, depth, choice.claim_type);
+                if (explicitlySelected) rememberStructuralClaim(host, activeClaimId, depth, choice.claim_type);
                 button.setAttribute('aria-pressed', explicitlySelected ? 'true' : 'false');
                 state.textContent = explicitlySelected
                     ? 'این اعلام در مسیر شما انتخاب شده و در انتظار بررسی است.'
@@ -247,6 +255,14 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
             }
 
             button.addEventListener('click', async () => {
+                if (Number.isInteger(activeClaimId) && activeClaimId > 0 && selectedStructuralClaimIds(form).includes(activeClaimId)) {
+                    forgetStructuralClaim(form, activeClaimId);
+                    button.setAttribute('aria-pressed', 'false');
+                    state.textContent = 'این اعلام از مسیر فعلی شما برداشته شد.';
+                    await onChanged({ mode: 'cleared', id: activeClaimId, claim_type: choice.claim_type });
+                    return;
+                }
+
                 const csrf = form?.querySelector('input[name="_token"]')?.value || '';
                 button.disabled = true;
                 state.textContent = 'در حال ثبت...';
@@ -262,7 +278,8 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
                     );
                     const result = await response.json().catch(() => ({}));
                     if (!response.ok) throw new Error(result.message || ('Structural claim request failed: ' + response.status));
-                    rememberStructuralClaim(host, result.id, depth, choice.claim_type);
+                    activeClaimId = Number(result.id);
+                    rememberStructuralClaim(host, activeClaimId, depth, choice.claim_type);
                     button.setAttribute('aria-pressed','true');
                     state.textContent = 'ثبت شد و در انتظار بررسی است.';
                     await onChanged(result);
