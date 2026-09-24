@@ -534,7 +534,7 @@ const initializeLocationSelector = async (host) => {
             const typeChoice = buildMicroTypeChoice(host, payload, depth, (typeKey, choiceWrapper) => {
                 clearSelection(); clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth - 1);
                 [...selectedPath.keys()].filter((key) => key >= depth).forEach((key) => selectedPath.delete(key)); renderLocationPath();
-                choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true);
+                choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true, parentProposalId, parentReferenceSettlementId);
                 setStatus('گزینه‌های ' + (TYPE_LABELS[typeKey] || typeKey) + ' آماده‌اند.');
             });
             if (typeChoice) { typeChoice.dataset.locationTypePayload = JSON.stringify(microContinuationTypes(payload).map((type) => ({ key: type.key, ids: [...payload.locations, ...payload.proposals].filter((item) => item.type_key === type.key).map((item) => String(item.identity || item.id)) }))); levels.appendChild(typeChoice); setStatus('نوع ادامه مسیر را انتخاب کنید.'); return; }
