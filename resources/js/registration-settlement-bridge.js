@@ -85,6 +85,7 @@ const mountSettlementRegistrationBridge = (shell) => {
     const hide = () => {
         clearSettlement();
         parentLocationId = '';
+        delete selector.dataset.referenceBranchActive;
         shell.hidden = true;
         setStatus('');
     };
@@ -304,6 +305,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         if (item?.type_key !== 'rural_district' || !event.detail?.locationId) return;
 
         parentLocationId = String(event.detail.locationId);
+        selector.dataset.referenceBranchActive = '1';
         shell.hidden = false;
         setStatus('اگر آبادی شما در فهرست مسیر نیست، نام آن را در بانک مرجع جست‌وجو کنید.');
 
