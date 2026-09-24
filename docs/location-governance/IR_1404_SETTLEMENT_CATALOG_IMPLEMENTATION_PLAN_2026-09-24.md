@@ -7,7 +7,7 @@ Status: **PLAN ONLY / Draft**. This document authorizes no existing or Productio
 - PR #133 head `61dc07af4118b288f5ee396bb492bb0c1435fc6a`: Responsive #691 and Full Validation #3207 succeeded; still Draft. Its name-consistency local UAT and merge approval are separate release gates.
 - PR #134 head `395d22ea8892f6d7c97ff6d67c27024552d8df0f`: Iran staging #32 succeeded; still Draft. Parent is PR #133's branch, not main.
 - Pinned Iran 1404 source has 105,475 rows: 6,158 non-settlement administrative records and 99,317 `DivisionType=6` settlements. The former have been tested in an isolated MySQL v2 pilot (#22); the latter are retained in NON-IMPORTABLE `settlements.review.jsonl`. Neither means Production data have been changed.
-- `DivisionType=6` proves geographic source identity, **not** residential eligibility, village status, a governance area, or voting rights. No lexical rule may promote records. 1404 source's three Sari urban zones do not resolve UAT region 5.
+- `DivisionType=6` proves geographic source identity, **not** residential eligibility, village status, a governance area, or voting rights. No lexical rule may promote records. The other 6,158 administrative rows, including the 191 source urban zones, are the canonical 1404 baseline; missing finer/extra levels are handled through the existing proposal workflow rather than legacy-data overrides.
 - Current importer is per-row: lookups for identity and parent, location writes and per-item audit inserts inside a single transaction. Do **not** extrapolate the 6,158-row pilot to 105,475-row hosting suitability.
 
 ## Invariants (apply at every checkpoint)
@@ -63,7 +63,7 @@ Measure complete 99,317 catalog rows plus 6,158 administrative rows in a dedicat
 
 ## C5 — local E2E UAT and crosswalk
 
-Walk: known verified village; existing but unverified settlement and pending residence claim; verified non-residential mine/farm; conflicting codes/parent; city with no urban zones; urban zone with no neighborhoods; village with no neighborhoods; shared pending location supported by 10 users; Sari region 5; direct street-to-building. For every path compare registration completion, accurate group counts, pending status, audit, election eligibility, search speed and admin review. Obtain reviewed municipality source for Sari zones separately.
+Walk: imported 1404 province/county/section/rural-district/city/urban-zone paths across multiple provinces; existing but unverified settlement and pending residence claim; verified non-residential mine/farm; city with no urban zones; urban zone with no neighborhoods; village with no neighborhoods; shared pending location supported by 10 users; a user-proposed missing zone; direct street-to-building. For every path compare registration completion, accurate group counts, pending status, audit, election eligibility, search speed and admin review.
 
 Perform read-only crosswalk against *all* actual current DB identities (not merely 18-row v1 fixture). Produce `matched / ambiguous / synthetic / pending / unmapped` counts, dependency preview and explicit reviewer sign-off. No name-based mass remap, deletion, or duplicate Iran root.
 
