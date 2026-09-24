@@ -335,8 +335,8 @@ const closeExceptionPanel = (panel) => {
     toggle?.setAttribute('aria-expanded', 'false');
 };
 
-const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, parentProposalId = null) => {
-    const proposableTypes = allowedTypes.filter((type) => type?.proposal_allowed === true); if ((!parentLocationId && !parentProposalId) || proposableTypes.length === 0) return null;
+const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, parentProposalId = null, parentReferenceSettlementId = null) => {
+    const proposableTypes = allowedTypes.filter((type) => type?.proposal_allowed === true); if ((!parentLocationId && !parentProposalId && !parentReferenceSettlementId) || proposableTypes.length === 0) return null;
     const shell = document.createElement('div'); shell.className = 'border rounded-3 p-3 bg-light'; shell.dataset.locationProposalShell = '';
     const proposalTypeLabel = (type) => TYPE_LABELS[type?.key] || type?.label || type?.key || 'مکان';
     const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm'; toggle.textContent = proposableTypes.length === 1 ? `+ افزودن ${proposalTypeLabel(proposableTypes[0])} جدید` : '+ افزودن مکان جدید'; toggle.dataset.locationProposalToggle = '';
@@ -360,7 +360,17 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, par
         submit.disabled = true; feedback.classList.remove('text-danger'); feedback.textContent = 'در حال بررسی و ثبت پیشنهاد...';
         const form = host.closest('[data-location-form]') || host.closest('form'); const csrf = form?.querySelector('input[name="_token"]')?.value || ''; const locale = document.documentElement.lang || 'fa';
         try {
-            const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ ...(parentProposalId ? { parent_location_proposal_id: Number(parentProposalId) } : { parent_location_id: Number(parentLocationId) }), location_type_id: Number(typeSelect.value), canonical_name: canonicalName, localized_names: { [locale]: canonicalName }, location_structure_claim_ids: form ? Array.from(form.querySelectorAll('input[name="location_structure_claim_ids[]"]')).map((input) => Number(input.value)).filter((id) => Number.isInteger(id) && id > 0) : [] }) });
+            const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({
+                ...(parentProposalId
+                    ? { parent_location_proposal_id: Number(parentProposalId) }
+                    : (parentReferenceSettlementId
+                        ? { parent_reference_settlement_id: Number(parentReferenceSettlementId) }
+                        : { parent_location_id: Number(parentLocationId) })),
+                location_type_id: Number(typeSelect.value),
+                canonical_name: canonicalName,
+                localized_names: { [locale]: canonicalName },
+                location_structure_claim_ids: form ? Array.from(form.querySelectorAll('input[name="location_structure_claim_ids[]"]')).map((input) => Number(input.value)).filter((id) => Number.isInteger(id) && id > 0) : [],
+            }) });
             if (!response.ok) throw new Error(`Location proposal request failed: ${response.status}`);
             const result = await response.json(); await onCreated(result); panel.classList.add('d-none'); feedback.textContent = '';
         } catch (error) { console.warn('EarthCoop location proposal could not be created:', error); feedback.textContent = 'ثبت پیشنهاد مکان ممکن نشد. متن شما حفظ شده است؛ دوباره تلاش کنید.'; feedback.classList.add('text-danger'); }
@@ -374,6 +384,7 @@ const buildExceptionDisclosure = ({
     payload,
     parentLocationId,
     parentProposalId,
+    parentReferenceSettlementId,
     depth,
     structuralPanel,
     proposalPanel,
@@ -419,6 +430,7 @@ const buildExceptionDisclosure = ({
                 referenceSlot,
                 parentLocationId,
                 parentProposalId,
+                parentReferenceSettlementId,
                 depth,
                 targetKeys: exceptionTargetKeys(payload),
             },
@@ -516,7 +528,7 @@ const initializeLocationSelector = async (host) => {
     };
     const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
     const removeDeeperLevels = (depth) => { levels.querySelectorAll('[data-location-depth]').forEach((element) => { if (Number(element.dataset.locationDepth) > depth) element.remove(); }); };
-    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false, parentProposalId = null) => {
+    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false, parentProposalId = null, parentReferenceSettlementId = null) => {
         if (!shouldRenderNextLevel(payload)) { setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.'); return; }
         if (!isProjectScope && !isRegistration && !skipTypeChoice) {
             const typeChoice = buildMicroTypeChoice(host, payload, depth, (typeKey, choiceWrapper) => {
@@ -561,13 +573,21 @@ const initializeLocationSelector = async (host) => {
             }, parentProposalId);
 
             const proposalTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
-            const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal, parentProposalId);
+            const proposalPanel = buildProposalPanel(
+                host,
+                proposalTypes,
+                parentLocationId,
+                refreshAfterProposal,
+                parentProposalId,
+                parentReferenceSettlementId,
+            );
             const targetKeys = exceptionTargetKeys(payload);
             const disclosure = buildExceptionDisclosure({
                 host,
                 payload,
                 parentLocationId,
                 parentProposalId,
+                parentReferenceSettlementId,
                 depth,
                 structuralPanel,
                 proposalPanel,
