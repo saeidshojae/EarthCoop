@@ -32,7 +32,7 @@
                 data-location-selector
                 data-location-selector-context="admin-user-residence"
                 data-location-current-id="{{ ($pendingResidenceIntent ?? null) ? '' : ($primaryResidence?->location_id ?? '') }}"
-                data-location-current-proposal-id="{{ $pendingResidenceIntent?->location_proposal_id ?? '' }}"
+                data-location-current-proposal-id="{{ $currentReferenceSettlement ? '' : ($pendingResidenceIntent?->location_proposal_id ?? '') }}"
                 data-location-current-path='@json($residenceHydrationPath ?? [])'
                 data-country-code="{{ $user->locationRelationships()->where('relationship_type', 'primary_residence')->whereNull('ended_at')->with('location')->latest('started_at')->first()?->location?->country_code ?: 'IR' }}"
                 data-empty-label="یک گزینه را انتخاب کنید"
@@ -44,9 +44,12 @@
                 <input type="hidden" name="reference_settlement_external_id" value="{{ $persistedReferenceSettlementExternalId }}" data-reference-settlement-external-id>
                 <div class="border rounded-3 p-2 mb-3 small" data-location-path aria-live="polite">مسیر انتخاب نشده</div>
                 @php
+                    $defaultStructuralClaimIds = collect(data_get($primaryResidence?->metadata, 'structural_claim_ids', []))
+                        ->merge(data_get($pendingResidenceIntent?->metadata, 'structural_claim_ids', []))
+                        ->map(fn ($id) => (int) $id)->filter()->unique()->values()->all();
                     $persistedStructuralClaimIds = collect(old(
                         'location_structure_claim_ids',
-                        data_get($primaryResidence?->metadata, 'structural_claim_ids', [])
+                        $defaultStructuralClaimIds
                     ))->map(fn ($id) => (int) $id)->filter()->unique()->values();
                 @endphp
                 @foreach ($persistedStructuralClaimIds as $claimId)
