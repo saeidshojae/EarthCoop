@@ -771,6 +771,19 @@ const initializeLocationSelector = async (host) => {
             return;
         }
 
+        const continuation = normalizePickerPayload(detail.payload || {});
+        if (shouldRenderNextLevel(continuation)) {
+            appendLevel(
+                continuation,
+                anchorDepth + 2,
+                null,
+                false,
+                null,
+                Number(settlement.id),
+                String(settlement.external_id || ''),
+            );
+        }
+
         const proposalItem = {
             ...proposal,
             identity: 'proposal:' + String(proposal.id || ''),
@@ -780,6 +793,10 @@ const initializeLocationSelector = async (host) => {
             status: proposal.status || 'pending',
             selectable: true,
         };
+        const neighborhoodSelect = levels.querySelector(`[data-location-select="${anchorDepth + 2}"]`);
+        if (neighborhoodSelect && Array.from(neighborhoodSelect.options).some((option) => option.value === proposalItem.identity)) {
+            neighborhoodSelect.value = proposalItem.identity;
+        }
         selectedPath.set(anchorDepth + 2, proposalItem);
         renderLocationPath();
         setSelection(proposalItem);
