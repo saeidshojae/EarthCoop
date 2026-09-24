@@ -67,8 +67,8 @@
             </div>
             @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
                 <section class="mt-4 border rounded-lg p-3 bg-white/70" data-reference-settlement-picker hidden>
-                    <h3 class="font-bold text-sm sm:text-base mb-1">آبادی یا روستای من در مسیر بالا نمایش داده نمی‌شود</h3>
-                    <p class="text-xs sm:text-sm text-gray-500 mb-3">ابتدا نزدیک‌ترین والد تأییدشده (مثلاً دهستان یا شهر) را در مسیر بالا انتخاب کنید، سپس نام آبادی را جست‌وجو کنید. انتخاب آبادی مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
+                    <h3 class="font-bold text-sm sm:text-base mb-1">جستجو در بانک آبادی‌های ۱۴۰۴</h3>
+                    <p class="text-xs sm:text-sm text-gray-500 mb-3">نام آبادی را جستجو و گزینه درست را انتخاب کنید. انتخاب از بانک مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
                     <div class="flex flex-col sm:flex-row gap-2">
                         <input type="search" minlength="2" maxlength="60" class="form-control flex-1" placeholder="نام آبادی" data-reference-settlement-query>
                         <button type="button" class="location-action-btn location-manual-btn" data-reference-settlement-search>جست‌وجوی آبادی</button>
