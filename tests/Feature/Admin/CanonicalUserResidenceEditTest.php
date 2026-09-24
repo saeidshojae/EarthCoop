@@ -9,6 +9,8 @@ use App\Http\Middleware\PermissionMiddleware;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\Location;
+use App\Models\LocationExternalId;
+use App\Models\ReferenceSettlement;
 use App\Models\User;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -81,6 +83,9 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertStringContainsString('data-location-selector-context="admin-user-residence"', $partial);
         $this->assertStringContainsString('name="location_id"', $partial);
         $this->assertStringContainsString('name="location_proposal_id"', $partial);
+        $this->assertStringContainsString('name="reference_settlement_external_id"', $partial);
+        $this->assertStringContainsString('data-reference-settlement-picker', $partial);
+        $this->assertStringContainsString('data-reference-settlement-current-proposal-path', $partial);
         $this->assertStringContainsString('name="reason"', $partial);
         $this->assertStringContainsString("route('admin.users.residence.update', \$user)", $partial);
     }
@@ -215,6 +220,82 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertSame($admin->id, data_get($intent->metadata, 'actor_user_id'));
         $this->assertSame('ثبت جزئیات دقیق محل سکونت توسط مدیر', data_get($intent->metadata, 'reason'));
         $this->assertFalse(Location::query()->whereKey($proposal->id)->exists());
+    }
+
+    public function test_admin_can_edit_reference_settlement_and_deep_micro_address_with_audit_reason(): void
+    {
+        config([
+            'iran_settlement_catalog.enabled' => true,
+            'iran_settlement_catalog.claims_enabled' => true,
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $anchor = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'rural_district',
+        ])->last();
+        LocationExternalId::query()->create([
+            'location_id' => $anchor->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-5555',
+            'metadata' => ['fixture' => true],
+        ]);
+        $settlement = ReferenceSettlement::query()->create([
+            'source' => 'IranCountryDivisions/geo_1404',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-99005',
+            'parent_external_id' => 'IR-1404-5555',
+            'source_code' => '99005',
+            'source_row_id' => 99005,
+            'name_fa' => 'آبادی مدیر',
+            'search_name' => 'آبادی مدیر',
+            'classification' => 'unverified_settlement',
+            'residential_eligibility' => 'unverified',
+            'governance_authorized' => false,
+            'operational_promotion_allowed' => false,
+            'provenance' => ['source' => 'fixture'],
+        ]);
+
+        $target = User::factory()->create();
+        $admin = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($target, $anchor, ['source' => 'test']);
+
+        $service = app(LocationProposalService::class);
+        $neighborhood = $service->proposeUnderReferenceSettlement(
+            $target,
+            $settlement,
+            $schema->types->firstWhere('key', 'neighborhood'),
+            ['canonical_name' => 'محله مدیر'],
+        );
+        $street = $service->proposeUnderProposal(
+            $target,
+            $neighborhood,
+            $schema->types->firstWhere('key', 'street'),
+            ['canonical_name' => 'خیابان مدیر'],
+        );
+
+        $reason = 'تکمیل نشانی دقیق کاربر توسط مدیر';
+        $this->actingAs($admin)
+            ->from(route('admin.users.edit', $target))
+            ->put(route('admin.users.residence.update', $target), [
+                'reference_settlement_external_id' => $settlement->external_id,
+                'location_proposal_id' => $street->id,
+                'reason' => $reason,
+            ])
+            ->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHasNoErrors();
+
+        $intent = $target->fresh()->pendingResidenceIntents()->where('status', 'pending')->sole();
+        $this->assertSame($street->id, $intent->location_proposal_id);
+        $this->assertNotNull($intent->reference_settlement_residence_claim_id);
+        $this->assertSame($admin->id, data_get($intent->metadata, 'actor_user_id'));
+        $this->assertSame($reason, data_get($intent->metadata, 'reason'));
+
+        $this->actingAs($admin)->get(route('admin.users.edit', $target))
+            ->assertOk()
+            ->assertSee('data-reference-settlement-picker', false)
+            ->assertSee('data-reference-settlement-current-external-id="'.$settlement->external_id.'"', false)
+            ->assertSee('data-reference-settlement-current-proposal-path', false);
     }
 
     public function test_admin_residence_update_requires_reason_and_exactly_one_selection(): void
