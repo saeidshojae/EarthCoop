@@ -102,14 +102,23 @@ class LocationProposalController extends Controller
                 return response()->json(['message' => $exception->getMessage()], 422);
             }
         } else {
-            if ($structuralClaims->isNotEmpty()) {
+            $parent = ReferenceSettlement::query()->findOrFail($parentReferenceSettlementId);
+            if ($structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->reference_settlement_id !== (int) $parent->id
+            )) {
                 throw ValidationException::withMessages([
-                    'location_structure_claim_ids' => 'Structural claims are not supported below an unpromoted reference settlement.',
+                    'location_structure_claim_ids' => 'Structural claims must belong to the selected reference settlement.',
                 ]);
             }
-            $parent = ReferenceSettlement::query()->findOrFail($parentReferenceSettlementId);
+
             try {
-                $result = $this->proposals->proposeUnderReferenceSettlement($request->user(), $parent, $type, $data);
+                $result = $this->proposals->proposeUnderReferenceSettlement(
+                    $request->user(),
+                    $parent,
+                    $type,
+                    $data,
+                    $structuralClaims->all(),
+                );
             } catch (DomainException $exception) {
                 return response()->json(['message' => $exception->getMessage()], 422);
             }
