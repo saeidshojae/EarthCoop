@@ -361,7 +361,7 @@ test('structural claim UI exposes only exceptional absence actions inside the di
     assert.match(source, /claimTypes: \['no_neighborhood'\]/);
     assert.match(source, /این شهر منطقه‌بندی ندارد/);
     assert.match(source, /این محدوده محله‌بندی ندارد/);
-    assert.match(source, /data-location-structural-choice/);
+    assert.match(source, /dataset\.locationStructuralChoice|data-location-structural-choice/);
     assert.match(source, /aria-pressed/);
     assert.doesNotMatch(source, /single_urban_region|single_neighborhood/);
 });
@@ -404,7 +404,7 @@ test('canonical registration proposal events bypass legacy capture and keep serv
         });
         assert.equal(intercepted, false, 'registration change must reach canonical selector');
         const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
-        assert.match(source, /\['project-scope', 'registration'\]\.includes\(host\.dataset\.locationPurpose \|\| host\.dataset\.locationSelectorContext\)/);
+        assert.match(source, /\['project-scope', 'registration', 'profile', 'admin-user-residence'\]\.includes\(host\.dataset\.locationPurpose \|\| host\.dataset\.locationSelectorContext\)/);
     } finally {
         if (originalDocument === undefined) delete globalThis.document;
         else globalThis.document = originalDocument;
