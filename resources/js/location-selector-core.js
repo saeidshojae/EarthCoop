@@ -525,6 +525,15 @@ const initializeLocationSelector = async (host) => {
     };
     const setRegistrationEndpoint = (item) => {
         if (!isRegistration || !item) return false;
+
+        if (item.picker_kind === 'reference_settlement') {
+            locationId.value = '';
+            if (proposalId) proposalId.value = '';
+            if (submit) submit.disabled = false;
+            setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
+            return true;
+        }
+
         const values = selectionValues(item);
         if (!values.locationId && !values.proposalId) return false;
         locationId.value = values.locationId;
