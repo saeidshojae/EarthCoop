@@ -191,9 +191,10 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
 
         $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
             'country' => 'IR', '--dataset-version' => 'v2', '--dry-run' => true,
-        ]), Artisan::output());
-        $this->assertStringContainsString('create: 6158', Artisan::output());
-        $this->assertStringContainsString('conflict: 0', Artisan::output());
+        ]));
+        $topologyDryRunOutput = Artisan::output();
+        $this->assertStringContainsString('create: 6158', $topologyDryRunOutput);
+        $this->assertStringContainsString('conflict: 0', $topologyDryRunOutput);
 
         $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
             'country' => 'IR',
@@ -224,10 +225,11 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
             'country' => 'IR', '--dataset-version' => 'v2', '--dry-run' => true,
         ]));
-        $this->assertStringContainsString('create: 0', Artisan::output());
-        $this->assertStringContainsString('update: 0', Artisan::output());
-        $this->assertStringContainsString('conflict: 0', Artisan::output());
-        $this->assertStringContainsString('unchanged: 6160', Artisan::output());
+        $topologyRepeatOutput = Artisan::output();
+        $this->assertStringContainsString('create: 0', $topologyRepeatOutput);
+        $this->assertStringContainsString('update: 0', $topologyRepeatOutput);
+        $this->assertStringContainsString('conflict: 0', $topologyRepeatOutput);
+        $this->assertStringContainsString('unchanged: 6160', $topologyRepeatOutput);
     }
 
 }
