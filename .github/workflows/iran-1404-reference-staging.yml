@@ -290,7 +290,8 @@ jobs:
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
             tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php \
             tests/Feature/LocationGovernance/ReferenceGovernanceTopologyImportTest.php \
-            tests/Feature/LocationGovernance/LocationSelectionApiTest.php
+            tests/Feature/LocationGovernance/LocationSelectionApiTest.php \
+            tests/Feature/LocationGovernance/ProjectScopeTraversalProductionRegressionTest.php
 
       - name: Download pinned NON-PRODUCTION v2 candidate
         uses: actions/download-artifact@v4
