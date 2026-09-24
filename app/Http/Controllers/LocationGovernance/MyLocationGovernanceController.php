@@ -87,6 +87,13 @@ final class MyLocationGovernanceController extends Controller
             ->sortByDesc(fn ($proposal): int => $this->governanceDepth((string) $proposal->type?->key))
             ->values();
 
+        $pendingReferenceSettlements = $pendingRequests
+            ->whereNotNull('reference_settlement_residence_claim_id')
+            ->unique('reference_settlement_residence_claim_id')
+            ->map(fn ($request) => $request->referenceSettlementResidenceClaim?->settlement)
+            ->filter()
+            ->values();
+
         $pendingGovernanceStructuralClaims = $pendingRequests
             ->whereNotNull('location_structure_claim_id')
             ->unique('location_structure_claim_id')
@@ -97,6 +104,7 @@ final class MyLocationGovernanceController extends Controller
 
         $governanceLevelCount = $governanceAreas->count()
             + $pendingGovernanceProposals->count()
+            + $pendingReferenceSettlements->count()
             + $pendingGovernanceStructuralClaims->count();
 
         $membershipsByDimension = collect(self::DIMENSIONS)
@@ -156,6 +164,7 @@ final class MyLocationGovernanceController extends Controller
             'pendingResidenceIntent',
             'governanceAreas',
             'pendingGovernanceProposals',
+            'pendingReferenceSettlements',
             'pendingGovernanceStructuralClaims',
             'governanceLevelCount',
             'membershipsByDimension',
@@ -174,7 +183,7 @@ final class MyLocationGovernanceController extends Controller
             'county' => 5,
             'section' => 6,
             'city', 'rural_district' => 7,
-            'urban_region', 'village' => 8,
+            'urban_region', 'village', 'settlement' => 8,
             'local', 'neighborhood' => 9,
             default => 0,
         };
