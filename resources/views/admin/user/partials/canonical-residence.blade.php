@@ -15,6 +15,18 @@
         <form method="POST" action="{{ route('admin.users.residence.update', $user) }}" data-location-form>
             @csrf
             @method('PUT')
+            @php
+                $currentReferenceSettlement = $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
+                $referenceSettlementProposalPath = collect($referenceSettlementProposalPath ?? [])
+                    ->map(fn ($id) => (int) $id)->filter()->values();
+                $currentReferenceNeighborhoodProposalId = $currentReferenceSettlement
+                    ? (string) ($referenceSettlementProposalPath->first() ?? '')
+                    : '';
+                $persistedReferenceSettlementExternalId = old(
+                    'reference_settlement_external_id',
+                    $currentReferenceSettlement?->external_id
+                );
+            @endphp
 
             <div
                 data-location-selector
@@ -29,6 +41,8 @@
             >
                 <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id>
                 <input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+                <input type="hidden" name="reference_settlement_external_id" value="{{ $persistedReferenceSettlementExternalId }}" data-reference-settlement-external-id>
+                <div class="border rounded-3 p-2 mb-3 small" data-location-path aria-live="polite">مسیر انتخاب نشده</div>
                 @php
                     $persistedStructuralClaimIds = collect(old(
                         'location_structure_claim_ids',
@@ -43,6 +57,32 @@
                     محل جدید یا جزئیات دقیق‌تر محل سکونت را انتخاب کنید.
                 </p>
             </div>
+
+            @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
+                <section
+                    class="border rounded-3 p-3 mt-3 bg-light"
+                    data-reference-settlement-picker
+                    data-reference-settlement-current-external-id="{{ $persistedReferenceSettlementExternalId }}"
+                    data-reference-settlement-current-name="{{ $currentReferenceSettlement?->name_fa }}"
+                    data-reference-settlement-current-neighborhood-proposal-id="{{ $currentReferenceNeighborhoodProposalId }}"
+                    data-reference-settlement-current-proposal-path='@json($referenceSettlementProposalPath->all())'
+                    hidden
+                >
+                    <div class="fw-bold mb-1">آبادی / روستای دقیق کاربر</div>
+                    <p class="user-form-help mb-3">پس از انتخاب دهستان، آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو کنید. سپس محله و در صورت نیاز خیابان، کوچه، مجتمع یا ساختمان را ادامه دهید.</p>
+                    <div class="d-flex flex-column flex-md-row gap-2">
+                        <input type="search" minlength="2" maxlength="60" class="user-form-input flex-grow-1" placeholder="نام آبادی" data-reference-settlement-query>
+                        <button type="button" class="btn btn-outline-secondary" data-reference-settlement-search>جست‌وجوی آبادی</button>
+                    </div>
+                    <div class="mt-3 small text-muted" data-reference-settlement-status aria-live="polite"></div>
+                    <div class="mt-2 d-grid gap-2" data-reference-settlement-results></div>
+                    <div class="mt-3" data-reference-settlement-neighborhood></div>
+                </section>
+            @endif
+
+            @error('reference_settlement_external_id')
+                <div class="user-form-error mt-2">{{ $message }}</div>
+            @enderror
 
             <div class="user-form-group mt-4">
                 <label for="residence_reason" class="user-form-label">
