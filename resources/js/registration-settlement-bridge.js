@@ -24,7 +24,9 @@ const settlementNeighborhoodProposalPayload = (settlementId, typeId, name, local
 const mountSettlementRegistrationBridge = (shell) => {
     if (!shell) return;
     const form = shell.closest('form');
-    const selector = form?.querySelector('[data-location-selector][data-location-selector-context="registration"]');
+    const selector = form?.querySelector('[data-location-selector]');
+    const selectorContext = selector?.dataset.locationSelectorContext || selector?.dataset.locationPurpose || '';
+    if (!['registration', 'profile'].includes(selectorContext)) return;
     const locationInput = form?.querySelector('[data-location-id][name="location_id"]');
     const proposalInput = form?.querySelector('[data-location-proposal-id][name="location_proposal_id"]');
     const settlementInput = form?.querySelector('[data-reference-settlement-external-id]');
@@ -41,6 +43,10 @@ const mountSettlementRegistrationBridge = (shell) => {
     let selectedSettlement = null;
     let settlementNeighborhoodProposalId = '';
     let requestSerial = 0;
+    let persistedHydrationAttempted = false;
+    const persistedSettlementExternalId = String(shell.dataset.referenceSettlementCurrentExternalId || '');
+    const persistedSettlementName = String(shell.dataset.referenceSettlementCurrentName || '');
+    const persistedNeighborhoodProposalId = String(shell.dataset.referenceSettlementCurrentNeighborhoodProposalId || '');
 
     const setStatus = (message, error = false) => {
         status.textContent = message;
@@ -125,7 +131,7 @@ const mountSettlementRegistrationBridge = (shell) => {
         setStatus('آبادی و محلهٔ انتخابی در انتظار بررسی می‌مانند؛ هیچ حوزهٔ حکمرانی رسمی خودکار ایجاد نمی‌شود.');
     };
 
-    const renderNeighborhoods = (payload) => {
+    const renderNeighborhoods = (payload, preferredProposalId = '') => {
         neighborhoodHost.innerHTML = '';
         const allowed = Array.isArray(payload?.allowed_types)
             ? payload.allowed_types.find((type) => type.key === 'neighborhood' && type.proposal_allowed === true)
@@ -208,21 +214,29 @@ const mountSettlementRegistrationBridge = (shell) => {
         });
 
         neighborhoodHost.append(label, select, proposalShell);
+
+        if (preferredProposalId) {
+            const preferred = Array.from(select.options).find((option) => option.value === String(preferredProposalId));
+            if (preferred) {
+                select.value = preferred.value;
+                chooseNeighborhood(preferred.value, preferred.textContent.replace(' — در انتظار تأیید', ''));
+            }
+        }
     };
 
-    const loadNeighborhoods = async (item) => {
+    const loadNeighborhoods = async (item, preferredProposalId = '') => {
         neighborhoodHost.innerHTML = '<div class="small text-muted">در حال دریافت محله‌ها...</div>';
         try {
             const response = await fetch(settlementChildrenUrl(item.external_id), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.message || 'دریافت محله‌ها ممکن نشد.');
-            renderNeighborhoods(payload);
+            renderNeighborhoods(payload, preferredProposalId);
         } catch (error) {
             neighborhoodHost.innerHTML = '<div class="small text-danger">' + (error?.message || 'دریافت محله‌ها ممکن نشد.') + '</div>';
         }
     };
 
-    const choose = (item) => {
+    const choose = (item, preferredProposalId = '') => {
         if (!settlementSelectableForClaim(item)) return;
         selectedSettlement = item;
         settlementInput.value = item.external_id;
@@ -235,7 +249,7 @@ const mountSettlementRegistrationBridge = (shell) => {
             button.setAttribute('aria-pressed', button.dataset.settlementExternalId === item.external_id ? 'true' : 'false');
         });
         setStatus('آبادی مرجع انتخاب شد. در صورت وجود محله، آن را انتخاب کنید یا محلهٔ جدید پیشنهاد دهید.');
-        void loadNeighborhoods(item);
+        void loadNeighborhoods(item, preferredProposalId);
     };
 
     const renderResults = (items) => {
@@ -272,6 +286,29 @@ const mountSettlementRegistrationBridge = (shell) => {
         try {
             if (!await requestSettlements('', false)) return;
             shell.hidden = false;
+
+            if (!persistedHydrationAttempted && persistedSettlementExternalId) {
+                persistedHydrationAttempted = true;
+                const persistedItems = await (async () => {
+                    const serial = ++requestSerial;
+                    const response = await fetch(
+                        settlementSearchUrl(parentLocationId, persistedSettlementName || ''),
+                        { credentials: 'same-origin', headers: { Accept: 'application/json' } }
+                    );
+                    const payload = await response.json().catch(() => ({}));
+                    if (serial !== requestSerial || !response.ok) return [];
+                    return Array.isArray(payload.data) ? payload.data : [];
+                })();
+                const matched = persistedItems.find((candidate) =>
+                    String(candidate.external_id || '') === persistedSettlementExternalId
+                );
+                if (matched && settlementSelectableForClaim(matched)) {
+                    choose(matched, persistedNeighborhoodProposalId);
+                    setStatus('مسیر آبادی فعلی شما بازیابی شد؛ می‌توانید آن را نگه دارید یا تغییر دهید.');
+                    return;
+                }
+            }
+
             setStatus('اگر آبادی شما در فهرست مسیر نیست، نام آن را در بانک مرجع جست‌وجو کنید.');
         } catch { hide(); }
     });
