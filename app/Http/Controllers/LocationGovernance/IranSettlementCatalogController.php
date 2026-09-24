@@ -87,7 +87,7 @@ final class IranSettlementCatalogController extends Controller
         ]);
     }
 
-    public function children(string $externalId, LocationProposalPolicy $proposalPolicy): JsonResponse
+    public function children(Request $request, string $externalId, LocationProposalPolicy $proposalPolicy): JsonResponse
     {
         abort_unless((bool) config('iran_settlement_catalog.enabled', false)
             && (bool) config('iran_settlement_catalog.claims_enabled', false), 404);
@@ -97,15 +97,7 @@ final class IranSettlementCatalogController extends Controller
             ->where('source', 'IranCountryDivisions/geo_1404')
             ->where('dataset_version', 'v2')
             ->where('external_id', $externalId)->firstOrFail();
-        $neighborhoodType = LocationType::query()->where('key', 'neighborhood')->first();
-        $allowed = $neighborhoodType !== null
-            && $proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $neighborhoodType);
         $open = [LocationProposalStatus::Pending->value, LocationProposalStatus::ReadyForReview->value, LocationProposalStatus::NeedsEvidence->value];
-        $proposals = $allowed ? LocationProposal::query()->with('type')
-            ->where('parent_reference_settlement_id', $settlement->id)
-            ->where('location_type_id', $neighborhoodType->id)
-            ->whereIn('status', $open)->orderBy('id')->get() : collect();
-
         $noNeighborhoodClaim = LocationStructureClaim::query()
             ->where('reference_settlement_id', $settlement->id)
             ->where('claim_type', 'no_neighborhood')
@@ -114,25 +106,50 @@ final class IranSettlementCatalogController extends Controller
             ->orderBy('id')
             ->first();
 
+        $requestedClaimIds = collect($request->query('location_structure_claim_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique();
+        $noNeighborhoodEffective = $noNeighborhoodClaim !== null
+            && ($noNeighborhoodClaim->status === 'approved'
+                || $requestedClaimIds->contains((int) $noNeighborhoodClaim->id));
+
+        $targetType = LocationType::query()
+            ->where('key', $noNeighborhoodEffective ? 'street' : 'neighborhood')
+            ->first();
+        $effectiveClaims = $noNeighborhoodEffective ? [$noNeighborhoodClaim] : [];
+        $allowed = $targetType !== null
+            && $proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $targetType, $effectiveClaims);
+
+        $proposals = $allowed ? LocationProposal::query()->with('type')
+            ->where('parent_reference_settlement_id', $settlement->id)
+            ->where('location_type_id', $targetType->id)
+            ->whereIn('status', $open)->orderBy('id')->get() : collect();
+
         return response()->json([
             'reference_settlement' => ['id' => $settlement->id, 'external_id' => $settlement->external_id, 'name_fa' => $settlement->name_fa],
             'proposals' => $proposals->map(fn (LocationProposal $proposal): array => [
                 'id' => $proposal->id,
                 'identity' => 'proposal:'.$proposal->id,
-                'type_key' => 'neighborhood',
+                'type_key' => $proposal->type?->key,
                 'label' => LocationDisplayName::for($proposal),
                 'status' => $proposal->status instanceof LocationProposalStatus ? $proposal->status->value : (string) $proposal->status,
                 'selectable' => true,
+                'children_url' => '/location/proposals/'.$proposal->id.'/children',
             ])->values()->all(),
             'allowed_types' => $allowed ? [[
-                'id' => $neighborhoodType->id, 'key' => 'neighborhood', 'label' => 'محله', 'proposal_allowed' => true,
+                'id' => $targetType->id,
+                'key' => $targetType->key,
+                'label' => $targetType->key === 'street' ? 'خیابان' : 'محله',
+                'proposal_allowed' => true,
             ]] : [],
             'structural_choices' => [[
                 'claim_type' => 'no_neighborhood',
                 'status' => $noNeighborhoodClaim?->status ?? 'available',
                 'claim_id' => $noNeighborhoodClaim?->id,
+                'selected' => $noNeighborhoodEffective,
             ]],
-            'registration_endpoint_allowed' => false,
+            'registration_endpoint_allowed' => $noNeighborhoodEffective,
             'governance_authorized' => false,
         ]);
     }
