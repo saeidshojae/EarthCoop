@@ -443,6 +443,14 @@ const initializeLocationSelector = async (host) => {
                 if (isRegistration && children.registrationEndpointAllowed) {
                     removeDeeperLevels(depth);
                     setRegistrationEndpoint(selected);
+                } else if (
+                    selected?.type_key === 'rural_district'
+                    && host.dataset.referenceBranchActive === '1'
+                    && children.locations.length === 0
+                    && children.proposals.length === 0
+                ) {
+                    removeDeeperLevels(depth);
+                    setStatus('برای ادامه، آبادی یا روستای دقیق را از بانک مرجع ۱۴۰۴ جست‌وجو کنید.');
                 } else if (shouldRenderNextLevel(children)) { appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null, false, selected.picker_kind === 'proposal' ? selected.id : null); setStatus(isProjectScope ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.' : 'گزینه‌های سطح بعد آماده‌اند.'); }
                 else { setSelection(selected); if (!isProjectScope && !selected.is_residence_endpoint) setPickerState(PICKER_STATES.empty, 'این شاخه فعلاً نقطهٔ معتبر دیگری برای سکونت ندارد.'); }
             } catch (error) { console.warn('EarthCoop location selector could not load children:', error); locationId.value = previousLocationId; if (proposalId) proposalId.value = previousProposalId; if (governanceAreaId) governanceAreaId.value = previousGovernanceAreaId; if (submit && !isProjectScope) submit.disabled = previousSubmitDisabled; setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true); }
