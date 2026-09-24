@@ -170,4 +170,64 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         ]));
         $this->assertStringContainsString('update: 0', Artisan::output());
     }
+
+    public function test_iran_1404_v2_builds_complete_authoritative_admin_governance_alongside_v1(): void
+    {
+        $this->seed(LocationGovernanceBootstrapSeeder::class);
+
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR', '--dataset-version' => 'v1', '--apply' => true,
+        ]));
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR', '--dataset-version' => 'v1', '--apply' => true,
+        ]));
+
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v2',
+            '--apply' => true,
+            '--confirm' => 'APPLY-IR-1404-V2-UAT',
+        ]), Artisan::output());
+
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR', '--dataset-version' => 'v2', '--dry-run' => true,
+        ]), Artisan::output());
+        $this->assertStringContainsString('create: 6158', Artisan::output());
+        $this->assertStringContainsString('conflict: 0', Artisan::output());
+
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR',
+            '--dataset-version' => 'v2',
+            '--apply' => true,
+            '--confirm' => 'APPLY-GOV-IR-1404-V2-UAT',
+        ]), Artisan::output());
+
+        $this->assertSame(
+            6158,
+            GovernanceArea::query()->where('key', 'like', 'ir-reference-v2-ir-1404-%')->count(),
+        );
+
+        $region = LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', 'IR-1404-5984')
+            ->firstOrFail()
+            ->location;
+        $this->assertSame('urban_region', $region->type?->key);
+
+        $chain = app(GovernanceResolver::class)->officialAreasForResidence($region);
+        $this->assertSame('ir-reference-v2-ir-1404-5984', $chain->first()?->key);
+        $this->assertContains('ir-reference-v2-ir-1404-4602', $chain->pluck('key')->all());
+        $this->assertContains('ir-reference-v2-ir-1404-1', $chain->pluck('key')->all());
+        $this->assertSame('earthcoop-global', $chain->last()?->key);
+
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR', '--dataset-version' => 'v2', '--dry-run' => true,
+        ]));
+        $this->assertStringContainsString('create: 0', Artisan::output());
+        $this->assertStringContainsString('update: 0', Artisan::output());
+        $this->assertStringContainsString('conflict: 0', Artisan::output());
+        $this->assertStringContainsString('unchanged: 6160', Artisan::output());
+    }
+
 }
