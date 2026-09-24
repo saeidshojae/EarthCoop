@@ -207,8 +207,8 @@ const structuralClaimContextUrl = (url, form) => {
     return `${url}${separator}${query}`;
 };
 
-const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, proposalId = null) => {
-    if ((!locationId && !proposalId) || !Array.isArray(choices) || choices.length === 0) return null;
+const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, proposalId = null, referenceSettlementExternalId = null) => {
+    if ((!locationId && !proposalId && !referenceSettlementExternalId) || !Array.isArray(choices) || choices.length === 0) return null;
     const shell = document.createElement('div');
     shell.className = 'location-structural-claims vstack gap-3';
     shell.dataset.locationStructuralClaims = '';
@@ -268,13 +268,21 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
                 button.disabled = true;
                 state.textContent = 'در حال ثبت...';
                 try {
+                    const endpoint = proposalId
+                        ? `/location/proposals/${encodeURIComponent(proposalId)}/structure-claims`
+                        : (referenceSettlementExternalId
+                            ? `/location/reference-settlements/${encodeURIComponent(referenceSettlementExternalId)}/structure-claims`
+                            : '/locations/structure-claims');
+                    const body = proposalId || referenceSettlementExternalId
+                        ? { claim_type: choice.claim_type }
+                        : { location_id: Number(locationId), claim_type: choice.claim_type };
                     const response = await fetch(
-                        proposalId ? `/location/proposals/${encodeURIComponent(proposalId)}/structure-claims` : '/locations/structure-claims',
+                        endpoint,
                         {
                             method:'POST',
                             credentials:'same-origin',
                             headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) },
-                            body:JSON.stringify(proposalId ? { claim_type:choice.claim_type } : { location_id:Number(locationId), claim_type:choice.claim_type }),
+                            body:JSON.stringify(body),
                         },
                     );
                     const result = await response.json().catch(() => ({}));
@@ -528,13 +536,13 @@ const initializeLocationSelector = async (host) => {
     };
     const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
     const removeDeeperLevels = (depth) => { levels.querySelectorAll('[data-location-depth]').forEach((element) => { if (Number(element.dataset.locationDepth) > depth) element.remove(); }); };
-    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false, parentProposalId = null, parentReferenceSettlementId = null) => {
+    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false, parentProposalId = null, parentReferenceSettlementId = null, parentReferenceSettlementExternalId = null) => {
         if (!shouldRenderNextLevel(payload)) { setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.'); return; }
         if (!isProjectScope && !isRegistration && !skipTypeChoice) {
             const typeChoice = buildMicroTypeChoice(host, payload, depth, (typeKey, choiceWrapper) => {
                 clearSelection(); clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth - 1);
                 [...selectedPath.keys()].filter((key) => key >= depth).forEach((key) => selectedPath.delete(key)); renderLocationPath();
-                choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true, parentProposalId, parentReferenceSettlementId);
+                choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true, parentProposalId, parentReferenceSettlementId, parentReferenceSettlementExternalId);
                 setStatus('گزینه‌های ' + (TYPE_LABELS[typeKey] || typeKey) + ' آماده‌اند.');
             });
             if (typeChoice) { typeChoice.dataset.locationTypePayload = JSON.stringify(microContinuationTypes(payload).map((type) => ({ key: type.key, ids: [...payload.locations, ...payload.proposals].filter((item) => item.type_key === type.key).map((item) => String(item.identity || item.id)) }))); levels.appendChild(typeChoice); setStatus('نوع ادامه مسیر را انتخاب کنید.'); return; }
@@ -556,7 +564,11 @@ const initializeLocationSelector = async (host) => {
         };
         if (!isProjectScope) {
             const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, Math.max(depth - 1, 0), async () => {
-                const baseUrl = parentProposalId ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children` : `/location/options/${encodeURIComponent(parentLocationId)}/children`;
+                const baseUrl = parentProposalId
+                    ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children`
+                    : (parentReferenceSettlementExternalId
+                        ? `/location/reference-settlements/${encodeURIComponent(parentReferenceSettlementExternalId)}/children`
+                        : `/location/options/${encodeURIComponent(parentLocationId)}/children`);
                 const refreshed = await load(structuralClaimContextUrl(baseUrl, form));
                 if (isRegistration && refreshed.registrationEndpointAllowed) {
                     const parentItem = selectedPath.get(depth - 1);
@@ -568,9 +580,9 @@ const initializeLocationSelector = async (host) => {
                 }
                 removeDeeperLevels(depth);
                 wrapper.remove();
-                appendLevel(refreshed, depth, parentLocationId, false, parentProposalId);
+                appendLevel(refreshed, depth, parentLocationId, false, parentProposalId, parentReferenceSettlementId, parentReferenceSettlementExternalId);
                 setStatus('وضعیت ساختاری مسیر به‌روزرسانی شد.');
-            }, parentProposalId);
+            }, parentProposalId, parentReferenceSettlementExternalId);
 
             const proposalTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
             const proposalPanel = buildProposalPanel(
@@ -733,9 +745,29 @@ const initializeLocationSelector = async (host) => {
         if (!proposal) {
             locationId.value = '';
             if (proposalId) proposalId.value = '';
-            if (submit) submit.disabled = false;
+            if (submit) submit.disabled = isRegistration;
             renderLocationPath();
-            setStatus('آبادی دقیق شما در انتظار بررسی است. برای افزودن جزئیات بیشتر، ابتدا محله را مشخص کنید.');
+
+            const continuation = normalizePickerPayload(detail.payload || {});
+            if (isRegistration && continuation.registrationEndpointAllowed) {
+                if (submit) submit.disabled = false;
+                setStatus('این آبادی بدون محله برای مسیر ثبت‌نام شما انتخاب شد.');
+                return;
+            }
+            if (shouldRenderNextLevel(continuation)) {
+                appendLevel(
+                    continuation,
+                    anchorDepth + 2,
+                    null,
+                    false,
+                    null,
+                    Number(settlement.id),
+                    String(settlement.external_id || ''),
+                );
+                setStatus('آبادی انتخاب شد. سطح بعدی را در ادامهٔ مسیر انتخاب کنید.');
+            } else {
+                setStatus('آبادی انتخاب شد، اما فعلاً سطح بعدی معتبری برای آن ثبت نشده است.');
+            }
             return;
         }
 
