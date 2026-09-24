@@ -355,6 +355,21 @@ test('structural claim UI exposes only exceptional absence actions inside the di
     assert.doesNotMatch(source, /single_urban_region|single_neighborhood/);
 });
 
+test('absence choice can be toggled off without exposing a normal or multi-state button', () => {
+    const source = selectorSource();
+    assert.match(source, /forgetStructuralClaim/);
+    assert.match(source, /این اعلام از مسیر فعلی شما برداشته شد/);
+    assert.doesNotMatch(source, /مسیر معمولی انتخاب شد/);
+    assert.doesNotMatch(source, /چند منطقه دارد|چند محله دارد/);
+});
+
+test('choosing a real region or neighborhood clears only its contradictory absence claim', () => {
+    const source = selectorSource();
+    assert.match(source, /selected\.type_key === 'urban_region'[\s\S]*?clearStructuralClaimTypes\(form, \['no_urban_region'\]\)/);
+    assert.match(source, /selected\.type_key === 'neighborhood'[\s\S]*?clearStructuralClaimTypes\(form, \['no_neighborhood'\]\)/);
+    assert.doesNotMatch(source, /selected\.type_key === 'neighborhood'[\s\S]{0,180}?no_urban_region/);
+});
+
 test('canonical registration proposal events bypass legacy capture and keep server terminal authority', async () => {
     const listeners = [];
     const originalDocument = globalThis.document;
