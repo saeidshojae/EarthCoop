@@ -426,6 +426,12 @@ test('all residence contexts use one compact missing-option disclosure instead o
     assert.match(source, /earthcoop-location-exception-open/);
 });
 
+test('Iran settlement search is enabled by the active rural reference branch instead of a hard-coded form country', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /host\.dataset\.referenceBranchActive === '1'/);
+    assert.doesNotMatch(source, /enableReferenceSearch:\s*country === 'IR'/);
+});
+
 test('reference settlement neighborhood rejoins the shared deep picker through the same exception disclosure', () => {
     const source = selectorSource();
     assert.match(source, /earthcoop-location-reference-selected/);
