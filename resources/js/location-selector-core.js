@@ -311,10 +311,10 @@ const initializeLocationSelector = async (host) => {
     const renderLocationPath = () => { if (!locationPath) return; const labels = [...selectedPath.entries()].sort((a,b) => a[0]-b[0]).map(([, item]) => locationDisplayLabel(item)).filter(Boolean); locationPath.textContent = labels.length ? labels.join(' / ') : 'مسیر انتخاب نشده'; };
     if (!levels || !locationId || (!isProjectScope && !proposalId) || (isProjectScope && !governanceAreaId)) return;
     const notifySelection = (item = null) => {
-        if (!isRegistration) return;
+        if (isProjectScope) return;
         host.dispatchEvent(new CustomEvent('earthcoop-location-selection-changed', {
             bubbles: true,
-            detail: { item, locationId: locationId.value || '', proposalId: proposalId?.value || '' },
+            detail: { item, locationId: locationId.value || '', proposalId: proposalId?.value || '', context },
         }));
     };
     const setPickerState = (state, message, isError = false) => { host.dataset.locationState = state; host.setAttribute('aria-busy', state === PICKER_STATES.loading ? 'true' : 'false'); if (!status) return; status.textContent = message; status.classList.toggle('text-danger', isError); status.setAttribute('aria-live', isError ? 'assertive' : 'polite'); };
