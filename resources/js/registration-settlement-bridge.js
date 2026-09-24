@@ -282,35 +282,34 @@ const mountSettlementRegistrationBridge = (shell) => {
         hide();
         const item = event.detail?.item || null;
         if (item?.type_key !== 'rural_district' || !event.detail?.locationId) return;
-        parentLocationId = String(event.detail.locationId);
-        try {
-            if (!await requestSettlements('', false)) return;
-            shell.hidden = false;
 
-            if (!persistedHydrationAttempted && persistedSettlementExternalId) {
-                persistedHydrationAttempted = true;
-                const persistedItems = await (async () => {
-                    const serial = ++requestSerial;
-                    const response = await fetch(
-                        settlementSearchUrl(parentLocationId, persistedSettlementName || ''),
-                        { credentials: 'same-origin', headers: { Accept: 'application/json' } }
-                    );
-                    const payload = await response.json().catch(() => ({}));
-                    if (serial !== requestSerial || !response.ok) return [];
-                    return Array.isArray(payload.data) ? payload.data : [];
-                })();
-                const matched = persistedItems.find((candidate) =>
+        parentLocationId = String(event.detail.locationId);
+        shell.hidden = false;
+        setStatus('اگر آبادی شما در فهرست مسیر نیست، نام آن را در بانک مرجع جست‌وجو کنید.');
+
+        if (!persistedHydrationAttempted && persistedSettlementExternalId) {
+            persistedHydrationAttempted = true;
+            try {
+                const serial = ++requestSerial;
+                const response = await fetch(
+                    settlementSearchUrl(parentLocationId, persistedSettlementName || ''),
+                    { credentials: 'same-origin', headers: { Accept: 'application/json' } }
+                );
+                const payload = await response.json().catch(() => ({}));
+                if (serial !== requestSerial || !response.ok) return;
+
+                const matched = (Array.isArray(payload.data) ? payload.data : []).find((candidate) =>
                     String(candidate.external_id || '') === persistedSettlementExternalId
                 );
                 if (matched && settlementSelectableForClaim(matched)) {
                     choose(matched, persistedNeighborhoodProposalId);
                     setStatus('مسیر آبادی فعلی شما بازیابی شد؛ می‌توانید آن را نگه دارید یا تغییر دهید.');
-                    return;
                 }
+            } catch (error) {
+                console.warn('EarthCoop persisted reference settlement could not be hydrated:', error);
+                setStatus('جست‌وجوی آبادی آماده است؛ بازیابی خودکار آبادی فعلی ممکن نشد و می‌توانید آن را دوباره جست‌وجو کنید.', true);
             }
-
-            setStatus('اگر آبادی شما در فهرست مسیر نیست، نام آن را در بانک مرجع جست‌وجو کنید.');
-        } catch { hide(); }
+        }
     });
 
     searchButton.addEventListener('click', async () => {
