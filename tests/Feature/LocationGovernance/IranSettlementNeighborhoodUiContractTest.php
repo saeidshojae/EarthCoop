@@ -15,7 +15,6 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $app = file_get_contents(resource_path('js/app.js'));
 
         $this->assertStringContainsString('data-reference-settlement-picker hidden', $view);
-        $this->assertStringContainsString('data-reference-settlement-neighborhood', $view);
         $this->assertStringContainsString('data-reference-settlement-picker', $profile);
         $this->assertStringContainsString('name="reference_settlement_external_id"', $profile);
         $this->assertStringContainsString('data-reference-settlement-current-external-id', $profile);
@@ -30,10 +29,6 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString('earthcoop-location-exception-open', $bridge);
         $this->assertStringContainsString('mount.appendChild(shell)', $bridge);
         $this->assertStringContainsString('shell.hidden = false', $bridge);
-        $this->assertStringContainsString('data.referenceNeighborhoodExceptionShell', str_replace('dataset.', 'data.', $bridge));
-        $this->assertStringContainsString('محله من در فهرست نیست', $bridge);
-        $this->assertStringContainsString('افزودن محله جدید', $bridge);
-        $this->assertStringContainsString('این آبادی / روستا محله‌بندی ندارد', $bridge);
         $this->assertStringContainsString('dataset.locationExceptionPanel', $selector);
         $this->assertStringContainsString('روستا یا آبادی من در فهرست نیست', $selector);
         $this->assertStringNotContainsString('single_urban_region', $selector);
@@ -42,12 +37,17 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringNotContainsString("path.textContent =", $bridge);
         $this->assertStringContainsString('earthcoop-location-reference-selected', $bridge);
         $this->assertStringContainsString('earthcoop-location-reference-selected', $selector);
+        $this->assertStringContainsString('parentReferenceSettlementExternalId', $selector);
+        $this->assertStringContainsString('/location/reference-settlements/${encodeURIComponent(parentReferenceSettlementExternalId)}/children', $selector);
+        $this->assertStringContainsString('Number(settlement.id)', $selector);
+        $this->assertStringContainsString("String(settlement.external_id || '')", $selector);
         $this->assertStringContainsString('earthcoop-location-path-changed', $selector);
         $this->assertStringContainsString('proposalPath', $selector);
         $this->assertStringContainsString("type_key: 'settlement'", $selector);
         $this->assertStringContainsString("presentSettlement(item, retries - 1)", $bridge);
-        $this->assertStringContainsString('parent_reference_settlement_id', $bridge);
-        $this->assertStringContainsString("settlementNeighborhoodProposalId = String(id)", $bridge);
+        $this->assertStringContainsString('loadSettlementContinuation', $bridge);
+        $this->assertStringContainsString('closeDisclosure();', $bridge);
+        $this->assertStringContainsString('dispatchReferenceSelection(null, persistedProposalPath, payload)', $bridge);
         $this->assertStringContainsString("proposalInput.value === settlementNeighborhoodProposalId", $bridge);
         $this->assertStringNotContainsString("const clearNeighborhood = () => {\n        neighborhoodHost.innerHTML = '';\n        proposalInput.value = '';", $bridge);
         $this->assertStringContainsString('registration-settlement-bridge.js', $app);
