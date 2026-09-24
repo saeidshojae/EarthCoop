@@ -6,6 +6,8 @@ use InvalidArgumentException;
 
 final class ReferenceDataset
 {
+    private static ?self $iran1404Cache = null;
+
     private const IR_1404_GIT_BLOB = 'ca9f4a0d69c7c9d77e6434447c7fe123a322271e';
     private const IR_1404_COUNTS = [
         0 => 1,
@@ -108,6 +110,10 @@ final class ReferenceDataset
 
     private static function iran1404AdministrativeDataset(): self
     {
+        if (self::$iran1404Cache instanceof self) {
+            return self::$iran1404Cache;
+        }
+
         $sourceDir = dirname(__DIR__, 3).'/database/reference/source/ir/1404';
         $payload = '';
         for ($part = 1; $part <= 9; $part++) {
@@ -244,6 +250,6 @@ final class ReferenceDataset
             $rows,
         ))."\n";
 
-        return new self('IR', 'v2', $schema, $rows, $rawLocations);
+        return self::$iran1404Cache = new self('IR', 'v2', $schema, $rows, $rawLocations);
     }
 }
