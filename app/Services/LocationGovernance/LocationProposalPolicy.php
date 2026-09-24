@@ -91,11 +91,13 @@ class LocationProposalPolicy
         return $relationExists && $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
     }
 
-    public function allowsReferenceSettlementParentForResidence(ReferenceSettlement $settlement, LocationType $type): bool
-    {
+    public function allowsReferenceSettlementParentForResidence(
+        ReferenceSettlement $settlement,
+        LocationType $type,
+        array $structuralClaims = [],
+    ): bool {
         if ($settlement->source !== 'IranCountryDivisions/geo_1404'
             || $settlement->dataset_version !== 'v2'
-            || $type->key !== 'neighborhood'
             || $settlement->governance_authorized
             || $settlement->operational_promotion_allowed) {
             return false;
@@ -116,6 +118,21 @@ class LocationProposalPolicy
             return false;
         }
         if ($anchor->type?->key !== 'rural_district' || ! $anchor->location_schema_id) return false;
+
+        $claimTypes = collect($structuralClaims)
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
+                && (int) $claim->reference_settlement_id === (int) $settlement->id
+                && in_array($claim->status, array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']), true))
+            ->pluck('claim_type')
+            ->unique();
+
+        if ($type->key === 'street' && $claimTypes->contains('no_neighborhood')) {
+            return $this->schemaAllowsCrowdsourcing((int) $anchor->location_schema_id, $type);
+        }
+
+        if ($type->key !== 'neighborhood') {
+            return false;
+        }
 
         $villageType = LocationType::query()->where('key', 'village')->first();
         if ($villageType === null) return false;
