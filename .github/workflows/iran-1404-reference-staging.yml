@@ -10,6 +10,7 @@ on:
       - '.github/workflows/iran-1404-reference-staging.yml'
       - 'database/reference/ir/v1/schema.json'
       - 'app/Console/Commands/LocationReferenceImportCommand.php'
+      - 'app/Console/Commands/IranSettlement*.php'
       - 'tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php'
       - 'app/Models/ReferenceSettlement*.php'
       - 'app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php'
@@ -245,6 +246,8 @@ jobs:
           php -l tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php
           php -l tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
           php -l tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
+          php -l app/Console/Commands/IranSettlementUatReadinessCommand.php
+          php -l tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
           php -l tests/Feature/Admin/LocationGovernanceControlCenterTest.php
           php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
           php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
@@ -271,6 +274,7 @@ jobs:
           php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
           php artisan test tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
+          php artisan test tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
