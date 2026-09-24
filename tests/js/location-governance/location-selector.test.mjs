@@ -274,14 +274,16 @@ test('breadcrumb uses typed display labels across the full residence path', () =
     assert.match(source, /TYPE_LABELS/);
 });
 
-test('residence selector renders and submits structural choices without leaking them into project scope', () => {
+test('residence selector renders only absence structural actions while keeping backend payload support separate', () => {
     const source = selectorSource();
     assert.match(source, /structuralChoices/);
     assert.match(source, /locations\/structure-claims/);
-    assert.match(source, /single_urban_region/);
     assert.match(source, /no_urban_region/);
-    assert.match(source, /single_neighborhood/);
     assert.match(source, /no_neighborhood/);
+    assert.doesNotMatch(source, /single_urban_region/);
+    assert.doesNotMatch(source, /single_neighborhood/);
+    assert.doesNotMatch(source, /چند منطقه دارد/);
+    assert.doesNotMatch(source, /چند محله دارد/);
     assert.match(source, /effectiveAllowedTypes/);
 });
 
@@ -318,7 +320,7 @@ test('structural claims are owned by the selected parent depth and survive choos
 test('only approved structural claims auto-hydrate while open claims remain an explicit user choice', () => {
     const source = selectorSource();
     assert.match(source, /statusValue === 'approved'[\s\S]*?rememberStructuralClaim\(host, claimId, depth\)/);
-    assert.match(source, /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود/);
+    assert.match(source, /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?explicitlySelected/);
     assert.match(
         source,
         /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?if \(explicitlySelected\) rememberStructuralClaim\(host, claimId, depth\)/,
@@ -331,26 +333,26 @@ test('only approved structural claims auto-hydrate while open claims remain an e
     );
 });
 
-test('structural-claim navigation sends only explicitly selected claim ids and offers a normal-path reset', () => {
+test('structural-claim navigation sends only explicitly selected absence claim ids', () => {
     const source = selectorSource();
     assert.match(source, /structuralClaimContextUrl\(baseUrl, form\)/);
     assert.match(source, /location_structure_claim_ids%5B%5D=/);
-    assert.match(source, /removeStructuralClaimIds\(form, groupClaimIds\)/);
     assert.match(source, /pendingStructuralClaimContextUrl/);
     assert.match(source, /removePendingStructuralClaimIds\(host, claimIds\)/);
     assert.match(source, /location_structure_claim_ids: pendingStructuralClaimIds\(host\)/);
-    assert.match(source, /مسیر معمولی انتخاب شد/);
+    assert.doesNotMatch(source, /مسیر معمولی انتخاب شد/);
 });
 
-test('structural claim UI presents mutually exclusive tier states as one grouped question', () => {
+test('structural claim UI exposes only exceptional absence actions inside the disclosure', () => {
     const source = selectorSource();
     assert.match(source, /STRUCTURAL_CLAIM_GROUPS/);
-    assert.match(source, /single_urban_region.*no_urban_region/s);
-    assert.match(source, /single_neighborhood.*no_neighborhood/s);
-    assert.match(source, /ساختار منطقه‌ای این شهر چگونه است/);
-    assert.match(source, /ساختار محله‌ای این محدوده چگونه است/);
+    assert.match(source, /claimTypes: \['no_urban_region'\]/);
+    assert.match(source, /claimTypes: \['no_neighborhood'\]/);
+    assert.match(source, /این شهر منطقه‌بندی ندارد/);
+    assert.match(source, /این محدوده محله‌بندی ندارد/);
     assert.match(source, /data-location-structural-choice/);
     assert.match(source, /aria-pressed/);
+    assert.doesNotMatch(source, /single_urban_region|single_neighborhood/);
 });
 
 test('canonical registration proposal events bypass legacy capture and keep server terminal authority', async () => {
@@ -384,11 +386,26 @@ test('canonical registration proposal events bypass legacy capture and keep serv
 });
 
 
-test('reference settlement neighborhood rejoins the shared deep picker for micro address levels', () => {
+test('all residence contexts use one compact missing-option disclosure instead of always-visible proposal controls', () => {
+    const source = selectorSource();
+    assert.match(source, /dataLocationExceptionToggle|locationExceptionToggle/);
+    assert.match(source, /exceptionLinkLabel/);
+    assert.match(source, /منطقه من در فهرست نیست/);
+    assert.match(source, /روستا یا آبادی من در فهرست نیست/);
+    assert.match(source, /محله من در فهرست نیست/);
+    assert.match(source, /خیابان من در فهرست نیست/);
+    assert.match(source, /کوچه من در فهرست نیست/);
+    assert.match(source, /مجتمع من در فهرست نیست/);
+    assert.match(source, /ساختمان من در فهرست نیست/);
+    assert.match(source, /earthcoop-location-exception-open/);
+});
+
+test('reference settlement neighborhood rejoins the shared deep picker through the same exception disclosure', () => {
     const source = selectorSource();
     assert.match(source, /earthcoop-location-reference-selected/);
     assert.match(source, /proposalPath/);
     assert.match(source, /reference_settlement/);
     assert.match(source, /appendLevel\(children, depth, null, false, parentProposalId\)/);
-    assert.match(source, /rural_district[\s\S]*referenceBranchActive/);
+    assert.match(source, /dataLocationException|locationException|location-exception/i);
+    assert.match(source, /enableReferenceSearch/);
 });
