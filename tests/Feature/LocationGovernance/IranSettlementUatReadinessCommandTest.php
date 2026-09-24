@@ -26,6 +26,33 @@ final class IranSettlementUatReadinessCommandTest extends TestCase
         $this->assertNotEmpty($report['blockers']);
     }
 
+    public function test_inactive_canonical_location_does_not_satisfy_reviewed_v1_identity_readiness(): void
+    {
+        config()->set('iran_settlement_catalog.uat_expected_count', 0);
+        config()->set('iran_v1_v2_crosswalk.mappings', [
+            'IR-COUNTRY' => ['v2' => 'IR-1404-1', 'status' => 'verified_identity'],
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $location = LocationFixture::createPath($schema, ['country'])->last();
+        $location->forceFill(['status' => 'inactive'])->save();
+
+        LocationExternalId::query()->create([
+            'location_id' => $location->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v1',
+            'external_id' => 'IR-COUNTRY',
+            'metadata' => ['fixture' => true],
+        ]);
+
+        $exit = Artisan::call('location:iran-settlement-uat-readiness', ['--json' => true]);
+        $report = json_decode(trim(Artisan::output()), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(1, $exit);
+        $this->assertFalse($report['ready_for_manual_uat']);
+        $this->assertSame(['IR-COUNTRY'], $report['missing_verified_v1_identities']);
+    }
+
     public function test_readiness_can_pass_in_testing_with_complete_catalog_and_reviewed_v1_identities(): void
     {
         $schema = LocationFixture::iranSchema();
