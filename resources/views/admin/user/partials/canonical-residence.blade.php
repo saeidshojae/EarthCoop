@@ -68,8 +68,8 @@
                     data-reference-settlement-current-proposal-path='@json($referenceSettlementProposalPath->all())'
                     hidden
                 >
-                    <div class="fw-bold mb-1">آبادی / روستای دقیق کاربر</div>
-                    <p class="user-form-help mb-3">پس از انتخاب دهستان، آبادی را در بانک مرجع ۱۴۰۴ جست‌وجو کنید. سپس محله و در صورت نیاز خیابان، کوچه، مجتمع یا ساختمان را ادامه دهید.</p>
+                    <div class="fw-bold mb-1">جستجو در بانک آبادی‌های ۱۴۰۴</div>
+                    <p class="user-form-help mb-3">نام آبادی را جستجو و گزینه درست را انتخاب کنید. انتخاب از بانک مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
                     <div class="d-flex flex-column flex-md-row gap-2">
                         <input type="search" minlength="2" maxlength="60" class="user-form-input flex-grow-1" placeholder="نام آبادی" data-reference-settlement-query>
                         <button type="button" class="btn btn-outline-secondary" data-reference-settlement-search>جست‌وجوی آبادی</button>
