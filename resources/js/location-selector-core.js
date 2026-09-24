@@ -582,6 +582,7 @@ const initializeLocationSelector = async (host) => {
         select.addEventListener('change', async () => {
             if (!isProjectScope) clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth); [...selectedPath.keys()].filter((key) => key > depth).forEach((key) => selectedPath.delete(key)); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
             if (!selected) { selectedPath.delete(depth); renderLocationPath(); clearSelection(); setPickerState(PICKER_STATES.empty, isProjectScope ? 'انتخاب محدوده پروژه اختیاری است.' : 'یک گزینه را برای ادامه انتخاب کنید.'); return; }
+            closeExceptionPanel(exceptionPanel);
             if (!isProjectScope && selected.type_key === 'urban_region') clearStructuralClaimTypes(form, ['no_urban_region']);
             if (!isProjectScope && selected.type_key === 'neighborhood') clearStructuralClaimTypes(form, ['no_neighborhood']);
             selectedPath.set(depth, selected); renderLocationPath();
