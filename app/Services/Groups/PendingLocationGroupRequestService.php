@@ -132,7 +132,7 @@ final class PendingLocationGroupRequestService
 
     public function syncForReferenceSettlementClaim(User $user, ReferenceSettlementResidenceClaim $claim, bool $preserveProposalRequests = false): Collection
     {
-        return DB::transaction(function () use ($user, $claim): Collection {
+        return DB::transaction(function () use ($user, $claim, $preserveProposalRequests): Collection {
             $lockedClaim = ReferenceSettlementResidenceClaim::query()
                 ->with('settlement')
                 ->whereKey($claim->id)
