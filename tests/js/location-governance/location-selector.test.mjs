@@ -461,10 +461,11 @@ test('missing-option UX is progressive disclosure and hides single/multi structu
     assert.doesNotMatch(core, /single_urban_region|single_neighborhood/);
     assert.doesNotMatch(core, /چند منطقه دارد|چند محله دارد/);
 
-    assert.match(bridge, /referenceNeighborhoodExceptionToggle/);
-    assert.match(bridge, /محله من در فهرست نیست/);
-    assert.match(bridge, /افزودن محله جدید/);
-    assert.match(bridge, /این آبادی \/ روستا محله‌بندی ندارد/);
+    assert.match(bridge, /loadSettlementContinuation/);
+    assert.match(bridge, /closeDisclosure\(\)/);
+    assert.match(bridge, /dispatchReferenceSelection\(null, persistedProposalPath, payload\)/);
+    assert.doesNotMatch(bridge, /referenceNeighborhoodExceptionToggle/);
+    assert.doesNotMatch(bridge, /data-reference-settlement-neighborhood/);
 });
 
 test('registration remains capped at neighborhood while profile and admin can continue to micro address levels', () => {
@@ -473,4 +474,16 @@ test('registration remains capped at neighborhood while profile and admin can co
     assert.match(source, /registrationPayload[\s\S]*MICRO_LOCATION_TYPES/);
     assert.match(source, /if \(isRegistration\)[\s\S]*ثبت‌نام می‌تواند در همین‌جا پایان یابد/);
     assert.match(source, /if \(shouldRenderNextLevel\(children\)\)[\s\S]*appendLevel\(children, depth, null, false, parentProposalId\)/);
+});
+
+
+test('reference settlement choice closes its exception panel and renders neighborhood as a normal following level', () => {
+    const core = coreSelectorSource();
+    const bridge = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+
+    assert.match(bridge, /loadSettlementContinuation/);
+    assert.match(bridge, /closeDisclosure\(\);[\s\S]*dispatchReferenceSelection\(null, persistedProposalPath, payload\)/);
+    assert.match(core, /if \(!proposal\)[\s\S]*normalizePickerPayload\(detail\.payload \|\| \{\}\)/);
+    assert.match(core, /appendLevel\([\s\S]*anchorDepth \+ 2,[\s\S]*Number\(settlement\.id\),[\s\S]*String\(settlement\.external_id \|\| ''\)/);
+    assert.match(core, /parentReferenceSettlementExternalId[\s\S]*reference-settlements/);
 });
