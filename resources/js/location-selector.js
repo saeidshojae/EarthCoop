@@ -72,62 +72,120 @@ const rememberPendingStructuralClaim = (host, id, depth, claimType = '') => {
     if (claimType) input.dataset.locationStructureClaimType = claimType;
 };
 const addPendingStructuralPanel = (host, wrapper, payload, parentIdentity, depth) => {
-    const choices = Array.isArray(payload?.structural_choices) ? payload.structural_choices : [];
+    const choices = (Array.isArray(payload?.structural_choices) ? payload.structural_choices : [])
+        .filter((choice) => ['no_urban_region', 'no_neighborhood'].includes(String(choice?.claim_type || '')));
     if (!String(parentIdentity || '').startsWith('proposal:') || !choices.length) return;
-    const proposalId = Number(String(parentIdentity).slice(9)); if (!proposalId) return;
-    const groups = [
-        { types:['single_urban_region','no_urban_region'], question:'ساختار منطقه‌ای این شهر چگونه است؟', normalLabel:'چند منطقه دارد', labels:{single_urban_region:'این شهر فقط یک منطقهٔ شهری دارد',no_urban_region:'این شهر منطقهٔ شهری ندارد'} },
-        { types:['single_neighborhood','no_neighborhood'], question:'ساختار محله‌ای این محدوده چگونه است؟', normalLabel:'چند محله دارد', labels:{single_neighborhood:'این محدوده فقط یک محله دارد',no_neighborhood:'این محدوده محله ندارد'} },
-    ];
-    groups.forEach((group) => {
-        const available = choices.filter((choice) => group.types.includes(choice.claim_type)); if (!available.length) return;
-        const box = document.createElement('div'); box.className = 'location-structural-claims border rounded-3 p-3 vstack gap-2';
-        const title = document.createElement('div'); title.className = 'small fw-bold'; title.textContent = group.question;
-        const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
-        const state = document.createElement('div'); state.className = 'small text-secondary'; state.setAttribute('aria-live','polite');
-        const claimIds = available.map((choice) => Number(choice.claim_id)).filter((id) => Number.isInteger(id) && id > 0);
-        const hasApproved = available.some((choice) => String(choice.status || '') === 'approved');
-        const normal = document.createElement('button'); normal.type='button'; normal.className='btn btn-outline-secondary btn-sm'; normal.textContent=group.normalLabel; normal.disabled=hasApproved;
-        normal.setAttribute('aria-pressed', hasApproved ? 'false' : (claimIds.some((id) => pendingStructuralClaimIds(host).includes(id)) ? 'false' : 'true'));
-        if (!hasApproved) {
-            normal.addEventListener('click', async () => {
-                removePendingStructuralClaimIds(host, claimIds);
-                const url = pendingStructuralClaimContextUrl(`/location/proposals/${encodeURIComponent(proposalId)}/children`, host);
-                const refreshed = await fetch(url,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر معمولی ممکن نشد.');
-                removeAfter(host.querySelector('[data-location-levels]'),depth-1);
-                appendPendingLevel(host,await refreshed.json(),depth,parentIdentity);
-                status(host,'مسیر معمولی انتخاب شد؛ ادعای در انتظار بررسی روی مسیر شما اعمال نمی‌شود.');
-            });
+
+    const proposalId = Number(String(parentIdentity).slice(9));
+    if (!proposalId) return;
+
+    const shell = document.createElement('div');
+    shell.className = 'location-exception-shell';
+    shell.dataset.locationExceptionShell = '';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'btn btn-link btn-sm p-0 text-decoration-none';
+    toggle.dataset.locationExceptionToggle = '';
+    toggle.textContent = choices.some((choice) => choice.claim_type === 'no_urban_region')
+        ? 'منطقه من در فهرست نیست'
+        : 'محله من در فهرست نیست';
+    toggle.setAttribute('aria-expanded', 'false');
+
+    const panel = document.createElement('div');
+    panel.className = 'location-exception-panel border rounded-3 p-3 mt-2 bg-light d-none vstack gap-3';
+    panel.dataset.locationExceptionPanel = '';
+
+    const state = document.createElement('div');
+    state.className = 'small text-secondary';
+    state.setAttribute('aria-live', 'polite');
+
+    choices.forEach((choice) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-outline-secondary btn-sm align-self-start';
+        button.dataset.locationStructuralChoice = choice.claim_type;
+        button.textContent = choice.claim_type === 'no_urban_region'
+            ? 'این شهر منطقه‌بندی ندارد'
+            : 'این محدوده محله‌بندی ندارد';
+
+        let claimId = Number(choice.claim_id);
+        const selected = Number.isInteger(claimId)
+            && claimId > 0
+            && pendingStructuralClaimIds(host).includes(claimId);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+
+        if (choice.status === 'approved' && claimId > 0) {
+            rememberPendingStructuralClaim(host, claimId, depth, choice.claim_type);
+            button.disabled = true;
+            button.setAttribute('aria-pressed', 'true');
+            state.textContent = 'این وضعیت قبلاً تأیید شده است.';
         }
-        actions.appendChild(normal);
-        available.forEach((choice) => {
-            const button = document.createElement('button'); button.type='button'; button.className='btn btn-outline-secondary btn-sm'; button.dataset.locationStructuralChoice=choice.claim_type; button.textContent=group.labels[choice.claim_type];
-            const claimId = Number(choice.claim_id); const statusValue = String(choice.status || 'available');
-            const selected = Number.isInteger(claimId) && claimId > 0 && pendingStructuralClaimIds(host).includes(claimId);
-            if (statusValue === 'approved' && claimId > 0) {
-                rememberPendingStructuralClaim(host, claimId, depth, choice.claim_type);
-                button.disabled=true; button.setAttribute('aria-pressed','true');
-                state.textContent='این وضعیت تأیید شده است و ساختار رسمی مسیر را تعیین می‌کند.';
-            } else if (['pending','ready_for_review','needs_evidence'].includes(statusValue)) {
-                if (selected) rememberPendingStructuralClaim(host, claimId, depth, choice.claim_type);
-                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
-                state.textContent = selected ? 'این ادعا در مسیر شما انتخاب شده است؛ با ثبت محل سکونت، حمایت شما ثبت می‌شود.' : 'این ادعا در انتظار بررسی است؛ فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود.';
+
+        button.addEventListener('click', async () => {
+            if (Number.isInteger(claimId) && claimId > 0 && pendingStructuralClaimIds(host).includes(claimId)) {
+                removePendingStructuralClaimIds(host, [claimId]);
+                button.setAttribute('aria-pressed', 'false');
+                state.textContent = 'این اعلام از مسیر فعلی شما برداشته شد.';
+                return;
             }
-            button.addEventListener('click', async () => {
-                const csrf=host.closest('form')?.querySelector('input[name="_token"]')?.value||''; actions.querySelectorAll('[data-location-structural-choice]').forEach((item)=>{item.disabled=true;}); state.textContent='در حال ثبت...';
-                try {
-                    const response=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/structure-claims`,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json',...(csrf?{'X-CSRF-TOKEN':csrf}:{})},body:JSON.stringify({claim_type:choice.claim_type})});
-                    const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result.message||'ثبت وضعیت ساختاری ممکن نشد.');
-                    rememberPendingStructuralClaim(host,result.id,depth, choice.claim_type); button.setAttribute('aria-pressed','true');
-                    const url=pendingStructuralClaimContextUrl(`/location/proposals/${encodeURIComponent(proposalId)}/children`,host);
-                    const refreshed=await fetch(url,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر بعد ممکن نشد.');
-                    removeAfter(host.querySelector('[data-location-levels]'),depth-1); appendPendingLevel(host,await refreshed.json(),depth,parentIdentity);
-                    status(host,'ادعای در انتظار بررسی برای مسیر شما انتخاب شد.');
-                } catch(error) { state.textContent=error?.message||'ثبت وضعیت ساختاری ممکن نشد.'; actions.querySelectorAll('[data-location-structural-choice]').forEach((item)=>{if(item.getAttribute('aria-pressed')!=='true')item.disabled=false;}); }
-            }); actions.appendChild(button);
+
+            const csrf = host.closest('form')?.querySelector('input[name="_token"]')?.value || '';
+            button.disabled = true;
+            state.textContent = 'در حال ثبت...';
+            try {
+                const response = await fetch(
+                    `/location/proposals/${encodeURIComponent(proposalId)}/structure-claims`,
+                    {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                            ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                        },
+                        body: JSON.stringify({ claim_type: choice.claim_type }),
+                    },
+                );
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.message || 'ثبت وضعیت ساختاری ممکن نشد.');
+
+                claimId = Number(result.id);
+                rememberPendingStructuralClaim(host, claimId, depth, choice.claim_type);
+                button.setAttribute('aria-pressed', 'true');
+                state.textContent = 'ثبت شد و در انتظار بررسی است.';
+
+                const url = pendingStructuralClaimContextUrl(
+                    `/location/proposals/${encodeURIComponent(proposalId)}/children`,
+                    host,
+                );
+                const refreshed = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                if (!refreshed.ok) throw new Error('دریافت مسیر بعد ممکن نشد.');
+
+                panel.classList.add('d-none');
+                toggle.setAttribute('aria-expanded', 'false');
+                removeAfter(host.querySelector('[data-location-levels]'), depth - 1);
+                appendPendingLevel(host, await refreshed.json(), depth, parentIdentity);
+            } catch (error) {
+                button.disabled = false;
+                state.textContent = error?.message || 'ثبت وضعیت ساختاری ممکن نشد.';
+            }
         });
-        box.append(title,actions,state); wrapper.appendChild(box);
+
+        panel.appendChild(button);
     });
+
+    panel.appendChild(state);
+    toggle.addEventListener('click', () => {
+        const opening = panel.classList.contains('d-none');
+        panel.classList.toggle('d-none', !opening);
+        toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    });
+    shell.append(toggle, panel);
+    wrapper.appendChild(shell);
 };
 
 const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
@@ -221,14 +279,14 @@ if (typeof document !== 'undefined') {
     document.addEventListener('change', (event) => {
         const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); // The canonical selector owns registration proposal changes, including its structural terminal signal.
         // Legacy capture must not stop that selector's change handler or render micro levels.
-        if (!host || ['project-scope', 'registration'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
+        if (!host || ['project-scope', 'registration', 'profile', 'admin-user-residence'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
         const value = String(select.value || ''); if (!value.startsWith('proposal:')) return; event.preventDefault(); event.stopImmediatePropagation(); const id = Number(value.slice(9)); const typeKey = select.options[select.selectedIndex]?.dataset?.typeKey || ''; setSelection(host, id, typeKey); void loadProposalChildren(host, select, id);
     }, true);
     document.addEventListener('location-proposal-created', (event) => {
         const select = event.target?.closest?.('[data-location-select]'); const host = select?.closest?.('[data-location-selector]');
         const id = Number(event.detail?.proposalId || 0); if (!select || !host || !id) return;
         // Registration proposals are reconciled by the canonical selector's onCreated callback.
-        if (['project-scope', 'registration'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
+        if (['project-scope', 'registration', 'profile', 'admin-user-residence'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
         void loadProposalChildren(host, select, id);
     });
 }
