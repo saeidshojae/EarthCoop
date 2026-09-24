@@ -355,19 +355,39 @@ const mountSettlementRegistrationBridge = (shell) => {
             );
         });
 
+        const exceptionShell = document.createElement('div');
+        exceptionShell.className = 'mt-2';
+        exceptionShell.dataset.referenceNeighborhoodExceptionShell = '';
+
+        const exceptionToggle = document.createElement('button');
+        exceptionToggle.type = 'button';
+        exceptionToggle.className = 'btn btn-link btn-sm p-0 text-decoration-none';
+        exceptionToggle.dataset.referenceNeighborhoodExceptionToggle = '';
+        exceptionToggle.textContent = 'محله من در فهرست نیست';
+        exceptionToggle.setAttribute('aria-expanded', 'false');
+
+        const exceptionPanel = document.createElement('div');
+        exceptionPanel.className = 'border rounded-3 p-3 mt-2 bg-light d-none vstack gap-3';
+        exceptionPanel.dataset.referenceNeighborhoodExceptionPanel = '';
+
         const proposalShell = document.createElement('div');
-        proposalShell.className = 'mt-2';
-        const toggle = document.createElement('button');
-        toggle.type = 'button';
-        toggle.className = 'btn btn-link btn-sm p-0 text-decoration-none';
-        toggle.textContent = '+ افزودن محله جدید';
-        const panel = document.createElement('div');
-        panel.className = 'vstack gap-2 mt-2 d-none';
+        proposalShell.className = 'vstack gap-2';
+
+        const addToggle = document.createElement('button');
+        addToggle.type = 'button';
+        addToggle.className = 'btn btn-outline-secondary btn-sm align-self-start';
+        addToggle.textContent = 'افزودن محله جدید';
+        addToggle.setAttribute('aria-expanded', 'false');
+
+        const proposalPanel = document.createElement('div');
+        proposalPanel.className = 'vstack gap-2 d-none';
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'form-control form-control-sm';
         input.maxLength = 255;
         input.placeholder = 'نام محله';
+
         const actions = document.createElement('div');
         actions.className = 'd-flex gap-2';
         const save = document.createElement('button');
@@ -380,12 +400,20 @@ const mountSettlementRegistrationBridge = (shell) => {
         cancel.textContent = 'انصراف';
         const feedback = document.createElement('div');
         feedback.className = 'small text-secondary';
+
         actions.append(save, cancel);
-        panel.append(input, actions, feedback);
-        proposalShell.append(toggle, panel);
-        toggle.addEventListener('click', () => panel.classList.toggle('d-none'));
+        proposalPanel.append(input, actions, feedback);
+        proposalShell.append(addToggle, proposalPanel);
+
+        addToggle.addEventListener('click', () => {
+            const opening = proposalPanel.classList.contains('d-none');
+            proposalPanel.classList.toggle('d-none', !opening);
+            addToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+            if (opening) input.focus();
+        });
         cancel.addEventListener('click', () => {
-            panel.classList.add('d-none');
+            proposalPanel.classList.add('d-none');
+            addToggle.setAttribute('aria-expanded', 'false');
             feedback.textContent = '';
         });
 
@@ -430,7 +458,10 @@ const mountSettlementRegistrationBridge = (shell) => {
                 }
                 select.value = option.value;
                 chooseNeighborhood(result.id, result.canonical_name || name, result);
-                panel.classList.add('d-none');
+                exceptionPanel.classList.add('d-none');
+                exceptionToggle.setAttribute('aria-expanded', 'false');
+                proposalPanel.classList.add('d-none');
+                addToggle.setAttribute('aria-expanded', 'false');
                 feedback.textContent = '';
             } catch (error) {
                 feedback.textContent = error?.message || 'ثبت محله ممکن نشد.';
@@ -440,7 +471,15 @@ const mountSettlementRegistrationBridge = (shell) => {
             }
         });
 
-        neighborhoodHost.append(label, select, proposalShell, structuralSection);
+        exceptionToggle.addEventListener('click', () => {
+            const opening = exceptionPanel.classList.contains('d-none');
+            exceptionPanel.classList.toggle('d-none', !opening);
+            exceptionToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+        });
+
+        exceptionPanel.append(proposalShell, structuralSection);
+        exceptionShell.append(exceptionToggle, exceptionPanel);
+        neighborhoodHost.append(label, select, exceptionShell);
 
         if (preferredProposalId) {
             const preferred = Array.from(select.options).find((option) => option.value === String(preferredProposalId));
