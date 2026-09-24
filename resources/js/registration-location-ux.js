@@ -79,11 +79,14 @@ const mountResidenceUx = (selector) => {
         locationInput.value = currentLocationId;
     }
 
-    const selectedLabels = () => Array.from(levels?.querySelectorAll('[data-location-select]') || [])
-        .map((select) => select.selectedOptions?.[0])
-        .filter((option) => option?.value)
-        .map((option) => ({ label: typedLocationLabel(option.textContent?.replace(/\s+—\s+در انتظار تأیید$/, '').trim() || '', option.dataset.typeKey || option.closest('select')?.selectedOptions?.[0]?.dataset.typeKey || ''), proposal: String(option.value || '').startsWith('proposal:') }))
-        .filter((item) => item.label);
+    let canonicalPathItems = [];
+    const selectedLabels = () => canonicalPathItems.length
+        ? canonicalPathItems
+        : Array.from(levels?.querySelectorAll('[data-location-select]') || [])
+            .map((select) => select.selectedOptions?.[0])
+            .filter((option) => option?.value)
+            .map((option) => ({ label: typedLocationLabel(option.textContent?.replace(/\s+—\s+در انتظار تأیید$/, '').trim() || '', option.dataset.typeKey || option.closest('select')?.selectedOptions?.[0]?.dataset.typeKey || ''), proposal: String(option.value || '').startsWith('proposal:') }))
+            .filter((item) => item.label);
 
     const renderPath = (items = selectedLabels()) => {
         if (!path || !items.length) return;
@@ -157,6 +160,13 @@ const mountResidenceUx = (selector) => {
         renderPath();
     };
 
+    selector.addEventListener('earthcoop-location-path-changed', (event) => {
+        canonicalPathItems = (Array.isArray(event.detail?.items) ? event.detail.items : []).map((item) => ({
+            label: typedLocationLabel(item.label || '', item.type_key || ''),
+            proposal: item.pending === true,
+        }));
+        renderPath(canonicalPathItems);
+    });
     levels?.addEventListener('change', () => window.setTimeout(() => renderPath(), 0));
     selector.addEventListener('location:hydrate', (event) => {
         const suggestedId = event.detail?.suggested_location_id; if (!suggestedId || !locationInput) return;
@@ -169,7 +179,7 @@ const mountResidenceUx = (selector) => {
             shell.classList.add('location-proposal-surface');
             shell.querySelector('[data-location-proposal-toggle]')?.classList.add('location-proposal-toggle');
         });
-        renderPath();
+        if (!canonicalPathItems.length) renderPath();
     });
     if (levels) observer.observe(levels, { childList: true, subtree: true });
 
