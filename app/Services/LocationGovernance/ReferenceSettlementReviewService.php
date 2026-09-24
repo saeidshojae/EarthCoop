@@ -119,7 +119,7 @@ final class ReferenceSettlementReviewService
                         LocationProposalStatus::NeedsEvidence->value,
                     ])->lockForUpdate()->get();
                 foreach ($openChildren as $child) {
-                    app(LocationProposalService::class)->reject(
+                    $this->rejectOpenProposalTree(
                         $child,
                         $actor,
                         'والد آبادی مرجع غیرمسکونی تشخیص داده شد: '.$reason,
@@ -175,4 +175,24 @@ final class ReferenceSettlementReviewService
             ]);
         });
     }
+    private function rejectOpenProposalTree(LocationProposal $proposal, User $actor, string $reason): void
+    {
+        $openStatuses = [
+            LocationProposalStatus::Pending->value,
+            LocationProposalStatus::ReadyForReview->value,
+            LocationProposalStatus::NeedsEvidence->value,
+        ];
+
+        $children = $proposal->childProposals()
+            ->whereIn('status', $openStatuses)
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($children as $child) {
+            $this->rejectOpenProposalTree($child, $actor, $reason);
+        }
+
+        app(LocationProposalService::class)->reject($proposal->fresh(), $actor, $reason);
+    }
+
 }
