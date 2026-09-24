@@ -44,6 +44,7 @@ final class ProfileEditController extends Controller
             $primaryResidence?->location,
             $pendingResidenceIntent,
         );
+        $referenceSettlementProposalPath = $this->referenceSettlementProposalPath($pendingResidenceIntent);
 
         $occupationalFields = OccupationalField::whereNull('parent_id')->get();
         $experienceFields = ExperienceField::whereNull('parent_id')->get();
@@ -72,6 +73,7 @@ final class ProfileEditController extends Controller
             'primaryResidence' => $primaryResidence,
             'pendingResidenceIntent' => $pendingResidenceIntent,
             'residenceHydrationPath' => $residenceHydrationPath,
+            'referenceSettlementProposalPath' => $referenceSettlementProposalPath,
             'occupationalFields' => $occupationalFields,
             'experienceFields' => $experienceFields,
             'allOccupationalFields' => $allOccupationalFields,
@@ -127,6 +129,31 @@ final class ProfileEditController extends Controller
         }
 
         return [...$this->canonicalLocationPath($canonicalAnchor), ...$proposalPath];
+    }
+
+    /** @return array<int, int> */
+    private function referenceSettlementProposalPath(?PendingResidenceIntent $intent): array
+    {
+        if ($intent?->reference_settlement_residence_claim_id === null || ! $intent?->locationProposal instanceof LocationProposal) {
+            return [];
+        }
+
+        $path = [];
+        $cursor = $intent->locationProposal;
+        $visited = [];
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) {
+                return [];
+            }
+            $visited[$cursor->id] = true;
+            array_unshift($path, (int) $cursor->id);
+            if ($cursor->parent_reference_settlement_id !== null) {
+                return $path;
+            }
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        return [];
     }
 
     /** @return array<int, string> */
