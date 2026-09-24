@@ -512,15 +512,47 @@ const initializeLocationSelector = async (host) => {
         }
 
         try {
-            const children = await load(structuralClaimContextUrl(
+            let children = await load(structuralClaimContextUrl(
                 proposal.children_url || '/location/proposals/' + encodeURIComponent(proposal.id) + '/children',
                 form,
             ));
+            let depth = anchorDepth + 3;
+            let parentProposalId = Number(proposal.id);
+            const savedPath = (Array.isArray(detail.proposalPath) ? detail.proposalPath : [])
+                .map((id) => Number(id))
+                .filter((id) => Number.isInteger(id) && id > 0 && id !== Number(proposal.id));
+
+            for (const savedProposalId of savedPath) {
+                if (!shouldRenderNextLevel(children)) break;
+                appendLevel(children, depth, null, false, parentProposalId);
+                const selected = pickerItems(children).find((item) =>
+                    item.picker_kind === 'proposal' && Number(item.id) === savedProposalId
+                );
+                const select = levels.querySelector(`[data-location-select="${depth}"]`);
+                if (!selected || !select) {
+                    setPickerState(PICKER_STATES.stale, 'بخشی از جزئیات ذخیره‌شدهٔ نشانی دیگر در مسیر فعال نیست؛ مسیر معتبر فعلی حفظ شد.', true);
+                    return;
+                }
+
+                select.value = selected.identity || 'proposal:' + selected.id;
+                selectedPath.set(depth, selected);
+                renderLocationPath();
+                setSelection(selected);
+                parentProposalId = Number(selected.id);
+                children = await load(structuralClaimContextUrl(
+                    selected.children_url || '/location/proposals/' + encodeURIComponent(selected.id) + '/children',
+                    form,
+                ));
+                depth += 1;
+            }
+
             if (shouldRenderNextLevel(children)) {
-                appendLevel(children, anchorDepth + 3, null, false, proposal.id);
-                setStatus('محلهٔ فعلی انتخاب شد. در صورت نیاز، خیابان و جزئیات دقیق‌تر نشانی را ادامه دهید.');
+                appendLevel(children, depth, null, false, parentProposalId);
+                setStatus(savedPath.length
+                    ? 'جزئیات فعلی نشانی بازیابی شد؛ می‌توانید همین مسیر را نگه دارید یا دقیق‌تر ادامه دهید.'
+                    : 'محلهٔ فعلی انتخاب شد. در صورت نیاز، خیابان و جزئیات دقیق‌تر نشانی را ادامه دهید.');
             } else {
-                setStatus('محلهٔ فعلی انتخاب شد و جزئیات دقیق‌تری برای این مسیر ثبت نشده است.');
+                setStatus('جزئیات فعلی نشانی تا آخرین سطح ثبت‌شده بازیابی شد.');
             }
         } catch (error) {
             console.warn('EarthCoop reference-settlement continuation could not load proposal children:', error);
