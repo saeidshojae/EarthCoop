@@ -363,6 +363,90 @@ class ProfilePendingResidenceTest extends TestCase
             ->assertSee('آبادی پروفایل نمونه');
     }
 
+
+    public function test_profile_reference_settlement_upgrade_from_verified_v1_anchor_is_not_counted_as_transfer(): void
+    {
+        config([
+            'iran_settlement_catalog.enabled' => true,
+            'iran_settlement_catalog.claims_enabled' => true,
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $v1Anchor = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'rural_district',
+        ])->last();
+        LocationExternalId::query()->create([
+            'location_id' => $v1Anchor->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v1',
+            'external_id' => 'IR-MAZ-SARI-CHAHARDANGEH-RD',
+            'metadata' => ['fixture' => true],
+        ]);
+
+        $v2Schema = LocationSchema::query()->create([
+            'key' => 'ir-reference-v2',
+            'country_code' => 'IR',
+            'name' => 'Iran 1404',
+            'version' => 'v2',
+            'status' => 'active',
+        ]);
+        $ruralType = $schema->types->firstWhere('key', 'rural_district');
+        $v2Anchor = Location::factory()->create([
+            'location_schema_id' => $v2Schema->id,
+            'location_type_id' => $ruralType->id,
+            'country_code' => 'IR',
+            'name' => 'دهستان چهاردانگه',
+            'canonical_name' => 'دهستان چهاردانگه',
+            'localized_names' => ['fa' => 'دهستان چهاردانگه'],
+            'level' => 'rural_district',
+            'status' => 'active',
+        ]);
+        LocationExternalId::query()->create([
+            'location_id' => $v2Anchor->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-1938',
+            'metadata' => ['fixture' => true],
+        ]);
+
+        $settlement = ReferenceSettlement::query()->create([
+            'source' => 'IranCountryDivisions/geo_1404',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-99002',
+            'parent_external_id' => 'IR-1404-1938',
+            'source_code' => '99002',
+            'source_row_id' => 99002,
+            'name_fa' => 'آبادی ارتقای نسخه',
+            'search_name' => 'آبادی ارتقای نسخه',
+            'classification' => 'unverified_settlement',
+            'residential_eligibility' => 'unverified',
+            'governance_authorized' => false,
+            'operational_promotion_allowed' => false,
+            'provenance' => ['source' => 'fixture'],
+        ]);
+
+        $user = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $v1Anchor, ['source' => 'test']);
+
+        $this->actingAs($user)->put(route('profile.update.address'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+        ])->assertSessionHasNoErrors();
+
+        $current = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($v2Anchor->id, $current->location_id);
+        $this->assertFalse((bool) $current->explicit_transfer);
+        $this->assertSame('reference_dataset_identity_upgrade', $current->change_reason);
+        $this->assertSame(0, $user->fresh()->locationRelationships()->where('explicit_transfer', true)->count());
+        $this->assertSame(
+            $settlement->external_id,
+            $user->fresh()->pendingResidenceIntents()->where('status', 'pending')->sole()->metadata['reference_settlement_external_id']
+        );
+    }
+
     private function makeCurrentAnchorScenario(): array
     {
         $schema = LocationFixture::iranSchema();
