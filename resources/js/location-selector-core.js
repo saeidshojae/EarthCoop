@@ -308,7 +308,24 @@ const initializeLocationSelector = async (host) => {
     const governanceAreaId = isProjectScope ? host.querySelector('[data-project-governance-area-id][name="governance_area_id"]') : null;
     const form = host.closest('[data-location-form]') || host.closest('form'); const submit = form?.querySelector('[data-location-submit]'); const status = host.querySelector('[data-location-status]'); const locationPath = host.querySelector('[data-location-path]'); const country = (host.dataset.countryCode || '').trim();
     const selectedPath = new Map();
-    const renderLocationPath = () => { if (!locationPath) return; const labels = [...selectedPath.entries()].sort((a,b) => a[0]-b[0]).map(([, item]) => locationDisplayLabel(item)).filter(Boolean); locationPath.textContent = labels.length ? labels.join(' / ') : 'مسیر انتخاب نشده'; };
+    const renderLocationPath = () => {
+        const items = [...selectedPath.entries()]
+            .sort((a,b) => a[0]-b[0])
+            .map(([depth, item]) => ({
+                depth,
+                identity: String(item?.identity || ''),
+                label: locationDisplayLabel(item),
+                type_key: item?.type_key || '',
+                pending: item?.picker_kind === 'proposal' || item?.picker_kind === 'reference_settlement',
+                picker_kind: item?.picker_kind || '',
+            }))
+            .filter((item) => item.label);
+        if (locationPath) locationPath.textContent = items.length ? items.map((item) => item.label).join(' / ') : 'مسیر انتخاب نشده';
+        host.dispatchEvent(new CustomEvent('earthcoop-location-path-changed', {
+            bubbles: true,
+            detail: { items, context },
+        }));
+    };
     if (!levels || !locationId || (!isProjectScope && !proposalId) || (isProjectScope && !governanceAreaId)) return;
     const notifySelection = (item = null) => {
         if (isProjectScope) return;
@@ -431,6 +448,77 @@ const initializeLocationSelector = async (host) => {
             } catch (error) { console.warn('EarthCoop location selector could not load children:', error); locationId.value = previousLocationId; if (proposalId) proposalId.value = previousProposalId; if (governanceAreaId) governanceAreaId.value = previousGovernanceAreaId; if (submit && !isProjectScope) submit.disabled = previousSubmitDisabled; setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true); }
         });
     };
+
+    host.addEventListener('earthcoop-location-reference-selected', async (event) => {
+        if (isProjectScope) return;
+        const detail = event.detail || {};
+        const anchorLocationId = String(detail.anchorLocationId || '');
+        const settlement = detail.settlement || null;
+        const proposal = detail.proposal || null;
+        if (!anchorLocationId || !settlement) return;
+
+        const anchorEntry = [...selectedPath.entries()].find(([, item]) =>
+            String(item?.identity || '') === 'location:' + anchorLocationId
+            || String(item?.id || '') === anchorLocationId
+        );
+        if (!anchorEntry) return;
+
+        const anchorDepth = Number(anchorEntry[0]);
+        removeDeeperLevels(anchorDepth);
+        [...selectedPath.keys()].filter((key) => key > anchorDepth).forEach((key) => selectedPath.delete(key));
+
+        const settlementItem = {
+            identity: 'reference-settlement:' + String(settlement.external_id || ''),
+            label: String(settlement.name_fa || settlement.label || ''),
+            type_key: 'village',
+            picker_kind: 'reference_settlement',
+            status: 'pending',
+        };
+        selectedPath.set(anchorDepth + 1, settlementItem);
+
+        if (!proposal) {
+            locationId.value = '';
+            if (proposalId) proposalId.value = '';
+            if (submit) submit.disabled = false;
+            renderLocationPath();
+            setStatus('آبادی دقیق شما در انتظار بررسی است. برای افزودن جزئیات بیشتر، ابتدا محله را مشخص کنید.');
+            return;
+        }
+
+        const proposalItem = {
+            ...proposal,
+            identity: 'proposal:' + String(proposal.id || ''),
+            label: String(proposal.label || proposal.canonical_name || ''),
+            type_key: proposal.type_key || 'neighborhood',
+            picker_kind: 'proposal',
+            status: proposal.status || 'pending',
+            selectable: true,
+        };
+        selectedPath.set(anchorDepth + 2, proposalItem);
+        renderLocationPath();
+        setSelection(proposalItem);
+
+        if (isRegistration) {
+            setStatus('آبادی و محلهٔ دقیق شما مشخص شد. ثبت‌نام می‌تواند در همین‌جا پایان یابد؛ جزئیات نشانی بعدی اختیاری است.');
+            return;
+        }
+
+        try {
+            const children = await load(structuralClaimContextUrl(
+                proposal.children_url || '/location/proposals/' + encodeURIComponent(proposal.id) + '/children',
+                form,
+            ));
+            if (shouldRenderNextLevel(children)) {
+                appendLevel(children, anchorDepth + 3, null, false, proposal.id);
+                setStatus('محلهٔ فعلی انتخاب شد. در صورت نیاز، خیابان و جزئیات دقیق‌تر نشانی را ادامه دهید.');
+            } else {
+                setStatus('محلهٔ فعلی انتخاب شد و جزئیات دقیق‌تری برای این مسیر ثبت نشده است.');
+            }
+        } catch (error) {
+            console.warn('EarthCoop reference-settlement continuation could not load proposal children:', error);
+            setPickerState(PICKER_STATES.stale, 'آبادی و محله حفظ شدند، اما دریافت جزئیات بعدی نشانی ممکن نشد.', true);
+        }
+    });
 
     const initialLocationId = locationId.value;
     const initialGovernanceAreaId = governanceAreaId?.value || '';
