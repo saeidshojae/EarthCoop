@@ -382,3 +382,13 @@ test('canonical registration proposal events bypass legacy capture and keep serv
         else globalThis.document = originalDocument;
     }
 });
+
+
+test('reference settlement neighborhood rejoins the shared deep picker for micro address levels', () => {
+    const source = selectorSource();
+    assert.match(source, /earthcoop-location-reference-selected/);
+    assert.match(source, /proposalPath/);
+    assert.match(source, /reference_settlement/);
+    assert.match(source, /appendLevel\(children, depth, null, false, parentProposalId\)/);
+    assert.match(source, /rural_district[\s\S]*referenceBranchActive/);
+});
