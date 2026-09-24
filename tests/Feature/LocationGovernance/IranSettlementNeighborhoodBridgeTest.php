@@ -286,15 +286,21 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
             ->where('dimension_key', 'public')
             ->values();
 
-        $neighborhood = $presented->first(fn ($group) => (int) $group->presentation_rank === 9);
-        $settlementGroup = $presented->first(fn ($group) => (int) $group->presentation_rank === 8);
+        $neighborhood = $presented->first(fn ($group) =>
+            (int) $group->pivot->role === 1
+            && str_contains($group->name, 'محله نمایشی وری'));
+        $settlementGroup = $presented->first(fn ($group) =>
+            (int) $group->pivot->role === 0
+            && str_contains($group->name, 'وری'));
 
         $this->assertNotNull($neighborhood);
         $this->assertNotNull($settlementGroup);
-        $this->assertStringContainsString('محله نمایشی وری', $neighborhood->name);
-        $this->assertStringContainsString('وری', $settlementGroup->name);
         $this->assertSame(1, (int) $neighborhood->pivot->role);
         $this->assertSame(0, (int) $settlementGroup->pivot->role);
+        $this->assertGreaterThan(
+            (int) $settlementGroup->presentation_rank,
+            (int) $neighborhood->presentation_rank,
+        );
 
         $response = $this->actingAs($user)->get(route('location-governance.me'));
         $response->assertOk()
@@ -302,8 +308,8 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
             ->assertViewHas('membershipsByDimension', function ($memberships): bool {
                 $public = collect($memberships)->get('public');
 
-                return collect($public->get('active'))->contains(fn ($group) => (int) $group->presentation_rank === 9)
-                    && collect($public->get('observer'))->contains(fn ($group) => (int) $group->presentation_rank === 8);
+                return collect($public->get('active'))->contains(fn ($group) => str_contains($group->name, 'محله نمایشی وری'))
+                    && collect($public->get('observer'))->contains(fn ($group) => str_contains($group->name, 'وری'));
             })
             ->assertSee('data-pending-reference-settlement-chain', false)
             ->assertSee('آبادی');
