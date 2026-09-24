@@ -5,8 +5,16 @@ const settlementSearchUrl = (parentLocationId, query = '') => {
     return '/location/reference-settlements?' + params.toString();
 };
 
-const settlementChildrenUrl = (externalId) =>
-    '/location/reference-settlements/' + encodeURIComponent(String(externalId || '')) + '/children';
+const settlementChildrenUrl = (externalId, structuralClaimIds = []) => {
+    const base = '/location/reference-settlements/' + encodeURIComponent(String(externalId || '')) + '/children';
+    const ids = (Array.isArray(structuralClaimIds) ? structuralClaimIds : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0);
+    if (!ids.length) return base;
+    const params = new URLSearchParams();
+    ids.forEach((id) => params.append('location_structure_claim_ids[]', String(id)));
+    return base + '?' + params.toString();
+};
 
 const settlementSelectableForClaim = (item) => {
     if (!item || item.governance_authorized === true || item.operational_promotion_allowed === true) return false;
@@ -61,6 +69,31 @@ const mountSettlementRegistrationBridge = (shell) => {
         status.textContent = message;
         status.classList.toggle('text-danger', error);
     };
+    const selectedStructuralClaimIds = () => Array.from(
+        form.querySelectorAll('input[name="location_structure_claim_ids[]"]')
+    ).map((input) => Number(input.value)).filter((id) => Number.isInteger(id) && id > 0);
+    const rememberStructuralClaim = (claim) => {
+        const id = Number(claim?.id);
+        if (!Number.isInteger(id) || id <= 0) return;
+        let input = form.querySelector(`input[data-location-structure-claim-id][value="${id}"]`);
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'location_structure_claim_ids[]';
+            input.value = String(id);
+            input.dataset.locationStructureClaimId = '';
+            form.appendChild(input);
+        }
+        input.dataset.locationStructureClaimType = String(claim.claim_type || '');
+        input.dataset.referenceSettlementStructureClaim = '';
+    };
+    const forgetStructuralClaim = (claimId) => {
+        const id = Number(claimId);
+        form.querySelectorAll('[data-reference-settlement-structure-claim]').forEach((input) => {
+            if (Number(input.value) === id) input.remove();
+        });
+    };
+
     const closeDisclosure = () => {
         const panel = shell.closest('[data-location-exception-panel]');
         if (!panel) return;
