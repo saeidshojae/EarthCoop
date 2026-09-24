@@ -330,11 +330,11 @@ test('structural claims are owned by the selected parent depth and survive choos
 
 test('only approved structural claims auto-hydrate while open claims remain an explicit user choice', () => {
     const source = selectorSource();
-    assert.match(source, /statusValue === 'approved'[\s\S]*?rememberStructuralClaim\(host, claimId, depth\)/);
+    assert.match(source, /statusValue === 'approved'[\s\S]*?rememberStructuralClaim\(host, activeClaimId, depth/);
     assert.match(source, /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?explicitlySelected/);
     assert.match(
         source,
-        /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?if \(explicitlySelected\) rememberStructuralClaim\(host, claimId, depth\)/,
+        /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?if \(explicitlySelected\) rememberStructuralClaim\(host, activeClaimId, depth/,
         'an open claim may be restored only when that user explicitly selected it'
     );
     assert.doesNotMatch(
