@@ -117,7 +117,7 @@ def reference_row(row: dict) -> dict:
             'source_division_type': t,
             'dataset_year': 1404,
         },
-        'metadata': {'governance_authorized': False, 'municipal_reconciliation_required': t == 7},
+        'metadata': {'governance_authorized': t != 6, 'source_authoritative': True},
     }
 
 
@@ -171,7 +171,7 @@ def convert(payload: bytes, output_dir: Path, schema_template: Path, allow_fixtu
             'nonresidential_settlements_verified': 0,
             'governance_authorized': 0,
         },
-        'warning': 'STAGING ONLY. Not approved for existing DB, Production, governance groups or elections.',
+        'warning': 'STAGING ONLY. Administrative levels are authoritative source data; Production apply still requires a separate rollout approval.',
     })
     output_dir.mkdir(parents=True, exist_ok=False)
     (output_dir / 'schema.json').write_text(json.dumps(schema, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
