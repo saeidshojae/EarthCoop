@@ -46,8 +46,7 @@ const mountSettlementRegistrationBridge = (shell) => {
     const searchButton = shell.querySelector('[data-reference-settlement-search]');
     const status = shell.querySelector('[data-reference-settlement-status]');
     const results = shell.querySelector('[data-reference-settlement-results]');
-    const neighborhoodHost = shell.querySelector('[data-reference-settlement-neighborhood]');
-    if (!form || !selector || !locationInput || !proposalInput || !settlementInput || !queryInput || !searchButton || !status || !results || !neighborhoodHost) return;
+    if (!form || !selector || !locationInput || !proposalInput || !settlementInput || !queryInput || !searchButton || !status || !results) return;
 
     let parentLocationId = '';
     let selectedSettlement = null;
@@ -117,19 +116,15 @@ const mountSettlementRegistrationBridge = (shell) => {
     };
 
 
-    const clearNeighborhood = () => {
-        neighborhoodHost.innerHTML = '';
-        if (settlementNeighborhoodProposalId && proposalInput.value === settlementNeighborhoodProposalId) {
-            proposalInput.value = '';
-        }
-        settlementNeighborhoodProposalId = '';
-    };
     const clearSettlement = () => {
         const hadReferenceSettlement = Boolean(selectedSettlement || settlementInput.value);
         settlementInput.value = '';
         selectedSettlement = null;
         results.innerHTML = '';
-        clearNeighborhood();
+        if (settlementNeighborhoodProposalId && proposalInput.value === settlementNeighborhoodProposalId) {
+            proposalInput.value = '';
+        }
+        settlementNeighborhoodProposalId = '';
         if (hadReferenceSettlement) proposalInput.value = '';
         removePresentedSettlement();
     };
@@ -161,7 +156,7 @@ const mountSettlementRegistrationBridge = (shell) => {
             }, 50);
         }
     };
-    const dispatchReferenceSelection = (proposal = null, proposalPath = []) => {
+    const dispatchReferenceSelection = (proposal = null, proposalPath = [], payload = null) => {
         if (!selectedSettlement || !parentLocationId) return;
         selector.dispatchEvent(new CustomEvent('earthcoop-location-reference-selected', {
             bubbles: true,
@@ -170,343 +165,37 @@ const mountSettlementRegistrationBridge = (shell) => {
                 settlement: selectedSettlement,
                 proposal,
                 proposalPath: Array.isArray(proposalPath) ? proposalPath : [],
-                context: selectorContext,
-            },
-        }));
-    };
-    const dispatchReferenceStructureSelection = (claim, payload, proposalPath = []) => {
-        if (!selectedSettlement || !parentLocationId || !claim) return;
-        selector.dispatchEvent(new CustomEvent('earthcoop-location-reference-structure-selected', {
-            bubbles: true,
-            detail: {
-                anchorLocationId: parentLocationId,
-                settlement: selectedSettlement,
-                claim,
                 payload,
-                proposalPath: Array.isArray(proposalPath) ? proposalPath : [],
                 context: selectorContext,
             },
         }));
     };
 
-
-    const chooseNeighborhood = (id, label, proposal = null, proposalPath = []) => {
-        settlementNeighborhoodProposalId = String(id);
-        proposalInput.value = settlementNeighborhoodProposalId;
-        if (submit) submit.disabled = false;
-        presentSettlement(selectedSettlement);
-        closeDisclosure();
-        dispatchReferenceSelection({
-            ...(proposal || {}),
-            id: Number(id),
-            label,
-            canonical_name: proposal?.canonical_name || label,
-            type_key: 'neighborhood',
-            status: proposal?.status || 'pending',
-            selectable: true,
-            children_url: proposal?.children_url || '/location/proposals/' + encodeURIComponent(id) + '/children',
-        }, proposalPath);
-        setStatus('آبادی و محلهٔ دقیق انتخاب شدند. جزئیات نشانی بعد از محله اختیاری است و می‌توانید مسیر را ادامه دهید.');
-    };
-
-    const renderNeighborhoods = (payload, preferredProposalId = '') => {
-        neighborhoodHost.innerHTML = '';
-
-        const structuralChoice = (Array.isArray(payload?.structural_choices) ? payload.structural_choices : [])
-            .find((choice) => choice.claim_type === 'no_neighborhood') || null;
-        const effectiveNoNeighborhood = payload?.registration_endpoint_allowed === true
-            && structuralChoice?.selected === true;
-
-        const structuralSection = document.createElement('div');
-        structuralSection.className = 'border-top pt-3 mt-3';
-        const structuralButton = document.createElement('button');
-        structuralButton.type = 'button';
-        structuralButton.className = 'btn btn-outline-secondary btn-sm';
-        structuralButton.dataset.referenceSettlementNoNeighborhood = '';
-        structuralButton.textContent = 'این آبادی / روستا محله‌بندی ندارد';
-        structuralButton.setAttribute('aria-pressed', effectiveNoNeighborhood ? 'true' : 'false');
-        const structuralStatus = document.createElement('div');
-        structuralStatus.className = 'small text-secondary mt-2';
-        structuralStatus.setAttribute('aria-live', 'polite');
-        if (structuralChoice?.status === 'approved') {
-            structuralButton.disabled = true;
-            structuralStatus.textContent = 'بی‌محله بودن این آبادی قبلاً تأیید شده است.';
-        } else if (effectiveNoNeighborhood) {
-            structuralStatus.textContent = 'بی‌محله بودن برای مسیر فعلی شما انتخاب شده و در انتظار بررسی است.';
-        } else if (structuralChoice && structuralChoice.status !== 'available') {
-            structuralStatus.textContent = 'این اعلام قبلاً ثبت شده است؛ در صورت تطابق می‌توانید همان را انتخاب کنید.';
-        }
-        structuralSection.append(structuralButton, structuralStatus);
-
-        structuralButton.addEventListener('click', async () => {
-            const existingId = Number(structuralChoice?.claim_id);
-            const currentlySelected = Number.isInteger(existingId)
-                && selectedStructuralClaimIds().includes(existingId);
-
-            if (currentlySelected && structuralChoice?.status !== 'approved') {
-                forgetStructuralClaim(existingId);
-                structuralButton.setAttribute('aria-pressed', 'false');
-                structuralStatus.textContent = 'اعلام بی‌محله بودن از مسیر فعلی شما برداشته شد.';
-                try {
-                    const response = await fetch(settlementChildrenUrl(selectedSettlement.external_id, selectedStructuralClaimIds()), {
-                        credentials: 'same-origin',
-                        headers: { Accept: 'application/json' },
-                    });
-                    const refreshed = await response.json().catch(() => ({}));
-                    if (!response.ok) throw new Error(refreshed.message || 'بازیابی مسیر عادی ممکن نشد.');
-                    dispatchReferenceSelection(null);
-                    renderNeighborhoods(refreshed);
-                } catch (error) {
-                    structuralStatus.textContent = error?.message || 'بازیابی مسیر عادی ممکن نشد.';
-                    structuralStatus.classList.add('text-danger');
-                }
-                return;
-            }
-
-            structuralButton.disabled = true;
-            structuralStatus.classList.remove('text-danger');
-            structuralStatus.textContent = 'در حال ثبت اعلام بی‌محله بودن...';
-            const csrf = form.querySelector('input[name="_token"]')?.value || '';
-            try {
-                const response = await fetch(
-                    '/location/reference-settlements/' + encodeURIComponent(selectedSettlement.external_id) + '/structure-claims',
-                    {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: {
-                            Accept: 'application/json',
-                            'Content-Type': 'application/json',
-                            ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
-                        },
-                        body: JSON.stringify({ claim_type: 'no_neighborhood' }),
-                    },
-                );
-                const claim = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(claim.message || 'ثبت اعلام بی‌محله بودن ممکن نشد.');
-
-                rememberStructuralClaim(claim);
-                const effectiveResponse = await fetch(
-                    settlementChildrenUrl(selectedSettlement.external_id, selectedStructuralClaimIds()),
-                    { credentials: 'same-origin', headers: { Accept: 'application/json' } },
-                );
-                const effectivePayload = await effectiveResponse.json().catch(() => ({}));
-                if (!effectiveResponse.ok) throw new Error(effectivePayload.message || 'ادامه مسیر بی‌محله دریافت نشد.');
-
-                structuralButton.setAttribute('aria-pressed', 'true');
-                structuralStatus.textContent = 'ثبت شد و در انتظار بررسی است.';
-                closeDisclosure();
-                dispatchReferenceStructureSelection(claim, effectivePayload);
-            } catch (error) {
-                structuralButton.disabled = false;
-                structuralStatus.textContent = error?.message || 'ثبت اعلام بی‌محله بودن ممکن نشد.';
-                structuralStatus.classList.add('text-danger');
-            }
-        });
-
-        if (effectiveNoNeighborhood) {
-            neighborhoodHost.appendChild(structuralSection);
-            dispatchReferenceStructureSelection(structuralChoice, payload, persistedProposalPath);
-            return;
-        }
-
-        const allowed = Array.isArray(payload?.allowed_types)
-            ? payload.allowed_types.find((type) => type.key === 'neighborhood' && type.proposal_allowed === true)
-            : null;
-        if (!allowed) {
-            neighborhoodHost.append(
-                Object.assign(document.createElement('div'), {
-                    className: 'small text-muted',
-                    textContent: 'برای این آبادی فعلاً ادامهٔ محله قابل ثبت نیست.',
-                }),
-                structuralSection,
-            );
-            return;
-        }
-
-        const label = document.createElement('label');
-        label.className = 'form-label small text-secondary mb-1';
-        label.textContent = 'محله';
-        const select = document.createElement('select');
-        select.className = 'form-select';
-        select.dataset.referenceSettlementNeighborhoodSelect = '';
-        select.innerHTML = '<option value="">یک گزینه را انتخاب کنید</option>';
-        const proposalMap = new Map();
-        (Array.isArray(payload?.proposals) ? payload.proposals : []).forEach((proposal) => {
-            proposalMap.set(String(proposal.id), proposal);
-            const option = document.createElement('option');
-            option.value = String(proposal.id);
-            option.textContent = proposal.label + ' — در انتظار تأیید';
-            option.dataset.pendingNeighborhood = '';
-            select.appendChild(option);
-        });
-        select.addEventListener('change', () => {
-            const option = select.selectedOptions[0];
-            if (!option?.value) {
-                proposalInput.value = '';
-                presentSettlement(selectedSettlement);
-                dispatchReferenceSelection(null);
-                if (submit) submit.disabled = false;
-                return;
-            }
-            chooseNeighborhood(
-                option.value,
-                option.textContent.replace(' — در انتظار تأیید', ''),
-                proposalMap.get(String(option.value)) || null,
-            );
-        });
-
-        const exceptionShell = document.createElement('div');
-        exceptionShell.className = 'mt-2';
-        exceptionShell.dataset.referenceNeighborhoodExceptionShell = '';
-
-        const exceptionToggle = document.createElement('button');
-        exceptionToggle.type = 'button';
-        exceptionToggle.className = 'btn btn-link btn-sm p-0 text-decoration-none';
-        exceptionToggle.dataset.referenceNeighborhoodExceptionToggle = '';
-        exceptionToggle.textContent = 'محله من در فهرست نیست';
-        exceptionToggle.setAttribute('aria-expanded', 'false');
-
-        const exceptionPanel = document.createElement('div');
-        exceptionPanel.className = 'border rounded-3 p-3 mt-2 bg-light d-none vstack gap-3';
-        exceptionPanel.dataset.referenceNeighborhoodExceptionPanel = '';
-
-        const proposalShell = document.createElement('div');
-        proposalShell.className = 'vstack gap-2';
-
-        const addToggle = document.createElement('button');
-        addToggle.type = 'button';
-        addToggle.className = 'btn btn-outline-secondary btn-sm align-self-start';
-        addToggle.textContent = 'افزودن محله جدید';
-        addToggle.setAttribute('aria-expanded', 'false');
-
-        const proposalPanel = document.createElement('div');
-        proposalPanel.className = 'vstack gap-2 d-none';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'form-control form-control-sm';
-        input.maxLength = 255;
-        input.placeholder = 'نام محله';
-
-        const actions = document.createElement('div');
-        actions.className = 'd-flex gap-2';
-        const save = document.createElement('button');
-        save.type = 'button';
-        save.className = 'btn btn-primary btn-sm';
-        save.textContent = 'ثبت محله';
-        const cancel = document.createElement('button');
-        cancel.type = 'button';
-        cancel.className = 'btn btn-link btn-sm';
-        cancel.textContent = 'انصراف';
-        const feedback = document.createElement('div');
-        feedback.className = 'small text-secondary';
-
-        actions.append(save, cancel);
-        proposalPanel.append(input, actions, feedback);
-        proposalShell.append(addToggle, proposalPanel);
-
-        addToggle.addEventListener('click', () => {
-            const opening = proposalPanel.classList.contains('d-none');
-            proposalPanel.classList.toggle('d-none', !opening);
-            addToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
-            if (opening) input.focus();
-        });
-        cancel.addEventListener('click', () => {
-            proposalPanel.classList.add('d-none');
-            addToggle.setAttribute('aria-expanded', 'false');
-            feedback.textContent = '';
-        });
-
-        save.addEventListener('click', async () => {
-            const name = input.value.trim();
-            if (!name || !selectedSettlement) {
-                feedback.textContent = 'نام محله را وارد کنید.';
-                feedback.classList.add('text-danger');
-                return;
-            }
-            save.disabled = true;
-            feedback.classList.remove('text-danger');
-            feedback.textContent = 'در حال ثبت پیشنهاد محله...';
-            const csrf = form.querySelector('input[name="_token"]')?.value || '';
-            try {
-                const response = await fetch('/locations/proposals', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
-                    },
-                    body: JSON.stringify(
-                        settlementNeighborhoodProposalPayload(
-                            selectedSettlement.id,
-                            allowed.id,
-                            name,
-                            document.documentElement.lang || 'fa',
-                        )
-                    ),
-                });
-                const result = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(result.message || 'ثبت محله ممکن نشد.');
-                let option = Array.from(select.options).find((candidate) => candidate.value === String(result.id));
-                if (!option) {
-                    option = document.createElement('option');
-                    option.value = String(result.id);
-                    option.textContent = (result.canonical_name || name) + ' — در انتظار تأیید';
-                    option.dataset.pendingNeighborhood = '';
-                    select.appendChild(option);
-                }
-                select.value = option.value;
-                chooseNeighborhood(result.id, result.canonical_name || name, result);
-                exceptionPanel.classList.add('d-none');
-                exceptionToggle.setAttribute('aria-expanded', 'false');
-                proposalPanel.classList.add('d-none');
-                addToggle.setAttribute('aria-expanded', 'false');
-                feedback.textContent = '';
-            } catch (error) {
-                feedback.textContent = error?.message || 'ثبت محله ممکن نشد.';
-                feedback.classList.add('text-danger');
-            } finally {
-                save.disabled = false;
-            }
-        });
-
-        exceptionToggle.addEventListener('click', () => {
-            const opening = exceptionPanel.classList.contains('d-none');
-            exceptionPanel.classList.toggle('d-none', !opening);
-            exceptionToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
-        });
-
-        exceptionPanel.append(proposalShell, structuralSection);
-        exceptionShell.append(exceptionToggle, exceptionPanel);
-        neighborhoodHost.append(label, select, exceptionShell);
-
-        if (preferredProposalId) {
-            const preferred = Array.from(select.options).find((option) => option.value === String(preferredProposalId));
-            if (preferred) {
-                select.value = preferred.value;
-                chooseNeighborhood(
-                    preferred.value,
-                    preferred.textContent.replace(' — در انتظار تأیید', ''),
-                    proposalMap.get(String(preferred.value)) || null,
-                    persistedProposalPath,
-                );
-            }
-        }
-    };
-
-    const loadNeighborhoods = async (item, preferredProposalId = '') => {
-        neighborhoodHost.innerHTML = '<div class="small text-muted">در حال دریافت محله‌ها...</div>';
+    const loadSettlementContinuation = async (item, preferredProposalId = '') => {
         try {
             const response = await fetch(
                 settlementChildrenUrl(item.external_id, selectedStructuralClaimIds()),
                 { credentials: 'same-origin', headers: { Accept: 'application/json' } },
             );
             const payload = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(payload.message || 'دریافت محله‌ها ممکن نشد.');
-            renderNeighborhoods(payload, preferredProposalId);
+            if (!response.ok) throw new Error(payload.message || 'دریافت سطح بعدی ممکن نشد.');
+
+            const preferred = (Array.isArray(payload?.proposals) ? payload.proposals : [])
+                .find((proposal) => String(proposal.id) === String(preferredProposalId || '')) || null;
+
+            closeDisclosure();
+            if (preferred) {
+                settlementNeighborhoodProposalId = String(preferred.id);
+                proposalInput.value = String(preferred.id);
+                dispatchReferenceSelection(preferred, persistedProposalPath, payload);
+            } else {
+                dispatchReferenceSelection(null, persistedProposalPath, payload);
+            }
+            setStatus(preferred
+                ? 'مسیر فعلی آبادی و محله بازیابی شد.'
+                : 'آبادی انتخاب شد و سطح بعدی در مسیر اصلی نمایش داده شد.');
         } catch (error) {
-            neighborhoodHost.innerHTML = '<div class="small text-danger">' + (error?.message || 'دریافت محله‌ها ممکن نشد.') + '</div>';
+            setStatus(error?.message || 'دریافت سطح بعدی ممکن نشد.', true);
         }
     };
 
@@ -519,12 +208,11 @@ const mountSettlementRegistrationBridge = (shell) => {
         settlementNeighborhoodProposalId = '';
         if (submit) submit.disabled = selectorContext === 'registration';
         presentSettlement(item);
-        dispatchReferenceSelection(null);
         results.querySelectorAll('button[data-settlement-external-id]').forEach((button) => {
             button.setAttribute('aria-pressed', button.dataset.settlementExternalId === item.external_id ? 'true' : 'false');
         });
-        setStatus('آبادی مرجع انتخاب شد. در صورت وجود محله، آن را انتخاب کنید یا محلهٔ جدید پیشنهاد دهید.');
-        void loadNeighborhoods(item, preferredProposalId);
+        setStatus('آبادی انتخاب شد؛ در حال آماده‌سازی سطح بعدی...');
+        void loadSettlementContinuation(item, preferredProposalId);
     };
 
     const renderResults = (items) => {
