@@ -291,15 +291,40 @@ class ResidenceService
             $lockedClaim = ReferenceSettlementResidenceClaim::query()
                 ->with('settlement')->whereKey($claim->id)->where('user_id', $user->id)
                 ->lockForUpdate()->firstOrFail();
-            $lockedProposal = LocationProposal::query()->with('type')->whereKey($proposal->id)
+            $lockedProposal = LocationProposal::query()->with(['type', 'parentProposal.type'])->whereKey($proposal->id)
                 ->lockForUpdate()->firstOrFail();
 
+            $referenceRoot = $lockedProposal->referenceSettlementRootProposal()?->loadMissing('type');
+            $chainOpen = true;
+            $cursor = $lockedProposal;
+            $visited = [];
+            while ($cursor !== null) {
+                if (isset($visited[$cursor->id])) {
+                    $chainOpen = false;
+                    break;
+                }
+                $visited[$cursor->id] = true;
+                if (! in_array($cursor->status, [
+                    LocationProposalStatus::Pending,
+                    LocationProposalStatus::ReadyForReview,
+                    LocationProposalStatus::NeedsEvidence,
+                ], true)) {
+                    $chainOpen = false;
+                    break;
+                }
+                if ($cursor->parent_reference_settlement_id !== null) {
+                    break;
+                }
+                $cursor = $cursor->parentProposal()->with('type')->first();
+            }
+
             if (! in_array($lockedClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
-                || ! in_array($lockedProposal->status, [LocationProposalStatus::Pending, LocationProposalStatus::ReadyForReview, LocationProposalStatus::NeedsEvidence], true)
-                || (int) $lockedProposal->parent_reference_settlement_id !== (int) $lockedClaim->reference_settlement_id
-                || $lockedProposal->type?->key !== 'neighborhood') {
+                || ! $chainOpen
+                || $referenceRoot === null
+                || (int) $referenceRoot->parent_reference_settlement_id !== (int) $lockedClaim->reference_settlement_id
+                || $referenceRoot->type?->key !== 'neighborhood') {
                 throw ValidationException::withMessages([
-                    'location_proposal_id' => 'محلهٔ انتخاب‌شده ادامهٔ معتبر همین آبادی مرجع نیست.',
+                    'location_proposal_id' => 'جزئیات انتخاب‌شده ادامهٔ معتبر محلهٔ همین آبادی مرجع نیست.',
                 ]);
             }
 
@@ -324,6 +349,8 @@ class ResidenceService
                 'metadata' => array_merge($metadata, [
                     'reference_settlement_external_id' => $lockedClaim->settlement?->external_id,
                     'reference_settlement_parent_external_id' => $lockedClaim->settlement?->parent_external_id,
+                    'reference_settlement_root_proposal_id' => $referenceRoot->id,
+                    'reference_settlement_exact_type' => $lockedProposal->type?->key,
                 ]),
             ]);
             $this->proposalSupportService->record($lockedProposal, $user, [
