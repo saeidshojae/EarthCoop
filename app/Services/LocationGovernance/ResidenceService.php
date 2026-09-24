@@ -318,13 +318,29 @@ class ResidenceService
                 $cursor = $cursor->parentProposal()->with('type')->first();
             }
 
+            $structuralClaimIds = collect($metadata['structural_claim_ids'] ?? [])
+                ->merge($referenceRoot?->metadata['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+            $referenceStructuralClaims = LocationStructureClaim::query()
+                ->whereIn('id', $structuralClaimIds)
+                ->where('reference_settlement_id', $lockedClaim->reference_settlement_id)
+                ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+                ->get();
+            $claimTypes = $referenceStructuralClaims->pluck('claim_type');
+            $rootType = $referenceRoot?->type?->key;
+            $validRoot = $rootType === 'neighborhood'
+                || ($rootType === 'street' && $claimTypes->contains('no_neighborhood'));
+
             if (! in_array($lockedClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
                 || ! $chainOpen
                 || $referenceRoot === null
                 || (int) $referenceRoot->parent_reference_settlement_id !== (int) $lockedClaim->reference_settlement_id
-                || $referenceRoot->type?->key !== 'neighborhood') {
+                || ! $validRoot) {
                 throw ValidationException::withMessages([
-                    'location_proposal_id' => 'جزئیات انتخاب‌شده ادامهٔ معتبر محلهٔ همین آبادی مرجع نیست.',
+                    'location_proposal_id' => 'جزئیات انتخاب‌شده ادامهٔ معتبر همین آبادی مرجع نیست.',
                 ]);
             }
 
@@ -351,6 +367,8 @@ class ResidenceService
                     'reference_settlement_parent_external_id' => $lockedClaim->settlement?->parent_external_id,
                     'reference_settlement_root_proposal_id' => $referenceRoot->id,
                     'reference_settlement_exact_type' => $lockedProposal->type?->key,
+                    'structural_claim_ids' => $referenceStructuralClaims
+                        ->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
                 ]),
             ]);
             $this->proposalSupportService->record($lockedProposal, $user, [
