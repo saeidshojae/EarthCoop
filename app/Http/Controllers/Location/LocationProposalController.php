@@ -7,6 +7,7 @@ use DomainException;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\ReferenceSettlement;
 use App\Models\LocationStructureClaim;
 use App\Models\LocationType;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -23,6 +24,7 @@ class LocationProposalController extends Controller
         $validated = $request->validate([
             'parent_location_id' => ['nullable', 'integer', 'exists:locations,id'],
             'parent_location_proposal_id' => ['nullable', 'integer', 'exists:location_proposals,id'],
+            'parent_reference_settlement_id' => ['nullable', 'integer', 'exists:reference_settlements,id'],
             'location_type_id' => ['required', 'integer', 'exists:location_types,id'],
             'canonical_name' => ['required', 'string', 'max:255'],
             'localized_names' => ['sometimes', 'nullable', 'array'],
@@ -33,8 +35,11 @@ class LocationProposalController extends Controller
 
         $parentLocationId = $validated['parent_location_id'] ?? null;
         $parentProposalId = $validated['parent_location_proposal_id'] ?? null;
-        if (($parentLocationId === null) === ($parentProposalId === null)) {
-            throw ValidationException::withMessages(['parent_location_id' => 'Exactly one location or pending proposal parent must be selected.']);
+        $parentReferenceSettlementId = $validated['parent_reference_settlement_id'] ?? null;
+        $parentCount = collect([$parentLocationId, $parentProposalId, $parentReferenceSettlementId])
+            ->filter(fn ($value) => $value !== null)->count();
+        if ($parentCount !== 1) {
+            throw ValidationException::withMessages(['parent_location_id' => 'Exactly one canonical, proposal, or reference-settlement parent must be selected.']);
         }
 
         $type = LocationType::query()->findOrFail($validated['location_type_id']);
@@ -75,7 +80,7 @@ class LocationProposalController extends Controller
         } catch (DomainException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
-        } else {
+        } elseif ($parentProposalId !== null) {
             $parent = LocationProposal::query()->findOrFail($parentProposalId);
             if ($structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
                 (int) $claim->location_proposal_id !== (int) $parent->id
@@ -93,6 +98,18 @@ class LocationProposalController extends Controller
                     $data,
                     $structuralClaims->all(),
                 );
+            } catch (DomainException $exception) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
+        } else {
+            if ($structuralClaims->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'Structural claims are not supported below an unpromoted reference settlement.',
+                ]);
+            }
+            $parent = ReferenceSettlement::query()->findOrFail($parentReferenceSettlementId);
+            try {
+                $result = $this->proposals->proposeUnderReferenceSettlement($request->user(), $parent, $type, $data);
             } catch (DomainException $exception) {
                 return response()->json(['message' => $exception->getMessage()], 422);
             }

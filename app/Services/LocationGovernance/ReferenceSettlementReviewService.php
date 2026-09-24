@@ -3,7 +3,9 @@
 namespace App\Services\LocationGovernance;
 
 use App\Models\ReferenceSettlement;
+use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\ReferenceSettlementResidenceClaim;
+use App\Models\LocationProposal;
 use App\Models\LocationScopedGroupRequest;
 use App\Models\ReferenceSettlementReview;
 use App\Models\User;
@@ -107,6 +109,21 @@ final class ReferenceSettlementReviewService
                     );
                     app(\App\Services\Groups\PendingLocationGroupRequestService::class)
                         ->rejectForReferenceSettlementClaim($claim);
+                }
+
+                $openChildren = LocationProposal::query()
+                    ->where('parent_reference_settlement_id', $locked->id)
+                    ->whereIn('status', [
+                        LocationProposalStatus::Pending->value,
+                        LocationProposalStatus::ReadyForReview->value,
+                        LocationProposalStatus::NeedsEvidence->value,
+                    ])->lockForUpdate()->get();
+                foreach ($openChildren as $child) {
+                    app(LocationProposalService::class)->reject(
+                        $child,
+                        $actor,
+                        'والد آبادی مرجع غیرمسکونی تشخیص داده شد: '.$reason,
+                    );
                 }
 
                 $rejectedClaimIds = ReferenceSettlementResidenceClaim::query()

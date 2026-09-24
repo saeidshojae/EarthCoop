@@ -4,6 +4,7 @@ namespace App\Services\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\ReferenceSettlement;
 use App\Models\LocationSchemaType;
 use App\Models\LocationStructureClaim;
 use App\Models\LocationType;
@@ -88,6 +89,44 @@ class LocationProposalPolicy
             ->exists();
 
         return $relationExists && $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
+    }
+
+    public function allowsReferenceSettlementParentForResidence(ReferenceSettlement $settlement, LocationType $type): bool
+    {
+        if ($settlement->source !== 'IranCountryDivisions/geo_1404'
+            || $settlement->dataset_version !== 'v2'
+            || $type->key !== 'neighborhood'
+            || $settlement->governance_authorized
+            || $settlement->operational_promotion_allowed) {
+            return false;
+        }
+
+        $claimable = (
+            in_array($settlement->classification, ['unverified_settlement', 'needs_review'], true)
+            && $settlement->residential_eligibility === 'unverified'
+        ) || (
+            $settlement->classification === 'verified_residential_village'
+            && $settlement->residential_eligibility === 'verified'
+        );
+        if (! $claimable) return false;
+
+        try {
+            $anchor = app(IranSettlementAnchorResolver::class)->resolve($settlement);
+        } catch (\Throwable) {
+            return false;
+        }
+        if ($anchor->type?->key !== 'rural_district' || ! $anchor->location_schema_id) return false;
+
+        $villageType = LocationType::query()->where('key', 'village')->first();
+        if ($villageType === null) return false;
+
+        $relationExists = LocationTypeRelation::query()
+            ->where('location_schema_id', $anchor->location_schema_id)
+            ->where('parent_type_id', $villageType->id)
+            ->where('child_type_id', $type->id)
+            ->exists();
+
+        return $relationExists && $this->schemaAllowsCrowdsourcing((int) $anchor->location_schema_id, $type);
     }
 
     private function schemaAllowsCrowdsourcing(int $schemaId, LocationType $type): bool

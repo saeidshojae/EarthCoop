@@ -310,16 +310,23 @@ const initializeLocationSelector = async (host) => {
     const selectedPath = new Map();
     const renderLocationPath = () => { if (!locationPath) return; const labels = [...selectedPath.entries()].sort((a,b) => a[0]-b[0]).map(([, item]) => locationDisplayLabel(item)).filter(Boolean); locationPath.textContent = labels.length ? labels.join(' / ') : 'مسیر انتخاب نشده'; };
     if (!levels || !locationId || (!isProjectScope && !proposalId) || (isProjectScope && !governanceAreaId)) return;
+    const notifySelection = (item = null) => {
+        if (!isRegistration) return;
+        host.dispatchEvent(new CustomEvent('earthcoop-location-selection-changed', {
+            bubbles: true,
+            detail: { item, locationId: locationId.value || '', proposalId: proposalId?.value || '' },
+        }));
+    };
     const setPickerState = (state, message, isError = false) => { host.dataset.locationState = state; host.setAttribute('aria-busy', state === PICKER_STATES.loading ? 'true' : 'false'); if (!status) return; status.textContent = message; status.classList.toggle('text-danger', isError); status.setAttribute('aria-live', isError ? 'assertive' : 'polite'); };
     const setStatus = (message, isError = false) => setPickerState(isError ? PICKER_STATES.error : PICKER_STATES.ready, message, isError);
-    const clearSelection = () => { locationId.value = ''; if (proposalId) proposalId.value = ''; if (governanceAreaId) governanceAreaId.value = ''; if (submit && !isProjectScope) submit.disabled = true; };
+    const clearSelection = () => { locationId.value = ''; if (proposalId) proposalId.value = ''; if (governanceAreaId) governanceAreaId.value = ''; if (submit && !isProjectScope) submit.disabled = true; notifySelection(null); };
     const setSelection = (item) => {
         if (isProjectScope) {
             const values = projectScopeSelectionValues(item); locationId.value = values.locationId; governanceAreaId.value = values.governanceAreaId; if (proposalId) proposalId.value = '';
             if (!values.locationId && !values.governanceAreaId) { setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک محدوده رسمی و فعال را انتخاب کنید.', true); return; }
             setStatus(values.governanceAreaId ? 'این محدوده حکمرانی رسمی به‌عنوان هدف پروژه انتخاب شد. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.' : 'این مکان به‌عنوان مکان هدف پروژه انتخاب شد. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.'); return;
         }
-        const values = selectionValues(item); locationId.value = values.locationId; if (proposalId) proposalId.value = values.proposalId;
+        const values = selectionValues(item); locationId.value = values.locationId; if (proposalId) proposalId.value = values.proposalId; notifySelection(item);
         if (!values.locationId && !values.proposalId) { if (submit) submit.disabled = true; setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک مکان فعال را انتخاب کنید.', true); return; }
         if (values.proposalId) {
             if (isRegistration) {
@@ -356,6 +363,7 @@ const initializeLocationSelector = async (host) => {
         if (!values.locationId && !values.proposalId) return false;
         locationId.value = values.locationId;
         if (proposalId) proposalId.value = values.proposalId;
+        notifySelection(item);
         if (submit) submit.disabled = false;
         setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
         return true;

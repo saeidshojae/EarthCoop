@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\LocationGovernance;
 
 use App\Http\Controllers\Controller;
+use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\ReferenceSettlement;
+use App\Models\LocationProposal;
+use App\Models\LocationType;
+use App\Services\LocationGovernance\LocationProposalPolicy;
+use App\Support\LocationDisplayName;
 use App\Models\LocationExternalId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,6 +58,7 @@ final class IranSettlementCatalogController extends Controller
         $results = $query->get();
         $page = $results->take(20);
         $items = $page->map(fn (ReferenceSettlement $settlement): array => [
+            'id' => $settlement->id,
             'external_id' => $settlement->external_id,
             'parent_external_id' => $settlement->parent_external_id,
             'name_fa' => $settlement->name_fa,
@@ -66,6 +72,43 @@ final class IranSettlementCatalogController extends Controller
         return response()->json([
             'data' => $items,
             'next_after_id' => $results->count() > 20 ? $page->last()?->id : null,
+        ]);
+    }
+
+    public function children(string $externalId, LocationProposalPolicy $proposalPolicy): JsonResponse
+    {
+        abort_unless((bool) config('iran_settlement_catalog.enabled', false)
+            && (bool) config('iran_settlement_catalog.claims_enabled', false), 404);
+        abort_unless((bool) preg_match('/^IR-1404-[1-9][0-9]*$/D', $externalId), 404);
+
+        $settlement = ReferenceSettlement::query()
+            ->where('source', 'IranCountryDivisions/geo_1404')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', $externalId)->firstOrFail();
+        $neighborhoodType = LocationType::query()->where('key', 'neighborhood')->first();
+        $allowed = $neighborhoodType !== null
+            && $proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $neighborhoodType);
+        $open = [LocationProposalStatus::Pending->value, LocationProposalStatus::ReadyForReview->value, LocationProposalStatus::NeedsEvidence->value];
+        $proposals = $allowed ? LocationProposal::query()->with('type')
+            ->where('parent_reference_settlement_id', $settlement->id)
+            ->where('location_type_id', $neighborhoodType->id)
+            ->whereIn('status', $open)->orderBy('id')->get() : collect();
+
+        return response()->json([
+            'reference_settlement' => ['id' => $settlement->id, 'external_id' => $settlement->external_id, 'name_fa' => $settlement->name_fa],
+            'proposals' => $proposals->map(fn (LocationProposal $proposal): array => [
+                'id' => $proposal->id,
+                'identity' => 'proposal:'.$proposal->id,
+                'type_key' => 'neighborhood',
+                'label' => LocationDisplayName::for($proposal),
+                'status' => $proposal->status instanceof LocationProposalStatus ? $proposal->status->value : (string) $proposal->status,
+                'selectable' => true,
+            ])->values()->all(),
+            'allowed_types' => $allowed ? [[
+                'id' => $neighborhoodType->id, 'key' => 'neighborhood', 'label' => 'محله', 'proposal_allowed' => true,
+            ]] : [],
+            'registration_endpoint_allowed' => false,
+            'governance_authorized' => false,
         ]);
     }
 }

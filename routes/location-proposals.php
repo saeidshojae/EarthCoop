@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/location/reference-settlements', [\App\Http\Controllers\LocationGovernance\IranSettlementCatalogController::class, 'index'])
     ->middleware('throttle:30,1')
     ->name('location.reference-settlements.index');
+Route::get('/location/reference-settlements/{externalId}/children', [\App\Http\Controllers\LocationGovernance\IranSettlementCatalogController::class, 'children'])
+    ->where('externalId', 'IR-1404-[1-9][0-9]*')
+    ->middleware('throttle:30,1')
+    ->name('location.reference-settlements.children');
 
 // Registration Step 3 must be able to traverse an already-open proposal before
 // authentication completes. Keep only that read-only traversal public.

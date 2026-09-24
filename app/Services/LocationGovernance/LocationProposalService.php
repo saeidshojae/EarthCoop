@@ -5,6 +5,7 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\ReferenceSettlement;
 use App\Models\LocationType;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
@@ -82,6 +83,10 @@ class LocationProposalService
     ): LocationProposal {
         $this->guardOpen($parent);
 
+        if ($parent->parent_reference_settlement_id !== null) {
+            throw new DomainException('Deeper descendants below a reference settlement are blocked until the settlement is operationally promoted.');
+        }
+
         if (! $this->proposalPolicy->allowsProposalParentForResidence($parent, $type, $structuralClaims)) {
             throw new DomainException('The requested location type is not a permitted crowdsourced child of this proposal.');
         }
@@ -115,6 +120,50 @@ class LocationProposalService
             'status' => LocationProposalStatus::Pending,
             'metadata' => array_merge($data['metadata'] ?? [], [
                 'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            ]),
+            'audit_log' => [],
+        ]);
+    }
+
+    public function proposeUnderReferenceSettlement(
+        User $proposer,
+        ReferenceSettlement $settlement,
+        LocationType $type,
+        array $data,
+    ): LocationProposal {
+        if (! $this->proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $type)) {
+            throw new DomainException('Only a pending neighborhood may be proposed under this reference settlement.');
+        }
+
+        $anchor = app(IranSettlementAnchorResolver::class)->resolve($settlement);
+        $canonicalName = $this->canonicalName($data);
+        $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
+
+        $reusable = LocationProposal::query()
+            ->whereNull('parent_location_id')
+            ->whereNull('parent_location_proposal_id')
+            ->where('parent_reference_settlement_id', $settlement->id)
+            ->where('location_type_id', $type->id)
+            ->where('normalized_name', $normalizedName)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->orderBy('id')->first();
+        if ($reusable !== null) return $reusable;
+
+        return LocationProposal::query()->create([
+            'proposer_user_id' => $proposer->id,
+            'parent_location_id' => null,
+            'parent_location_proposal_id' => null,
+            'parent_reference_settlement_id' => $settlement->id,
+            'location_schema_id' => $anchor->location_schema_id,
+            'location_type_id' => $type->id,
+            'country_code' => $anchor->country_code,
+            'canonical_name' => $canonicalName,
+            'normalized_name' => $normalizedName,
+            'localized_names' => $data['localized_names'] ?? null,
+            'status' => LocationProposalStatus::Pending,
+            'metadata' => array_merge($data['metadata'] ?? [], [
+                'source' => 'reference_settlement_child',
+                'reference_settlement_external_id' => $settlement->external_id,
             ]),
             'audit_log' => [],
         ]);
@@ -163,6 +212,10 @@ class LocationProposalService
     public function approve(LocationProposal $proposal, User $reviewer, string $reason): Location
     {
         $this->guardOpen($proposal);
+
+        if ($proposal->parent_reference_settlement_id !== null) {
+            throw new DomainException('Promote the reference settlement to an operational Location before approving its neighborhood.');
+        }
 
         return DB::transaction(function () use ($proposal, $reviewer, $reason): Location {
             $proposal->refresh();

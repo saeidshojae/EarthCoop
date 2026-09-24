@@ -43,7 +43,7 @@ class LocationGovernanceController extends Controller
         $structureClaimVerificationThreshold = max(1, (int) ($settings->location_structure_claim_verification_threshold ?? config('location-governance.location_structure_claim_verification_threshold', 10)));
 
         $proposalQuery = LocationProposal::query()
-            ->with(['parentLocation', 'parentProposal', 'type', 'proposer'])
+            ->with(['parentLocation', 'parentProposal', 'parentReferenceSettlement', 'type', 'proposer'])
             ->withCount('evidence')
             ->withCount([
                 'childProposals as open_child_proposals_count' => fn ($query) => $query->whereIn('status', $openStatuses),
@@ -121,7 +121,7 @@ class LocationGovernanceController extends Controller
 
         $pendingIntentSample = PendingResidenceIntent::query()
             ->where('status', 'pending')
-            ->with(['anchorRelationship', 'locationProposal', 'referenceSettlementResidenceClaim.settlement'])
+            ->with(['anchorRelationship', 'locationProposal.type', 'locationProposal.parentReferenceSettlement', 'referenceSettlementResidenceClaim.settlement'])
             ->latest('id')
             ->limit(1000)
             ->get();
@@ -141,18 +141,23 @@ class LocationGovernanceController extends Controller
                     $proposalStatus = $proposal?->status instanceof LocationProposalStatus
                         ? $proposal->status->value
                         : $proposal?->status;
-                    $hasExactlyOnePendingTarget = ($proposal === null) !== ($settlementClaim === null);
                     $proposalValid = $proposal !== null && in_array($proposalStatus, $openStatuses, true);
                     $settlementClaimValid = $settlementClaim !== null
                         && (int) $settlementClaim->user_id === (int) $intent->user_id
                         && in_array($settlementClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
                         && $settlementClaim->settlement !== null;
+                    $combinedValid = $proposalValid
+                        && $settlementClaimValid
+                        && $proposal->type?->key === 'neighborhood'
+                        && (int) $proposal->parent_reference_settlement_id === (int) $settlementClaim->reference_settlement_id;
+                    $targetValid = ($proposalValid && $settlementClaim === null)
+                        || ($settlementClaimValid && $proposal === null)
+                        || $combinedValid;
 
                     return $anchor === null
                         || $anchor->relationship_type !== 'primary_residence'
                         || $anchor->ended_at !== null
-                        || ! $hasExactlyOnePendingTarget
-                        || (! $proposalValid && ! $settlementClaimValid);
+                        || ! $targetValid;
                 })
                 ->count(),
             'locations_missing_schema_or_type' => Location::query()
@@ -318,6 +323,17 @@ class LocationGovernanceController extends Controller
                 $location = $cursor->parentLocation()->first();
                 break;
             }
+            if ($cursor->parent_reference_settlement_id !== null) {
+                $referenceSettlement = $cursor->parentReferenceSettlement()->first();
+                if ($referenceSettlement !== null) {
+                    try {
+                        $location = app(\App\Services\LocationGovernance\IranSettlementAnchorResolver::class)->resolve($referenceSettlement);
+                    } catch (\Throwable) {
+                        $location = null;
+                    }
+                }
+                break;
+            }
 
             $cursor = $cursor->parentProposal()->first();
         }
@@ -331,6 +347,14 @@ class LocationGovernanceController extends Controller
         $path = [];
         foreach (array_reverse($locationChain) as $item) {
             $path[] = ['kind' => 'location', 'label' => LocationDisplayName::for($item), 'pending' => false];
+        }
+        if (isset($referenceSettlement) && $referenceSettlement !== null) {
+            $label = trim((string) $referenceSettlement->name_fa);
+            $path[] = [
+                'kind' => 'reference_settlement',
+                'label' => str_starts_with($label, 'آبادی ') || str_starts_with($label, 'روستای ') ? $label : 'آبادی '.$label,
+                'pending' => true,
+            ];
         }
         foreach (array_reverse($proposalChain) as $item) {
             $path[] = ['kind' => 'proposal', 'label' => LocationDisplayName::for($item), 'pending' => true];

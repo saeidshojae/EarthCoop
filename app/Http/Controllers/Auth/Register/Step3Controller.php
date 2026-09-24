@@ -85,12 +85,13 @@ class Step3Controller extends Controller
                 ->get()
                 ->all();
 
-            $selectionCount = collect([$locationId, $proposalId, $referenceSettlementExternalId])
-                ->filter(fn ($value) => $value !== null && $value !== '')
-                ->count();
-            if ($selectionCount !== 1) {
+            $hasLocation = $locationId !== null;
+            $hasProposal = $proposalId !== null;
+            $hasReferenceSettlement = $referenceSettlementExternalId !== null;
+            if ((! $hasLocation && ! $hasProposal && ! $hasReferenceSettlement)
+                || ($hasLocation && ($hasProposal || $hasReferenceSettlement))) {
                 throw ValidationException::withMessages([
-                    'location_id' => 'لطفاً دقیقاً یک محل تأییدشده، پیشنهاد مکان در انتظار بررسی یا آبادی مرجع را انتخاب کنید.',
+                    'location_id' => 'لطفاً یک مسیر معتبر محل سکونت را انتخاب کنید.',
                 ]);
             }
 
@@ -119,20 +120,24 @@ class Step3Controller extends Controller
                         'reference_settlement_external_id' => 'انتخاب آبادی مرجع در حال حاضر فعال نیست.',
                     ]);
                 }
+                if ($structuralClaims !== []) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعاهای ساختاری را نمی‌توان همزمان با آبادی مرجع ثبت کرد.',
+                    ]);
+                }
 
-                $settlementClaim = DB::transaction(function () use (
+                [$settlementClaim, $settlementProposal] = DB::transaction(function () use (
                     $user,
+                    $proposalId,
                     $referenceSettlementExternalId,
                     $settlementAnchorResolver,
                     $residenceService,
-                ): ReferenceSettlementResidenceClaim {
+                ): array {
                     $settlement = ReferenceSettlement::query()
                         ->where('source', 'IranCountryDivisions/geo_1404')
                         ->where('dataset_version', 'v2')
                         ->where('external_id', $referenceSettlementExternalId)
-                        ->lockForUpdate()
-                        ->firstOrFail();
-
+                        ->lockForUpdate()->firstOrFail();
                     $claimable = (
                         in_array($settlement->classification, ['unverified_settlement', 'needs_review'], true)
                         && $settlement->residential_eligibility === 'unverified'
@@ -140,7 +145,6 @@ class Step3Controller extends Controller
                         $settlement->classification === 'verified_residential_village'
                         && $settlement->residential_eligibility === 'verified'
                     );
-
                     if (! $claimable || $settlement->governance_authorized || $settlement->operational_promotion_allowed) {
                         throw ValidationException::withMessages([
                             'reference_settlement_external_id' => 'این آبادی در وضعیت قابل انتخاب برای ثبت سکونت نیست.',
@@ -151,34 +155,58 @@ class Step3Controller extends Controller
                     $claim = ReferenceSettlementResidenceClaim::query()->firstOrCreate(
                         ['reference_settlement_id' => $settlement->id, 'user_id' => $user->id],
                         [
-                            'status' => $settlement->residential_eligibility === 'verified'
-                                ? 'residential_evidence_verified'
-                                : 'pending',
+                            'status' => $settlement->residential_eligibility === 'verified' ? 'residential_evidence_verified' : 'pending',
                             'submitted_at' => now(),
                         ],
                     );
+
+                    $proposal = null;
+                    if ($proposalId !== null) {
+                        $proposal = LocationProposal::query()->with('type')->whereKey($proposalId)->lockForUpdate()->first();
+                        if ($proposal === null
+                            || ! in_array($proposal->status, [LocationProposalStatus::Pending, LocationProposalStatus::ReadyForReview, LocationProposalStatus::NeedsEvidence], true)
+                            || (int) $proposal->parent_reference_settlement_id !== (int) $settlement->id
+                            || $proposal->type?->key !== 'neighborhood') {
+                            throw ValidationException::withMessages([
+                                'location_proposal_id' => 'محلهٔ انتخاب‌شده متعلق به همین آبادی مرجع نیست.',
+                            ]);
+                        }
+                    }
 
                     $residenceService->setInitialPrimaryResidence($user, $anchor, [
                         'source' => 'registration_step3_reference_settlement_anchor',
                         'reference_settlement_external_id' => $settlement->external_id,
                     ]);
-                    $residenceService->setPendingReferenceSettlementIntent($user, $claim, $anchor, [
-                        'source' => 'registration_step3_reference_settlement',
-                    ]);
-
-                    return $claim;
+                    if ($proposal !== null) {
+                        $residenceService->setPendingReferenceSettlementProposalIntent(
+                            $user, $claim, $proposal, $anchor,
+                            ['source' => 'registration_step3_reference_settlement_neighborhood'],
+                        );
+                    } else {
+                        $residenceService->setPendingReferenceSettlementIntent(
+                            $user, $claim, $anchor,
+                            ['source' => 'registration_step3_reference_settlement'],
+                        );
+                    }
+                    return [$claim, $proposal];
                 });
 
                 if ((bool) config('location-governance.groups_enabled', false)) {
                     app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
-                    app(\App\Services\Groups\PendingLocationGroupRequestService::class)
-                        ->syncForReferenceSettlementClaim($user->fresh(), $settlementClaim);
+                    $pendingGroups = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+                    if ($settlementProposal !== null) {
+                        $pendingGroups->syncForReferenceSettlementProposal($user->fresh(), $settlementClaim, $settlementProposal);
+                    } else {
+                        $pendingGroups->syncForReferenceSettlementClaim($user->fresh(), $settlementClaim);
+                    }
                 }
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
                 return redirect()->route('home')->with(
                     'success',
-                    'ثبت‌نام شما تکمیل شد. آبادی انتخابی شما به‌عنوان محل دقیق در انتظار بررسی/تطبیق باقی می‌ماند و حوزهٔ رسمی فعلاً بر اساس نزدیک‌ترین والد canonical تأییدشده محاسبه می‌شود.'
+                    $settlementProposal !== null
+                        ? 'ثبت‌نام شما تکمیل شد. آبادی و محلهٔ انتخابی تا بررسی انسانی در وضعیت pending می‌مانند و هیچ حوزهٔ حکمرانی رسمی خودکار ایجاد نشده است.'
+                        : 'ثبت‌نام شما تکمیل شد. آبادی انتخابی شما به‌عنوان محل دقیق در انتظار بررسی/تطبیق باقی می‌ماند و حوزهٔ رسمی فعلاً بر اساس نزدیک‌ترین والد canonical تأییدشده محاسبه می‌شود.'
                 );
             }
 

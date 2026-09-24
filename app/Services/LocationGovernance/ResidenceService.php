@@ -279,6 +279,61 @@ class ResidenceService
         });
     }
 
+    public function setPendingReferenceSettlementProposalIntent(
+        User $user,
+        ReferenceSettlementResidenceClaim $claim,
+        LocationProposal $proposal,
+        Location $anchor,
+        array $metadata = [],
+    ): PendingResidenceIntent {
+        return DB::transaction(function () use ($user, $claim, $proposal, $anchor, $metadata): PendingResidenceIntent {
+            $lockedClaim = ReferenceSettlementResidenceClaim::query()
+                ->with('settlement')->whereKey($claim->id)->where('user_id', $user->id)
+                ->lockForUpdate()->firstOrFail();
+            $lockedProposal = LocationProposal::query()->with('type')->whereKey($proposal->id)
+                ->lockForUpdate()->firstOrFail();
+
+            if (! in_array($lockedClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
+                || ! in_array($lockedProposal->status, [LocationProposalStatus::Pending, LocationProposalStatus::ReadyForReview, LocationProposalStatus::NeedsEvidence], true)
+                || (int) $lockedProposal->parent_reference_settlement_id !== (int) $lockedClaim->reference_settlement_id
+                || $lockedProposal->type?->key !== 'neighborhood') {
+                throw ValidationException::withMessages([
+                    'location_proposal_id' => 'محلهٔ انتخاب‌شده ادامهٔ معتبر همین آبادی مرجع نیست.',
+                ]);
+            }
+
+            $current = UserLocationRelationship::query()
+                ->where('user_id', $user->id)->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')->lockForUpdate()->first();
+            if ($current === null || (int) $current->location_id !== (int) $anchor->id) {
+                throw ValidationException::withMessages([
+                    'reference_settlement_external_id' => 'مبنای canonical محل سکونت با والد تطبیق‌یافتهٔ این آبادی هم‌خوان نیست.',
+                ]);
+            }
+
+            $at = now();
+            $this->cancelPendingIntentRows($user, 'replaced_by_reference_settlement_neighborhood', $at);
+            $intent = PendingResidenceIntent::query()->create([
+                'user_id' => $user->id,
+                'anchor_relationship_id' => $current->id,
+                'location_proposal_id' => $lockedProposal->id,
+                'reference_settlement_residence_claim_id' => $lockedClaim->id,
+                'status' => 'pending',
+                'selected_at' => $at,
+                'metadata' => array_merge($metadata, [
+                    'reference_settlement_external_id' => $lockedClaim->settlement?->external_id,
+                    'reference_settlement_parent_external_id' => $lockedClaim->settlement?->parent_external_id,
+                ]),
+            ]);
+            $this->proposalSupportService->record($lockedProposal, $user, [
+                'source' => 'residence_commit',
+                'pending_residence_intent_id' => $intent->id,
+                'anchor_relationship_id' => $current->id,
+            ]);
+            return $intent;
+        });
+    }
+
     public function cancelPendingReferenceSettlementIntent(
         ReferenceSettlementResidenceClaim $claim,
         string $reason,

@@ -32,6 +32,9 @@ final class PendingLocationGroupRequestService
             ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement'])
             ->latest('id')->first();
 
+        if ($intent?->locationProposal && $intent?->referenceSettlementResidenceClaim) {
+            return $this->syncForReferenceSettlementProposal($user, $intent->referenceSettlementResidenceClaim, $intent->locationProposal);
+        }
         if ($intent?->locationProposal) {
             return $this->syncForPendingResidence($user, $intent->locationProposal);
         }
@@ -42,7 +45,16 @@ final class PendingLocationGroupRequestService
         return collect();
     }
 
-    public function syncForPendingResidence(User $user, LocationProposal $deepest): Collection
+    public function syncForReferenceSettlementProposal(
+        User $user,
+        ReferenceSettlementResidenceClaim $claim,
+        LocationProposal $proposal,
+    ): Collection {
+        return $this->syncForReferenceSettlementClaim($user, $claim, true)
+            ->concat($this->syncForPendingResidence($user, $proposal, true))->values();
+    }
+
+    public function syncForPendingResidence(User $user, LocationProposal $deepest, bool $preserveSettlementRequests = false): Collection
     {
         return DB::transaction(function () use ($user, $deepest): Collection {
             $pendingIntent = PendingResidenceIntent::query()
@@ -52,11 +64,13 @@ final class PendingLocationGroupRequestService
                 ->latest('id')
                 ->first();
 
-            LocationScopedGroupRequest::query()
-                ->where('requester_user_id', $user->id)
-                ->whereNotNull('reference_settlement_residence_claim_id')
-                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
-                ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            if (! $preserveSettlementRequests) {
+                LocationScopedGroupRequest::query()
+                    ->where('requester_user_id', $user->id)
+                    ->whereNotNull('reference_settlement_residence_claim_id')
+                    ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                    ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            }
             $structuralClaimIds = collect(($pendingIntent?->metadata ?? [])['structural_claim_ids'] ?? [])
                 ->map(fn ($id) => (int) $id)
                 ->filter()
@@ -116,7 +130,7 @@ final class PendingLocationGroupRequestService
         });
     }
 
-    public function syncForReferenceSettlementClaim(User $user, ReferenceSettlementResidenceClaim $claim): Collection
+    public function syncForReferenceSettlementClaim(User $user, ReferenceSettlementResidenceClaim $claim, bool $preserveProposalRequests = false): Collection
     {
         return DB::transaction(function () use ($user, $claim): Collection {
             $lockedClaim = ReferenceSettlementResidenceClaim::query()
@@ -143,11 +157,13 @@ final class PendingLocationGroupRequestService
                 ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                 ->update(['status' => 'cancelled', 'updated_at' => now()]);
 
-            LocationScopedGroupRequest::query()
-                ->where('requester_user_id', $user->id)
-                ->whereNotNull('location_proposal_id')
-                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
-                ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            if (! $preserveProposalRequests) {
+                LocationScopedGroupRequest::query()
+                    ->where('requester_user_id', $user->id)
+                    ->whereNotNull('location_proposal_id')
+                    ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                    ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            }
 
             $settlement = $lockedClaim->settlement;
             $dimensions = app(MembershipEngine::class)->dimensionValuesFor($user);

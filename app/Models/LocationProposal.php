@@ -13,6 +13,7 @@ class LocationProposal extends Model
         'proposer_user_id',
         'parent_location_id',
         'parent_location_proposal_id',
+        'parent_reference_settlement_id',
         'location_schema_id',
         'location_type_id',
         'country_code',
@@ -54,6 +55,11 @@ class LocationProposal extends Model
     public function childProposals(): HasMany
     {
         return $this->hasMany(self::class, 'parent_location_proposal_id');
+    }
+
+    public function parentReferenceSettlement(): BelongsTo
+    {
+        return $this->belongsTo(ReferenceSettlement::class, 'parent_reference_settlement_id');
     }
 
     public function schema(): BelongsTo
