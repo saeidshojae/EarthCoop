@@ -127,6 +127,36 @@ Any migration error is a STOP condition. Do not improvise a destructive rollback
 
 Afterward, run `migration status` again and confirm the intended migrations are complete.
 
+## F1. Iran 1404 v2 Production preflight — READ ONLY
+
+After migrations are complete, but **before any Iran 1404 production write or feature-flag change**, use these three fixed browser-console operations:
+
+```text
+iran_v1_v2_runtime_audit
+iran_v2_reference_dry_run
+iran_v2_topology_dry_run
+```
+
+They map only to:
+
+```bash
+php artisan location:iran-v1-v2-runtime-audit
+php artisan location:reference-import IR --dataset-version=v2 --dry-run
+php artisan location-governance:reference-topology IR --dataset-version=v2 --dry-run
+```
+
+These operations are read-only. They do not authorize a v2 apply. Record the complete outputs before designing or approving the Production write path.
+
+STOP if:
+- the runtime audit reports unreviewed v1 identities or unexpected dependencies;
+- the v2 geography dry-run reports any conflict;
+- the v2 topology dry-run reports any conflict;
+- the observed create/update counts differ materially from the reviewed Iran 1404 contract.
+
+The reviewed clean-source expectations are 6,158 administrative v2 locations and the corresponding explicit v2 governance topology. The 99,317 neutral settlements are a separate catalog import and are **not** written by either dry-run above.
+
+No Production v2 apply command is authorized by this checkpoint.
+
 ## G. Bootstrap canonical metadata
 
 Use the fixed bootstrap operation and exact confirmation phrase:

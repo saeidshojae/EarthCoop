@@ -15,6 +15,9 @@ class DeploymentConsoleServiceTest extends TestCase
         $this->assertSame([
             'migration_status',
             'reference_dry_run',
+            'iran_v1_v2_runtime_audit',
+            'iran_v2_reference_dry_run',
+            'iran_v2_topology_dry_run',
             'topology_dry_run',
             'readiness',
             'flag_status',
@@ -32,6 +35,9 @@ class DeploymentConsoleServiceTest extends TestCase
         $this->assertSame('APPLY-GOV-IR', $service->confirmationFor('topology_apply'));
         $this->assertNull($service->confirmationFor('migration_status'));
         $this->assertNull($service->confirmationFor('reference_dry_run'));
+        $this->assertNull($service->confirmationFor('iran_v1_v2_runtime_audit'));
+        $this->assertNull($service->confirmationFor('iran_v2_reference_dry_run'));
+        $this->assertNull($service->confirmationFor('iran_v2_topology_dry_run'));
         $this->assertNull($service->confirmationFor('topology_dry_run'));
         $this->assertNull($service->confirmationFor('readiness'));
         $this->assertNull($service->confirmationFor('flag_status'));
