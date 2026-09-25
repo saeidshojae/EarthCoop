@@ -487,6 +487,17 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
     {
         $schema = LocationFixture::iranSchema();
         $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $cityArea = GovernanceArea::query()->create([
+            'key' => 'checkpoint-2-merge-city-'.$city->id,
+            'country_code' => 'IR',
+            'governance_type' => 'city',
+            'area_kind' => 'official',
+            'canonical_name' => $city->canonical_name,
+            'rank' => 500,
+            'status' => 'active',
+        ]);
+        $cityArea->locations()->attach($city->id);
+
         $regionType = $schema->types->firstWhere('key', 'urban_region');
         $claimService = app(LocationStructureClaimService::class);
         $proposalService = app(LocationProposalService::class);
