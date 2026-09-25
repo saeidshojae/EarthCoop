@@ -109,6 +109,91 @@ class LocationProposalPolicy
         return $relationExists && $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
     }
 
+    public function storedStructuralProvenanceIsValid(LocationProposal $proposal): bool
+    {
+        $proposal->loadMissing(['type', 'parentLocation', 'parentProposal', 'parentReferenceSettlement']);
+        if ($proposal->type === null) {
+            return false;
+        }
+
+        $ids = collect($proposal->metadata['structural_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $claims = $ids->isEmpty()
+            ? collect()
+            : LocationStructureClaim::query()->whereIn('id', $ids)->get();
+
+        if ($claims->count() !== $ids->count()
+            || $claims->contains(fn (LocationStructureClaim $claim): bool =>
+                ! in_array($claim->status, array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']), true)
+            )) {
+            return false;
+        }
+
+        foreach ($claims as $claim) {
+            if (! $this->structureClaimPolicy->dependenciesSatisfied(
+                $claim,
+                array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                $claims,
+            )) {
+                return false;
+            }
+        }
+
+        if ($proposal->parent_location_id !== null && $proposal->parentLocation !== null) {
+            if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->location_id !== (int) $proposal->parent_location_id
+                || $claim->location_proposal_id !== null
+                || $claim->reference_settlement_id !== null
+            )) {
+                return false;
+            }
+
+            return $this->allowsForResidence(
+                $proposal->parentLocation,
+                $proposal->type,
+                $claims->all(),
+            );
+        }
+
+        if ($proposal->parent_location_proposal_id !== null && $proposal->parentProposal !== null) {
+            if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->location_proposal_id !== (int) $proposal->parent_location_proposal_id
+                || $claim->location_id !== null
+                || $claim->reference_settlement_id !== null
+            )) {
+                return false;
+            }
+
+            return $this->allowsProposalParentForResidence(
+                $proposal->parentProposal,
+                $proposal->type,
+                $claims->all(),
+            );
+        }
+
+        if ($proposal->parent_reference_settlement_id !== null && $proposal->parentReferenceSettlement !== null) {
+            if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->reference_settlement_id !== (int) $proposal->parent_reference_settlement_id
+                || $claim->location_id !== null
+                || $claim->location_proposal_id !== null
+            )) {
+                return false;
+            }
+
+            return $this->allowsReferenceSettlementParentForResidence(
+                $proposal->parentReferenceSettlement,
+                $proposal->type,
+                $claims->all(),
+            );
+        }
+
+        return false;
+    }
+
     public function allowsReferenceSettlementParentForResidence(
         ReferenceSettlement $settlement,
         LocationType $type,
