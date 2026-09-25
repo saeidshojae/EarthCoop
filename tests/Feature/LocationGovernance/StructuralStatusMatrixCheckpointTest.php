@@ -138,7 +138,7 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         );
 
         $requests = app(PendingLocationGroupRequestService::class)
-            ->openForUser($user)
+            ->syncForStructuralClaims($user, $city, [$noRegion, $noNeighborhood])
             ->where('location_structure_claim_id', $noNeighborhood->id);
         $this->assertNotEmpty($requests);
 
