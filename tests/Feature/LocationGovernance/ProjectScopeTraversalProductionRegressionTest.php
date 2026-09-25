@@ -58,7 +58,6 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
 
     public function test_project_scope_prefers_v2_iran_country_when_legacy_v1_coexists_under_asia(): void
     {
-        config(['iran_settlement_catalog.v2_runtime_enabled' => true]);
         $schema = LocationFixture::iranSchema();
         $countryType = $schema->types->firstWhere('key', 'country');
         $v1Location = \App\Models\Location::factory()->create([
@@ -120,6 +119,13 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
         ]);
         $v1->locations()->attach($v1Location->id);
         $v2->locations()->attach($v2Location->id);
+
+        $dark = $this->getJson('/location/project-scope/options/governance/'.$asia->id.'/children')->assertOk();
+        $dark->assertJsonCount(1, 'data');
+        $dark->assertJsonPath('data.0.governance_area_id', $v1->id);
+        $dark->assertJsonPath('data.0.identity', 'location:'.$v1Location->id);
+
+        config(['iran_settlement_catalog.v2_runtime_enabled' => true]);
 
         $response = $this->getJson('/location/project-scope/options/governance/'.$asia->id.'/children')->assertOk();
         $response->assertJsonCount(1, 'data');
