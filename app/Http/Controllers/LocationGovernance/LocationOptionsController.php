@@ -37,7 +37,7 @@ final class LocationOptionsController extends Controller
         // Importing the additive v2 geography must not switch a live menu by itself.
         // Prefer v2 only after its reviewed Governance topology exists; this keeps
         // reference-data staging separate from runtime cutover.
-        $preferIranV2 = $countryCode === 'IR'
+        $iranV2CutoverReady = $countryCode === 'IR'
             && GovernanceArea::query()
                 ->official()
                 ->active()
@@ -54,10 +54,14 @@ final class LocationOptionsController extends Controller
 
         $locations = Location::query()->with(['type', 'schema'])->whereNull('parent_id')->where('status', 'active')
             ->whereNotNull('location_schema_id')->whereNotNull('location_type_id')
-            ->whereHas('schema', function ($query) use ($preferIranV2): void {
+            ->whereHas('schema', function ($query) use ($countryCode, $iranV2CutoverReady): void {
                 $query->where('status', 'active');
-                if ($preferIranV2) {
-                    $query->where('key', 'ir-reference-v2')->where('version', 'v2');
+                if ($countryCode === 'IR') {
+                    if ($iranV2CutoverReady) {
+                        $query->where('key', 'ir-reference-v2')->where('version', 'v2');
+                    } else {
+                        $query->where('key', 'ir-reference-v1')->where('version', 'v1');
+                    }
                 }
             })
             ->when($countryCode !== '', fn ($query) => $query->where('country_code', $countryCode))
