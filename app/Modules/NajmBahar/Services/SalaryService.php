@@ -196,44 +196,71 @@ class SalaryService
             }
 
             if (!empty($groupTypeFilters) || !empty($locationLevelFilters)) {
-                $query->whereHas('group', function ($groupQuery) use ($groupTypeFilters, $locationLevelFilters) {
+                $canonicalGroups = (bool) config('location-governance.groups_enabled', false);
+
+                $query->whereHas('group', function ($groupQuery) use ($groupTypeFilters, $locationLevelFilters, $canonicalGroups) {
                     if (!empty($locationLevelFilters)) {
-                        $groupQuery->whereIn('location_level', $locationLevelFilters);
+                        if ($canonicalGroups) {
+                            $governanceTypes = collect($locationLevelFilters)
+                                ->flatMap(fn (string $level): array => $this->canonicalGovernanceTypesForLevel($level))
+                                ->unique()
+                                ->values()
+                                ->all();
+
+                            $groupQuery->whereHas('governanceArea', fn ($areaQuery) => $areaQuery
+                                ->whereIn('governance_type', $governanceTypes)
+                                ->where('status', 'active'));
+                        } else {
+                            $groupQuery->whereIn('location_level', $locationLevelFilters);
+                        }
                     }
 
                     if (!empty($groupTypeFilters)) {
-                        $groupQuery->where(function ($typeQuery) use ($groupTypeFilters) {
-                            foreach ($groupTypeFilters as $type) {
-                                $typeQuery->orWhere(function ($subQuery) use ($type) {
-                                    if ($type === 'exclusive') {
-                                        $subQuery->where(function ($exclusiveQuery) {
-                                            $exclusiveQuery
-                                                ->whereNotNull('gender')
-                                                ->orWhereNotNull('age_group_id')
-                                                ->orWhereIn('group_type', [3, 4]);
-                                        });
-                                        return;
-                                    }
+                        if ($canonicalGroups) {
+                            $dimensions = collect($groupTypeFilters)
+                                ->flatMap(fn (string $type): array => match ($type) {
+                                    'exclusive' => ['age', 'gender'],
+                                    'specialty' => ['profession', 'specialty'],
+                                    default => ['public'],
+                                })
+                                ->unique()
+                                ->values()
+                                ->all();
+                            $groupQuery->whereIn('dimension_key', $dimensions);
+                        } else {
+                            $groupQuery->where(function ($typeQuery) use ($groupTypeFilters) {
+                                foreach ($groupTypeFilters as $type) {
+                                    $typeQuery->orWhere(function ($subQuery) use ($type) {
+                                        if ($type === 'exclusive') {
+                                            $subQuery->where(function ($exclusiveQuery) {
+                                                $exclusiveQuery
+                                                    ->whereNotNull('gender')
+                                                    ->orWhereNotNull('age_group_id')
+                                                    ->orWhereIn('group_type', [3, 4]);
+                                            });
+                                            return;
+                                        }
 
-                                    if ($type === 'specialty') {
-                                        $subQuery->where(function ($specialtyQuery) {
-                                            $specialtyQuery
-                                                ->whereNotNull('specialty_id')
-                                                ->orWhereNotNull('experience_id')
-                                                ->orWhereIn('group_type', [1, 'speciality', 'specialized']);
-                                        });
-                                        return;
-                                    }
+                                        if ($type === 'specialty') {
+                                            $subQuery->where(function ($specialtyQuery) {
+                                                $specialtyQuery
+                                                    ->whereNotNull('specialty_id')
+                                                    ->orWhereNotNull('experience_id')
+                                                    ->orWhereIn('group_type', [1, 'speciality', 'specialized']);
+                                            });
+                                            return;
+                                        }
 
-                                    $subQuery
-                                        ->whereNull('gender')
-                                        ->whereNull('age_group_id')
-                                        ->whereNull('specialty_id')
-                                        ->whereNull('experience_id')
-                                        ->whereNotIn('group_type', [1, 3, 4, 'speciality', 'specialized']);
-                                });
-                            }
-                        });
+                                        $subQuery
+                                            ->whereNull('gender')
+                                            ->whereNull('age_group_id')
+                                            ->whereNull('specialty_id')
+                                            ->whereNull('experience_id')
+                                            ->whereNotIn('group_type', [1, 3, 4, 'speciality', 'specialized']);
+                                    });
+                                }
+                            });
+                        }
                     }
                 });
             }
@@ -256,6 +283,19 @@ class SalaryService
         }
 
         return [];
+    }
+
+    /** @return array<int, string> */
+    private function canonicalGovernanceTypesForLevel(string $level): array
+    {
+        return match (strtolower(trim($level))) {
+            'city_rural' => ['city', 'rural_district'],
+            'region_village' => ['urban_region', 'village'],
+            'rural' => ['rural_district'],
+            'region' => ['urban_region'],
+            'neighborhood' => ['local', 'neighborhood'],
+            default => [strtolower(trim($level))],
+        };
     }
 
     private function expandLocationLevels(array $levels): array
