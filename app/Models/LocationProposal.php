@@ -92,6 +92,11 @@ class LocationProposal extends Model
         return $this->hasMany(PendingResidenceIntent::class);
     }
 
+    public function groupRequests(): HasMany
+    {
+        return $this->hasMany(LocationScopedGroupRequest::class);
+    }
+
     public function referenceSettlementRootProposal(): ?self
     {
         $cursor = $this;
