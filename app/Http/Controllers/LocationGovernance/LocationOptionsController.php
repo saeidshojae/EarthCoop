@@ -60,7 +60,10 @@ final class LocationOptionsController extends Controller
                     if ($iranV2CutoverReady) {
                         $query->where('key', 'ir-reference-v2')->where('version', 'v2');
                     } else {
-                        $query->where('key', 'ir-reference-v1')->where('version', 'v1');
+                        $query->where(function ($schema): void {
+                            $schema->where('key', '!=', 'ir-reference-v2')
+                                ->orWhere('version', '!=', 'v2');
+                        });
                     }
                 }
             })
