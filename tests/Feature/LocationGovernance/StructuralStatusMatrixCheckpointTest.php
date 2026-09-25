@@ -559,6 +559,21 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
 
         $this->assertSame('pending_location', $request->status);
         $this->assertNull($request->location_proposal_id);
+
+        $claimService->approve($mergeClaim->fresh(), $reviewer, 'تأیید نبود محله پس از ادغام');
+        $request->refresh();
+        $this->assertSame('materialized', $request->status);
+        $this->assertNotNull($request->governance_area_id);
+        $this->assertNotNull($request->group_id);
+        $this->assertSame(
+            1,
+            (int) $mergeUser->groups()
+                ->whereKey($request->group_id)
+                ->wherePivot('status', 1)
+                ->firstOrFail()
+                ->pivot
+                ->role,
+        );
     }
 
     public function test_merge_fails_closed_when_target_already_has_same_active_structural_claim(): void
