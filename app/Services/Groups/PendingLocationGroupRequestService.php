@@ -16,6 +16,7 @@ use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\User;
 use App\Services\Membership\MembershipEngine;
 use App\Services\LocationGovernance\LocationStructureClaimPolicy;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Support\LocationDisplayName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
