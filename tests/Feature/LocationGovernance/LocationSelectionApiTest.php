@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationSchema;
 use App\Models\LocationStructureClaim;
@@ -64,7 +65,7 @@ class LocationSelectionApiTest extends TestCase
         $response->assertJsonPath('data.0.status', 'active');
     }
 
-    public function test_ir_country_filter_prefers_active_v2_root_when_v1_and_v2_coexist(): void
+    public function test_ir_country_filter_keeps_v1_until_v2_governance_topology_exists(): void
     {
         config(['location-governance.runtime_enabled' => true]);
 
@@ -104,10 +105,23 @@ class LocationSelectionApiTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->getJson('/location/options/root?country=IR')->assertOk();
-        $response->assertJsonCount(1, 'data');
-        $response->assertJsonPath('data.0.id', $v2Root->id);
-        $this->assertNotSame($v1Root->id, (int) $response->json('data.0.id'));
+        $staged = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $staged->assertJsonCount(1, 'data');
+        $staged->assertJsonPath('data.0.id', $v1Root->id);
+
+        $v2Country = GovernanceArea::factory()->official()->create([
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'canonical_name' => 'Iran v2',
+            'metadata' => ['dataset_version' => 'v2'],
+            'status' => 'active',
+        ]);
+        $v2Country->locations()->attach($v2Root->id);
+
+        $cutover = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $cutover->assertJsonCount(1, 'data');
+        $cutover->assertJsonPath('data.0.id', $v2Root->id);
+        $this->assertNotSame($v1Root->id, (int) $cutover->json('data.0.id'));
     }
 
     public function test_root_without_country_filter_exposes_active_roots_from_multiple_country_schemas(): void

@@ -102,7 +102,37 @@ final class IranV2IsolatedImportGuardTest extends TestCase
         $this->assertStringContainsString('deactivate: 0', $repeatOutput);
     }
 
-    public function test_v2_apply_is_forbidden_in_production_even_with_confirmation(): void
+    public function test_production_additive_confirmation_preserves_v1_and_imports_v2(): void
+    {
+        $this->assertSame(0, Artisan::call('location:reference-import', [
+            'country' => 'IR', '--dataset-version' => 'v1', '--apply' => true,
+        ]));
+        $v1Ids = \App\Models\LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v1')
+            ->pluck('external_id')->sort()->values()->all();
+
+        $original = $this->app['env'];
+        $this->app['env'] = 'production';
+        try {
+            $this->assertSame(0, Artisan::call('location:reference-import', [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--apply' => true,
+                '--confirm' => 'APPLY-IR-1404-V2-PRODUCTION-ADDITIVE',
+            ]), Artisan::output());
+        } finally {
+            $this->app['env'] = $original;
+        }
+
+        $this->assertSame(6158, \App\Models\LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')->where('dataset_version', 'v2')->count());
+        $this->assertSame($v1Ids, \App\Models\LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')->where('dataset_version', 'v1')
+            ->pluck('external_id')->sort()->values()->all());
+    }
+
+    public function test_v2_apply_is_forbidden_in_production_even_with_non_production_confirmation(): void
     {
         $original = $this->app['env'];
         $this->app['env'] = 'production';

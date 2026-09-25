@@ -4,6 +4,7 @@ namespace App\Http\Controllers\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Http\Controllers\Controller;
+use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationSchemaType;
@@ -33,20 +34,37 @@ final class LocationOptionsController extends Controller
     {
         $this->assertRuntimeEnabled();
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
-        $preferIranV2 = $countryCode === 'IR'
-            && Location::query()
+        // Importing the additive v2 geography must not switch a live menu by itself.
+        // Prefer v2 only after its reviewed Governance topology exists; this keeps
+        // reference-data staging separate from runtime cutover.
+        $iranV2CutoverReady = $countryCode === 'IR'
+            && GovernanceArea::query()
+                ->official()
+                ->active()
                 ->where('country_code', 'IR')
-                ->whereNull('parent_id')
-                ->where('status', 'active')
-                ->whereHas('schema', fn ($query) => $query->where('key', 'ir-reference-v2')->where('version', 'v2')->where('status', 'active'))
+                ->where('governance_type', 'country')
+                ->where('metadata->dataset_version', 'v2')
+                ->whereHas('locations', fn ($query) => $query
+                    ->where('locations.status', 'active')
+                    ->whereHas('schema', fn ($schema) => $schema
+                        ->where('key', 'ir-reference-v2')
+                        ->where('version', 'v2')
+                        ->where('status', 'active')))
                 ->exists();
 
         $locations = Location::query()->with(['type', 'schema'])->whereNull('parent_id')->where('status', 'active')
             ->whereNotNull('location_schema_id')->whereNotNull('location_type_id')
-            ->whereHas('schema', function ($query) use ($preferIranV2): void {
+            ->whereHas('schema', function ($query) use ($countryCode, $iranV2CutoverReady): void {
                 $query->where('status', 'active');
-                if ($preferIranV2) {
-                    $query->where('key', 'ir-reference-v2')->where('version', 'v2');
+                if ($countryCode === 'IR') {
+                    if ($iranV2CutoverReady) {
+                        $query->where('key', 'ir-reference-v2')->where('version', 'v2');
+                    } else {
+                        $query->where(function ($schema): void {
+                            $schema->where('key', '!=', 'ir-reference-v2')
+                                ->orWhere('version', '!=', 'v2');
+                        });
+                    }
                 }
             })
             ->when($countryCode !== '', fn ($query) => $query->where('country_code', $countryCode))
