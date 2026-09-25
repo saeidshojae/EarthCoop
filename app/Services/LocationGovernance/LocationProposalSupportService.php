@@ -23,7 +23,7 @@ class LocationProposalSupportService
      */
     public function recordCommitted(LocationProposal $proposal, User $user, array $evidence): void
     {
-        if (($evidence['source'] ?? null) !== 'residence_commit') {
+        if (! in_array(($evidence['source'] ?? null), ['residence_commit', 'residence_commit_reconcile'], true)) {
             throw new DomainException('Location proposal support must come from a committed residence selection.');
         }
 
