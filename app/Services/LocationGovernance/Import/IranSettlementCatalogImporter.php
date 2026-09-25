@@ -15,6 +15,11 @@ final class IranSettlementCatalogImporter
     public const SOURCE = 'IranCountryDivisions/geo_1404';
     public const SOURCE_COMMIT = '68687cf96cc1852d5d38c7283353c80829331758';
     public const EXPECTED_COUNT = 99317;
+    public const SOURCE_GIT_BLOB = 'ca9f4a0d69c7c9d77e6434447c7fe123a322271e';
+
+    private const SOURCE_HEADER = ['Id', 'ParentCountryDivisionId', 'Name', 'Code', 'DivisionType'];
+    private const SOURCE_COUNTS = [0 => 1, 1 => 31, 2 => 484, 3 => 1193, 4 => 2777, 5 => 1481, 6 => 99317, 7 => 191];
+    private const SOURCE_PARENT_TYPES = [0 => [], 1 => [0], 2 => [1], 3 => [2], 4 => [3], 5 => [3], 6 => [4], 7 => [5]];
 
     public function import(string $reviewPath, string $manifestPath, bool $apply = false, int $expectedCount = self::EXPECTED_COUNT): array
     {
@@ -129,6 +134,222 @@ final class IranSettlementCatalogImporter
         return $summary;
     }
 
+    public function importPinnedSource(bool $apply = false, bool $allowProduction = false): array
+    {
+        $payload = $this->pinnedSourcePayload();
+        $batches = [];
+        $batch = [];
+        $settlementCount = 0;
+        $parentExternalIds = [];
+
+        $this->walkPinnedSource($payload, function (array $sourceRow) use (&$batch, &$batches, &$settlementCount, &$parentExternalIds): void {
+            if ($sourceRow['type'] !== 6) {
+                return;
+            }
+
+            $settlementCount++;
+            $parentExternalIds['IR-1404-'.$sourceRow['parent']] = true;
+            $batch[] = $this->pinnedSettlementRow($sourceRow);
+
+            if (count($batch) === 100) {
+                $batches[] = $batch;
+                $batch = [];
+            }
+        });
+
+        if ($batch !== []) {
+            $batches[] = $batch;
+        }
+        if ($settlementCount !== self::EXPECTED_COUNT) {
+            throw new InvalidArgumentException('Pinned Iran 1404 settlement count mismatch.');
+        }
+
+        $missingParents = array_keys($parentExternalIds);
+        if ($missingParents !== []) {
+            $presentParents = DB::table('location_external_ids')
+                ->join('locations', 'locations.id', '=', 'location_external_ids.location_id')
+                ->join('location_types', 'location_types.id', '=', 'locations.location_type_id')
+                ->where('location_external_ids.source', 'earthcoop-reference')
+                ->where('location_external_ids.dataset_version', 'v2')
+                ->where('locations.country_code', 'IR')
+                ->where('locations.status', 'active')
+                ->where('location_types.key', 'rural_district')
+                ->whereIn('location_external_ids.external_id', $missingParents)
+                ->pluck('location_external_ids.external_id')
+                ->all();
+            $missingParents = array_values(array_diff($missingParents, $presentParents));
+        }
+        if ($missingParents !== []) {
+            throw new RuntimeException('Pinned settlement catalog requires the complete Iran 1404 v2 rural-district geography first.');
+        }
+
+        $wouldInsert = 0;
+        foreach ($batches as $candidateBatch) {
+            $wouldInsert += count($this->validatedNewRows($candidateBatch));
+        }
+
+        $summary = [
+            'validated' => $settlementCount,
+            'existing' => $settlementCount - $wouldInsert,
+            'would_insert' => $wouldInsert,
+            'applied' => 0,
+            'mode' => $apply ? 'apply' : 'dry-run',
+        ];
+
+        if (! $apply) {
+            return $summary;
+        }
+
+        $safeEnvironment = app()->environment(['local', 'testing'])
+            || ($allowProduction && app()->environment('production'));
+        if (! $safeEnvironment) {
+            throw new RuntimeException('Pinned settlement catalog apply is not authorized in this environment.');
+        }
+
+        DB::transaction(function () use ($batches, &$summary): void {
+            foreach ($batches as $candidateBatch) {
+                $summary['applied'] += $this->insertNewBatch($candidateBatch);
+            }
+        });
+
+        return $summary;
+    }
+
+    private function pinnedSourcePayload(): string
+    {
+        $sourceDir = base_path('database/reference/source/ir/1404');
+        $payload = '';
+        for ($part = 1; $part <= 9; $part++) {
+            $path = $sourceDir.'/iran.part-'.str_pad((string) $part, 2, '0', STR_PAD_LEFT).'.csv';
+            if (! is_file($path) || ! is_readable($path)) {
+                throw new InvalidArgumentException('Iran 1404 source chunk is missing: '.basename($path));
+            }
+            $bytes = file_get_contents($path);
+            if ($bytes === false) {
+                throw new InvalidArgumentException('Iran 1404 source chunk cannot be read: '.basename($path));
+            }
+            $payload .= $bytes;
+        }
+
+        $blob = sha1('blob '.strlen($payload)."\0".$payload);
+        if (! hash_equals(self::SOURCE_GIT_BLOB, $blob)) {
+            throw new InvalidArgumentException('Iran 1404 source Git blob mismatch.');
+        }
+
+        return $payload;
+    }
+
+    private function walkPinnedSource(string $payload, callable $onRow): void
+    {
+        $stream = fopen('php://temp/maxmemory:8388608', 'w+b');
+        if ($stream === false) {
+            throw new RuntimeException('Cannot allocate Iran 1404 source parser.');
+        }
+        fwrite($stream, $payload);
+        rewind($stream);
+
+        $header = fgetcsv($stream);
+        if (! is_array($header)) {
+            fclose($stream);
+            throw new InvalidArgumentException('Iran 1404 source header is missing.');
+        }
+        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]);
+        if ($header !== self::SOURCE_HEADER) {
+            fclose($stream);
+            throw new InvalidArgumentException('Iran 1404 source header is invalid.');
+        }
+
+        $seenTypes = [];
+        $seenCodes = [];
+        $counts = array_fill_keys(array_keys(self::SOURCE_COUNTS), 0);
+        $roots = 0;
+        $line = 1;
+
+        try {
+            while (($csv = fgetcsv($stream)) !== false) {
+                $line++;
+                if ($csv === [null] || $csv === []) {
+                    continue;
+                }
+                if (count($csv) !== 5) {
+                    throw new InvalidArgumentException("Iran 1404 malformed CSV row at line {$line}.");
+                }
+
+                [$idRaw, $parentRaw, $nameRaw, $codeRaw, $typeRaw] = $csv;
+                $id = filter_var($idRaw, FILTER_VALIDATE_INT);
+                $parent = trim((string) $parentRaw) === '' ? null : filter_var($parentRaw, FILTER_VALIDATE_INT);
+                $type = filter_var($typeRaw, FILTER_VALIDATE_INT);
+                $name = trim((string) $nameRaw);
+                $code = trim((string) $codeRaw);
+
+                if ($id === false || $id < 1 || $type === false || ! array_key_exists($type, self::SOURCE_COUNTS) || $name === '' || $code === '') {
+                    throw new InvalidArgumentException("Iran 1404 invalid identity/name/type at line {$line}.");
+                }
+                if ($parent !== null && $parent === false) {
+                    throw new InvalidArgumentException("Iran 1404 invalid parent at line {$line}.");
+                }
+                if (isset($seenTypes[$id])) {
+                    throw new InvalidArgumentException("Iran 1404 duplicate source ID {$id}.");
+                }
+                if ($parent === null) {
+                    $roots++;
+                    if ($type !== 0) {
+                        throw new InvalidArgumentException("Iran 1404 non-country root {$id}.");
+                    }
+                } elseif (! isset($seenTypes[$parent]) || ! in_array($seenTypes[$parent], self::SOURCE_PARENT_TYPES[$type], true)) {
+                    throw new InvalidArgumentException("Iran 1404 invalid or out-of-order parent for {$id}.");
+                }
+                if (in_array($type, [5, 6, 7], true)) {
+                    $codeKey = $type.':'.$code;
+                    if (isset($seenCodes[$codeKey])) {
+                        throw new InvalidArgumentException("Iran 1404 duplicate source code {$code} for type {$type}.");
+                    }
+                    $seenCodes[$codeKey] = true;
+                }
+
+                $seenTypes[$id] = $type;
+                $counts[$type]++;
+                $onRow(['id' => $id, 'parent' => $parent, 'name' => $name, 'code' => $code, 'type' => $type]);
+            }
+        } finally {
+            fclose($stream);
+        }
+
+        if ($roots !== 1 || $counts !== self::SOURCE_COUNTS) {
+            throw new InvalidArgumentException('Iran 1404 pinned source counts are invalid.');
+        }
+    }
+
+    private function pinnedSettlementRow(array $sourceRow): array
+    {
+        $externalId = 'IR-1404-'.$sourceRow['id'];
+
+        return [
+            'source' => self::SOURCE,
+            'dataset_version' => 'v2',
+            'external_id' => $externalId,
+            'parent_external_id' => 'IR-1404-'.$sourceRow['parent'],
+            'source_code' => (string) $sourceRow['code'],
+            'source_row_id' => (int) $sourceRow['id'],
+            'name_fa' => (string) $sourceRow['name'],
+            'search_name' => trim((string) $sourceRow['name']),
+            'classification' => 'unverified_settlement',
+            'residential_eligibility' => 'unverified',
+            'governance_authorized' => false,
+            'operational_promotion_allowed' => false,
+            'provenance' => json_encode([
+                'source' => self::SOURCE,
+                'source_commit' => self::SOURCE_COMMIT,
+                'source_row_id' => (int) $sourceRow['id'],
+                'source_code' => (string) $sourceRow['code'],
+                'source_division_type' => 6,
+                'dataset_year' => 1404,
+            ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
     private function canonicalValue(mixed $value): mixed
     {
         if (! is_array($value)) {
@@ -143,7 +364,7 @@ final class IranSettlementCatalogImporter
         return $value;
     }
 
-    private function insertNewBatch(array $batch): int
+    private function validatedNewRows(array $batch): array
     {
         $ids = array_column($batch, 'external_id');
         $existing = DB::table('reference_settlements')
@@ -173,9 +394,17 @@ final class IranSettlementCatalogImporter
                 throw new RuntimeException('Existing settlement provenance changed: '.$row['external_id']);
             }
         }
+
+        return $new;
+    }
+
+    private function insertNewBatch(array $batch): int
+    {
+        $new = $this->validatedNewRows($batch);
         if ($new !== []) {
             DB::table('reference_settlements')->insert($new);
         }
+
         return count($new);
     }
 }
