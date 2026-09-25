@@ -4,11 +4,15 @@ import { readFileSync } from 'node:fs';
 
 import {
     normalizePickerPayload,
+    registrationPayload,
+    microContinuationTypes,
+    filterPayloadByType,
     projectScopePayload,
     projectScopeSelectionValues,
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    shouldStopRegistrationAtProposal,
     locationDisplayLabel,
 } from '../../../resources/js/location-selector.js';
 
@@ -16,6 +20,7 @@ const selectorSource = () => [
     '../../../resources/js/location-selector-core.js',
     '../../../resources/js/location-selector.js',
 ].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
+const coreSelectorSource = () => readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
 
 test('normalizes active locations, open proposals, and allowed types without fixed depth', () => {
     const streetPayload = normalizePickerPayload({ data: [], proposals: [], allowed_types: [
@@ -29,9 +34,117 @@ test('normalizes active locations, open proposals, and allowed types without fix
     assert.deepEqual(alleyPayload.allowedTypes.map((type) => type.key), ['complex']);
 });
 
+test('structural choices keep a sparse governance level renderable even before any child exists', () => {
+    const normalized = normalizePickerPayload({
+        data: [],
+        proposals: [],
+        allowed_types: [],
+        structural_choices: [{ claim_type: 'no_neighborhood', status: 'available', claim_id: null }],
+    });
+    assert.equal(shouldRenderNextLevel(normalized), true);
+});
+
+test('hidden single-state claims do not create an empty user-facing level', () => {
+    const normalized = normalizePickerPayload({
+        data: [],
+        proposals: [],
+        allowed_types: [],
+        structural_choices: [{ claim_type: 'single_neighborhood', status: 'available', claim_id: null }],
+    });
+    assert.equal(shouldRenderNextLevel(normalized), false);
+});
+
+test('changing a micro branch clears deeper selection state before rendering the new branch', () => {
+    const source = selectorSource();
+    assert.match(source, /removeDeeperLevels\(depth - 1\)/);
+    assert.match(source, /selectedPath\.keys\(\).*key >= depth/);
+    assert.match(source, /clearSelection\(\)/);
+    assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
+});
+
 test('maps canonical and proposal identities to mutually exclusive hidden values', () => {
     assert.deepEqual(selectionValues({ id: 41, identity: 'location:41', is_residence_endpoint: true, status: 'active' }), { locationId: '41', proposalId: '' });
     assert.deepEqual(selectionValues({ id: 17, identity: 'proposal:17', status: 'pending', selectable: true }), { locationId: '', proposalId: '17' });
+});
+
+test('registration traversal stops before micro locations while ordinary residence remains deep capable', () => {
+    const normalized = normalizePickerPayload({
+        data: [{ id: 80, identity: 'location:80', type_key: 'street', label: 'Street', status: 'active', is_residence_endpoint: true }],
+        proposals: [{ id: 81, identity: 'proposal:81', type_key: 'street', label: 'Pending street', status: 'pending', selectable: true }],
+        allowed_types: [{ id: 82, key: 'urban_region', label: 'Region', proposal_allowed: false }],
+        effective_allowed_types: [{ id: 83, key: 'street', label: 'Street', proposal_allowed: true }],
+    });
+
+    assert.equal(shouldRenderNextLevel(normalized), true);
+    const registration = registrationPayload(normalized);
+    assert.deepEqual(registration.locations, []);
+    assert.deepEqual(registration.proposals, []);
+    assert.deepEqual(registration.allowedTypes, []);
+    assert.equal(shouldRenderNextLevel(registration), false);
+});
+
+test('registration structural endpoint signal survives micro filtering and controls terminal submit state', () => {
+    const normalized = normalizePickerPayload({
+        data: [{ id: 301, identity: 'location:301', type_key: 'street', label: 'Street', status: 'active', is_residence_endpoint: true }],
+        proposals: [],
+        allowed_types: [{ id: 302, key: 'street', label: 'Street', proposal_allowed: true }],
+        registration_endpoint_allowed: true,
+    });
+
+    const registration = registrationPayload(normalized);
+    assert.equal(registration.registrationEndpointAllowed, true);
+    assert.equal(shouldRenderNextLevel(registration), false);
+
+    const source = selectorSource();
+    assert.match(source, /item\?\.type_key !== 'neighborhood'/, 'village/city schema endpoints must not enable registration before structural validation');
+    assert.match(source, /children\.registrationEndpointAllowed/, 'registration must use the server terminal signal after structural selection');
+    assert.match(source, /refreshed\.registrationEndpointAllowed/, 'structural refresh must terminalize the selected parent when micro levels are filtered');
+});
+
+test('registration stops immediately after a pending neighborhood proposal becomes the residence base', () => {
+    assert.equal(shouldStopRegistrationAtProposal('registration', { type_key: 'neighborhood', status: 'pending' }), true);
+    assert.equal(shouldStopRegistrationAtProposal('registration', { type_key: 'street', status: 'pending' }), false);
+    assert.equal(shouldStopRegistrationAtProposal('residence', { type_key: 'neighborhood', status: 'pending' }), false);
+
+    const source = selectorSource();
+    const stopIndex = source.indexOf('shouldStopRegistrationAtProposal(context, proposal)');
+    const childrenFetchIndex = source.indexOf('result.children_url', stopIndex);
+    assert.ok(stopIndex >= 0, 'registration proposal completion must have an explicit terminal guard');
+    assert.ok(childrenFetchIndex > stopIndex, 'the terminal guard must run before any pending-child request');
+});
+
+test('registration keeps non-micro governance continuation available', () => {
+    const normalized = normalizePickerPayload({
+        data: [{ id: 90, identity: 'location:90', type_key: 'urban_region', label: 'Region', status: 'active' }],
+        proposals: [],
+        allowed_types: [{ id: 91, key: 'urban_region', label: 'Region', proposal_allowed: false }],
+    });
+    const registration = registrationPayload(normalized);
+    assert.deepEqual(registration.locations.map((item) => item.type_key), ['urban_region']);
+    assert.deepEqual(registration.allowedTypes.map((item) => item.key), ['urban_region']);
+    assert.equal(shouldRenderNextLevel(registration), true);
+});
+
+test('micro residence continuation requires choosing one child type before showing mixed children', () => {
+    const normalized = normalizePickerPayload({
+        data: [
+            { id: 101, identity: 'location:101', type_key: 'alley', label: 'کوچه دوستی', status: 'active' },
+            { id: 102, identity: 'location:102', type_key: 'complex', label: 'مجتمع بهارستان', status: 'active' },
+            { id: 103, identity: 'location:103', type_key: 'building', label: 'ساختمان ۳۵', status: 'active' },
+        ],
+        proposals: [{ id: 104, identity: 'proposal:104', type_key: 'building', label: 'ساختمان پیشنهادی', status: 'pending', selectable: true }],
+        allowed_types: [
+            { id: 201, key: 'alley', label: 'Alley', proposal_allowed: true },
+            { id: 202, key: 'complex', label: 'Complex', proposal_allowed: true },
+            { id: 203, key: 'building', label: 'Building', proposal_allowed: true },
+        ],
+    });
+
+    assert.deepEqual(microContinuationTypes(normalized).map((type) => type.key), ['alley', 'complex', 'building']);
+    const buildings = filterPayloadByType(normalized, 'building');
+    assert.deepEqual(buildings.locations.map((item) => item.id), [103]);
+    assert.deepEqual(buildings.proposals.map((item) => item.id), [104]);
+    assert.deepEqual(buildings.allowedTypes.map((type) => type.key), ['building']);
 });
 
 test('project scope reuses canonical traversal but excludes pending proposals and proposal creation', () => {
@@ -172,14 +285,16 @@ test('breadcrumb uses typed display labels across the full residence path', () =
     assert.match(source, /TYPE_LABELS/);
 });
 
-test('residence selector renders and submits structural choices without leaking them into project scope', () => {
-    const source = selectorSource();
+test('residence selector renders only absence structural actions while keeping backend payload support separate', () => {
+    const source = coreSelectorSource();
     assert.match(source, /structuralChoices/);
     assert.match(source, /locations\/structure-claims/);
-    assert.match(source, /single_urban_region/);
     assert.match(source, /no_urban_region/);
-    assert.match(source, /single_neighborhood/);
     assert.match(source, /no_neighborhood/);
+    assert.doesNotMatch(source, /single_urban_region/);
+    assert.doesNotMatch(source, /single_neighborhood/);
+    assert.doesNotMatch(source, /چند منطقه دارد/);
+    assert.doesNotMatch(source, /چند محله دارد/);
     assert.match(source, /effectiveAllowedTypes/);
 });
 
@@ -198,3 +313,194 @@ test('changing an ancestor selection clears remembered structural claim ids from
     assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
 });
 
+test('structural claims are owned by the selected parent depth and survive choosing its effective child', () => {
+    const source = selectorSource();
+    assert.match(
+        source,
+        /buildStructuralClaimPanel\(host, payload\.structuralChoices, parentLocationId, Math\.max\(depth - 1, 0\)/,
+        'a city topology claim rendered with its neighborhood choices must be remembered at the city depth'
+    );
+    assert.match(
+        source,
+        /select\.addEventListener\(['"]change['"][\s\S]*?clearStructuralClaimsAfterDepth\(form, depth\)/,
+        'choosing the effective child may clear claims owned by that child or deeper, but not the parent topology claim'
+    );
+});
+
+
+test('only approved structural claims auto-hydrate while open claims remain an explicit user choice', () => {
+    const source = selectorSource();
+    assert.match(source, /statusValue === 'approved'[\s\S]*?rememberStructuralClaim\(host, activeClaimId, depth/);
+    assert.match(source, /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?explicitlySelected/);
+    assert.match(
+        source,
+        /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?if \(explicitlySelected\) rememberStructuralClaim\(host, activeClaimId, depth/,
+        'an open claim may be restored only when that user explicitly selected it'
+    );
+    assert.doesNotMatch(
+        source,
+        /\(statusValue === 'approved' \|\| OPEN_PROPOSAL_STATUSES\.has\(statusValue\)\)[\s\S]{0,220}?rememberStructuralClaim\(host, claimId, depth\)/,
+        'a pending community claim must not silently become the next user\'s residence choice'
+    );
+});
+
+test('structural-claim navigation sends only explicitly selected absence claim ids', () => {
+    const source = selectorSource();
+    assert.match(source, /structuralClaimContextUrl\(baseUrl, form\)/);
+    assert.match(source, /location_structure_claim_ids%5B%5D=/);
+    assert.match(source, /pendingStructuralClaimContextUrl/);
+    assert.match(source, /removePendingStructuralClaimIds\(host,\s*\[claimId\]\)/);
+    assert.match(source, /location_structure_claim_ids: pendingStructuralClaimIds\(host\)/);
+    assert.doesNotMatch(source, /مسیر معمولی انتخاب شد/);
+});
+
+test('structural claim UI exposes only exceptional absence actions inside the disclosure', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /STRUCTURAL_CLAIM_GROUPS/);
+    assert.match(source, /claimTypes: \['no_urban_region'\]/);
+    assert.match(source, /claimTypes: \['no_neighborhood'\]/);
+    assert.match(source, /این شهر منطقه‌بندی ندارد/);
+    assert.match(source, /این محدوده محله‌بندی ندارد/);
+    assert.match(source, /dataset\.locationStructuralChoice|data-location-structural-choice/);
+    assert.match(source, /aria-pressed/);
+    assert.doesNotMatch(source, /single_urban_region|single_neighborhood/);
+});
+
+test('absence choice can be toggled off without exposing a normal or multi-state button', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /forgetStructuralClaim/);
+    assert.match(source, /این اعلام از مسیر فعلی شما برداشته شد/);
+    assert.doesNotMatch(source, /مسیر معمولی انتخاب شد/);
+    assert.doesNotMatch(source, /چند منطقه دارد|چند محله دارد/);
+});
+
+test('choosing a real region or neighborhood clears only its contradictory absence claim', () => {
+    const source = selectorSource();
+    assert.match(source, /selected\.type_key === 'urban_region'[\s\S]*?clearStructuralClaimTypes\(form, \['no_urban_region'\]\)/);
+    assert.match(source, /selected\.type_key === 'neighborhood'[\s\S]*?clearStructuralClaimTypes\(form, \['no_neighborhood'\]\)/);
+    assert.doesNotMatch(source, /selected\.type_key === 'neighborhood'[\s\S]{0,180}?no_urban_region/);
+});
+
+test('canonical registration proposal events bypass legacy capture and keep server terminal authority', async () => {
+    const listeners = [];
+    const originalDocument = globalThis.document;
+    globalThis.document = {
+        addEventListener(type, handler, capture) { listeners.push({ type, handler, capture }); },
+    };
+    try {
+        await import('../../../resources/js/location-selector.js?canonical-registration-capture-regression');
+        const captured = listeners.find(({ type, capture }) => type === 'change' && capture === true);
+        assert.ok(captured, 'legacy capture listener must be present for non-registration consumers');
+        let intercepted = false;
+        const host = { dataset: { locationSelectorContext: 'registration' } };
+        const select = {
+            value: 'proposal:9',
+            closest(selector) { return selector === '[data-location-selector]' ? host : null; },
+        };
+        captured.handler({
+            target: { closest(selector) { return selector === '[data-location-select]' ? select : null; } },
+            preventDefault() { intercepted = true; },
+            stopImmediatePropagation() { intercepted = true; },
+        });
+        assert.equal(intercepted, false, 'registration change must reach canonical selector');
+        const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+        assert.match(source, /\['project-scope', 'registration', 'profile', 'admin-user-residence'\]\.includes\(host\.dataset\.locationPurpose \|\| host\.dataset\.locationSelectorContext\)/);
+    } finally {
+        if (originalDocument === undefined) delete globalThis.document;
+        else globalThis.document = originalDocument;
+    }
+});
+
+
+test('all residence contexts use one compact missing-option disclosure instead of always-visible proposal controls', () => {
+    const source = selectorSource();
+    assert.match(source, /dataLocationExceptionToggle|locationExceptionToggle/);
+    assert.match(source, /exceptionLinkLabel/);
+    assert.match(source, /منطقه من در فهرست نیست/);
+    assert.match(source, /روستا یا آبادی من در فهرست نیست/);
+    assert.match(source, /محله من در فهرست نیست/);
+    assert.match(source, /خیابان من در فهرست نیست/);
+    assert.match(source, /کوچه من در فهرست نیست/);
+    assert.match(source, /مجتمع من در فهرست نیست/);
+    assert.match(source, /ساختمان من در فهرست نیست/);
+    assert.match(source, /earthcoop-location-exception-open/);
+});
+
+test('reference settlement selection preserves the rendered settlement level while replacing deeper levels', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /removeDeeperLevels\(anchorDepth \+ 1\)/);
+    assert.doesNotMatch(source, /removeDeeperLevels\(anchorDepth\);[\s\S]{0,200}?reference-settlement:/);
+});
+
+test('Iran settlement search is enabled by the active rural reference branch instead of a hard-coded form country', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /host\.dataset\.referenceBranchActive === '1'/);
+    assert.doesNotMatch(source, /enableReferenceSearch:\s*country === 'IR'/);
+});
+
+test('reference settlement neighborhood rejoins the shared deep picker through the same exception disclosure', () => {
+    const source = selectorSource();
+    assert.match(source, /earthcoop-location-reference-selected/);
+    assert.match(source, /proposalPath/);
+    assert.match(source, /reference_settlement/);
+    assert.match(source, /appendLevel\(children, depth, null, false, parentProposalId\)/);
+    assert.match(source, /dataLocationException|locationException|location-exception/i);
+    assert.match(source, /enableReferenceSearch/);
+});
+
+
+test('missing-option UX is progressive disclosure and hides single/multi structural choices', () => {
+    const core = coreSelectorSource();
+    const bridge = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+
+    assert.match(core, /data\.locationExceptionShell|dataset\.locationExceptionShell/);
+    assert.match(core, /data\.locationExceptionToggle|dataset\.locationExceptionToggle/);
+    assert.match(core, /d-none vstack gap-3/);
+    assert.match(core, /no_urban_region/);
+    assert.match(core, /no_neighborhood/);
+    assert.doesNotMatch(core, /single_urban_region|single_neighborhood/);
+    assert.doesNotMatch(core, /چند منطقه دارد|چند محله دارد/);
+
+    assert.match(bridge, /loadSettlementContinuation/);
+    assert.match(bridge, /closeDisclosure\(\)/);
+    assert.match(bridge, /dispatchReferenceSelection\(null, persistedProposalPath, payload\)/);
+    assert.doesNotMatch(bridge, /referenceNeighborhoodExceptionToggle/);
+    assert.doesNotMatch(bridge, /data-reference-settlement-neighborhood/);
+});
+
+test('registration remains capped at neighborhood while profile and admin can continue to micro address levels', () => {
+    const source = coreSelectorSource();
+    assert.match(source, /shouldStopRegistrationAtProposal[\s\S]*type_key === 'neighborhood'/);
+    assert.match(source, /registrationPayload[\s\S]*MICRO_LOCATION_TYPES/);
+    assert.match(source, /if \(isRegistration\)[\s\S]*ثبت‌نام می‌تواند در همین‌جا پایان یابد/);
+    assert.match(source, /if \(shouldRenderNextLevel\(children\)\)[\s\S]*appendLevel\(children, depth, null, false, parentProposalId\)/);
+});
+
+
+test('reference settlement choice closes its exception panel and renders neighborhood as a normal following level', () => {
+    const core = coreSelectorSource();
+    const bridge = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+
+    assert.match(bridge, /loadSettlementContinuation/);
+    assert.match(bridge, /closeDisclosure\(\);[\s\S]*dispatchReferenceSelection\(null, persistedProposalPath, payload\)/);
+    assert.match(core, /if \(!proposal\)[\s\S]*normalizePickerPayload\(detail\.payload \|\| \{\}\)/);
+    assert.match(core, /appendLevel\([\s\S]*anchorDepth \+ 2,[\s\S]*Number\(settlement\.id\),[\s\S]*String\(settlement\.external_id \|\| ''\)/);
+    assert.match(core, /parentReferenceSettlementExternalId[\s\S]*reference-settlements/);
+});
+
+
+test('registration can terminate on a reference settlement only after the no-neighborhood structural path is effective', () => {
+    const core = coreSelectorSource();
+    assert.match(core, /item\.picker_kind === 'reference_settlement'[\s\S]*submit\.disabled = false/);
+    assert.match(core, /registrationEndpointAllowed[\s\S]*setRegistrationEndpoint\(parentItem\)/);
+    assert.match(core, /referenceSettlementExternalId[\s\S]*structure-claims/);
+});
+
+
+test('reference settlement hydration restores the settlement option in its visible level menu', () => {
+    const core = coreSelectorSource();
+    assert.match(core, /settlementSelect\.value = settlementItem\.identity/);
+    assert.match(core, /settlementOption\.value = settlementItem\.identity/);
+    assert.match(core, /settlementOption\.dataset\.referenceSettlementOption = ''/);
+    assert.match(core, /settlementOption\.dataset\.typeKey = 'settlement'/);
+});

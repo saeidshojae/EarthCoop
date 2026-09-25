@@ -1,6 +1,7 @@
 @php
     $mobileNavUser = auth()->user();
     $mobileNavGroups = collect();
+    $mobileNavPendingGroupCount = 0;
     if ($mobileNavUser) {
         if ((bool) config('location-governance.groups_enabled', false)) {
             $mobileMaterializedGroupIds = collect(app(\App\Services\Groups\CanonicalGroupMembershipReconciler::class)->reconcile($mobileNavUser))
@@ -13,6 +14,12 @@
                     ->get();
         } else {
             $mobileNavGroups = $mobileNavUser->groups()->wherePivot('status', 1)->get();
+        }
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $mobilePendingService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+            $mobilePendingRequests = $mobilePendingService->openForUser($mobileNavUser);
+            $mobileNavGroups = $mobilePendingService->presentableCanonicalGroups($mobileNavGroups, $mobilePendingRequests);
+            $mobileNavPendingGroupCount = $mobilePendingRequests->count();
         }
     }
     $mobileUnreadNotifications = $mobileNavUser?->unreadNotifications?->count() ?? 0;
@@ -212,7 +219,7 @@
                     </button>
                     <div x-show="openSection === 'primary'" x-transition class="navigation-section__links">
                         <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>خانه</span></a>
-                        <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() }}</span></a>
+                        <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() + $mobileNavPendingGroupCount }}</span></a>
                         @if((bool) config('location-governance.runtime_enabled'))
                             <a href="{{ route('location-governance.me') }}" class="navigation-link"><i class="fas fa-location-dot"></i><span>مکان و حکمرانی من</span></a>
                         @endif

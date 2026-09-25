@@ -7,11 +7,11 @@
         @forelse($officialTopology as $area)
             <div class="border-bottom py-2">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <strong>{{ $area->canonical_name }}</strong>
+                    <strong>{{ \App\Support\GovernanceAreaDisplayName::for($area) }}</strong>
                     <span class="badge text-bg-light border">{{ $area->governance_type }}</span>
                 </div>
                 <div class="small text-muted mt-1">
-                    والد: {{ $area->parent?->canonical_name ?: '—' }} · نگاشت مکان: {{ $area->locations->count() }}
+                    والد: {{ \App\Support\GovernanceAreaDisplayName::for($area->parent) }} · نگاشت مکان: {{ $area->locations->count() }}
                 </div>
             </div>
         @empty

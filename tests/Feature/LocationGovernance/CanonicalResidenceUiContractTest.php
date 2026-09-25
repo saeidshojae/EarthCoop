@@ -27,6 +27,38 @@ class CanonicalResidenceUiContractTest extends TestCase
     }
 
     #[Test]
+    public function registration_profile_and_admin_share_one_collapsed_exception_panel_contract(): void
+    {
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+        $admin = file_get_contents(resource_path('views/admin/user/partials/canonical-residence.blade.php'));
+        $selector = file_get_contents(resource_path('js/location-selector-core.js'));
+        $settlementBridge = file_get_contents(resource_path('js/registration-settlement-bridge.js'));
+
+        foreach ([
+            [$registration, 'registration'],
+            [$profile, 'profile'],
+            [$admin, 'admin-user-residence'],
+        ] as [$view, $context]) {
+            $this->assertStringContainsString('data-location-selector', $view);
+            $this->assertStringContainsString('data-location-selector-context="'.$context.'"', $view);
+            $this->assertStringContainsString('data-reference-settlement-picker', $view);
+        }
+
+        $this->assertStringContainsString('dataset.locationExceptionToggle', $selector);
+        $this->assertStringContainsString('dataset.locationExceptionPanel', $selector);
+        $this->assertStringContainsString('earthcoop-location-exception-open', $selector);
+        $this->assertStringContainsString('earthcoop-location-exception-open', $settlementBridge);
+        $this->assertStringContainsString("['registration', 'profile', 'admin-user-residence']", $settlementBridge);
+        $this->assertStringContainsString('روستا یا آبادی من در فهرست نیست', $selector);
+        $this->assertStringContainsString('خیابان من در فهرست نیست', $selector);
+        $this->assertStringNotContainsString('single_urban_region', $selector);
+        $this->assertStringNotContainsString('single_neighborhood', $selector);
+        $this->assertStringNotContainsString('چند منطقه دارد', $selector);
+        $this->assertStringNotContainsString('چند محله دارد', $selector);
+    }
+
+    #[Test]
     public function shared_selector_consumes_schema_driven_picker_contract_and_proposal_endpoint(): void
     {
         $selector = file_get_contents(resource_path('js/location-selector-core.js'))
@@ -111,6 +143,25 @@ class CanonicalResidenceUiContractTest extends TestCase
         $this->assertStringContainsString('data-location-structure-claim-id', $selector);
         $this->assertStringContainsString("input.type = 'hidden'", $selector);
         $this->assertStringContainsString('result.id', $selector);
+
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+        $admin = file_get_contents(resource_path('views/admin/user/partials/canonical-residence.blade.php'));
+        foreach ([$registration, $profile, $admin] as $view) {
+            $this->assertStringContainsString('name="location_structure_claim_ids[]"', $view);
+            $this->assertStringContainsString('data-location-structure-claim-id', $view);
+        }
+
+        $wrapper = file_get_contents(resource_path('js/location-selector.js'));
+        $this->assertStringContainsString('pendingStructuralClaimContextUrl', $wrapper);
+        $this->assertStringContainsString('location_structure_claim_ids: pendingStructuralClaimIds(host)', $wrapper);
+        $this->assertStringContainsString("['no_urban_region', 'no_neighborhood']", $wrapper);
+        $this->assertStringContainsString('این اعلام از مسیر فعلی شما برداشته شد', $wrapper);
+        $this->assertStringNotContainsString('single_urban_region', $wrapper);
+        $this->assertStringNotContainsString('single_neighborhood', $wrapper);
+        $this->assertStringNotContainsString('چند منطقه دارد', $wrapper);
+        $this->assertStringNotContainsString('چند محله دارد', $wrapper);
+        $this->assertStringNotContainsString('مسیر معمولی انتخاب شد', $wrapper);
     }
 
 }

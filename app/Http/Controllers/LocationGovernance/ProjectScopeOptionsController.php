@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Services\LocationGovernance\LocationSchemaResolver;
+use App\Support\GovernanceAreaDisplayName;
+use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -27,6 +29,22 @@ final class ProjectScopeOptionsController extends Controller
         $children = $governanceArea->children()->official()->active()
             ->with(['locations' => fn ($query) => $query->where('locations.status', 'active')->with(['type', 'schema'])])
             ->orderBy('rank')->orderBy('canonical_name')->get();
+
+        if ($governanceArea->key === 'earthcoop-continent-asia') {
+            $hasIranV2 = $children->contains(fn (GovernanceArea $child): bool =>
+                $child->country_code === 'IR'
+                && $child->governance_type === 'country'
+                && data_get($child->metadata, 'dataset_version') === 'v2'
+            );
+            if ($hasIranV2) {
+                $children = $children->reject(fn (GovernanceArea $child): bool =>
+                    $child->country_code === 'IR'
+                    && $child->governance_type === 'country'
+                    && data_get($child->metadata, 'dataset_version') !== 'v2'
+                )->values();
+            }
+        }
+
         $items = $children->map(function (GovernanceArea $child): array {
             $location = $child->locations->first(fn (Location $candidate): bool =>
                 $candidate->status === 'active' && $candidate->location_schema_id !== null && $candidate->location_type_id !== null);
@@ -98,13 +116,11 @@ final class ProjectScopeOptionsController extends Controller
 
     private function serializeArea(GovernanceArea $area): array
     {
-        $locale = app()->getLocale();
-        $localizedNames = $area->localized_names ?? [];
         return [
             'id' => $area->id,
             'identity' => 'governance:'.$area->id,
             'type_key' => $area->governance_type,
-            'label' => $localizedNames[$locale] ?? $area->canonical_name,
+            'label' => GovernanceAreaDisplayName::for($area),
             'status' => $area->status,
             'has_children' => $area->children()->official()->active()->exists(),
             'governance_area_id' => $area->id,
@@ -118,15 +134,18 @@ final class ProjectScopeOptionsController extends Controller
         $locale = app()->getLocale();
         $locationLocalizedNames = $location->localized_names ?? [];
         $areaLocalizedNames = $area->localized_names ?? [];
-        $item['label'] = $locationLocalizedNames[$locale] ?? $areaLocalizedNames[$locale] ?? $location->canonical_name ?? $area->canonical_name;
+        $language = strtolower((string) strtok(str_replace('_', '-', $locale), '-'));
+        $item['label'] = $locationLocalizedNames[$locale]
+            ?? $locationLocalizedNames[$language]
+            ?? $areaLocalizedNames[$locale]
+            ?? $areaLocalizedNames[$language]
+            ?? LocationDisplayName::for($location);
         $item['governance_area_id'] = $area->id;
         return $item;
     }
 
     private function serializeLocation(Location $location): array
     {
-        $locale = app()->getLocale();
-        $localizedNames = $location->localized_names ?? [];
         $allowedChildTypeIds = app(LocationSchemaResolver::class)->allowedChildTypes($location)->pluck('id');
         $hasChildren = $allowedChildTypeIds->isNotEmpty() && $location->children()->where('status', 'active')
             ->where('location_schema_id', $location->location_schema_id)->whereIn('location_type_id', $allowedChildTypeIds)->exists();
@@ -134,7 +153,7 @@ final class ProjectScopeOptionsController extends Controller
             'id' => $location->id,
             'identity' => 'location:'.$location->id,
             'type_key' => $location->type?->key,
-            'label' => $localizedNames[$locale] ?? $location->canonical_name ?? $location->name,
+            'label' => LocationDisplayName::for($location),
             'status' => $location->status,
             'has_children' => $hasChildren,
             'children_url' => '/location/options/'.$location->id.'/children',

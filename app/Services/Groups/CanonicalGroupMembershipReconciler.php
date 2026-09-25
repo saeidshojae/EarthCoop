@@ -2,7 +2,10 @@
 
 namespace App\Services\Groups;
 
+use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\GroupUser;
+use App\Models\LocationStructureClaim;
+use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Services\GroupService;
 use App\Services\LocationGovernance\GovernanceResolver;
@@ -105,15 +108,80 @@ final class CanonicalGroupMembershipReconciler
 
     private function baseGovernanceAreaId(User $user): ?int
     {
-        $location = $user->locationRelationships()
+        // An open official residence refinement is already the user's chosen
+        // base, even though it cannot materialize yet. Never promote the
+        // nearest approved ancestor to active merely because the chosen base
+        // is awaiting review.
+        $pendingOfficialBase = PendingResidenceIntent::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement'])
+            ->latest('id')
+            ->first();
+
+        if ($pendingOfficialBase?->locationProposal !== null) {
+            $proposal = $pendingOfficialBase->locationProposal;
+            $status = $proposal->status instanceof LocationProposalStatus
+                ? $proposal->status
+                : LocationProposalStatus::tryFrom((string) $proposal->status);
+
+            if ($status !== null
+                && in_array($status, [
+                    LocationProposalStatus::Pending,
+                    LocationProposalStatus::ReadyForReview,
+                    LocationProposalStatus::NeedsEvidence,
+                ], true)
+                && in_array($proposal->type?->key, ['city', 'rural_district', 'urban_region', 'village', 'neighborhood'], true)
+            ) {
+                return null;
+            }
+        }
+
+        if ($pendingOfficialBase?->referenceSettlementResidenceClaim !== null) {
+            $settlementClaim = $pendingOfficialBase->referenceSettlementResidenceClaim;
+            $settlement = $settlementClaim->settlement;
+
+            if ($settlement !== null
+                && in_array($settlementClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
+                && in_array($settlement->classification, ['unverified_settlement', 'needs_review', 'verified_residential_village'], true)
+            ) {
+                // The exact chosen base is still a settlement claim. Keep all
+                // canonical ancestors observer-only; the pending shell represents
+                // the user's chosen base until a separate governance materialization.
+                return null;
+            }
+        }
+
+        $currentResidence = $user->locationRelationships()
             ->where('relationship_type', 'primary_residence')
             ->whereNull('ended_at')
             ->with('location')
             ->latest('started_at')
-            ->first()?->location;
+            ->latest('id')
+            ->first();
 
+        $location = $currentResidence?->location;
         if ($location === null) {
             return null;
+        }
+
+        $structuralClaimIds = collect(($currentResidence->metadata ?? [])['structural_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($structuralClaimIds->isNotEmpty()) {
+            $pendingBaseClaim = LocationStructureClaim::query()
+                ->whereIn('id', $structuralClaimIds)
+                ->where('location_id', $location->id)
+                ->where('claim_type', 'no_neighborhood')
+                ->where('status', '<>', 'approved')
+                ->exists();
+
+            if ($pendingBaseClaim) {
+                return null;
+            }
         }
 
         $area = $this->governanceResolver->baseOfficialAreaForResidence($location);

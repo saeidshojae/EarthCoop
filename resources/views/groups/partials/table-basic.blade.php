@@ -43,6 +43,7 @@
             return null;
         }
 
+        $isPendingLocation = (bool) ($group->pending_location ?? false);
         $pivotRole = isset($pivot->role) ? (int) $pivot->role : null;
         if ($pivotRole === null) {
             $locationLevel = strtolower(trim((string) ($group->location_level ?? '')));
@@ -86,7 +87,11 @@
             default => !$locationApproved || !$specialtyApproved,
         };
 
-        if (!$isActiveMembership) {
+        if ($isPendingLocation) {
+            $statusClass = 'status-badge pending';
+            $statusLabel = 'در انتظار تأیید';
+            $statusKey = 'pending';
+        } elseif (!$isActiveMembership) {
             $statusClass = 'status-badge inactive';
             $statusLabel = 'غیرفعال';
             $statusKey = 'inactive';
@@ -100,7 +105,7 @@
             $statusKey = 'active';
         }
 
-        $canAccess = $isActiveMembership && !$pendingApproval;
+        $canAccess = !$isPendingLocation && $isActiveMembership && !$pendingApproval;
 
         $filterValue = 'all';
         if ($levelKey) {

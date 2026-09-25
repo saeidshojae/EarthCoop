@@ -94,6 +94,17 @@
       "location_external_ids": ["IR-SARI-URBAN-01"]
     },
     {
+      "key": "ir-reference-v1-sari-urban-region-no-neighborhood",
+      "parent_key": "ir-reference-v1-sari",
+      "governance_type": "urban_region",
+      "area_kind": "official",
+      "canonical_name": "Sari Reference Region Without Neighborhood",
+      "localized_names": {"fa": "منطقه مرجع بدون محله ساری", "en": "Sari Reference Region Without Neighborhood"},
+      "rank": 700,
+      "status": "active",
+      "location_external_ids": ["IR-SARI-URBAN-NONEIGHBORHOOD"]
+    },
+    {
       "key": "ir-reference-v1-sari-neighborhood-01",
       "parent_key": "ir-reference-v1-sari-urban-region-01",
       "governance_type": "local",
@@ -114,6 +125,17 @@
       "rank": 400,
       "status": "active",
       "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-SECTION"]
+    },
+    {
+      "key": "ir-reference-v1-kiasar",
+      "parent_key": "ir-reference-v1-chahardangeh-section",
+      "governance_type": "city",
+      "area_kind": "official",
+      "canonical_name": "Kiasar",
+      "localized_names": {"fa": "کیاسر", "en": "Kiasar"},
+      "rank": 500,
+      "status": "active",
+      "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-KIASAR"]
     },
     {
       "key": "ir-reference-v1-chahardangeh-rural-district",
@@ -142,8 +164,8 @@
       "parent_key": "ir-reference-v1-chahardangeh-rural-district",
       "governance_type": "village",
       "area_kind": "official",
-      "canonical_name": "Chahardangeh Village Without Neighborhood",
-      "localized_names": {"fa": "روستای چهاردانگه بدون محله", "en": "Chahardangeh Village Without Neighborhood"},
+      "canonical_name": "Reference Village Without Neighborhood",
+      "localized_names": {"fa": "روستای مرجع بدون محله", "en": "Reference Village Without Neighborhood"},
       "rank": 700,
       "status": "active",
       "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-NONEIGHBORHOOD"]

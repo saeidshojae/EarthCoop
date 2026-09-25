@@ -7,6 +7,7 @@ use App\Http\Controllers\Profile\ProfileController;
 use App\Models\Address;
 use App\Models\ExperienceField;
 use App\Models\Location;
+use App\Models\LocationExternalId;
 use App\Models\LocationProposal;
 use App\Models\OccupationalField;
 use App\Models\PendingResidenceIntent;
@@ -33,7 +34,7 @@ final class ProfileEditController extends Controller
             ->first();
 
         $pendingResidenceIntent = $user->pendingResidenceIntents()
-            ->with(['locationProposal.type', 'resolvedLocation'])
+            ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement', 'resolvedLocation'])
             ->where('status', 'pending')
             ->latest('selected_at')
             ->latest('id')
@@ -43,6 +44,7 @@ final class ProfileEditController extends Controller
             $primaryResidence?->location,
             $pendingResidenceIntent,
         );
+        $referenceSettlementProposalPath = $this->referenceSettlementProposalPath($pendingResidenceIntent);
 
         $occupationalFields = OccupationalField::whereNull('parent_id')->get();
         $experienceFields = ExperienceField::whereNull('parent_id')->get();
@@ -71,6 +73,7 @@ final class ProfileEditController extends Controller
             'primaryResidence' => $primaryResidence,
             'pendingResidenceIntent' => $pendingResidenceIntent,
             'residenceHydrationPath' => $residenceHydrationPath,
+            'referenceSettlementProposalPath' => $referenceSettlementProposalPath,
             'occupationalFields' => $occupationalFields,
             'experienceFields' => $experienceFields,
             'allOccupationalFields' => $allOccupationalFields,
@@ -96,6 +99,11 @@ final class ProfileEditController extends Controller
         ?Location $primaryResidenceLocation,
         ?PendingResidenceIntent $intent,
     ): array {
+        $referenceAnchor = $this->referenceSettlementAnchor($intent);
+        if ($referenceAnchor instanceof Location) {
+            return $this->canonicalLocationPath($referenceAnchor);
+        }
+
         $proposal = $intent?->locationProposal;
         if (! $proposal instanceof LocationProposal) {
             return $this->canonicalLocationPath($primaryResidenceLocation);
@@ -128,12 +136,55 @@ final class ProfileEditController extends Controller
         return [...$this->canonicalLocationPath($canonicalAnchor), ...$proposalPath];
     }
 
+    private function referenceSettlementAnchor(?PendingResidenceIntent $intent): ?Location
+    {
+        $settlement = $intent?->referenceSettlementResidenceClaim?->settlement;
+        $parentExternalId = $settlement?->parent_external_id;
+        if (! is_string($parentExternalId) || $parentExternalId === '') {
+            return null;
+        }
+
+        return LocationExternalId::query()
+            ->with('location')
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', $parentExternalId)
+            ->first()?->location;
+    }
+
+    /** @return array<int, int> */
+    private function referenceSettlementProposalPath(?PendingResidenceIntent $intent): array
+    {
+        if ($intent?->reference_settlement_residence_claim_id === null || ! $intent?->locationProposal instanceof LocationProposal) {
+            return [];
+        }
+
+        $path = [];
+        $cursor = $intent->locationProposal;
+        $visited = [];
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) {
+                return [];
+            }
+            $visited[$cursor->id] = true;
+            array_unshift($path, (int) $cursor->id);
+            if ($cursor->parent_reference_settlement_id !== null) {
+                return $path;
+            }
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        return [];
+    }
+
     /** @return array<int, string> */
     private function canonicalLocationPath(?Location $location): array
     {
         if (! $location instanceof Location) {
             return [];
         }
+
+        $location = $this->preferredHydrationLocation($location);
 
         $path = [];
         $cursor = $location;
@@ -160,4 +211,43 @@ final class ProfileEditController extends Controller
 
         return $path;
     }
+    private function preferredHydrationLocation(Location $location): Location
+    {
+        if ($location->country_code !== 'IR') {
+            return $location;
+        }
+
+        $alreadyV2 = LocationExternalId::query()
+            ->where('location_id', $location->id)
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->exists();
+        if ($alreadyV2) {
+            return $location;
+        }
+
+        $v1ExternalId = LocationExternalId::query()
+            ->where('location_id', $location->id)
+            ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+            ->where('dataset_version', config('iran_v1_v2_crosswalk.v1_dataset_version', 'v1'))
+            ->value('external_id');
+        if (! is_string($v1ExternalId) || $v1ExternalId === '') {
+            return $location;
+        }
+
+        $mapping = config('iran_v1_v2_crosswalk.mappings.'.$v1ExternalId);
+        if (! is_array($mapping) || ($mapping['status'] ?? null) !== 'verified_identity') {
+            return $location;
+        }
+
+        $v2 = LocationExternalId::query()
+            ->with('location')
+            ->where('source', config('iran_v1_v2_crosswalk.source', 'earthcoop-reference'))
+            ->where('dataset_version', config('iran_v1_v2_crosswalk.v2_dataset_version', 'v2'))
+            ->where('external_id', (string) ($mapping['v2'] ?? ''))
+            ->first()?->location;
+
+        return $v2 instanceof Location && $v2->status === 'active' ? $v2 : $location;
+    }
+
 }

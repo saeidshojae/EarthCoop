@@ -13,6 +13,7 @@ class LocationProposal extends Model
         'proposer_user_id',
         'parent_location_id',
         'parent_location_proposal_id',
+        'parent_reference_settlement_id',
         'location_schema_id',
         'location_type_id',
         'country_code',
@@ -56,6 +57,11 @@ class LocationProposal extends Model
         return $this->hasMany(self::class, 'parent_location_proposal_id');
     }
 
+    public function parentReferenceSettlement(): BelongsTo
+    {
+        return $this->belongsTo(ReferenceSettlement::class, 'parent_reference_settlement_id');
+    }
+
     public function schema(): BelongsTo
     {
         return $this->belongsTo(LocationSchema::class, 'location_schema_id');
@@ -84,6 +90,27 @@ class LocationProposal extends Model
     public function pendingResidenceIntents(): HasMany
     {
         return $this->hasMany(PendingResidenceIntent::class);
+    }
+
+    public function referenceSettlementRootProposal(): ?self
+    {
+        $cursor = $this;
+        $visited = [];
+
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) {
+                return null;
+            }
+            $visited[$cursor->id] = true;
+
+            if ($cursor->parent_reference_settlement_id !== null) {
+                return $cursor;
+            }
+
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        return null;
     }
 
     public function nearestCanonicalParent(): ?Location

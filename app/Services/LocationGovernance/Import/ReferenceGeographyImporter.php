@@ -42,6 +42,10 @@ final class ReferenceGeographyImporter
             return $result;
         }
 
+        if ($result->conflicts > 0) {
+            throw new RuntimeException('Reference geography apply refused because the dry-run contains conflicts.');
+        }
+
         return DB::transaction(function () use ($dataset, $rows, $actions, $result): ReferenceImportResult {
             [$schema, $types] = $this->ensureSchema($dataset);
             $resolved = [];
@@ -233,7 +237,12 @@ final class ReferenceGeographyImporter
                 'provenance' => $row['provenance'],
             ];
 
-            $actions[$row['external_id']] = $current === $desired
+            // MySQL JSON columns can return object keys in a different order
+            // from the source JSONL. PHP's strict array identity treats those
+            // otherwise equal objects as different and marks every row UPDATE.
+            // Normalize associative keys recursively, retaining list order
+            // and strict value/type comparisons for actual content changes.
+            $actions[$row['external_id']] = $this->normalizeComparable($current) === $this->normalizeComparable($desired)
                 ? ['action' => 'unchanged', 'before' => $current, 'after' => $desired]
                 : ['action' => 'update', 'before' => $current, 'after' => $desired];
         }
@@ -262,6 +271,22 @@ final class ReferenceGeographyImporter
             conflicts: $counts['conflict'] ?? 0,
             unchanged: $counts['unchanged'] ?? 0,
         )];
+    }
+
+    private function normalizeComparable(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->normalizeComparable($item);
+        }
+        if (! array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+
+        return $value;
     }
 
     private function ensureSchema(ReferenceDataset $dataset): array

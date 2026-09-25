@@ -41,14 +41,15 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
         $this->assertStringContainsString('suggested_location_id', $source);
         $this->assertStringContainsString('location:hydrate', $source);
     }
-    public function test_registration_explains_required_governance_path_and_optional_micro_location_details(): void
+    public function test_registration_explains_governance_base_stop_and_defers_micro_location_details(): void
     {
         $view = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
 
         $this->assertIsString($view);
         $this->assertStringContainsString('تا سطح محله', $view);
-        $this->assertStringContainsString('خیابان، کوچه، مجتمع یا ساختمان اختیاری است', $view);
-        $this->assertStringContainsString('بعداً نیز می‌توانید', $view);
+        $this->assertStringContainsString('ثبت‌نام در همین سطح پایه پایان می‌یابد', $view);
+        $this->assertStringContainsString('نیازی به وارد کردن خیابان، کوچه، مجتمع یا ساختمان نیست', $view);
+        $this->assertStringContainsString('مکان و حکمرانی من', $view);
     }
 
 }

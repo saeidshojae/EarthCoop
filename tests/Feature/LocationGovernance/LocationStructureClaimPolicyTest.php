@@ -73,9 +73,14 @@ class LocationStructureClaimPolicyTest extends TestCase
         $noNeighborhoodRegion = LocationStructureClaim::create(['location_id'=>$region->id,'claim_type'=>'no_neighborhood','status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
         $noNeighborhoodVillage = LocationStructureClaim::create(['location_id'=>$village->id,'claim_type'=>'no_neighborhood','status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
 
-        $this->assertSame(['neighborhood'], $policy->effectiveChildTypeCodes($city, collect([$singleRegion])));
+        $this->assertSame(['urban_region'], $policy->effectiveChildTypeCodes($city, collect([$singleRegion])));
         $this->assertSame(['street'], $policy->effectiveChildTypeCodes($region, collect([$noNeighborhoodRegion])));
         $this->assertSame(['street'], $policy->effectiveChildTypeCodes($village, collect([$noNeighborhoodVillage])));
+        $singleNeighborhoodRegion = LocationStructureClaim::create(['location_id'=>$region->id,'claim_type'=>'single_neighborhood','status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
+        $singleNeighborhoodVillage = LocationStructureClaim::create(['location_id'=>$village->id,'claim_type'=>'single_neighborhood','status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
+
+        $this->assertSame(['neighborhood'], $policy->effectiveChildTypeCodes($region, collect([$singleNeighborhoodRegion])));
+        $this->assertSame(['neighborhood'], $policy->effectiveChildTypeCodes($village, collect([$singleNeighborhoodVillage])));
     }
 
     public function test_combined_city_without_region_or_neighborhood_can_continue_to_micro_locations(): void

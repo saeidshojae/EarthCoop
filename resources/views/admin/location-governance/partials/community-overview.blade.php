@@ -7,11 +7,11 @@
         @forelse($communityAreas as $area)
             <div class="border-bottom py-2">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <strong>{{ $area->canonical_name }}</strong>
+                    <strong>{{ \App\Support\GovernanceAreaDisplayName::for($area) }}</strong>
                     <span class="badge text-bg-light border">Community</span>
                 </div>
                 <div class="small text-muted mt-1">
-                    والد رسمی: {{ $area->parent?->canonical_name ?: '—' }} · مکان‌های متصل: {{ $area->locations->count() }}
+                    والد رسمی: {{ \App\Support\GovernanceAreaDisplayName::for($area->parent) }} · مکان‌های متصل: {{ $area->locations->count() }}
                 </div>
             </div>
         @empty

@@ -64,6 +64,52 @@ class LocationSelectionApiTest extends TestCase
         $response->assertJsonPath('data.0.status', 'active');
     }
 
+    public function test_ir_country_filter_prefers_active_v2_root_when_v1_and_v2_coexist(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $v1 = LocationFixture::iranSchema();
+        $countryType = $v1->types->firstWhere('key', 'country');
+        $v1Root = Location::factory()->create([
+            'location_schema_id' => $v1->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'Iran v1',
+            'canonical_name' => 'Iran v1',
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $v2 = LocationSchema::query()->create([
+            'key' => 'ir-reference-v2',
+            'country_code' => 'IR',
+            'name' => 'Iran 1404',
+            'version' => 'v2',
+            'status' => 'active',
+        ]);
+        $v2->types()->attach($countryType->id, [
+            'is_root' => true,
+            'is_residence_endpoint' => false,
+            'sort_order' => 10,
+            'metadata' => json_encode(['crowdsourced_proposal_allowed' => false]),
+        ]);
+        $v2Root = Location::factory()->create([
+            'location_schema_id' => $v2->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'ایران',
+            'canonical_name' => 'ایران',
+            'localized_names' => ['fa' => 'ایران'],
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $response = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $v2Root->id);
+        $this->assertNotSame($v1Root->id, (int) $response->json('data.0.id'));
+    }
+
     public function test_root_without_country_filter_exposes_active_roots_from_multiple_country_schemas(): void
     {
         config(['location-governance.runtime_enabled' => true]);
@@ -132,8 +178,10 @@ class LocationSelectionApiTest extends TestCase
 
         $cityResponse = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
         $this->assertContains('single_urban_region', collect($cityResponse->json('structural_choices'))->pluck('claim_type')->all());
-        $this->assertContains('neighborhood', collect($cityResponse->json('effective_allowed_types'))->pluck('key')->all());
-        $this->assertSame('pending', collect($cityResponse->json('structural_choices'))->firstWhere('claim_type', 'single_urban_region')['status']);
+        $this->assertContains('urban_region', collect($cityResponse->json('effective_allowed_types'))->pluck('key')->all());
+        $singleRegionChoice = collect($cityResponse->json('structural_choices'))->firstWhere('claim_type', 'single_urban_region');
+        $this->assertSame('pending', $singleRegionChoice['status']);
+        $this->assertSame($singleRegion->id, $singleRegionChoice['claim_id']);
 
         foreach ([$region, $village] as $base) {
             $response = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
@@ -159,7 +207,7 @@ class LocationSelectionApiTest extends TestCase
         $this->assertTrue((bool) $response->json('official_governance_base'));
     }
 
-    public function test_pending_city_collapse_claims_allow_residence_detail_but_do_not_grant_official_base_authority(): void
+    public function test_pending_city_collapse_claims_are_visible_but_only_affect_an_explicitly_selected_residence_path(): void
     {
         config(['location-governance.runtime_enabled' => true]);
 
@@ -167,22 +215,67 @@ class LocationSelectionApiTest extends TestCase
         $user = User::factory()->create();
         $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
 
-        foreach (['no_urban_region', 'no_neighborhood'] as $type) {
-            LocationStructureClaim::create([
-                'location_id' => $city->id,
-                'claim_type' => $type,
-                'status' => 'pending',
-                'proposer_user_id' => $user->id,
-            ]);
-        }
+        $claims = collect(['no_urban_region', 'no_neighborhood'])->map(fn (string $type) => LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => $type,
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]));
 
-        $response = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $default = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $this->assertContains('urban_region', collect($default->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $default->json('official_governance_base'));
+        $this->assertSame('pending', collect($default->json('structural_choices'))->firstWhere('claim_type', 'no_urban_region')['status']);
+        $this->assertFalse((bool) collect($default->json('structural_choices'))->firstWhere('claim_type', 'no_urban_region')['selected']);
 
-        $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
-        $this->assertFalse((bool) $response->json('official_governance_base'));
+        $query = http_build_query(['location_structure_claim_ids' => $claims->pluck('id')->all()]);
+        $selected = $this->getJson('/location/options/'.$city->id.'/children?'.$query)->assertOk();
+        $this->assertSame(['street'], collect($selected->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertTrue((bool) collect($selected->json('structural_choices'))->firstWhere('claim_type', 'no_urban_region')['selected']);
+        $this->assertFalse((bool) $selected->json('official_governance_base'));
     }
 
-    public function test_pending_no_neighborhood_claim_on_region_and_village_opens_micro_residence_without_claiming_official_base(): void
+    public function test_pending_no_region_claim_does_not_block_another_user_from_proposing_a_real_region(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $regionType = $schema->types->firstWhere('key', 'urban_region');
+        $claimOwner = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $claim = LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'pending',
+            'proposer_user_id' => $claimOwner->id,
+        ]);
+
+        $default = $this->actingAs($otherUser)->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $default->assertJsonPath('effective_allowed_types.0.key', 'urban_region');
+        $default->assertJsonPath('effective_allowed_types.0.proposal_allowed', true);
+
+        $proposal = $this->actingAs($otherUser)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $regionType->id,
+            'canonical_name' => 'منطقه پیشنهادی برخلاف ادعای بدون منطقه',
+        ])->assertCreated()->assertJsonPath('kind', 'proposal');
+
+        $proposalId = (int) $proposal->json('id');
+        $this->assertDatabaseHas('location_proposals', [
+            'id' => $proposalId,
+            'parent_location_id' => $city->id,
+            'location_type_id' => $regionType->id,
+            'proposer_user_id' => $otherUser->id,
+        ]);
+
+        $afterProposal = $this->actingAs($claimOwner)->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $this->assertContains($proposalId, collect($afterProposal->json('proposals'))->pluck('id')->all());
+        $this->assertSame('pending', $claim->fresh()->status);
+    }
+
+    public function test_pending_no_neighborhood_claim_on_region_and_village_requires_explicit_selection_to_open_micro_residence(): void
     {
         config(['location-governance.runtime_enabled' => true]);
 
@@ -192,17 +285,24 @@ class LocationSelectionApiTest extends TestCase
         $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
 
         foreach ([$region, $village] as $base) {
-            LocationStructureClaim::create([
+            $claim = LocationStructureClaim::create([
                 'location_id' => $base->id,
                 'claim_type' => 'no_neighborhood',
                 'status' => 'pending',
                 'proposer_user_id' => $user->id,
             ]);
 
-            $response = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
+            $default = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
+            $this->assertContains('neighborhood', collect($default->json('effective_allowed_types'))->pluck('key')->all());
+            $this->assertFalse((bool) $default->json('official_governance_base'));
+            $this->assertFalse((bool) $default->json('registration_endpoint_allowed'));
 
-            $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
-            $this->assertFalse((bool) $response->json('official_governance_base'));
+            $selected = $this->getJson('/location/options/'.$base->id.'/children?'.http_build_query([
+                'location_structure_claim_ids' => [$claim->id],
+            ]))->assertOk();
+            $this->assertSame(['street'], collect($selected->json('effective_allowed_types'))->pluck('key')->all());
+            $this->assertFalse((bool) $selected->json('official_governance_base'));
+            $this->assertTrue((bool) $selected->json('registration_endpoint_allowed'));
         }
     }
 
@@ -225,8 +325,13 @@ class LocationSelectionApiTest extends TestCase
         $beforeLocationIds = Location::query()->pluck('id')->sort()->values()->all();
 
         $pending = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
-        $this->assertContains('street', collect($pending->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertContains('neighborhood', collect($pending->json('effective_allowed_types'))->pluck('key')->all());
         $this->assertFalse((bool) $pending->json('official_governance_base'));
+
+        $selectedPending = $this->getJson('/location/options/'.$village->id.'/children?'.http_build_query([
+            'location_structure_claim_ids' => [$claim->id],
+        ]))->assertOk();
+        $this->assertSame(['street'], collect($selectedPending->json('effective_allowed_types'))->pluck('key')->all());
 
         app(\App\Services\LocationGovernance\LocationStructureClaimService::class)
             ->approve($claim, $reviewer, 'ساختار محل بررسی و تایید شد');
@@ -234,6 +339,7 @@ class LocationSelectionApiTest extends TestCase
         $approved = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
         $this->assertContains('street', collect($approved->json('effective_allowed_types'))->pluck('key')->all());
         $this->assertTrue((bool) $approved->json('official_governance_base'));
+        $this->assertTrue((bool) $approved->json('registration_endpoint_allowed'));
         $this->assertSame($beforeLocationIds, Location::query()->pluck('id')->sort()->values()->all());
         $this->assertFalse(Location::query()->where('parent_id', $village->id)->where('level', 'neighborhood')->exists());
     }
@@ -347,4 +453,40 @@ class LocationSelectionApiTest extends TestCase
         $this->assertFalse($rows[$rural->id]['is_residence_endpoint']);
         $this->assertFalse($rows[$rural->id]['has_children']);
     }
+    public function test_single_structural_claims_preserve_real_location_tiers_and_do_not_mark_parent_as_governance_base(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $cityPath = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region','neighborhood']);
+        $city = $cityPath->first(fn ($location) => $location->type?->key === 'city');
+        $region = $cityPath->first(fn ($location) => $location->type?->key === 'urban_region');
+
+        LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'single_urban_region',
+            'status' => 'approved',
+            'proposer_user_id' => $user->id,
+            'approved_at' => now(),
+        ]);
+        LocationStructureClaim::create([
+            'location_id' => $region->id,
+            'claim_type' => 'single_neighborhood',
+            'status' => 'approved',
+            'proposer_user_id' => $user->id,
+            'approved_at' => now(),
+        ]);
+
+        $cityResponse = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $this->assertContains('urban_region', collect($cityResponse->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $cityResponse->json('official_governance_base'));
+        $this->assertNotContains('single_neighborhood', collect($cityResponse->json('structural_choices'))->pluck('claim_type')->all());
+
+        $regionResponse = $this->getJson('/location/options/'.$region->id.'/children')->assertOk();
+        $this->assertContains('neighborhood', collect($regionResponse->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $regionResponse->json('official_governance_base'));
+    }
+
+
 }

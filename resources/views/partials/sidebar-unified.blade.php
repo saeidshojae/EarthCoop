@@ -15,6 +15,14 @@
         } else {
             $groups = $sidebarUser->groups()->wherePivot('status', 1)->get();
         }
+        $pendingLocationGroupCount = 0;
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $pendingGroupService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+            $pendingRequests = $pendingGroupService->openForUser($sidebarUser);
+            $groups = $pendingGroupService->presentableCanonicalGroups($groups, $pendingRequests);
+            $pendingLocationGroupCount = $pendingRequests->count();
+        }
+        $sidebarGroupCount = $groups->count() + $pendingLocationGroupCount;
         $generalGroups = $groups->where('type', 'general');
         $specializedGroups = $groups->where('type', 'specialized');
         $exclusiveGroups = $groups->where('type', 'exclusive');
@@ -161,8 +169,8 @@
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-users" style="color: var(--color-ocean-blue);"></i>
                         <span class="flex-grow text-right mx-3">{{ __('navigation.footer_my_groups') }}</span>
-                        @if($groups->count() > 0)
-                            <span class="badge text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-digital-gold); color: var(--color-pure-white);">{{ $groups->count() }}</span>
+                        @if($sidebarGroupCount > 0)
+                            <span class="badge text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-digital-gold); color: var(--color-pure-white);">{{ $sidebarGroupCount }}</span>
                         @endif
                     </a>
                 </li>

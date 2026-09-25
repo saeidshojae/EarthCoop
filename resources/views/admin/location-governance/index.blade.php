@@ -57,6 +57,7 @@
 
     @include('admin.location-governance.partials.proposal-queue')
     @include('admin.location-governance.partials.structure-claim-queue')
+    @include('admin.location-governance.partials.settlement-review-queue')
 
     <div class="row g-3 mb-4">
         <div class="col-12 col-xl-6">

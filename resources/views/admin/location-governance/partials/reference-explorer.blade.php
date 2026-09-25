@@ -10,9 +10,9 @@
                 <tbody>
                     @forelse($referenceLocations as $location)
                         <tr>
-                            <td>{{ $location->canonical_name ?: $location->name }}</td>
+                            <td>{{ \App\Support\LocationDisplayName::for($location) }}</td>
                             <td>{{ $location->type?->key ?: $location->level ?: '—' }}</td>
-                            <td>{{ $location->parent?->canonical_name ?: $location->parent?->name ?: '—' }}</td>
+                            <td>{{ $location->parent ? \App\Support\LocationDisplayName::for($location->parent) : '—' }}</td>
                             <td>{{ $location->country_code ?: '—' }}</td>
                         </tr>
                     @empty

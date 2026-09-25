@@ -1,0 +1,356 @@
+name: Iran 1404 Reference Staging Validation
+
+on:
+  push:
+    branches:
+      - agent/iran-reference-data-audit-20260923
+    paths:
+      - 'database/reference/source/ir/1404/**'
+      - 'scripts/location_governance/**'
+      - '.github/workflows/iran-1404-reference-staging.yml'
+      - 'database/reference/ir/v1/schema.json'
+      - 'app/Console/Commands/LocationReferenceImportCommand.php'
+      - 'app/Console/Commands/IranSettlement*.php'
+      - 'tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php'
+      - 'app/Models/ReferenceSettlement*.php'
+      - 'app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php'
+      - 'app/Services/LocationGovernance/ReferenceSettlementReviewService.php'
+      - 'app/Http/Controllers/LocationGovernance/IranSettlement*Controller.php'
+      - 'app/Http/Controllers/Admin/LocationGovernanceController.php'
+      - 'config/iran_settlement_catalog.php'
+      - 'routes/location-proposals.php'
+      - 'routes/location-governance-admin.php'
+      - 'database/migrations/2026_09_24_00000*_*.php'
+      - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
+      - 'tests/Feature/LocationGovernance/IranSettlement*.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Services/LocationGovernance/IranSettlementAnchorResolver.php'
+      - 'app/Services/LocationGovernance/ResidenceService.php'
+      - 'app/Services/Groups/PendingLocationGroupRequestService.php'
+      - 'app/Services/Groups/CanonicalGroupMembershipReconciler.php'
+      - 'app/Models/PendingResidenceIntent.php'
+      - 'app/Models/LocationScopedGroupRequest.php'
+      - 'config/iran_v1_v2_crosswalk.php'
+      - 'resources/views/auth/register_step3_canonical.blade.php'
+      - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php'
+      - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
+      - 'app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php'
+      - 'app/Http/Controllers/LocationGovernance/ProfileEditController.php'
+      - 'resources/views/location-governance/my-location-governance.blade.php'
+      - 'resources/views/profile/partials/location_canonical.blade.php'
+  pull_request:
+    paths:
+      - 'database/reference/source/ir/1404/**'
+      - 'scripts/location_governance/**'
+      - '.github/workflows/iran-1404-reference-staging.yml'
+      - 'database/reference/ir/v1/schema.json'
+      - 'app/Console/Commands/LocationReferenceImportCommand.php'
+      - 'tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php'
+      - 'app/Models/ReferenceSettlement*.php'
+      - 'app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php'
+      - 'app/Services/LocationGovernance/ReferenceSettlementReviewService.php'
+      - 'app/Http/Controllers/LocationGovernance/IranSettlement*Controller.php'
+      - 'app/Http/Controllers/Admin/LocationGovernanceController.php'
+      - 'config/iran_settlement_catalog.php'
+      - 'routes/location-proposals.php'
+      - 'routes/location-governance-admin.php'
+      - 'database/migrations/2026_09_24_00000*_*.php'
+      - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
+      - 'tests/Feature/LocationGovernance/IranSettlement*.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Services/LocationGovernance/IranSettlementAnchorResolver.php'
+      - 'app/Services/LocationGovernance/ResidenceService.php'
+      - 'app/Services/Groups/PendingLocationGroupRequestService.php'
+      - 'app/Services/Groups/CanonicalGroupMembershipReconciler.php'
+      - 'app/Models/PendingResidenceIntent.php'
+      - 'app/Models/LocationScopedGroupRequest.php'
+      - 'config/iran_v1_v2_crosswalk.php'
+      - 'resources/views/auth/register_step3_canonical.blade.php'
+      - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php'
+      - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
+      - 'app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php'
+      - 'app/Http/Controllers/LocationGovernance/ProfileEditController.php'
+      - 'resources/views/location-governance/my-location-governance.blade.php'
+      - 'resources/views/profile/partials/location_canonical.blade.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iran-1404-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+
+      - name: Test fail-closed converter and read-only v1 identity audit
+        run: |
+          python3 -m unittest -v \
+            scripts/location_governance/test_convert_iran_1404.py \
+            scripts/location_governance/test_audit_v1_iran_crosswalk.py
+
+      - name: Cross-check reviewed UAT identities against pinned real 1404 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/location_governance/audit_v1_iran_crosswalk.py \
+            --source-dir database/reference/source/ir/1404 \
+            --v1-locations database/reference/ir/v1/locations.jsonl \
+            --output "$RUNNER_TEMP/iran-v1-crosswalk-review.json"
+          python3 - "$RUNNER_TEMP/iran-v1-crosswalk-review.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          assert report['v1_rows'] == 18
+          assert report['counts'] == {'verified_identity': 8, 'municipal_review': 1, 'synthetic_hold': 9}
+          assert all(item['action'] == 'review_only_no_database_changes' for item in report['matches'])
+          print('PASS: eight reviewed real identities, one municipal review, nine synthetic holds')
+          PY
+
+      - name: Validate pinned source and build NON-PRODUCTION candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/location_governance/convert_iran_1404.py \
+            --source-dir database/reference/source/ir/1404 \
+            --schema-template database/reference/ir/v1/schema.json \
+            --output-dir "$RUNNER_TEMP/iran-1404-v2-candidate"
+
+      - name: Assert full candidate counts, hierarchy and quarantine
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/iran-1404-v2-candidate" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['total_rows'] == 105475, manifest
+          assert manifest['staged_active_rows'] == 6158, manifest
+          assert manifest['quarantined_settlements'] == 99317, manifest
+          assert manifest['source_git_blob_sha1'] == 'ca9f4a0d69c7c9d77e6434447c7fe123a322271e'
+          assert sum(1 for _ in (root / 'locations.jsonl').open(encoding='utf-8')) == 6158
+          assert sum(1 for _ in (root / 'settlements.review.jsonl').open(encoding='utf-8')) == 99317
+          schema = json.loads((root / 'schema.json').read_text(encoding='utf-8'))
+          assert (schema['key'], schema['version']) == ('ir-reference-v2', 'v2')
+          assert 'settlement' not in {item['key'] for item in schema['types']}
+          assert manifest['settlement_classification'] == {
+              'geographic_identity_verified': 99317,
+              'residential_eligibility_unverified': 99317,
+              'residential_villages_verified': 0,
+              'nonresidential_settlements_verified': 0,
+              'governance_authorized': 0,
+          }
+          with (root / 'settlements.review.jsonl').open(encoding='utf-8') as review:
+              for line in review:
+                  settlement = json.loads(line)
+                  flags = settlement['metadata']
+                  assert settlement['type'] == 'settlement'
+                  assert settlement['classification'] == 'unverified_settlement'
+                  assert flags['residential_eligibility'] == 'unverified'
+                  assert flags['settlement_kind'] == 'unknown'
+                  assert not flags['is_residence_endpoint']
+                  assert not flags['importable']
+                  assert not flags['governance_authorized']
+          print('PASS: full 1404 source, v2 staged locations and 99317 nonimportable settlements verified')
+          PY
+
+      - name: Upload candidate as short-lived review artifact (NEVER deployed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: iran-1404-v2-STAGING-${{ github.sha }}
+          path: ${{ runner.temp }}/iran-1404-v2-candidate/
+          retention-days: 7
+          if-no-files-found: error
+
+  php-isolated-import-guard:
+    needs: validate-and-stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+
+      - name: Prepare Laravel cache directories before Composer scripts
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+
+      - name: Install backend dependencies
+        run: |
+          composer validate --no-check-publish
+          composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare isolated test Laravel environment
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop_testing
+          DB_USERNAME=root
+          DB_PASSWORD=
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          EOF
+          php artisan key:generate --force
+          mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS newearthcoop_geo_uat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+          php artisan migrate --force
+          DB_DATABASE=newearthcoop-test php artisan migrate --force
+          DB_DATABASE=newearthcoop_geo_uat php artisan migrate --force
+
+      - name: Syntax and targeted import safety regressions
+        run: |
+          php -l app/Console/Commands/LocationReferenceImportCommand.php
+          php -l app/Data/LocationGovernance/ReferenceDataset.php
+          php -l app/Console/Commands/ReferenceGovernanceTopologyCommand.php
+          php -l app/Services/LocationGovernance/Import/ReferenceGovernanceTopologyImporter.php
+          php -l app/Console/Commands/ImportIranSettlementCatalog.php
+          php -l app/Console/Commands/IranV1V2RuntimeAuditCommand.php
+          php -l tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php
+          php -l tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
+          php -l tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
+          php -l app/Console/Commands/IranSettlementUatReadinessCommand.php
+          php -l tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
+          php -l tests/Feature/LocationGovernance/IranSettlementNeighborhoodBridgeTest.php
+          php -l tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php
+          php -l tests/Feature/Admin/LocationGovernanceControlCenterTest.php
+          php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
+          php -l app/Services/LocationGovernance/ResidenceService.php
+          php -l app/Services/LocationGovernance/LocationProposalService.php
+          php -l app/Models/LocationProposal.php
+          php -l app/Http/Controllers/Admin/SafeUserController.php
+          php -l app/Http/Controllers/Admin/UserResidenceController.php
+          php -l tests/Feature/Admin/CanonicalUserResidenceEditTest.php
+          php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
+          php -l app/Services/Groups/PendingLocationGroupRequestService.php
+          php -l app/Services/Groups/CanonicalGroupMembershipReconciler.php
+          php -l app/Models/LocationScopedGroupRequest.php
+          php -l database/migrations/2026_09_24_000005_link_pending_group_requests_to_reference_settlement_claims.php
+          php -l database/migrations/2026_09_24_000006_link_location_proposals_to_reference_settlements.php
+          php -l routes/location-proposals.php
+          php -l tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php
+          php -l tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php
+          php -l app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php
+          php -l app/Http/Controllers/LocationGovernance/IranSettlementCatalogController.php
+          php -l app/Http/Controllers/LocationGovernance/IranSettlementResidenceClaimController.php
+          php -l app/Services/LocationGovernance/ReferenceSettlementReviewService.php
+          php -l app/Http/Controllers/Admin/LocationGovernanceController.php
+          php -l app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php
+          php -l app/Http/Controllers/LocationGovernance/ProfileEditController.php
+          php -l app/Http/Controllers/LocationGovernance/ProfileResidenceController.php
+          php -l app/Http/Controllers/LocationGovernance/ReferenceSettlementStructureClaimController.php
+          php -l database/migrations/2026_09_25_000001_allow_structural_claims_on_reference_settlements.php
+          php -l tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php
+          php -l tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php
+          php -l tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php
+          php -l tests/Feature/LocationGovernance/ResidencePickerDeepHardeningTest.php
+          php -l routes/location-governance-admin.php
+          php -l app/Models/ReferenceSettlementReview.php
+          php -l database/migrations/2026_09_24_000003_create_reference_settlement_reviews.php
+          php -l tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php
+          php -l database/migrations/2026_09_24_000002_create_reference_settlement_residence_claims.php
+          php -l tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php
+          php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
+          php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
+          php artisan test tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
+          php artisan test tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
+          php artisan test tests/Feature/LocationGovernance/IranSettlementNeighborhoodBridgeTest.php tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php tests/Feature/Admin/CanonicalUserResidenceEditTest.php
+          php artisan test tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php tests/Feature/LocationGovernance/ResidencePickerDeepHardeningTest.php
+          node --test tests/js/location-governance/iran-settlement-neighborhood-bridge.test.mjs tests/js/location-governance/location-selector.test.mjs
+          php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
+          php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
+          php artisan test \
+            tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php \
+            tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
+            tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php \
+            tests/Feature/LocationGovernance/ReferenceGovernanceTopologyImportTest.php \
+            tests/Feature/LocationGovernance/LocationSelectionApiTest.php \
+            tests/Feature/LocationGovernance/ResidenceContinentTraversalTest.php \
+            tests/Feature/LocationGovernance/ProjectScopeTraversalProductionRegressionTest.php
+
+      - name: Download pinned NON-PRODUCTION v2 candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: iran-1404-v2-STAGING-${{ github.sha }}
+          path: ${{ runner.temp }}/iran-1404-v2-candidate/
+
+      - name: Dry-run and import 6158 rows in disposable geo_uat database only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e database/reference/ir/v2
+          mkdir -p database/reference/ir/v2
+          cp "$RUNNER_TEMP/iran-1404-v2-candidate/schema.json" database/reference/ir/v2/schema.json
+          cp "$RUNNER_TEMP/iran-1404-v2-candidate/locations.jsonl" database/reference/ir/v2/locations.jsonl
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --dry-run | tee "$RUNNER_TEMP/iran-v2-dry-run.log"
+          grep -Fx 'create: 6158' "$RUNNER_TEMP/iran-v2-dry-run.log"
+          grep -Fx 'conflict: 0' "$RUNNER_TEMP/iran-v2-dry-run.log"
+          grep -Fx 'deactivate: 0' "$RUNNER_TEMP/iran-v2-dry-run.log"
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --apply --confirm=APPLY-IR-1404-V2-ISOLATED | tee "$RUNNER_TEMP/iran-v2-apply.log"
+          grep -Fx 'create: 6158' "$RUNNER_TEMP/iran-v2-apply.log"
+          grep -Fx 'conflict: 0' "$RUNNER_TEMP/iran-v2-apply.log"
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --dry-run | tee "$RUNNER_TEMP/iran-v2-repeat.log"
+          grep -Fx 'unchanged: 6158' "$RUNNER_TEMP/iran-v2-repeat.log"
+          grep -Fx 'deactivate: 0' "$RUNNER_TEMP/iran-v2-repeat.log"
+
+      - name: Validate and import 99317 neutral settlements in disposable geo_uat only
+        shell: bash
+        run: |
+          set -euo pipefail
+          REVIEW="$RUNNER_TEMP/iran-1404-v2-candidate/settlements.review.jsonl"
+          MANIFEST="$RUNNER_TEMP/iran-1404-v2-candidate/manifest.json"
+          test -s "$REVIEW"
+          test -s "$MANIFEST"
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:iran-settlement-catalog "$REVIEW" "$MANIFEST" | tee "$RUNNER_TEMP/settlements-dry-run.log"
+          grep -Fx 'validated: 99317' "$RUNNER_TEMP/settlements-dry-run.log"
+          grep -Fx 'applied: 0' "$RUNNER_TEMP/settlements-dry-run.log"
+          started=$SECONDS
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:iran-settlement-catalog "$REVIEW" "$MANIFEST" --apply --confirm=APPLY-IR-SETTLEMENT-CATALOG-ISOLATED | tee "$RUNNER_TEMP/settlements-apply.log"
+          echo "Isolated full-volume import seconds: $((SECONDS-started))"
+          grep -Fx 'applied: 99317' "$RUNNER_TEMP/settlements-apply.log"
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM reference_settlements')" -eq 99317
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM reference_settlements WHERE residential_eligibility <> "unverified" OR governance_authorized <> 0 OR operational_promotion_allowed <> 0')" -eq 0
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM locations WHERE country_code="IR"')" -eq 6158
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:iran-settlement-catalog "$REVIEW" "$MANIFEST" --apply --confirm=APPLY-IR-SETTLEMENT-CATALOG-ISOLATED | tee "$RUNNER_TEMP/settlements-repeat.log"
+          grep -Fx 'applied: 0' "$RUNNER_TEMP/settlements-repeat.log"
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM reference_settlements')" -eq 99317

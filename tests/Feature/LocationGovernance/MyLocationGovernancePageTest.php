@@ -4,9 +4,12 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Models\GovernanceArea;
 use App\Models\Group;
+use App\Models\Location;
 use App\Models\User;
 use App\Models\UserLocationRelationship;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -49,6 +52,23 @@ class MyLocationGovernancePageTest extends TestCase
         $this->assertStringContainsString("wherePivot('status', 1)", $sidebar);
         $this->assertStringContainsString("config('location-governance.groups_enabled'", $sidebar);
         $this->assertStringNotContainsString('$groups = auth()->user()->groups;', $sidebar);
+    }
+
+    public function test_official_governance_name_uses_active_locale_and_language_fallback(): void
+    {
+        ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
+        $area->forceFill([
+            'canonical_name' => 'English Governance Area',
+            'localized_names' => ['fa' => 'حوزه حکمرانی فارسی', 'en' => 'English Governance Area'],
+        ])->save();
+
+        app()->setLocale('fa-IR');
+        $this->actingAs($user)->get(route('location-governance.me'))
+            ->assertOk()->assertSee('حوزه حکمرانی فارسی');
+
+        app()->setLocale('en');
+        $this->actingAs($user)->get(route('location-governance.me'))
+            ->assertOk()->assertSee('English Governance Area');
     }
 
     public function test_page_uses_official_governance_chain_and_separates_active_from_observer_memberships(): void
@@ -144,13 +164,72 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertOk();
         $response->assertSee('data-base-governance-summary', false);
         $response->assertSee('data-governance-chain', false);
-        $response->assertSee('class="observer-memberships', false);
+        $response->assertSee('class="governance-disclosure"', false);
+        $response->assertSee('class="membership-summary-row"', false);
         $response->assertSee('<details', false);
-        $response->assertSee('عضویت‌های ناظر');
+        $response->assertSee('مشاهده زنجیره');
+        $response->assertSee('عضویت فعال');
+        $response->assertSee('عضویت ناظر');
         $response->assertSee('حوزه پایه حکمرانی');
         $response->assertDontSee('Governance Area');
     }
 
+
+    public function test_page_presents_pending_no_neighborhood_base_separately_from_formal_governance_chain(): void
+    {
+        ['user' => $user, 'area' => $cityArea, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+
+        $region = Location::query()->create([
+            'parent_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $regionType->id,
+            'country_code' => 'IR',
+            'canonical_name' => 'منطقه پایه در انتظار ساختار',
+            'localized_names' => ['fa' => 'منطقه پایه در انتظار ساختار'],
+            'status' => 'active',
+        ]);
+        $regionArea = GovernanceArea::query()->create([
+            'parent_id' => $cityArea->id,
+            'key' => 'ir.pending-structural-base-page',
+            'country_code' => 'IR',
+            'governance_type' => 'urban_region',
+            'area_kind' => 'official',
+            'canonical_name' => 'Pending Structural Region',
+            'rank' => 20,
+            'status' => 'active',
+        ]);
+        $regionArea->locations()->attach($region->id);
+
+        $user->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->update(['ended_at' => now()->subSecond()]);
+
+        $claim = app(LocationStructureClaimService::class)
+            ->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $region,
+            ['source' => 'my_location_pending_structural_base'],
+            [$claim],
+        );
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertViewHas('governanceAreas', fn ($areas): bool =>
+            ! collect($areas)->contains('id', $regionArea->id)
+            && collect($areas)->contains('id', $cityArea->id)
+        );
+        $response->assertViewHas('pendingGovernanceStructuralClaims', fn ($claims): bool =>
+            collect($claims)->contains('id', $claim->id)
+        );
+        $response->assertSee('data-pending-structural-base', false);
+        $response->assertSee('منطقه پایه در انتظار ساختار');
+        $response->assertSee('حوزه پایه در انتظار تأیید ساختار');
+    }
 
     public function test_page_defaults_to_official_tab_and_guides_user_without_micro_location(): void
     {
@@ -163,7 +242,31 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('nav-link active', false);
         $response->assertSee('اجتماعات محلی');
         $response->assertSee('data-community-location-guide', false);
-        $response->assertSee('تکمیل نشانی و افزودن مکان محلی');
+        $response->assertSee('نشانی محلی شما هنوز تکمیل نشده است');
+        $response->assertSee('تکمیل نشانی محلی');
+    }
+
+
+    public function test_page_uses_progressive_disclosure_without_changing_membership_totals(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee('محل سکونت من');
+        $response->assertSee('حکمرانی رسمی من');
+        $response->assertSee('governance-overview', false);
+        $response->assertSee('membership-summary-row', false);
+
+        $memberships = $user->groups()
+            ->whereNotNull('governance_area_id')
+            ->wherePivot('status', 1)
+            ->get();
+
+        $response->assertSee((string) $memberships->count());
     }
 
 

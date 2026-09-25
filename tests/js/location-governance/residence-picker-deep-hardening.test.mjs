@@ -34,7 +34,7 @@ test('proposal parent payload never fabricates a canonical location id', () => {
 
 test('open proposal remains selectable while client supports loading deeper proposal children', () => {
   assert.deepEqual(selectionValues({ id: 34, identity: 'proposal:34', status: 'pending', selectable: true }), { locationId: '', proposalId: '34' });
-  assert.match(selectorSource, /location\/proposals\/\$\{encodeURIComponent\(selected\.id\)\}\/children/);
+  assert.ok(selectorSource.includes('/location/proposals/${encodeURIComponent(proposalId)}/children'));
   assert.doesNotMatch(selectorSource, /if \(selected\.picker_kind === 'proposal'\) return;/);
 });
 
@@ -50,6 +50,23 @@ test('proposal form hides redundant type selector when exactly one type is allow
   assert.match(selectorSource, /types\.length\s*===\s*1/);
   assert.match(selectorSource, /افزودن.*جدید/);
   assert.match(selectorSource, /dataset\.locationProposalType/);
+});
+
+test('mixed micro children expose type-first controls before location choices', () => {
+  const coreSource = fs.readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
+  assert.match(coreSource, /dataset\.locationTypeChoice/);
+  assert.match(coreSource, /نوع ادامه مسیر/);
+  assert.match(coreSource, /filterPayloadByType/);
+  assert.match(selectorSource, /dataset\.locationTypeChoice/);
+});
+
+test('proposal cancel is UI-only and never invokes proposal creation', () => {
+  const coreSource = fs.readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
+  const cancelHandler = coreSource.match(/cancel\.addEventListener\('click',[\s\S]*?\}\);\s*submit\.addEventListener/)?.[0] || '';
+  assert.match(cancelHandler, /panel\.classList\.add\('d-none'\)/);
+  assert.match(cancelHandler, /aria-expanded', 'false'/);
+  assert.match(cancelHandler, /feedback\.textContent = ''/);
+  assert.doesNotMatch(cancelHandler, /fetch\(/);
 });
 
 test('proposal actions expose clear mobile-first primary secondary and pending hooks', () => {
@@ -77,3 +94,34 @@ test('registration and profile residence path uses the unified Persian region la
     assert.doesNotMatch(source, /urban_region:\s*'منطقه شهری'/);
 });
 
+test('new canonical-parent proposal is inserted into the current selector and selected immediately', () => {
+  assert.match(selectorSource, /select\.appendChild\(option\)/);
+  assert.match(selectorSource, /select\.value = option\.value/);
+  assert.match(selectorSource, /setSelection\(host, result\.id, result\.type_key \|\| option\.dataset\.typeKey \|\| ''\)/);
+});
+
+
+test('pending proposals continue through their own children endpoint', () => {
+  assert.match(selectorSource, /parent_location_proposal_id/);
+  assert.ok(selectorSource.includes('/location/proposals/${encodeURIComponent(proposalId)}/children'));
+  assert.match(selectorSource, /appendPendingLevel\(host, payload, depth \+ 1, `proposal:\$\{proposalId\}`\)/);
+  assert.doesNotMatch(selectorSource, /if \(selected\.picker_kind === 'proposal'\) return/);
+});
+
+test('structural state UI supports canonical and pending parents', () => {
+  assert.match(selectorSource, /`\/location\/proposals\/\$\{encodeURIComponent\(proposalId\)\}\/structure-claims`/);
+  assert.match(selectorSource, /addPendingStructuralPanel/);
+});
+
+
+test('pending structural choices render even when no child proposal type is currently available', () => {
+  assert.match(selectorSource, /hasStructuralChoices/);
+  assert.match(selectorSource, /!allProposals\.length && !allTypes\.length && hasStructuralChoices/);
+  assert.match(selectorSource, /addPendingStructuralPanel\(host, wrapper, payload, `proposal:\$\{proposalId\}`, depth \+ 1\)/);
+});
+
+test('registration stops after a pending neighborhood while ordinary residence may continue deeper', () => {
+  assert.match(selectorSource, /isRegistration && selectedTypeKey === 'neighborhood'/);
+  assert.match(selectorSource, /مکان و حکمرانی من/);
+  assert.match(selectorSource, /return;[\s\S]*status\(host, 'در حال دریافت گزینه‌های سطح بعد/);
+});

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Group\GroupController;
 use App\Models\Group;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -20,6 +21,15 @@ final class CanonicalGroupIndexController extends Controller
         $user = auth()->user();
         abort_unless($user !== null, 401);
 
+        $materializedIds = collect($reconciler->reconcile($user))
+            ->pluck('id')
+            ->filter()
+            ->values();
+
+        // Healing a pre-deploy ready shell can create its missing official
+        // GovernanceArea and canonical groups. Reconcile once more afterwards
+        // so this same response includes those newly materialized groups.
+        app(PendingLocationGroupRequestService::class)->reconcileReadyForUser($user);
         $materializedIds = collect($reconciler->reconcile($user))
             ->pluck('id')
             ->filter()
@@ -51,12 +61,26 @@ final class CanonicalGroupIndexController extends Controller
             );
         });
 
+        $canonicalGroups->each(fn (Group $group) => $group->setAttribute(
+            'presentation_rank',
+            $this->presentationDepthFor((string) ($group->governanceArea?->governance_type ?? '')),
+        ));
+
+        $pendingService = app(PendingLocationGroupRequestService::class);
+        $pendingRequests = $pendingService->openForUser($user);
+        $canonicalGroups = $pendingService->presentableCanonicalGroups($canonicalGroups, $pendingRequests);
+        $pendingGroups = $pendingService->presentationGroups($pendingRequests);
+        $allGroups = $canonicalGroups
+            ->concat($pendingGroups)
+            ->sortByDesc(fn (Group $group): int => (int) ($group->presentation_rank ?? -1))
+            ->values();
+
         return view('groups.index', [
-            'generalGroups' => $this->dimension($canonicalGroups, 'public'),
-            'specialityGroups' => $this->dimension($canonicalGroups, 'profession'),
-            'experienceGroups' => $this->dimension($canonicalGroups, 'specialty'),
-            'ageGroups' => $this->dimension($canonicalGroups, 'age'),
-            'genderGroups' => $this->dimension($canonicalGroups, 'gender'),
+            'generalGroups' => $this->dimension($allGroups, 'public'),
+            'specialityGroups' => $this->dimension($allGroups, 'profession'),
+            'experienceGroups' => $this->dimension($allGroups, 'specialty'),
+            'ageGroups' => $this->dimension($allGroups, 'age'),
+            'genderGroups' => $this->dimension($allGroups, 'gender'),
             // Exclusive/user-managed groups are not canonical spatial memberships.
             // Preserve their mature legacy path unchanged during Stage C.
             'managedGroups' => $user->groups()
@@ -72,6 +96,22 @@ final class CanonicalGroupIndexController extends Controller
         return $groups
             ->filter(fn (Group $group): bool => $group->dimension_key === $dimensionKey)
             ->values();
+    }
+
+    private function presentationDepthFor(string $governanceType): int
+    {
+        return match ($governanceType) {
+            'global' => 1,
+            'continent' => 2,
+            'country' => 3,
+            'province' => 4,
+            'county' => 5,
+            'section' => 6,
+            'city', 'rural_district' => 7,
+            'urban_region', 'village' => 8,
+            'local', 'neighborhood' => 9,
+            default => 0,
+        };
     }
 
     private function presentationLevelFor(string $governanceType): ?string

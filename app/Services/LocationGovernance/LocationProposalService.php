@@ -5,10 +5,11 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
-use App\Models\Setting;
+use App\Models\ReferenceSettlement;
 use App\Models\LocationType;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +25,7 @@ class LocationProposalService
         private readonly LocationDuplicateDetector $duplicateDetector,
         private readonly ResidenceService $residenceService,
         private readonly LocationProposalPolicy $proposalPolicy,
+        private readonly LocationProposalSupportService $proposalSupportService,
     ) {
     }
 
@@ -72,13 +74,20 @@ class LocationProposalService
         ]);
     }
 
-    public function proposeUnderProposal(User $proposer, LocationProposal $parent, LocationType $type, array $data): LocationProposal
-    {
+    public function proposeUnderProposal(
+        User $proposer,
+        LocationProposal $parent,
+        LocationType $type,
+        array $data,
+        array $structuralClaims = [],
+    ): LocationProposal {
         $this->guardOpen($parent);
 
-        if (! $this->proposalPolicy->allowsProposalParent($parent, $type)) {
+        if (! $this->proposalPolicy->allowsProposalParentForResidence($parent, $type, $structuralClaims)) {
             throw new DomainException('The requested location type is not a permitted crowdsourced child of this proposal.');
         }
+
+        $referenceRoot = $parent->referenceSettlementRootProposal();
 
         $canonicalName = $this->canonicalName($data);
         $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
@@ -107,7 +116,58 @@ class LocationProposalService
             'normalized_name' => $normalizedName,
             'localized_names' => $data['localized_names'] ?? null,
             'status' => LocationProposalStatus::Pending,
-            'metadata' => $data['metadata'] ?? null,
+            'metadata' => array_merge($data['metadata'] ?? [], [
+                'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'reference_settlement_root_proposal_id' => $referenceRoot?->id,
+                'reference_settlement_id' => $referenceRoot?->parent_reference_settlement_id,
+            ]),
+            'audit_log' => [],
+        ]);
+    }
+
+    public function proposeUnderReferenceSettlement(
+        User $proposer,
+        ReferenceSettlement $settlement,
+        LocationType $type,
+        array $data,
+        array $structuralClaims = [],
+    ): LocationProposal {
+        if (! $this->proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $type, $structuralClaims)) {
+            throw new DomainException('The requested pending child is not allowed under this reference settlement.');
+        }
+
+        $anchor = app(IranSettlementAnchorResolver::class)->resolve($settlement);
+        $canonicalName = $this->canonicalName($data);
+        $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
+
+        $reusable = LocationProposal::query()
+            ->whereNull('parent_location_id')
+            ->whereNull('parent_location_proposal_id')
+            ->where('parent_reference_settlement_id', $settlement->id)
+            ->where('location_type_id', $type->id)
+            ->where('normalized_name', $normalizedName)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->orderBy('id')->first();
+        if ($reusable !== null) return $reusable;
+
+        return LocationProposal::query()->create([
+            'proposer_user_id' => $proposer->id,
+            'parent_location_id' => null,
+            'parent_location_proposal_id' => null,
+            'parent_reference_settlement_id' => $settlement->id,
+            'location_schema_id' => $anchor->location_schema_id,
+            'location_type_id' => $type->id,
+            'country_code' => $anchor->country_code,
+            'canonical_name' => $canonicalName,
+            'normalized_name' => $normalizedName,
+            'localized_names' => $data['localized_names'] ?? null,
+            'status' => LocationProposalStatus::Pending,
+            'metadata' => array_merge($data['metadata'] ?? [], [
+                'source' => 'reference_settlement_child',
+                'reference_settlement_external_id' => $settlement->external_id,
+                'structural_claim_ids' => collect($structuralClaims)
+                    ->pluck('id')->map(fn ($id) => (int) $id)->filter()->unique()->values()->all(),
+            ]),
             'audit_log' => [],
         ]);
     }
@@ -143,18 +203,7 @@ class LocationProposalService
 
     public function support(LocationProposal $proposal, User $user, array $evidence): void
     {
-        $this->guardOpen($proposal);
-
-        DB::transaction(function () use ($proposal, $user, $evidence): void {
-            $proposal->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
-            $proposal->refresh();
-            $threshold = max(1, (int) (Setting::singleton()->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
-            $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
-
-            if ($proposal->status === LocationProposalStatus::Pending && $distinctVerifiers >= $threshold) {
-                $this->transition($proposal, LocationProposalStatus::ReadyForReview, $user, 'verification_threshold_reached');
-            }
-        });
+        $this->proposalSupportService->record($proposal, $user, $evidence);
     }
 
     public function requestMoreEvidence(LocationProposal $proposal, User $reviewer, string $reason): void
@@ -166,6 +215,10 @@ class LocationProposalService
     public function approve(LocationProposal $proposal, User $reviewer, string $reason): Location
     {
         $this->guardOpen($proposal);
+
+        if ($proposal->parent_reference_settlement_id !== null) {
+            throw new DomainException('Promote the reference settlement to an operational Location before approving its neighborhood.');
+        }
 
         return DB::transaction(function () use ($proposal, $reviewer, $reason): Location {
             $proposal->refresh();
@@ -220,12 +273,27 @@ class LocationProposalService
                 ],
             ]);
 
+            LocationStructureClaim::query()
+                ->where('location_proposal_id', $proposal->id)
+                ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+                ->update(['location_id' => $location->id, 'location_proposal_id' => null, 'updated_at' => now()]);
+
             $proposal->resolved_location_id = $location->id;
             $proposal->approved_at = now();
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Approved, $reviewer, $reason, true);
             $this->reanchorOpenChildren($proposal, $location);
+
+            // A human-approved official location becomes part of EarthCoop's
+            // official governance topology before residence/group reconciliation.
+            // This keeps Location and GovernanceArea independent while ensuring
+            // an approved crowdsourced official scope is no longer presented as pending.
+            app(PendingLocationGroupRequestService::class)
+                ->ensureApprovedOfficialTopology($proposal->fresh()->loadMissing('type'), $location);
+
+            $this->residenceService->refreshPendingResidenceAnchorsForResolvedAncestry($location);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $location);
+            app(PendingLocationGroupRequestService::class)->reconcileResolvedProposal($proposal->fresh(), $location);
 
             return $location;
         });
@@ -236,6 +304,7 @@ class LocationProposalService
         $this->guardOpen($proposal);
         $this->guardNoOpenChildren($proposal);
         $this->transition($proposal, LocationProposalStatus::Rejected, $reviewer, $reason, true);
+        app(PendingLocationGroupRequestService::class)->rejectForProposal($proposal->fresh());
     }
 
     public function merge(LocationProposal $proposal, Location $existing, User $reviewer, string $reason): void
@@ -260,7 +329,9 @@ class LocationProposalService
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Merged, $reviewer, $reason, true);
             $this->reanchorOpenChildren($proposal, $existing);
+            $this->residenceService->refreshPendingResidenceAnchorsForResolvedAncestry($existing);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $existing);
+            app(PendingLocationGroupRequestService::class)->reconcileResolvedProposal($proposal->fresh(), $existing);
         });
     }
 

@@ -11,6 +11,7 @@ class PendingResidenceIntent extends Model
         'user_id',
         'anchor_relationship_id',
         'location_proposal_id',
+        'reference_settlement_residence_claim_id',
         'resolved_location_id',
         'status',
         'selected_at',
@@ -39,6 +40,11 @@ class PendingResidenceIntent extends Model
     public function locationProposal(): BelongsTo
     {
         return $this->belongsTo(LocationProposal::class);
+    }
+
+    public function referenceSettlementResidenceClaim(): BelongsTo
+    {
+        return $this->belongsTo(ReferenceSettlementResidenceClaim::class);
     }
 
     public function resolvedLocation(): BelongsTo

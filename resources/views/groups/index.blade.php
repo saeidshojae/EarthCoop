@@ -588,7 +588,6 @@
             <div class="groups-section">
                 <h2>{{ __('navigation.footer_my_groups') }}</h2>
 
-                {{-- Main Tabs (desktop) --}}
                 <div class="tab-buttons">
                     <button class="tab-button active" data-target="public">
                         گروه‌های مجمع عمومی

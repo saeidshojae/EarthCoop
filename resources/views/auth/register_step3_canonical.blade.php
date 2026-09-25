@@ -51,17 +51,32 @@
     <div class="text-right">
         <h2 class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold mb-3 sm:mb-4" style="color:var(--color-gentle-black);">مرحله ۳: اطلاعات مکانی</h2>
         <p class="text-gray-600 mb-2 text-xs sm:text-sm md:text-base">لطفاً محل سکونت اصلی خود را با دقت انتخاب کنید. برای ثبت‌نام، مسیر مکانی را تا سطح محله یا نزدیک‌ترین سطح پایهٔ موجود در ساختار محل سکونت خود تکمیل کنید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
-        <p class="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6"><i class="fas fa-circle-info ml-1" aria-hidden="true"></i>از محله به پایین، وارد کردن خیابان، کوچه، مجتمع یا ساختمان اختیاری است؛ لازم نیست برای تکمیل ثبت‌نام تا آخرین سطح ادامه دهید و بعداً نیز می‌توانید جزئیات دقیق‌تر محل سکونت را از پروفایل خود تکمیل کنید.</p>
+        <p class="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6"><i class="fas fa-circle-info ml-1" aria-hidden="true"></i>ثبت‌نام در همین سطح پایه پایان می‌یابد و در این مرحله نیازی به وارد کردن خیابان، کوچه، مجتمع یا ساختمان نیست. پس از ورود می‌توانید از بخش «مکان و حکمرانی من» نشانی محلی خود را دقیق‌تر کنید و در صورت وجود، به اجتماعات محلی مربوط بپیوندید.</p>
         @if ($errors->any())<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert"><ul class="list-disc list-inside mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
         @if(session('error'))<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert">{{ session('error') }}</div>@endif
         <form method="POST" action="{{ route('register.step3.process') }}" data-location-form id="step3Form">@csrf
+            @foreach (collect(old('location_structure_claim_ids', []))->map(fn ($id) => (int) $id)->filter()->unique() as $claimId)
+                <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
+            @endforeach
             <div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
-                <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+                <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id><input type="hidden" name="reference_settlement_external_id" value="{{ old('reference_settlement_external_id') }}" data-reference-settlement-external-id>
                 <div class="location-actions" data-location-geolocation><button type="button" class="location-action-btn location-detect-btn" data-location-geolocation-detect><i class="fas fa-location-crosshairs ml-1"></i>تشخیص موقعیت من</button><button type="button" class="location-action-btn location-manual-btn" data-location-geolocation-manual><i class="fas fa-list ml-1"></i>انتخاب دستی</button></div>
                 <p class="text-xs sm:text-sm text-gray-500 mb-3 hidden" data-location-geolocation-status aria-live="polite"></p>
                 <div class="location-path text-center" id="location_path_display" data-location-path aria-live="polite"><i class="fas fa-map-marker-alt ml-2"></i><span>مسیر انتخاب نشده</span></div>
                 <div data-location-levels></div><div class="text-xs sm:text-sm text-gray-500 mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
             </div>
+            @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
+                <section class="vstack gap-3" data-reference-settlement-picker hidden>
+                    <h3 class="font-bold text-sm sm:text-base mb-1">جستجو در بانک آبادی‌های ۱۴۰۴</h3>
+                    <p class="text-xs sm:text-sm text-gray-500 mb-3">نام آبادی را جستجو و گزینه درست را انتخاب کنید. انتخاب از بانک مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="search" minlength="2" maxlength="60" class="form-control flex-1" placeholder="نام آبادی" data-reference-settlement-query>
+                        <button type="button" class="location-action-btn location-manual-btn" data-reference-settlement-search>جست‌وجوی آبادی</button>
+                    </div>
+                    <div class="mt-3 text-xs sm:text-sm text-gray-500" data-reference-settlement-status aria-live="polite"></div>
+                    <div class="mt-2 grid gap-2" data-reference-settlement-results></div>
+                </section>
+            @endif
             <button type="submit" id="continueBtn" class="submit-btn mt-5" data-location-submit disabled>ثبت محل سکونت و ادامه</button>
         </form>
     </div>

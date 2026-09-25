@@ -47,28 +47,41 @@ class RegistrationPendingResidenceTest extends TestCase
         $this->assertSame(0, PendingResidenceIntent::query()->where('user_id', $user->id)->count());
     }
 
-    public function test_open_proposal_completes_registration_using_approved_parent_as_anchor(): void
+    public function test_registration_rejects_approved_micro_location_below_governance_base(): void
     {
-        [$user, $anchor, $proposal] = $this->makeProposalScenario();
-
-        $response = $this->actingAs($user)->post(route('register.step3.process'), [
-            'location_id' => null,
-            'location_proposal_id' => $proposal->id,
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
         ]);
+        $street = $path->last();
+        $user = User::factory()->create();
 
-        $response->assertRedirect(route('home'));
-        $relationship = $user->fresh()->locationRelationships()
-            ->where('relationship_type', 'primary_residence')
-            ->whereNull('ended_at')
-            ->sole();
-        $intent = $user->fresh()->pendingResidenceIntents()
-            ->where('status', 'pending')
-            ->sole();
+        $response = $this->actingAs($user)
+            ->from(route('register.step3'))
+            ->post(route('register.step3.process'), [
+                'location_id' => $street->id,
+                'location_proposal_id' => null,
+            ]);
 
-        $this->assertSame($anchor->id, $relationship->location_id);
-        $this->assertSame($proposal->id, $intent->location_proposal_id);
-        $this->assertSame($relationship->id, $intent->anchor_relationship_id);
-        $this->assertFalse((bool) $relationship->explicit_transfer);
+        $response->assertRedirect(route('register.step3'));
+        $response->assertSessionHasErrors('location_id');
+        $this->assertSame(0, $user->fresh()->locationRelationships()->count());
+    }
+
+    public function test_registration_rejects_pending_micro_location_below_governance_base(): void
+    {
+        [$user, , $proposal] = $this->makeProposalScenario();
+
+        $response = $this->actingAs($user)
+            ->from(route('register.step3'))
+            ->post(route('register.step3.process'), [
+                'location_proposal_id' => $proposal->id,
+            ]);
+
+        $response->assertRedirect(route('register.step3'));
+        $response->assertSessionHasErrors('location_proposal_id');
+        $this->assertSame(0, $user->fresh()->locationRelationships()->count());
+        $this->assertSame(0, PendingResidenceIntent::query()->where('user_id', $user->id)->count());
     }
 
     public function test_registration_rejects_zero_or_two_location_selections(): void

@@ -47,12 +47,18 @@ class GovernanceScopedGroupService
         return $group;
     }
 
-    private function nameFor(MembershipIntent $intent, GovernanceArea $area): string
+    public function pendingNameFor(string $dimensionKey, string $valueKey, string $areaName, ?string $governanceType = null): string
     {
-        $areaName = $this->areaLabel($area);
+        $intent = new MembershipIntent(
+            dimensionKey: $dimensionKey,
+            valueKey: $valueKey,
+            governanceAreaId: null,
+            mode: 'automatic',
+        );
         $valueLabel = $this->valueLabel($intent);
+        $areaName = $this->qualifiedAreaLabel($areaName, $governanceType);
 
-        return match ($intent->dimensionKey) {
+        return match ($dimensionKey) {
             'public' => "مجمع عمومی {$areaName}",
             'profession' => "مجمع صنفی {$valueLabel} در {$areaName}",
             'specialty' => "مجمع تخصصی {$valueLabel} در {$areaName}",
@@ -60,6 +66,48 @@ class GovernanceScopedGroupService
             'gender' => "مجمع جنسیتی {$valueLabel} در {$areaName}",
             default => "گروه {$valueLabel} در {$areaName}",
         };
+    }
+
+    private function nameFor(MembershipIntent $intent, GovernanceArea $area): string
+    {
+        return $this->pendingNameFor(
+            $intent->dimensionKey,
+            $intent->valueKey,
+            $this->areaLabel($area),
+            $area->governance_type,
+        );
+    }
+
+    private function qualifiedAreaLabel(string $areaName, ?string $governanceType): string
+    {
+        $label = match ($governanceType) {
+            'global' => 'جهان',
+            'continent' => 'قاره',
+            'country' => 'کشور',
+            'province' => 'استان',
+            'county' => 'شهرستان',
+            'section' => 'بخش',
+            'city' => 'شهر',
+            'rural_district' => 'دهستان',
+            'urban_region' => 'منطقه',
+            'village' => 'روستا',
+            'local', 'neighborhood' => 'محله',
+            default => null,
+        };
+
+        if ($label === null) return $areaName;
+        if ($governanceType === 'global') return 'جهان';
+
+        $normalized = trim($areaName);
+        // Persian village names conventionally begin with «روستای», not «روستا».
+        // Never turn «روستای مرجع» into «روستا روستای مرجع».
+        if ($governanceType === 'village' && str_starts_with($normalized, 'روستای ')) {
+            return $normalized;
+        }
+
+        return str_starts_with($normalized, $label.' ') || $normalized === $label
+            ? $normalized
+            : $label.' '.$normalized;
     }
 
     private function areaLabel(GovernanceArea $area): string

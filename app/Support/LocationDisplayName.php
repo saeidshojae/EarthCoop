@@ -75,6 +75,7 @@ final class LocationDisplayName
 
         $aliases = match ($typeKey) {
             'province' => ['استان', 'ایالت'],
+            'village' => ['روستا', 'روستای'],
             'urban_region' => ['منطقه', 'منطقه شهری'],
             default => [$prefix],
         };

@@ -35,9 +35,41 @@ class ReferenceGeographyImportTest extends TestCase
         $this->assertNotFalse($dataset);
         $this->assertStringContainsString('Sari', $dataset);
         $this->assertStringContainsString('Chahardangeh', $dataset);
+        $this->assertStringContainsString('IR-MAZ-SARI-CHAHARDANGEH-KIASAR', $dataset);
+        $this->assertStringContainsString('Kiasar', $dataset);
+        $this->assertStringContainsString('IR-SARI-URBAN-NONEIGHBORHOOD', $dataset);
+        $this->assertStringContainsString('Sari Reference Region Without Neighborhood', $dataset);
         $this->assertStringContainsString('rural_district', $dataset);
         $this->assertStringContainsString('village', $dataset);
         $this->assertStringContainsString('without-neighborhood', $dataset);
+    }
+
+    public function test_reference_import_exposes_kiasar_under_chahardangeh_with_city_structural_choices(): void
+    {
+        $exit = Artisan::call('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v1',
+            '--apply' => true,
+        ]);
+        $this->assertSame(0, $exit, Artisan::output());
+
+        $kiasar = Location::query()->where('canonical_name', 'Kiasar')->sole();
+        $this->assertSame('city', $kiasar->type?->key);
+        $this->assertSame('Chahardangeh Section', $kiasar->parent?->canonical_name);
+
+        $citySchemaType = LocationSchemaType::query()
+            ->where('location_schema_id', $kiasar->location_schema_id)
+            ->where('location_type_id', $kiasar->location_type_id)
+            ->sole();
+
+        $this->assertSame(
+            ['single_urban_region', 'no_urban_region'],
+            data_get($citySchemaType->metadata, 'structural_claim_types'),
+        );
+        $this->assertEqualsCanonicalizing(
+            ['single_neighborhood', 'no_neighborhood'],
+            data_get($citySchemaType->metadata, 'structural_claim_types_after.no_urban_region'),
+        );
     }
 
     public function test_reference_import_persists_the_established_user_location_proposal_policy(): void
@@ -60,6 +92,14 @@ class ReferenceGeographyImportTest extends TestCase
         }
         foreach (['country', 'province', 'county', 'section', 'city', 'rural_district'] as $key) {
             $this->assertFalse((bool) data_get($rows[$key]?->metadata, 'crowdsourced_proposal_allowed'), "{$key} must not become crowdsourcable implicitly.");
+        }
+
+        foreach (['urban_region', 'village'] as $key) {
+            $this->assertEqualsCanonicalizing(
+                ['single_neighborhood', 'no_neighborhood'],
+                data_get($rows[$key]?->metadata, 'structural_claim_types', []),
+                "{$key} must expose the canonical no/single-neighborhood structural contract."
+            );
         }
 
         $city = Location::query()->where('level', 'city')->firstOrFail();

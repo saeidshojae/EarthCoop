@@ -43,6 +43,37 @@ class LocationGovernanceControlCenterTest extends TestCase
         $response->assertSee('نگاشت حکمرانی');
     }
 
+    public function test_admin_displays_persian_location_proposal_reference_and_governance_names_without_rewriting_canonical_edit_fields(): void
+    {
+        app()->setLocale('fa');
+        $admin = User::factory()->create(['is_admin' => true]);
+        [$proposal, $parent] = $this->makeProposal('English Pending Complex');
+        $proposal->forceFill(['localized_names' => ['fa' => 'مجتمع پیشنهادی فارسی']])->save();
+        $parent->forceFill([
+            'canonical_name' => 'English Reference Street',
+            'localized_names' => ['fa' => 'خیابان مرجع فارسی'],
+        ])->save();
+
+        $area = GovernanceArea::factory()->official()->create([
+            'key' => 'localized-admin-review-area-'.$parent->id,
+            'canonical_name' => 'English Governance Area',
+            'localized_names' => ['fa' => 'حوزه حکمرانی فارسی'],
+        ]);
+        $area->locations()->attach($parent->id);
+
+        $response = $this->actingAs($admin)->get('/admin/location-governance');
+        $response->assertOk();
+        $response->assertSee('<h3 class="h6 mb-1">مجتمع پیشنهادی فارسی</h3>', false);
+        $response->assertSee('والد: خیابان مرجع فارسی');
+        $response->assertSee('<td>خیابان مرجع فارسی</td>', false);
+        $response->assertSee('<strong>حوزه حکمرانی فارسی</strong>', false);
+        // The operator can still edit the canonical source name explicitly;
+        // presentation localization must not silently rewrite submitted data.
+        $response->assertSee('name="canonical_name"', false);
+        $this->assertSame('English Pending Complex', $proposal->fresh()->canonical_name);
+        $this->assertSame('English Governance Area', $area->fresh()->canonical_name);
+    }
+
     public function test_admin_sidebar_exposes_location_governance_control_center(): void
     {
         $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
@@ -218,6 +249,55 @@ class LocationGovernanceControlCenterTest extends TestCase
         $response->assertSee('task10-test');
         $response->assertSee('تعارض');
         $response->assertSee('4');
+    }
+
+    public function test_health_diagnostics_accepts_reference_settlement_backed_pending_intent(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create();
+        $schema = LocationFixture::iranSchema();
+        $anchor = LocationFixture::createPath($schema, ['country'])->last();
+
+        $relationship = app(ResidenceService::class)->setInitialPrimaryResidence($user, $anchor, [
+            'source' => 'health-reference-settlement-test',
+        ]);
+        $settlement = \App\Models\ReferenceSettlement::query()->create([
+            'source' => 'IranCountryDivisions/geo_1404',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-99001',
+            'parent_external_id' => 'IR-1404-1',
+            'source_code' => '99001',
+            'source_row_id' => 99001,
+            'name_fa' => 'آبادی سلامت',
+            'search_name' => 'آبادی سلامت',
+            'classification' => 'unverified_settlement',
+            'residential_eligibility' => 'unverified',
+            'governance_authorized' => false,
+            'operational_promotion_allowed' => false,
+            'provenance' => ['source' => 'fixture'],
+        ]);
+        $claim = \App\Models\ReferenceSettlementResidenceClaim::query()->create([
+            'reference_settlement_id' => $settlement->id,
+            'user_id' => $user->id,
+            'status' => 'pending',
+            'submitted_at' => now(),
+        ]);
+        \App\Models\PendingResidenceIntent::query()->create([
+            'user_id' => $user->id,
+            'anchor_relationship_id' => $relationship->id,
+            'location_proposal_id' => null,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'status' => 'pending',
+            'selected_at' => now(),
+            'metadata' => ['source' => 'fixture'],
+        ]);
+
+        $this->actingAs($admin)->get('/admin/location-governance')
+            ->assertOk()
+            ->assertViewHas('healthDiagnostics', fn ($diagnostics) =>
+                $diagnostics['pending_residence_intents'] === 1
+                && $diagnostics['invalid_pending_residence_intents'] === 0
+            );
     }
 
     /** @return array{0: \App\Models\LocationProposal, 1: Location} */

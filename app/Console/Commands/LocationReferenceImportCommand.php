@@ -2,7 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\GovernanceArea;
+use App\Models\Location;
+use App\Models\UserLocationRelationship;
 use App\Services\LocationGovernance\Import\ReferenceGeographyImporter;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -12,7 +16,8 @@ class LocationReferenceImportCommand extends Command
                             {country : ISO 3166-1 alpha-2 country code}
                             {--dataset-version=v1 : Reference dataset version}
                             {--dry-run : Report the diff without any writes}
-                            {--apply : Apply the versioned reference dataset}';
+                            {--apply : Apply the versioned reference dataset}
+                            {--confirm= : Explicit confirmation required for isolated IR v2 apply}';
 
     protected $description = 'Diff or apply a versioned canonical reference geography dataset';
 
@@ -28,6 +33,39 @@ class LocationReferenceImportCommand extends Command
 
         // Safe default: an omitted mode behaves as dry-run rather than mutating data.
         $apply = $apply && ! $dryRun;
+
+        // IR v2 is version-isolated from v1. Production remains blocked here;
+        // local/testing may explicitly choose either an empty isolated pilot or
+        // the existing UAT database so the real 1404 hierarchy can replace v1
+        // in menus without deleting v1 identities or test history.
+        if ($apply && strtoupper(trim((string) $this->argument('country'))) === 'IR'
+            && trim((string) $this->option('dataset-version')) === 'v2') {
+            $confirmation = (string) $this->option('confirm');
+            if (! app()->environment(['local', 'testing'])
+                || ! in_array($confirmation, ['APPLY-IR-1404-V2-ISOLATED', 'APPLY-IR-1404-V2-UAT'], true)) {
+                $this->error('IR v2 apply requires an explicit local/testing confirmation token.');
+                return self::FAILURE;
+            }
+
+            if ($confirmation === 'APPLY-IR-1404-V2-ISOLATED') {
+                $databaseName = (string) DB::connection()->getDatabaseName();
+                $isolatedName = preg_match('/(?:^|[_-])geo[_-]uat(?:$|[_-])/i', $databaseName) === 1
+                    || (app()->environment('testing')
+                        && ($databaseName === ':memory:' || str_contains(strtolower($databaseName), 'test')));
+                if (! $isolatedName) {
+                    $this->error('IR v2 isolated apply requires an isolated geo_uat database name.');
+                    return self::FAILURE;
+                }
+                if (Location::query()->where('country_code', 'IR')
+                        ->whereDoesntHave('schema', fn ($query) => $query->where('key', 'ir-reference-v2')->where('version', 'v2'))
+                        ->exists()
+                    || UserLocationRelationship::query()->exists()
+                    || GovernanceArea::query()->where('country_code', 'IR')->exists()) {
+                    $this->error('IR v2 isolated apply refused: legacy/non-v2 geography, residence history, or governance areas exist.');
+                    return self::FAILURE;
+                }
+            }
+        }
 
         try {
             $summary = $importer->import(

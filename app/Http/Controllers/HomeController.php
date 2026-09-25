@@ -56,9 +56,14 @@ class HomeController extends Controller
         if ((bool) config('location-governance.groups_enabled', false)) {
             // Canonical identity is dimension-based. Legacy group_type is only a
             // presentation/backward-compatibility field and must not drive counts.
-            $generalGroups = $groups->where('dimension_key', 'public');
-            $specializedGroups = $groups->whereIn('dimension_key', ['profession', 'specialty']);
-            $exclusiveGroups = $groups->whereIn('dimension_key', ['age', 'gender']);
+            $pendingService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+            $pendingRequests = $pendingService->openForUser($user);
+            $groups = $pendingService->presentableCanonicalGroups($groups, $pendingRequests);
+            $pendingGroups = $pendingService->presentationGroups($pendingRequests);
+            $allSystemGroups = $groups->concat($pendingGroups);
+            $generalGroups = $allSystemGroups->where('dimension_key', 'public');
+            $specializedGroups = $allSystemGroups->whereIn('dimension_key', ['profession', 'specialty']);
+            $exclusiveGroups = $allSystemGroups->whereIn('dimension_key', ['age', 'gender']);
         } else {
             // Legacy fallback while canonical group cutover is disabled.
             $generalGroups = $groups->where('group_type', '0');

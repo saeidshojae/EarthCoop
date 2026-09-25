@@ -4,8 +4,10 @@ namespace App\Services\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\LocationStructureClaim;
+use App\Models\ReferenceSettlement;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use Illuminate\Support\Facades\DB;
 
 class LocationStructureClaimService
@@ -21,6 +23,17 @@ class LocationStructureClaimService
 
         if (! app(LocationStructureClaimPolicy::class)->allowsClaimType($location, $type, $contextClaims)) {
             throw new \DomainException('Structural claim type is not allowed for this location type.');
+        }
+
+        $conflicts = [
+            'single_urban_region' => ['no_urban_region'],
+            'no_urban_region' => ['single_urban_region'],
+            'single_neighborhood' => ['no_neighborhood'],
+            'no_neighborhood' => ['single_neighborhood'],
+        ];
+
+        if ($contextClaims->pluck('claim_type')->intersect($conflicts[$type] ?? [])->isNotEmpty()) {
+            throw new \DomainException('Conflicting structural claim already exists for this location tier.');
         }
 
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
@@ -39,6 +52,47 @@ class LocationStructureClaimService
                 'proposer_user_id' => $proposer->id,
                 'audit_log' => [],
             ]);
+        });
+    }
+
+    public function findOrCreateOpenReferenceSettlementClaim(
+        ReferenceSettlement $settlement,
+        string $type,
+        User $proposer,
+    ): LocationStructureClaim {
+        if ($type !== 'no_neighborhood') {
+            throw new \DomainException('Only no-neighborhood is exposed for a reference settlement.');
+        }
+
+        $claimable = (
+            in_array($settlement->classification, ['unverified_settlement', 'needs_review'], true)
+            && $settlement->residential_eligibility === 'unverified'
+        ) || (
+            $settlement->classification === 'verified_residential_village'
+            && $settlement->residential_eligibility === 'verified'
+        );
+
+        if (! $claimable || $settlement->governance_authorized || $settlement->operational_promotion_allowed) {
+            throw new \DomainException('This reference settlement cannot accept an open structural claim.');
+        }
+
+        return DB::transaction(function () use ($settlement, $type, $proposer): LocationStructureClaim {
+            return LocationStructureClaim::query()
+                ->where('reference_settlement_id', $settlement->id)
+                ->where('claim_type', $type)
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->lockForUpdate()
+                ->orderBy('id')
+                ->first()
+                ?? LocationStructureClaim::query()->create([
+                    'location_id' => null,
+                    'location_proposal_id' => null,
+                    'reference_settlement_id' => $settlement->id,
+                    'claim_type' => $type,
+                    'status' => 'pending',
+                    'proposer_user_id' => $proposer->id,
+                    'audit_log' => [],
+                ]);
         });
     }
 
@@ -108,6 +162,10 @@ class LocationStructureClaimService
                 'approved_at' => $to === 'approved' ? now() : null,
                 'audit_log' => $audit,
             ])->save();
+
+            if (in_array($to, ['approved', 'rejected'], true)) {
+                app(PendingLocationGroupRequestService::class)->reconcileStructuralClaim($locked->fresh());
+            }
 
             return $locked;
         });

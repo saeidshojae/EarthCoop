@@ -33,11 +33,53 @@
         </div>
     @endif
 
+    @if (isset($pendingResidenceIntent) && $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement)
+        @php
+            $settlementClaim = $pendingResidenceIntent->referenceSettlementResidenceClaim;
+            $settlement = $settlementClaim->settlement;
+        @endphp
+        <div class="alert alert-warning border mb-3" data-pending-reference-settlement-state>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="fw-semibold">آبادی انتخابی در انتظار بررسی</span>
+                <span class="badge text-bg-warning">در انتظار تأیید</span>
+            </div>
+            <div>{{ $settlement->name_fa ?: $settlement->external_id }}</div>
+            <div class="small mt-2">
+                محل دقیق شما با شناسهٔ مرجع ثبت شده است، اما هنوز Location رسمی یا حوزهٔ حکمرانی مستقل ایجاد نکرده است.
+                مبنای رسمی فعلی همان مکان canonical بالاست.
+            </div>
+        </div>
+    @endif
+
     @php
-        $persistedProposalId = old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
+        $combinedReferenceSettlementIntent = $pendingResidenceIntent?->reference_settlement_residence_claim_id
+            && $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
+        // The canonical profile selector cannot replay a ReferenceSettlement identity
+        // as if it were a Location. In the combined pending state, hydrate from the
+        // canonical anchor and keep the exact settlement/neighborhood visible above.
+        $persistedProposalId = $combinedReferenceSettlementIntent
+            ? old('location_proposal_id')
+            : old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
         $persistedLocationId = $persistedProposalId
             ? old('location_id')
             : old('location_id', $primaryResidence?->location_id);
+        $defaultStructuralClaimIds = collect(data_get($primaryResidence?->metadata, 'structural_claim_ids', []))
+            ->merge(data_get($pendingResidenceIntent?->metadata, 'structural_claim_ids', []))
+            ->map(fn ($id) => (int) $id)->filter()->unique()->values()->all();
+        $persistedStructuralClaimIds = collect(old(
+            'location_structure_claim_ids',
+            $defaultStructuralClaimIds
+        ))->map(fn ($id) => (int) $id)->filter()->unique()->values();
+        $currentReferenceSettlement = $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement;
+        $persistedReferenceSettlementExternalId = old(
+            'reference_settlement_external_id',
+            $currentReferenceSettlement?->external_id
+        );
+        $referenceSettlementProposalPath = collect($referenceSettlementProposalPath ?? [])
+            ->map(fn ($id) => (int) $id)->filter()->values();
+        $currentReferenceNeighborhoodProposalId = $combinedReferenceSettlementIntent
+            ? (string) ($referenceSettlementProposalPath->first() ?? '')
+            : '';
     @endphp
 
     <form method="POST" action="{{ route('profile.update.address') }}" data-location-form>
@@ -55,6 +97,11 @@
         >
             <input type="hidden" name="location_id" value="{{ $persistedLocationId }}" data-location-id>
             <input type="hidden" name="location_proposal_id" value="{{ $persistedProposalId }}" data-location-proposal-id>
+            <input type="hidden" name="reference_settlement_external_id" value="{{ $persistedReferenceSettlementExternalId }}" data-reference-settlement-external-id>
+
+            @foreach ($persistedStructuralClaimIds as $claimId)
+                <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
+            @endforeach
 
             <div class="location-geolocation-actions d-flex flex-wrap align-items-center gap-2 mb-3" data-location-geolocation>
                 <button type="button" class="btn btn-outline-primary btn-sm" data-location-geolocation-detect>تشخیص موقعیت من</button>
@@ -73,13 +120,37 @@
 
             <div class="vstack gap-3" data-location-levels></div>
             <p class="small text-muted mt-3 mb-0" data-location-status aria-live="polite">برای تغییر یا دقیق‌تر کردن محل سکونت، مسیر موردنظر را انتخاب کنید.</p>
-            <p class="location-proposal-help small text-muted mt-2 mb-0">اگر در سطوح محلی مجاز، مکان دقیق شما در فهرست نبود، گزینهٔ «مکان من در فهرست نیست» نمایش داده می‌شود و می‌توانید آن را برای بررسی پیشنهاد کنید.</p>
+            <p class="location-proposal-help small text-muted mt-2 mb-0">اگر گزینهٔ شما در فهرست نبود، لینک کوچک زیر همان منو امکانات جست‌وجو، پیشنهاد مکان یا اعلام ساختار استثنایی را باز می‌کند.</p>
         </div>
+
+        @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
+            <section
+                class="vstack gap-3"
+                data-reference-settlement-picker
+                data-reference-settlement-current-external-id="{{ $persistedReferenceSettlementExternalId }}"
+                data-reference-settlement-current-name="{{ $currentReferenceSettlement?->name_fa }}"
+                data-reference-settlement-current-neighborhood-proposal-id="{{ $currentReferenceNeighborhoodProposalId }}"
+                data-reference-settlement-current-proposal-path='@json($referenceSettlementProposalPath->all())'
+                hidden
+            >
+                <div class="fw-bold mb-1">جستجو در بانک آبادی‌های ۱۴۰۴</div>
+                <p class="small text-muted mb-3">نام آبادی را جستجو و گزینه درست را انتخاب کنید. انتخاب از بانک مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                    <input type="search" minlength="2" maxlength="60" class="form-control" placeholder="نام آبادی" data-reference-settlement-query>
+                    <button type="button" class="btn btn-outline-secondary" data-reference-settlement-search>جست‌وجوی آبادی</button>
+                </div>
+                <div class="mt-3 small text-muted" data-reference-settlement-status aria-live="polite"></div>
+                <div class="mt-2 d-grid gap-2" data-reference-settlement-results></div>
+            </section>
+        @endif
 
         @error('location_id')
             <div class="text-danger small mt-2">{{ $message }}</div>
         @enderror
         @error('location_proposal_id')
+            <div class="text-danger small mt-2">{{ $message }}</div>
+        @enderror
+        @error('reference_settlement_external_id')
             <div class="text-danger small mt-2">{{ $message }}</div>
         @enderror
 
