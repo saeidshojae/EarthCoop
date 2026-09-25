@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 class GroupController extends Controller
 {
     public function index(Request $request){
-        $groupsQuery = Group::with(['experience', 'specialty', 'ageGroup']);
+        $groupsQuery = Group::with(['experience', 'specialty', 'ageGroup', 'governanceArea']);
 
         if($request->has('user') && $request->user){
             $groupUserIds = GroupUser::where('user_id', $request->user)->pluck('group_id')->toArray();
@@ -19,29 +19,50 @@ class GroupController extends Controller
         }
 
         if($request->has('level') && $request->level){
-            $groupsQuery->where('location_level', $request->level);
+            if ((bool) config('location-governance.groups_enabled', false)) {
+                $types = $this->canonicalGovernanceTypesForLevel((string) $request->level);
+                $groupsQuery->whereHas('governanceArea', fn ($query) => $query
+                    ->whereIn('governance_type', $types)
+                    ->where('status', 'active'));
+            } else {
+                $groupsQuery->where('location_level', $request->level);
+            }
         }
 
         if($request->has('sort') && $request->sort){
-            switch($request->sort){
-                case 'experience':
-                    $groupsQuery->whereNotNull('experience_id');
-                    break;
-                case 'job':
-                    $groupsQuery->whereNotNull('specialty_id');
-                    break;
-                case 'age':
-                    $groupsQuery->whereNotNull('age_group_id');
-                    break;
-                case 'gender':
-                    $groupsQuery->whereNotNull('gender');
-                    break;
-                case 'total':
-                    $groupsQuery->whereNull('experience_id')
-                                ->whereNull('specialty_id')
-                                ->whereNull('age_group_id')
-                                ->whereNull('gender');
-                    break;
+            if ((bool) config('location-governance.groups_enabled', false)) {
+                $dimension = match ((string) $request->sort) {
+                    'experience' => 'specialty',
+                    'job' => 'profession',
+                    'age' => 'age',
+                    'gender' => 'gender',
+                    'total' => 'public',
+                    default => null,
+                };
+                if ($dimension !== null) {
+                    $groupsQuery->where('dimension_key', $dimension);
+                }
+            } else {
+                switch($request->sort){
+                    case 'experience':
+                        $groupsQuery->whereNotNull('experience_id');
+                        break;
+                    case 'job':
+                        $groupsQuery->whereNotNull('specialty_id');
+                        break;
+                    case 'age':
+                        $groupsQuery->whereNotNull('age_group_id');
+                        break;
+                    case 'gender':
+                        $groupsQuery->whereNotNull('gender');
+                        break;
+                    case 'total':
+                        $groupsQuery->whereNull('experience_id')
+                                    ->whereNull('specialty_id')
+                                    ->whereNull('age_group_id')
+                                    ->whereNull('gender');
+                        break;
+                }
             }
         }
 
@@ -106,4 +127,16 @@ class GroupController extends Controller
         $blog->delete();
         return back()->with('success', 'پست شما با موفقیت حذف شد!');;
     }
+    /** @return array<int, string> */
+    private function canonicalGovernanceTypesForLevel(string $level): array
+    {
+        return match (strtolower(trim($level))) {
+            'rural' => ['rural_district'],
+            'region' => ['urban_region'],
+            'neighborhood' => ['local', 'neighborhood'],
+            default => [strtolower(trim($level))],
+        };
+    }
+
+
 }
