@@ -72,8 +72,9 @@ final class IranV2ProductionCutoverTest extends TestCase
         $this->assertSame(1, Artisan::call('location:iran-v2-production-cutover', [
             '--dry-run' => true,
         ]));
-        $this->assertStringContainsString('READY_FOR_FINAL_CUTOVER: NO', Artisan::output());
-        $this->assertStringContainsString('blocker unmapped_active_relationships: 1', Artisan::output());
+        $blockedOutput = Artisan::output();
+        $this->assertStringContainsString('READY_FOR_FINAL_CUTOVER: NO', $blockedOutput);
+        $this->assertStringContainsString('blocker unmapped_active_relationships: 1', $blockedOutput);
 
         $blocker->forceFill(['ended_at' => now()])->save();
 
@@ -136,8 +137,9 @@ final class IranV2ProductionCutoverTest extends TestCase
         $this->assertSame(0, Artisan::call('location:iran-v2-production-cutover', [
             '--dry-run' => true,
         ]), Artisan::output());
-        $this->assertStringContainsString('READY_FOR_FINAL_CUTOVER: YES', Artisan::output());
-        $this->assertStringContainsString('blocker_total: 0', Artisan::output());
+        $readyOutput = Artisan::output();
+        $this->assertStringContainsString('READY_FOR_FINAL_CUTOVER: YES', $readyOutput);
+        $this->assertStringContainsString('blocker_total: 0', $readyOutput);
 
         $relationshipId = $relationship->id;
         $groupId = $group->id;
@@ -197,15 +199,17 @@ final class IranV2ProductionCutoverTest extends TestCase
             '--dataset-version' => 'v2',
             '--dry-run' => true,
         ]), Artisan::output());
-        $this->assertStringContainsString('create: 0', Artisan::output());
-        $this->assertStringContainsString('update: 0', Artisan::output());
-        $this->assertStringContainsString('conflict: 0', Artisan::output());
-        $this->assertStringContainsString('unchanged: 6160', Artisan::output());
+        $topologyOutput = Artisan::output();
+        $this->assertStringContainsString('create: 0', $topologyOutput);
+        $this->assertStringContainsString('update: 0', $topologyOutput);
+        $this->assertStringContainsString('conflict: 0', $topologyOutput);
+        $this->assertStringContainsString('unchanged: 6160', $topologyOutput);
 
         $this->assertSame(0, Artisan::call('location:iran-v2-production-cutover', [
             '--dry-run' => true,
         ]), Artisan::output());
-        $this->assertStringContainsString('CUTOVER_COMPLETE: YES', Artisan::output());
-        $this->assertStringContainsString('blocker_total: 0', Artisan::output());
+        $completeOutput = Artisan::output();
+        $this->assertStringContainsString('CUTOVER_COMPLETE: YES', $completeOutput);
+        $this->assertStringContainsString('blocker_total: 0', $completeOutput);
     }
 }
