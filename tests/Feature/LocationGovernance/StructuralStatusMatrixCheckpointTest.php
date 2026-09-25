@@ -630,12 +630,12 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
 
         $claims->reject($noNeighborhood, $reviewer, 'محله در این شهر وجود دارد');
 
-        try {
-            $proposals->support($proposal->fresh(), User::factory()->create(), ['source' => 'checkpoint_2']);
-            $this->fail('Invalid structural provenance must block new proposal support.');
-        } catch (DomainException) {
-            $this->assertSame(0, $proposal->fresh()->evidence()->count());
-        }
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('locations.proposals.support', $proposal), [
+                'evidence' => ['source' => 'checkpoint_2'],
+            ])
+            ->assertStatus(422);
+        $this->assertSame(0, $proposal->fresh()->evidence()->count());
 
         try {
             $proposals->merge($proposal->fresh(), $existing, $reviewer, 'نباید ادغام شود');
