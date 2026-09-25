@@ -9,6 +9,7 @@ use App\Models\ExperienceField;
 use App\Models\Location;
 use App\Models\LocationExternalId;
 use App\Models\LocationProposal;
+use App\Services\LocationGovernance\IranV2RuntimeState;
 use App\Models\OccupationalField;
 use App\Models\PendingResidenceIntent;
 use Illuminate\Http\Request;
@@ -213,7 +214,7 @@ final class ProfileEditController extends Controller
     }
     private function preferredHydrationLocation(Location $location): Location
     {
-        if ($location->country_code !== 'IR') {
+        if ($location->country_code !== 'IR' || ! app(IranV2RuntimeState::class)->isActive()) {
             return $location;
         }
 
