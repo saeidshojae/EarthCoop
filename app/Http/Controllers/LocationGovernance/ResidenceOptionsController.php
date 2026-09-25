@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationSchemaType;
+use App\Services\LocationGovernance\IranV2RuntimeState;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use App\Support\GovernanceAreaDisplayName;
 use App\Support\LocationDisplayName;
@@ -45,7 +46,8 @@ final class ResidenceOptionsController extends Controller
             ->orderBy('canonical_name')
             ->get();
 
-        $hasIranV2 = $countries->contains(fn (GovernanceArea $country): bool =>
+        $hasIranV2 = app(IranV2RuntimeState::class)->isActive()
+            && $countries->contains(fn (GovernanceArea $country): bool =>
             $country->country_code === 'IR'
             && data_get($country->metadata, 'dataset_version') === 'v2'
         );
