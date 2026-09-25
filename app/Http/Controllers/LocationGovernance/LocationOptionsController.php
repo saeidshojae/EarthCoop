@@ -119,7 +119,7 @@ final class LocationOptionsController extends Controller
         ]);
     }
 
-    public function proposalChildren(Request $request, LocationProposal $locationProposal, LocationProposalPolicy $proposalPolicy, LocationTreeResolver $treeResolver): JsonResponse
+    public function proposalChildren(Request $request, LocationProposal $locationProposal, LocationProposalPolicy $proposalPolicy, LocationStructureClaimPolicy $structurePolicy, LocationTreeResolver $treeResolver): JsonResponse
     {
         $this->assertRuntimeEnabled();
         $status = $locationProposal->status instanceof LocationProposalStatus ? $locationProposal->status->value : (string) $locationProposal->status;
@@ -147,11 +147,8 @@ final class LocationOptionsController extends Controller
             ->where('parent_location_proposal_id', $locationProposal->id)
             ->whereIn('location_type_id', $effectiveTypeIds)->whereIn('status', self::OPEN_STATUSES)->orderBy('canonical_name')->get();
 
-        $structuralChoices = collect(match ($typeKey) {
-            'city' => ['single_urban_region', 'no_urban_region'],
-            'urban_region', 'village' => ['single_neighborhood', 'no_neighborhood'],
-            default => [],
-        })->map(function (string $claimType) use ($claims, $effectiveClaims): array {
+        $proposalClaimTypes = collect($structurePolicy->allowedClaimTypesForProposal($locationProposal, $effectiveClaims));
+        $structuralChoices = $proposalClaimTypes->map(function (string $claimType) use ($claims, $effectiveClaims): array {
             $claim = $claims->firstWhere('claim_type', $claimType);
             return [
                 'claim_type' => $claimType,

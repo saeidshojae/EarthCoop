@@ -761,7 +761,7 @@ class ResidenceService
 
     private function validatedStructuralClaimsForResidence(Location $location, array $structuralClaims): Collection
     {
-        return collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
+        $claims = collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
             $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
             $matchesPath = (int) $locked->location_id === (int) $location->id;
             $cursor = $location;
@@ -776,7 +776,22 @@ class ResidenceService
                 ]);
             }
             return $locked;
-        });
+        })->values();
+
+        $policy = app(LocationStructureClaimPolicy::class);
+        foreach ($claims as $claim) {
+            if (! $policy->dependenciesSatisfied(
+                $claim,
+                array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                $claims,
+            )) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'پیش‌نیاز ادعای ساختاری انتخاب‌شده در همین مسیر تأیید یا انتخاب نشده است.',
+                ]);
+            }
+        }
+
+        return $claims;
     }
 
     private function cancelPendingIntentRows(User $user, string $reason, $at): void

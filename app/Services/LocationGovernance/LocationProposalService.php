@@ -26,6 +26,7 @@ class LocationProposalService
         private readonly ResidenceService $residenceService,
         private readonly LocationProposalPolicy $proposalPolicy,
         private readonly LocationProposalSupportService $proposalSupportService,
+        private readonly LocationStructureClaimPolicy $structureClaimPolicy,
     ) {
     }
 
@@ -273,10 +274,7 @@ class LocationProposalService
                 ],
             ]);
 
-            LocationStructureClaim::query()
-                ->where('location_proposal_id', $proposal->id)
-                ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
-                ->update(['location_id' => $location->id, 'location_proposal_id' => null, 'updated_at' => now()]);
+            $this->reanchorOwnedStructuralClaims($proposal, $location);
 
             $proposal->resolved_location_id = $location->id;
             $proposal->approved_at = now();
@@ -325,6 +323,8 @@ class LocationProposalService
                 throw new DomainException('The merge target must belong to the same canonical parent branch as the proposal.');
             }
 
+            $this->reanchorOwnedStructuralClaims($proposal, $existing);
+
             $proposal->resolved_location_id = $existing->id;
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Merged, $reviewer, $reason, true);
@@ -333,6 +333,58 @@ class LocationProposalService
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $existing);
             app(PendingLocationGroupRequestService::class)->reconcileResolvedProposal($proposal->fresh(), $existing);
         });
+    }
+
+    private function reanchorOwnedStructuralClaims(LocationProposal $proposal, Location $target): void
+    {
+        $claims = LocationStructureClaim::query()
+            ->with(['locationProposal.type'])
+            ->where('location_proposal_id', $proposal->id)
+            ->whereNull('location_id')
+            ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+            ->lockForUpdate()
+            ->get()
+            ->sortBy(fn (LocationStructureClaim $claim): int =>
+                count($this->structureClaimPolicy->requiredContextClaimTypes($claim))
+            )
+            ->values();
+
+        if ($claims->isEmpty()) {
+            return;
+        }
+
+        foreach ($claims as $claim) {
+            if (! $this->structureClaimPolicy->dependenciesSatisfied(
+                $claim,
+                [...LocationStructureClaimService::OPEN_STATUSES, 'approved'],
+            )) {
+                throw new DomainException('A structural claim on the proposal has an invalid prerequisite.');
+            }
+        }
+
+        $targetClaims = LocationStructureClaim::query()
+            ->where('location_id', $target->id)
+            ->whereNull('location_proposal_id')
+            ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($claims as $claim) {
+            if ($targetClaims->contains('claim_type', $claim->claim_type)) {
+                throw new DomainException('The merge target already has the same active structural claim; resolve the structural claim before merging.');
+            }
+
+            if (! $this->structureClaimPolicy->allowsClaimType($target, $claim->claim_type, $targetClaims)) {
+                throw new DomainException('A structural claim on the proposal is not valid for the resolved target.');
+            }
+
+            $claim->forceFill([
+                'location_id' => $target->id,
+                'location_proposal_id' => null,
+            ])->save();
+
+            $targetClaims->push($claim->fresh());
+        }
     }
 
     private function reanchorOpenChildren(LocationProposal $proposal, Location $resolvedParent): void

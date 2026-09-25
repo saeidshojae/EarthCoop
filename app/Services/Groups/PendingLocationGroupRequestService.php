@@ -15,6 +15,7 @@ use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\User;
 use App\Services\Membership\MembershipEngine;
+use App\Services\LocationGovernance\LocationStructureClaimPolicy;
 use App\Support\LocationDisplayName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -255,10 +256,16 @@ final class PendingLocationGroupRequestService
 
     public function syncForStructuralClaims(User $user, Location $location, array $claims): Collection
     {
+        $policy = app(LocationStructureClaimPolicy::class);
         $activeClaims = collect($claims)->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
             && (int) $claim->location_id === (int) $location->id
             && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence'], true)
-            && $claim->claim_type === 'no_neighborhood')->values();
+            && $claim->claim_type === 'no_neighborhood'
+            && $policy->dependenciesSatisfied(
+                $claim,
+                array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                collect($claims),
+            ))->values();
 
         $this->cancelStaleStructuralRequests($user, $activeClaims->pluck('id')->map(fn ($id) => (int) $id)->all());
 
