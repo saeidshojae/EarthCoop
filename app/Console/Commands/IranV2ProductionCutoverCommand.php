@@ -42,7 +42,7 @@ final class IranV2ProductionCutoverCommand extends Command
                 $report = $service->preflight();
                 $this->renderPreflight($report);
 
-                return $report['ready'] ? self::SUCCESS : self::FAILURE;
+                return ($report['ready'] || $report['complete']) ? self::SUCCESS : self::FAILURE;
             }
 
             $result = $service->apply();
@@ -84,6 +84,7 @@ final class IranV2ProductionCutoverCommand extends Command
         }
         $this->line('blocker_total: '.(int) $report['blocker_total']);
         $this->line('READY_FOR_FINAL_CUTOVER: '.($report['ready'] ? 'YES' : 'NO'));
+        $this->line('CUTOVER_COMPLETE: '.($report['complete'] ? 'YES' : 'NO'));
         $this->warn('Dry run only. No database writes or runtime activation are performed.');
     }
 }
