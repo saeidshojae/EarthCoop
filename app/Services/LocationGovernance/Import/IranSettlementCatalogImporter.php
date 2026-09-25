@@ -184,7 +184,7 @@ final class IranSettlementCatalogImporter
             }
 
             $batch[] = $this->pinnedSettlementRow($sourceRow);
-            if (count($batch) === 100) {
+            if (count($batch) === 500) {
                 $wouldInsert += count($this->validatedNewRows($batch));
                 $batch = [];
             }
@@ -220,7 +220,7 @@ final class IranSettlementCatalogImporter
                 }
 
                 $batch[] = $this->pinnedSettlementRow($sourceRow);
-                if (count($batch) === 100) {
+                if (count($batch) === 500) {
                     $summary['applied'] += $this->insertNewBatch($batch);
                     $batch = [];
                 }
