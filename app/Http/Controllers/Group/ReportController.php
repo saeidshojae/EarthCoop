@@ -32,19 +32,15 @@ class ReportController extends Controller
         // - سطح محله و پایین‌تر (neighborhood, street, alley) → فعال (role 1)
         // - سطح منطقه و بالاتر (region, village, rural, city و ...) → ناظر (role 0)
         // اگر role در pivot وجود داشت و معتبر بود (2, 3, 4, 5)، از همان استفاده می‌کنیم
-        $pivotRole = (int)$groupUser->role;
-        
-        if (in_array($pivotRole, [2, 3, 4, 5], true)) {
-            // نقش‌های خاص (بازرس، مدیر، مهمان، فعال۲) از pivot استفاده می‌شوند
+        $pivotRole = (int) $groupUser->role;
+
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $yourRole = in_array($pivotRole, [0, 1, 2, 3, 4, 5], true) ? $pivotRole : 0;
+        } elseif (in_array($pivotRole, [2, 3, 4, 5], true)) {
             $yourRole = $pivotRole;
         } else {
-            // در غیر این صورت، بر اساس location_level تعیین می‌کنیم
             $locationLevel = strtolower(trim((string)($group->location_level ?? '')));
-            if (in_array($locationLevel, ['neighborhood', 'street', 'alley'], true)) {
-                $yourRole = 1; // عضو فعال
-            } else {
-                $yourRole = 0; // ناظر
-            }
+            $yourRole = in_array($locationLevel, ['neighborhood', 'street', 'alley'], true) ? 1 : 0;
         }
         
         // فقط مدیران (role 3) دسترسی دارند
