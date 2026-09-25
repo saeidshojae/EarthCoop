@@ -54,9 +54,9 @@ final class Iran1404ProductionCutoverCommandTest extends TestCase
         foreach ([$location, $residence, $projects] as $source) {
             $this->assertStringContainsString("iran_settlement_catalog.v2_runtime_enabled", $source);
         }
-        $this->assertStringContainsString("! $iranV2RuntimeEnabled", $location);
-        $this->assertStringContainsString("! $iranV2RuntimeEnabled", $residence);
-        $this->assertStringContainsString("! $iranV2RuntimeEnabled", $projects);
+        $this->assertStringContainsString('! $iranV2RuntimeEnabled', $location);
+        $this->assertStringContainsString('! $iranV2RuntimeEnabled', $residence);
+        $this->assertStringContainsString('! $iranV2RuntimeEnabled', $projects);
     }
 
 }
