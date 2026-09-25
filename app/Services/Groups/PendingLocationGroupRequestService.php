@@ -588,7 +588,13 @@ final class PendingLocationGroupRequestService
             if ($claim->status !== 'approved' || $claim->location_id === null) continue;
             $metadata = $request->metadata ?? [];
             $metadata['resolved_from_structure_claim_id'] = $claim->id;
-            $request->forceFill(['location_id' => $claim->location_id, 'location_structure_claim_id' => null, 'status' => 'ready_to_materialize', 'metadata' => $metadata])->save();
+            $request->forceFill([
+                'location_id' => $claim->location_id,
+                'location_structure_claim_id' => null,
+                'status' => 'ready_to_materialize',
+                'metadata' => $metadata,
+            ])->save();
+            $this->healApprovedOfficialTopologyForRequest($request);
             $this->tryMaterializeOfficialRequest($request);
         }
     }
