@@ -41,6 +41,17 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'iran_v2_reference_apply' => [
+            'command' => 'location:reference-import',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--apply' => true,
+                '--confirm' => 'APPLY-IR-1404-V2-PRODUCTION-ADDITIVE',
+            ],
+            'write' => true,
+            'confirmation' => 'APPLY-IR-1404-V2-PRODUCTION-ADDITIVE',
+        ],
         'iran_v2_topology_dry_run' => [
             'command' => 'location-governance:reference-topology',
             'arguments' => [
