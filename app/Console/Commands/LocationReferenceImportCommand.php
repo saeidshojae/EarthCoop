@@ -41,9 +41,12 @@ class LocationReferenceImportCommand extends Command
         if ($apply && strtoupper(trim((string) $this->argument('country'))) === 'IR'
             && trim((string) $this->option('dataset-version')) === 'v2') {
             $confirmation = (string) $this->option('confirm');
-            if (! app()->environment(['local', 'testing'])
-                || ! in_array($confirmation, ['APPLY-IR-1404-V2-ISOLATED', 'APPLY-IR-1404-V2-UAT'], true)) {
-                $this->error('IR v2 apply requires an explicit local/testing confirmation token.');
+            $localTokens = ['APPLY-IR-1404-V2-ISOLATED', 'APPLY-IR-1404-V2-UAT'];
+            $productionToken = 'APPLY-IR-1404-V2-PRODUCTION';
+            $authorized = (app()->environment(['local', 'testing']) && in_array($confirmation, $localTokens, true))
+                || (app()->environment('production') && $confirmation === $productionToken);
+            if (! $authorized) {
+                $this->error('IR v2 apply requires the exact environment-specific confirmation token.');
                 return self::FAILURE;
             }
 
