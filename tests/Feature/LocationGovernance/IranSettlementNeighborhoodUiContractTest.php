@@ -55,4 +55,55 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringNotContainsString("const clearNeighborhood = () => {\n        neighborhoodHost.innerHTML = '';\n        proposalInput.value = '';", $bridge);
         $this->assertStringContainsString('registration-settlement-bridge.js', $app);
     }
+
+    public function test_registration_profile_and_admin_are_locked_to_one_shared_picker_contract(): void
+    {
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+        $admin = file_get_contents(resource_path('views/admin/user/partials/canonical-residence.blade.php'));
+        $core = file_get_contents(resource_path('js/location-selector-core.js'));
+        $bridge = file_get_contents(resource_path('js/registration-settlement-bridge.js'));
+        $app = file_get_contents(resource_path('js/app.js'));
+
+        $contexts = [
+            'registration' => $registration,
+            'profile' => $profile,
+            'admin-user-residence' => $admin,
+        ];
+
+        foreach ($contexts as $context => $view) {
+            $this->assertStringContainsString('data-location-selector', $view, $context);
+            $this->assertStringContainsString('data-location-selector-context="'.$context.'"', $view, $context);
+            $this->assertStringContainsString('data-location-levels', $view, $context);
+            $this->assertStringContainsString('name="location_id"', $view, $context);
+            $this->assertStringContainsString('name="location_proposal_id"', $view, $context);
+            $this->assertStringContainsString('name="reference_settlement_external_id"', $view, $context);
+            $this->assertStringContainsString('data-reference-settlement-picker', $view, $context);
+            $this->assertStringContainsString('data-reference-settlement-query', $view, $context);
+            $this->assertStringContainsString('data-reference-settlement-search', $view, $context);
+            $this->assertStringContainsString('data-reference-settlement-results', $view, $context);
+            $this->assertStringNotContainsString('data-reference-settlement-neighborhood', $view, $context);
+        }
+
+        $this->assertStringContainsString('import "./location-selector.js";', $app);
+        $this->assertStringContainsString('import "./registration-settlement-bridge.js";', $app);
+        $this->assertStringContainsString("['registration', 'profile', 'admin-user-residence'].includes(selectorContext)", $bridge);
+
+        $this->assertStringContainsString("const isRegistration = context === 'registration';", $core);
+        $this->assertStringContainsString('isRegistration ? registrationPayload(normalized) : normalized', $core);
+        $this->assertStringContainsString('shouldStopRegistrationAtProposal', $core);
+        $this->assertStringContainsString("proposal?.type_key === 'neighborhood'", $core);
+        $this->assertStringContainsString('settlementSelect.value = settlementItem.identity', $core);
+        $this->assertStringContainsString('parentReferenceSettlementExternalId', $core);
+
+        $this->assertStringNotContainsString('single_urban_region', $core);
+        $this->assertStringNotContainsString('single_neighborhood', $core);
+        $this->assertStringNotContainsString('چند منطقه دارد', $core);
+        $this->assertStringNotContainsString('چند محله دارد', $core);
+
+        $this->assertStringContainsString('data-location-selector-context="registration"', $registration);
+        $this->assertStringNotContainsString('data-location-selector-context="registration"', $profile);
+        $this->assertStringNotContainsString('data-location-selector-context="registration"', $admin);
+    }
+
 }
