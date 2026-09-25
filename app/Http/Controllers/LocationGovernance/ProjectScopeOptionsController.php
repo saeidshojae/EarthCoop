@@ -5,6 +5,7 @@ namespace App\Http\Controllers\LocationGovernance;
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
+use App\Services\LocationGovernance\IranV2RuntimeState;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use App\Support\GovernanceAreaDisplayName;
 use App\Support\LocationDisplayName;
@@ -31,7 +32,8 @@ final class ProjectScopeOptionsController extends Controller
             ->orderBy('rank')->orderBy('canonical_name')->get();
 
         if ($governanceArea->key === 'earthcoop-continent-asia') {
-            $hasIranV2 = $children->contains(fn (GovernanceArea $child): bool =>
+            $hasIranV2 = app(IranV2RuntimeState::class)->isActive()
+                && $children->contains(fn (GovernanceArea $child): bool =>
                 $child->country_code === 'IR'
                 && $child->governance_type === 'country'
                 && data_get($child->metadata, 'dataset_version') === 'v2'
