@@ -33,7 +33,8 @@
                         <div class="small text-muted">
                             وضعیت: {{ $proposal->status->value ?? $proposal->status }} ·
                             نوع: {{ $proposal->type?->key ?: '—' }} ·
-                            شواهد: {{ $proposal->evidence_count }}
+                            حمایت: {{ number_format($proposal->evidence_count) }} از {{ number_format($verificationThreshold) }} ·
+                            گروه‌های وابسته در انتظار: {{ number_format($proposal->pending_group_requests_count ?? 0) }}
                         </div>
                         <div class="small text-muted mt-1">
                             @if($proposal->parentProposal)

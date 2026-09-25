@@ -24,4 +24,5 @@ class LocationStructureClaim extends Model
     public function referenceSettlement(): BelongsTo { return $this->belongsTo(ReferenceSettlement::class, 'reference_settlement_id'); }
     public function proposer(): BelongsTo { return $this->belongsTo(User::class, 'proposer_user_id'); }
     public function evidence(): HasMany { return $this->hasMany(LocationStructureClaimEvidence::class); }
+    public function groupRequests(): HasMany { return $this->hasMany(LocationScopedGroupRequest::class); }
 }

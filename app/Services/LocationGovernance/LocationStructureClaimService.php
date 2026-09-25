@@ -222,6 +222,11 @@ class LocationStructureClaimService
 
     private function reviewTransition(LocationStructureClaim $claim, User $reviewer, string $to, string $reason): LocationStructureClaim
     {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new DomainException('A non-empty human review reason is required.');
+        }
+
         return DB::transaction(function () use ($claim, $reviewer, $to, $reason): LocationStructureClaim {
             $locked = LocationStructureClaim::query()
                 ->with(['location', 'locationProposal'])

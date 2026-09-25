@@ -48,6 +48,7 @@ class LocationGovernanceController extends Controller
             ->withCount('evidence')
             ->withCount([
                 'childProposals as open_child_proposals_count' => fn ($query) => $query->whereIn('status', $openStatuses),
+                'groupRequests as pending_group_requests_count' => fn ($query) => $query->whereIn('status', ['pending_location', 'ready_to_materialize']),
             ])
             ->whereIn('status', $openStatuses);
 
@@ -72,6 +73,9 @@ class LocationGovernanceController extends Controller
         $structureClaims = LocationStructureClaim::query()
             ->with(['location.type', 'locationProposal.type', 'referenceSettlement', 'proposer'])
             ->withCount('evidence')
+            ->withCount([
+                'groupRequests as pending_group_requests_count' => fn ($query) => $query->whereIn('status', ['pending_location', 'ready_to_materialize']),
+            ])
             ->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)
             ->latest('id')
             ->limit(100)

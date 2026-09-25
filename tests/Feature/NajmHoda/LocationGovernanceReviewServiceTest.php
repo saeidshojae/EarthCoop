@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -36,10 +37,12 @@ class LocationGovernanceReviewServiceTest extends TestCase
         config(['location-governance.location_proposal_verification_threshold' => 10]);
         Setting::singleton()->update(['location_proposal_verification_threshold' => 2]);
 
-        [$proposal] = $this->makeProposal('مجتمع آستانه پویا');
-        $service = app(LocationProposalService::class);
-        $service->support($proposal, User::factory()->create(), ['source' => 'test']);
-        $service->support($proposal, User::factory()->create(), ['source' => 'test']);
+        [$proposal, $parent] = $this->makeProposal('مجتمع آستانه پویا');
+        $residence = app(ResidenceService::class);
+        foreach ([User::factory()->create(), User::factory()->create()] as $supporter) {
+            $residence->setInitialPrimaryResidence($supporter, $parent, ['source' => 'hoda-threshold-test']);
+            $residence->setPendingResidenceIntent($supporter, $proposal, ['source' => 'hoda-threshold-test']);
+        }
 
         $this->assertSame(LocationProposalStatus::ReadyForReview, $proposal->fresh()->status);
 

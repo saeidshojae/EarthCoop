@@ -100,17 +100,16 @@ class ProfilePendingResidenceTest extends TestCase
         $user = User::factory()->create();
         $regionClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
         $neighborhoodClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
-        $proposal = LocationProposal::query()->create([
-            'parent_location_id' => $city->id,
-            'location_schema_id' => $schema->id,
-            'country_code' => 'IR',
-            'location_type_id' => $streetType->id,
-            'canonical_name' => 'خیابان مستقیم پیشنهادی پروفایل',
-            'normalized_name' => 'خیابان مستقیم پیشنهادی پروفایل',
-            'localized_names' => ['fa' => 'خیابان مستقیم پیشنهادی پروفایل'],
-            'status' => \App\Enums\LocationGovernance\LocationProposalStatus::Pending,
-            'proposer_user_id' => $user->id,
-        ]);
+        $proposal = app(LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $streetType,
+            [
+                'canonical_name' => 'خیابان مستقیم پیشنهادی پروفایل',
+                'localized_names' => ['fa' => 'خیابان مستقیم پیشنهادی پروفایل'],
+            ],
+            [$regionClaim, $neighborhoodClaim],
+        );
 
         $response = $this->actingAs($user)->put(route('profile.update.address'), [
             'location_proposal_id' => $proposal->id,

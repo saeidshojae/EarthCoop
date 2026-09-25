@@ -630,12 +630,20 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
 
         $claims->reject($noNeighborhood, $reviewer, 'محله در این شهر وجود دارد');
 
-        $this->actingAs(User::factory()->create())
-            ->postJson(route('locations.proposals.support', $proposal), [
-                'evidence' => ['source' => 'checkpoint_2'],
-            ])
-            ->assertStatus(422);
-        $this->assertSame(0, $proposal->fresh()->evidence()->count());
+        $supporter = User::factory()->create();
+        $residence = app(ResidenceService::class);
+        $residence->setInitialPrimaryResidence($supporter, $city, ['source' => 'checkpoint_2']);
+        try {
+            $residence->setPendingResidenceIntent(
+                $supporter,
+                $proposal->fresh(),
+                ['source' => 'checkpoint_2'],
+                [$noRegion->fresh(), $noNeighborhood->fresh()],
+            );
+            $this->fail('Invalid structural provenance must block committed residence support.');
+        } catch (\Illuminate\Validation\ValidationException|DomainException) {
+            $this->assertSame(0, $proposal->fresh()->evidence()->count());
+        }
 
         try {
             $proposals->merge($proposal->fresh(), $existing, $reviewer, 'نباید ادغام شود');

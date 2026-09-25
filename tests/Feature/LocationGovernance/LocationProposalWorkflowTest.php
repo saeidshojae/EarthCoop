@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -85,7 +86,11 @@ class LocationProposalWorkflowTest extends TestCase
         $service->requestMoreEvidence($proposal, $reviewer, 'نشانی دقیق‌تر لازم است.');
         $this->assertSame(LocationProposalStatus::NeedsEvidence, $proposal->fresh()->status);
 
-        $service->support($proposal->fresh(), User::factory()->create(), ['note' => 'evidence supplied']);
+        $supporter = User::factory()->create();
+        $residence = app(ResidenceService::class);
+        $residence->setInitialPrimaryResidence($supporter, $parent, ['source' => 'proposal-review-test']);
+        $residence->setPendingResidenceIntent($supporter, $proposal->fresh(), ['source' => 'proposal-review-test']);
+
         $approvedLocation = $service->approve($proposal->fresh(), $reviewer, 'مدارک کافی است.');
 
         $proposal->refresh();

@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\LocationProposal;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -32,20 +33,30 @@ class DistinctVerifierThresholdTest extends TestCase
         ]);
 
         $firstVerifier = User::factory()->create();
-        $service->support($proposal, $firstVerifier, ['source' => 'manual']);
-        $service->support($proposal->fresh(), $firstVerifier, ['source' => 'manual-updated']);
+        $this->commitResidenceSupport($firstVerifier, $parent, $proposal);
+        $this->commitResidenceSupport($firstVerifier, $parent, $proposal);
 
         $this->assertSame(1, $proposal->fresh()->evidence()->distinct('user_id')->count('user_id'));
         $this->assertSame(LocationProposalStatus::Pending, $proposal->fresh()->status);
 
-        $service->support($proposal->fresh(), User::factory()->create(), ['source' => 'manual']);
+        $this->commitResidenceSupport(User::factory()->create(), $parent, $proposal);
         $this->assertSame(LocationProposalStatus::Pending, $proposal->fresh()->status);
 
-        $service->support($proposal->fresh(), User::factory()->create(), ['source' => 'manual']);
+        $this->commitResidenceSupport(User::factory()->create(), $parent, $proposal);
 
         $proposal->refresh();
         $this->assertSame(3, $proposal->evidence()->distinct('user_id')->count('user_id'));
         $this->assertSame(LocationProposalStatus::ReadyForReview, $proposal->status);
         $this->assertNull($proposal->approved_at);
+    }
+
+    private function commitResidenceSupport(User $user, \App\Models\Location $anchor, LocationProposal $proposal): void
+    {
+        $residence = app(ResidenceService::class);
+        if ($residence->currentPrimaryResidence($user) === null) {
+            $residence->setInitialPrimaryResidence($user, $anchor, ['source' => 'threshold-test']);
+        }
+
+        $residence->setPendingResidenceIntent($user, $proposal, ['source' => 'threshold-test']);
     }
 }

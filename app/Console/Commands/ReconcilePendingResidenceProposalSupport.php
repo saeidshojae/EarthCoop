@@ -56,7 +56,7 @@ class ReconcilePendingResidenceProposalSupport extends Command
                         continue;
                     }
 
-                    $supportService->record($proposal, $user, [
+                    $supportService->recordCommitted($proposal, $user, [
                         'source' => 'residence_commit_reconcile',
                         'pending_residence_intent_id' => $intent->id,
                         'anchor_relationship_id' => $intent->anchor_relationship_id,

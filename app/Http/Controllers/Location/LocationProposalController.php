@@ -136,21 +136,4 @@ class LocationProposalController extends Controller
         ], $result->wasRecentlyCreated ? 201 : 200);
     }
 
-    public function support(Request $request, LocationProposal $locationProposal): JsonResponse
-    {
-        $validated = $request->validate(['evidence' => ['required', 'array', 'min:1']]);
-
-        try {
-            $this->proposals->support($locationProposal, $request->user(), $validated['evidence']);
-        } catch (DomainException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
-        }
-
-        $locationProposal->refresh();
-
-        return response()->json([
-            'kind' => 'proposal', 'id' => $locationProposal->id, 'status' => $locationProposal->status->value,
-            'distinct_verifiers' => $locationProposal->evidence()->distinct()->count('user_id'),
-        ]);
-    }
 }

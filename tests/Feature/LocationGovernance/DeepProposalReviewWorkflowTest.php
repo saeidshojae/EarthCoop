@@ -119,10 +119,13 @@ class DeepProposalReviewWorkflowTest extends TestCase
 
     public function test_hoda_treats_pending_proposal_parent_as_valid_structure_but_never_recommends_approval_before_parent_resolution(): void
     {
-        [, $childProposal] = $this->makeDeepProposalScenario();
+        [, $childProposal, $anchor] = $this->makeDeepProposalScenario();
         $verifier = User::factory()->create();
-
-        app(LocationProposalService::class)->support($childProposal, $verifier, [
+        $residence = app(ResidenceService::class);
+        $residence->setInitialPrimaryResidence($verifier, $anchor, [
+            'source' => 'deep-proposal-review-test',
+        ]);
+        $residence->setPendingResidenceIntent($verifier, $childProposal, [
             'source' => 'deep-proposal-review-test',
         ]);
         $childProposal->refresh();

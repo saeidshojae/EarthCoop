@@ -31,7 +31,10 @@
                         <strong>{{ $labels[$claim->claim_type] ?? $claim->claim_type }}</strong>
                         <span class="badge text-bg-light ms-1">{{ $statusLabels[$claim->status] ?? $claim->status }}</span>
                     </div>
-                    <div class="small text-muted">حمایت ثبت‌شده: {{ number_format($claim->evidence_count) }}</div>
+                    <div class="small text-muted">
+                        حمایت ثبت‌شده: {{ number_format($claim->evidence_count) }} از {{ number_format($structureClaimVerificationThreshold) }}
+                        · گروه‌های وابسته در انتظار: {{ number_format($claim->pending_group_requests_count ?? 0) }}
+                    </div>
                 </div>
 
                 <div class="mt-2 small">

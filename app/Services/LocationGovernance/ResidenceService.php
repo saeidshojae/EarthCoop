@@ -261,11 +261,7 @@ class ResidenceService
                 'metadata' => $metadata,
             ]);
 
-            $this->proposalSupportService->record($proposal, $user, [
-                'source' => 'residence_commit',
-                'pending_residence_intent_id' => $intent->id,
-                'anchor_relationship_id' => $current->id,
-            ]);
+            $this->recordCommittedProposalChainSupport($proposal, $user, $intent, $current);
 
             foreach ($claims->whereIn('status', LocationStructureClaimService::OPEN_STATUSES) as $claim) {
                 app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
@@ -420,12 +416,37 @@ class ResidenceService
                         ->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
                 ]),
             ]);
-            $this->proposalSupportService->record($lockedProposal, $user, [
-                'source' => 'residence_commit',
-                'pending_residence_intent_id' => $intent->id,
-                'anchor_relationship_id' => $current->id,
-            ]);
+            $this->recordCommittedProposalChainSupport($lockedProposal, $user, $intent, $current);
+
             return $intent;
+        });
+    }
+
+    public function cancelPendingResidenceIntentsForRejectedProposal(
+        LocationProposal $proposal,
+        string $reason = 'location_proposal_rejected',
+    ): int {
+        $status = $proposal->status instanceof LocationProposalStatus
+            ? $proposal->status
+            : LocationProposalStatus::tryFrom((string) $proposal->status);
+
+        if ($status !== LocationProposalStatus::Rejected) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($proposal, $reason): int {
+            $intents = PendingResidenceIntent::query()
+                ->where('location_proposal_id', $proposal->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->get();
+
+            $at = now();
+            foreach ($intents as $intent) {
+                $this->cancelIntent($intent, $reason, $at);
+            }
+
+            return $intents->count();
         });
     }
 
@@ -883,6 +904,38 @@ class ResidenceService
         }
 
         return $claims;
+    }
+
+    private function recordCommittedProposalChainSupport(
+        LocationProposal $deepest,
+        User $user,
+        PendingResidenceIntent $intent,
+        UserLocationRelationship $anchor,
+    ): void {
+        $cursor = $deepest;
+        $visited = [];
+
+        while ($cursor !== null && ! isset($visited[$cursor->id])) {
+            $visited[$cursor->id] = true;
+            $status = $cursor->status instanceof LocationProposalStatus
+                ? $cursor->status
+                : LocationProposalStatus::tryFrom((string) $cursor->status);
+
+            if (in_array($status, [
+                LocationProposalStatus::Pending,
+                LocationProposalStatus::ReadyForReview,
+                LocationProposalStatus::NeedsEvidence,
+            ], true)) {
+                $this->proposalSupportService->recordCommitted($cursor, $user, [
+                    'source' => 'residence_commit',
+                    'pending_residence_intent_id' => $intent->id,
+                    'anchor_relationship_id' => $anchor->id,
+                    'selected_proposal_id' => $deepest->id,
+                ]);
+            }
+
+            $cursor = $cursor->parentProposal()->first();
+        }
     }
 
     private function cancelPendingIntentRows(User $user, string $reason, $at): void
