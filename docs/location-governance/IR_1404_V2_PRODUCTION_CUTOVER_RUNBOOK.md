@@ -24,7 +24,7 @@ Never use migrate:fresh, migrate:reset, migrate:rollback, manual SQL rewrites, o
 
 Run Deployment Console operation: iran_v1_v2_audit.
 
-A present unreviewed v1 identity or a present non-verified_identity mapping is a STOP condition for live cutover. Existing dependencies on reviewed v1 identities are preserved inventory; do not delete them to make the report smaller.
+Treat the audit as inventory, not as authority over the pinned 1404 dataset. Legacy v1 identities remain preserved and are not rewritten or deleted. A dependency-bearing v1 identity whose relationship to v2 is unresolved must be reviewed for fallback/hydration before live cutover; synthetic or obsolete v1 identities with no live dependency do not block the authoritative v2 baseline merely because they exist.
 
 ## 2. Administrative geography dry-run
 
