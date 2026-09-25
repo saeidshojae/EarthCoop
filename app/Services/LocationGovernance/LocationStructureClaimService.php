@@ -238,6 +238,9 @@ class LocationStructureClaimService
                 && ! $policy->dependenciesSatisfied($locked, ['approved'])) {
                 throw new DomainException('Approve the prerequisite structural claim before approving this dependent claim.');
             }
+            if ($to === 'approved' && $this->hasContradictoryExistingChild($locked)) {
+                throw new DomainException('Resolve the contradictory child location or proposal before approving this structural absence claim.');
+            }
 
             $dependents = collect();
             if ($to === 'rejected') {
@@ -310,6 +313,59 @@ class LocationStructureClaimService
 
             return $locked->fresh();
         });
+    }
+
+    private function hasContradictoryExistingChild(LocationStructureClaim $claim): bool
+    {
+        $childType = match ($claim->claim_type) {
+            'no_urban_region' => 'urban_region',
+            'no_neighborhood' => 'neighborhood',
+            default => null,
+        };
+
+        if ($childType === null) {
+            return false;
+        }
+
+        if ($claim->location_id !== null) {
+            $hasCanonicalChild = Location::query()
+                ->where('parent_id', $claim->location_id)
+                ->where('status', 'active')
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+
+            if ($hasCanonicalChild) {
+                return true;
+            }
+
+            return LocationProposal::query()
+                ->where('parent_location_id', $claim->location_id)
+                ->whereNull('parent_location_proposal_id')
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+        }
+
+        if ($claim->location_proposal_id !== null) {
+            return LocationProposal::query()
+                ->whereNull('parent_location_id')
+                ->where('parent_location_proposal_id', $claim->location_proposal_id)
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+        }
+
+        if ($claim->reference_settlement_id !== null) {
+            return LocationProposal::query()
+                ->whereNull('parent_location_id')
+                ->whereNull('parent_location_proposal_id')
+                ->where('parent_reference_settlement_id', $claim->reference_settlement_id)
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+        }
+
+        return false;
     }
 
     private function lockOwnerForClaim(LocationStructureClaim $claim): void
