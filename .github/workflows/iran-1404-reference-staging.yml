@@ -20,6 +20,7 @@ on:
       - 'tests/Unit/Deployment/DeploymentConsoleServiceTest.php'
       - 'tests/Feature/Admin/DeploymentConsoleExecutionTest.php'
       - 'tests/Feature/Admin/DeploymentConsoleSourceContractTest.php'
+      - 'tests/Feature/LocationGovernance/Iran1404ProductionCutoverCommandTest.php'
       - 'app/Console/Commands/Iran1404SettlementCatalogCommand.php'
       - 'app/Services/Deployment/DeploymentConsoleService.php'
       - 'routes/deployment-console.php'
@@ -289,6 +290,7 @@ jobs:
           php -l tests/Unit/Deployment/DeploymentConsoleServiceTest.php
           php -l tests/Feature/Admin/DeploymentConsoleExecutionTest.php
           php -l tests/Feature/Admin/DeploymentConsoleSourceContractTest.php
+          php -l tests/Feature/LocationGovernance/Iran1404ProductionCutoverCommandTest.php
           php -l app/Http/Controllers/LocationGovernance/IranSettlementCatalogController.php
           php -l app/Http/Controllers/LocationGovernance/IranSettlementResidenceClaimController.php
           php -l app/Services/LocationGovernance/ReferenceSettlementReviewService.php
@@ -311,6 +313,7 @@ jobs:
           php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
           php artisan test tests/Unit/Deployment/DeploymentConsoleServiceTest.php tests/Feature/Admin/DeploymentConsoleExecutionTest.php tests/Feature/Admin/DeploymentConsoleSourceContractTest.php
+          php artisan test tests/Feature/LocationGovernance/Iran1404ProductionCutoverCommandTest.php
           php artisan test tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementUatReadinessCommandTest.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementNeighborhoodBridgeTest.php tests/Feature/LocationGovernance/IranSettlementNeighborhoodUiContractTest.php tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php tests/Feature/Admin/CanonicalUserResidenceEditTest.php
