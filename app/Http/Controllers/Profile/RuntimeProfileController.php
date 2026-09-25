@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Profile;
 
 use App\Models\Candidate;
 use App\Models\ChatRequest;
+use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\UserExperience;
 use App\Services\ProfileCompletionService;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 
 /**
  * Transitional canonical read surface for the member profile.
@@ -39,11 +41,42 @@ class RuntimeProfileController
         }
 
         $candidates = Candidate::where('user_id', $user->id)->where('accept_status', 1)->get();
-        $generalGroups = $user->groups()->where('group_type', 0)->get();
-        $specialityGroups = $user->groups()->whereNotNull('specialty_id')->whereNull('experience_id')->get();
-        $experienceGroups = $user->groups()->whereNull('specialty_id')->whereNotNull('experience_id')->get();
-        $ageGroups = $user->groups()->where('group_type', 3)->get();
-        $genderGroups = $user->groups()->where('group_type', 4)->get();
+
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $materializedIds = collect(app(CanonicalGroupMembershipReconciler::class)->reconcile($user))
+                ->pluck('id')
+                ->filter()
+                ->values();
+
+            $groups = $materializedIds->isEmpty()
+                ? collect()
+                : $user->groups()
+                    ->with('governanceArea')
+                    ->whereIn('groups.id', $materializedIds->all())
+                    ->wherePivot('status', 1)
+                    ->get();
+
+            $groups->each(function (Group $group): void {
+                if ($group->governanceArea !== null) {
+                    $group->setAttribute(
+                        'location_level',
+                        $this->presentationLevelFor((string) $group->governanceArea->governance_type),
+                    );
+                }
+            });
+
+            $generalGroups = $groups->where('dimension_key', 'public')->values();
+            $specialityGroups = $groups->where('dimension_key', 'profession')->values();
+            $experienceGroups = $groups->where('dimension_key', 'specialty')->values();
+            $ageGroups = $groups->where('dimension_key', 'age')->values();
+            $genderGroups = $groups->where('dimension_key', 'gender')->values();
+        } else {
+            $generalGroups = $user->groups()->where('group_type', 0)->get();
+            $specialityGroups = $user->groups()->whereNotNull('specialty_id')->whereNull('experience_id')->get();
+            $experienceGroups = $user->groups()->whereNull('specialty_id')->whereNotNull('experience_id')->get();
+            $ageGroups = $user->groups()->where('group_type', 3)->get();
+            $genderGroups = $user->groups()->where('group_type', 4)->get();
+        }
 
         GroupUser::where('status', 1)
             ->where('expired', '<', now())
@@ -75,4 +108,21 @@ class RuntimeProfileController
             'joinGroupRequests'
         ));
     }
+    private function presentationLevelFor(string $governanceType): ?string
+    {
+        return match ($governanceType) {
+            'global' => 'global',
+            'continent' => 'continent',
+            'country' => 'country',
+            'province' => 'province',
+            'county' => 'county',
+            'section' => 'section',
+            'city', 'rural_district' => 'city',
+            'urban_region', 'village' => 'region',
+            'local', 'neighborhood' => 'neighborhood',
+            default => null,
+        };
+    }
+
+
 }
