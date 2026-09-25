@@ -199,15 +199,6 @@ class ResidenceService
                 }
             }
 
-            foreach ($anchorStructuralClaims as $claim) {
-                if ($claim instanceof LocationStructureClaim
-                    && $structurePolicy->contradictsPathTypes($claim, $proposalPathTypeKeys)) {
-                    throw ValidationException::withMessages([
-                        'location_structure_claim_ids' => 'ادعای ساختاری والد با سطح واقعی مسیر پیشنهادی تعارض دارد.',
-                    ]);
-                }
-            }
-
             $current = UserLocationRelationship::query()
                 ->where('user_id', $user->id)
                 ->where('relationship_type', 'primary_residence')
@@ -226,6 +217,32 @@ class ResidenceService
                 throw ValidationException::withMessages([
                     'location_proposal_id' => 'پیشنهاد مکان باید ادامهٔ همان مسیر محل سکونت تأییدشده باشد.',
                 ]);
+            }
+
+            $persistedAnchorClaimIds = collect(($current->metadata ?? [])['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+            $persistedAnchorClaims = $persistedAnchorClaimIds->isEmpty()
+                ? collect()
+                : LocationStructureClaim::query()
+                    ->whereIn('id', $persistedAnchorClaimIds)
+                    ->whereIn('status', array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']))
+                    ->get();
+
+            $effectiveAnchorClaims = collect($anchorStructuralClaims)
+                ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+                ->concat($persistedAnchorClaims)
+                ->unique('id')
+                ->values();
+
+            foreach ($effectiveAnchorClaims as $claim) {
+                if ($structurePolicy->contradictsPathTypes($claim, $proposalPathTypeKeys)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری والد با سطح واقعی مسیر پیشنهادی تعارض دارد.',
+                    ]);
+                }
             }
 
             $at = now();
