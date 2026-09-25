@@ -44,6 +44,7 @@ class ResidenceContinentTraversalTest extends TestCase
 
     public function test_residence_country_menu_prefers_v2_iran_when_v1_and_v2_coexist(): void
     {
+        config(['iran_settlement_catalog.v2_runtime_enabled' => true]);
         $schema = LocationFixture::iranSchema();
         $countryType = $schema->types->firstWhere('key', 'country');
         $v1Location = \App\Models\Location::factory()->create([
