@@ -163,13 +163,16 @@ class DeploymentConsoleExecutionTest extends TestCase
         }
     }
 
-    public function test_flag_status_never_invokes_artisan_and_returns_only_five_rollout_flags(): void
+    public function test_flag_status_never_invokes_artisan_and_returns_rollout_and_iran_cutover_flags(): void
     {
         config()->set('location-governance.runtime_enabled', true);
         config()->set('location-governance.registration_enabled', false);
         config()->set('location-governance.groups_enabled', true);
         config()->set('location-governance.elections_enabled', false);
         config()->set('location-governance.projects_enabled', false);
+        config()->set('iran_settlement_catalog.v2_runtime_enabled', false);
+        config()->set('iran_settlement_catalog.enabled', false);
+        config()->set('iran_settlement_catalog.claims_enabled', false);
 
         Artisan::shouldReceive('call')->never();
         Artisan::shouldReceive('output')->never();
@@ -182,6 +185,9 @@ class DeploymentConsoleExecutionTest extends TestCase
             'groups_enabled' => true,
             'elections_enabled' => false,
             'projects_enabled' => false,
+            'iran_v2_runtime_enabled' => false,
+            'iran_settlement_catalog_enabled' => false,
+            'iran_settlement_claims_enabled' => false,
         ], $service->flags());
 
         $result = $service->run('flag_status', 47);
@@ -190,6 +196,9 @@ class DeploymentConsoleExecutionTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertStringContainsString('runtime_enabled=true', $result['output']);
         $this->assertStringContainsString('projects_enabled=false', $result['output']);
+        $this->assertStringContainsString('iran_v2_runtime_enabled=false', $result['output']);
+        $this->assertStringContainsString('iran_settlement_catalog_enabled=false', $result['output']);
+        $this->assertStringContainsString('iran_settlement_claims_enabled=false', $result['output']);
     }
 
     public function test_non_zero_exit_code_is_returned_as_failure_without_automatic_recovery(): void
