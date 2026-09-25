@@ -222,7 +222,7 @@ class LocationStructureClaimService
 
     private function reviewTransition(LocationStructureClaim $claim, User $reviewer, string $to, string $reason): LocationStructureClaim
     {
-        [$reviewedId, $dependentIds] = DB::transaction(function () use ($claim, $reviewer, $to, $reason): array {
+        return DB::transaction(function () use ($claim, $reviewer, $to, $reason): LocationStructureClaim {
             $locked = LocationStructureClaim::query()
                 ->with(['location', 'locationProposal'])
                 ->lockForUpdate()
@@ -239,7 +239,7 @@ class LocationStructureClaimService
                 throw new DomainException('Approve the prerequisite structural claim before approving this dependent claim.');
             }
 
-            $dependentIds = [];
+            $dependents = collect();
             if ($to === 'rejected') {
                 $dependentTypes = $policy->dependentClaimTypes($locked);
                 if ($dependentTypes !== []) {
@@ -269,7 +269,6 @@ class LocationStructureClaimService
                             'approved_at' => null,
                             'audit_log' => $audit,
                         ])->save();
-                        $dependentIds[] = (int) $dependent->id;
                     }
                 }
             }
@@ -292,30 +291,25 @@ class LocationStructureClaimService
                 'audit_log' => $audit,
             ])->save();
 
-            return [(int) $locked->id, $dependentIds];
-        });
+            if (in_array($to, ['approved', 'rejected'], true)) {
+                $pending = app(PendingLocationGroupRequestService::class);
+                $residence = app(ResidenceService::class);
+                $reviewed = $locked->fresh();
 
-        $reviewed = LocationStructureClaim::query()->findOrFail($reviewedId);
+                $pending->reconcileStructuralClaim($reviewed);
+                if ($to === 'rejected') {
+                    $residence->cancelPendingIntentsDependingOnStructuralClaim($reviewed);
+                }
 
-        if (in_array($to, ['approved', 'rejected'], true)) {
-            $pending = app(PendingLocationGroupRequestService::class);
-            $residence = app(ResidenceService::class);
-
-            $pending->reconcileStructuralClaim($reviewed);
-            if ($to === 'rejected') {
-                $residence->cancelPendingIntentsDependingOnStructuralClaim($reviewed);
-            }
-
-            LocationStructureClaim::query()
-                ->whereIn('id', $dependentIds)
-                ->get()
-                ->each(function (LocationStructureClaim $dependent) use ($pending, $residence): void {
+                foreach ($dependents as $dependent) {
+                    $dependent = $dependent->fresh();
                     $pending->reconcileStructuralClaim($dependent);
                     $residence->cancelPendingIntentsDependingOnStructuralClaim($dependent);
-                });
-        }
+                }
+            }
 
-        return $reviewed;
+            return $locked->fresh();
+        });
     }
 
     private function lockOwnerForClaim(LocationStructureClaim $claim): void
