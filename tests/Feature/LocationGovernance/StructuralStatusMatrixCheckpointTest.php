@@ -3,6 +3,8 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\Membership\GroupCreationMode;
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\PermissionMiddleware;
 use App\Models\GovernanceArea;
 use App\Models\GroupCreationPolicy;
 use App\Models\Location;
@@ -133,6 +135,25 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
             ->where('location_structure_claim_id', $noNeighborhood->id);
         $this->assertNotEmpty($requests);
 
+        $neighborhoodType = $schema->types->firstWhere('key', 'neighborhood');
+        $pendingNeighborhood = app(LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $neighborhoodType,
+            ['canonical_name' => 'محله مستقیم وابسته به نبود منطقه'],
+            [$noRegion],
+        );
+        app(ResidenceService::class)->setPendingResidenceIntent(
+            $user,
+            $pendingNeighborhood,
+            ['source' => 'checkpoint_2_prerequisite_rejection'],
+        );
+        app(PendingLocationGroupRequestService::class)->syncForPendingResidence($user, $pendingNeighborhood);
+        $this->assertSame(
+            1,
+            $user->pendingResidenceIntents()->where('status', 'pending')->count(),
+        );
+
         $service->reject($noRegion, $reviewer, 'شهر در واقع منطقه‌بندی دارد');
 
         $this->assertSame('rejected', $noRegion->fresh()->status);
@@ -148,6 +169,66 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
                 ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                 ->count(),
         );
+        $this->assertSame(
+            0,
+            $user->pendingResidenceIntents()->where('status', 'pending')->count(),
+        );
+        $this->assertSame(
+            0,
+            $user->locationScopedGroupRequests()
+                ->where('location_proposal_id', $pendingNeighborhood->id)
+                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                ->count(),
+        );
+    }
+
+    public function test_profile_and_admin_accept_complete_city_terminal_branch_with_same_shared_contract(): void
+    {
+        $schema = LocationFixture::iranSchema();
+
+        $profileCity = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $profileUser = User::factory()->create();
+        $claimService = app(LocationStructureClaimService::class);
+        $profileNoRegion = $claimService->findOrCreateOpenClaim($profileCity, 'no_urban_region', $profileUser);
+        $profileNoNeighborhood = $claimService->findOrCreateOpenClaim($profileCity, 'no_neighborhood', $profileUser);
+
+        $this->actingAs($profileUser)->put(route('profile.update.address'), [
+            'location_id' => $profileCity->id,
+            'location_structure_claim_ids' => [$profileNoRegion->id, $profileNoNeighborhood->id],
+        ])->assertSessionHasNoErrors();
+
+        $profileRelationship = $profileUser->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+        $this->assertEqualsCanonicalizing(
+            [$profileNoRegion->id, $profileNoNeighborhood->id],
+            $profileRelationship->metadata['structural_claim_ids'],
+        );
+
+        $this->withoutMiddleware([AdminMiddleware::class, PermissionMiddleware::class]);
+        $adminCity = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $target = User::factory()->create();
+        $admin = User::factory()->create();
+        $adminNoRegion = $claimService->findOrCreateOpenClaim($adminCity, 'no_urban_region', $target);
+        $adminNoNeighborhood = $claimService->findOrCreateOpenClaim($adminCity, 'no_neighborhood', $target);
+
+        $this->actingAs($admin)->put(route('admin.users.residence.update', $target), [
+            'location_id' => $adminCity->id,
+            'location_structure_claim_ids' => [$adminNoRegion->id, $adminNoNeighborhood->id],
+            'reason' => 'ثبت شهر بدون منطقه و محله در ماتریس ایست دوم',
+        ])->assertSessionHasNoErrors();
+
+        $adminRelationship = $target->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+        $this->assertEqualsCanonicalizing(
+            [$adminNoRegion->id, $adminNoNeighborhood->id],
+            $adminRelationship->metadata['structural_claim_ids'],
+        );
+        $this->assertTrue($adminNoNeighborhood->fresh()->evidence()->where('user_id', $target->id)->exists());
+        $this->assertFalse($adminNoNeighborhood->fresh()->evidence()->where('user_id', $admin->id)->exists());
     }
 
     public function test_pending_city_can_express_complete_no_region_no_neighborhood_branch_and_finish_registration(): void

@@ -413,6 +413,36 @@ class ResidenceService
         });
     }
 
+    public function cancelPendingIntentsDependingOnStructuralClaim(LocationStructureClaim $claim): int
+    {
+        if ($claim->status !== 'rejected') {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($claim): int {
+            $intents = PendingResidenceIntent::query()
+                ->where('status', 'pending')
+                ->where(function ($query) use ($claim): void {
+                    $query->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                        ->orWhereHas('anchorRelationship', fn ($anchor) =>
+                            $anchor->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                        )
+                        ->orWhereHas('locationProposal', fn ($proposal) =>
+                            $proposal->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                        );
+                })
+                ->lockForUpdate()
+                ->get();
+
+            $at = now();
+            foreach ($intents as $intent) {
+                $this->cancelIntent($intent, 'structural_claim_rejected', $at);
+            }
+
+            return $intents->count();
+        });
+    }
+
     public function clearPendingResidenceIntent(User $user, string $reason): void
     {
         DB::transaction(function () use ($user, $reason): void {

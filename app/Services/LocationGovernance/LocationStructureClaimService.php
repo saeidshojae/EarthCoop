@@ -28,6 +28,7 @@ class LocationStructureClaimService
     public function findOrCreateOpenClaim(Location $location, string $type, User $proposer): LocationStructureClaim
     {
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
+            $location = Location::query()->lockForUpdate()->findOrFail($location->id);
             $contextClaims = LocationStructureClaim::query()
                 ->where('location_id', $location->id)
                 ->whereNull('location_proposal_id')
@@ -77,6 +78,7 @@ class LocationStructureClaimService
         }
 
         return DB::transaction(function () use ($proposal, $type, $proposer): LocationStructureClaim {
+            $proposal = LocationProposal::query()->with('type')->lockForUpdate()->findOrFail($proposal->id);
             $contextClaims = LocationStructureClaim::query()
                 ->where('location_proposal_id', $proposal->id)
                 ->whereNull('location_id')
@@ -284,11 +286,20 @@ class LocationStructureClaimService
 
         if (in_array($to, ['approved', 'rejected'], true)) {
             $pending = app(PendingLocationGroupRequestService::class);
+            $residence = app(ResidenceService::class);
+
             $pending->reconcileStructuralClaim($reviewed);
+            if ($to === 'rejected') {
+                $residence->cancelPendingIntentsDependingOnStructuralClaim($reviewed);
+            }
+
             LocationStructureClaim::query()
                 ->whereIn('id', $dependentIds)
                 ->get()
-                ->each(fn (LocationStructureClaim $dependent) => $pending->reconcileStructuralClaim($dependent));
+                ->each(function (LocationStructureClaim $dependent) use ($pending, $residence): void {
+                    $pending->reconcileStructuralClaim($dependent);
+                    $residence->cancelPendingIntentsDependingOnStructuralClaim($dependent);
+                });
         }
 
         return $reviewed;
