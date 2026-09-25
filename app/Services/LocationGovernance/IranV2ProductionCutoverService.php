@@ -53,24 +53,35 @@ final class IranV2ProductionCutoverService
             'unmapped_enabled_group_policies' => $this->countWhereIn('group_creation_policies', 'governance_area_id', $unmappedAreaIds, fn ($q) => $q->where('enabled', true)),
         ];
 
+        $runtimeActive = $this->runtimeState->isActive();
         $topologyShapeOk = (int) ($topology['update'] ?? -1) === 0
             && (int) ($topology['conflict'] ?? -1) === 0
             && in_array((int) ($topology['create'] ?? -1), [0, 6158], true);
+        $topologyComplete = (int) ($topology['create'] ?? -1) === 0
+            && (int) ($topology['update'] ?? -1) === 0
+            && (int) ($topology['conflict'] ?? -1) === 0
+            && (int) ($topology['unchanged'] ?? 0) >= 6160;
+        $blockerTotal = array_sum($blockers);
 
         return [
-            'runtime_active' => $this->runtimeState->isActive(),
+            'runtime_active' => $runtimeActive,
             'reference_v2_count' => $referenceCount,
             'verified_pairs' => count($pairs),
             'v1_identity_count' => $allV1->count(),
             'unmapped_v1_identity_count' => count($unmappedV1Ids),
             'topology' => $topology,
             'topology_shape_ok' => $topologyShapeOk,
+            'topology_complete' => $topologyComplete,
             'blockers' => $blockers,
-            'blocker_total' => array_sum($blockers),
-            'ready' => ! $this->runtimeState->isActive()
+            'blocker_total' => $blockerTotal,
+            'ready' => ! $runtimeActive
                 && $referenceCount === 6158
                 && $topologyShapeOk
-                && array_sum($blockers) === 0,
+                && $blockerTotal === 0,
+            'complete' => $runtimeActive
+                && $referenceCount === 6158
+                && $topologyComplete
+                && $blockerTotal === 0,
         ];
     }
 
@@ -330,6 +341,23 @@ final class IranV2ProductionCutoverService
                 && DB::table('governance_area_overrides')->where('governance_area_id', $from)->exists()
                 && DB::table('governance_area_overrides')->where('governance_area_id', $to)->exists()) {
                 throw new RuntimeException('Target v2 governance area already has a conflicting capability override.');
+            }
+
+            if (Schema::hasTable('group_creation_policies')) {
+                $sourcePolicies = DB::table('group_creation_policies')
+                    ->where('governance_area_id', $from)
+                    ->where('enabled', true)
+                    ->get(['membership_dimension_id', 'priority']);
+                foreach ($sourcePolicies as $policy) {
+                    if (DB::table('group_creation_policies')
+                        ->where('governance_area_id', $to)
+                        ->where('membership_dimension_id', $policy->membership_dimension_id)
+                        ->where('priority', $policy->priority)
+                        ->where('enabled', true)
+                        ->exists()) {
+                        throw new RuntimeException('Target v2 governance area already has a conflicting group creation policy.');
+                    }
+                }
             }
         }
     }
