@@ -113,4 +113,22 @@ class DeploymentConsoleSourceContractTest extends TestCase
         );
     }
 
+
+    public function test_deployment_route_allowlist_contains_every_iran_1404_operation(): void
+    {
+        $routes = file_get_contents(base_path('routes/deployment-console.php'));
+
+        foreach ([
+            'iran_v1_v2_audit',
+            'reference_v2_dry_run',
+            'settlement_v2_dry_run',
+            'topology_v2_dry_run',
+            'reference_v2_apply',
+            'settlement_v2_apply',
+            'topology_v2_apply',
+        ] as $operation) {
+            $this->assertStringContainsString("'".$operation."'", $routes);
+        }
+    }
+
 }
