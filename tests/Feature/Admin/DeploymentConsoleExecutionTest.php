@@ -49,6 +49,21 @@ class DeploymentConsoleExecutionTest extends TestCase
         $this->assertStringContainsString('conflict=0', $result['output']);
     }
 
+    public function test_service_runs_iran_v2_reference_apply_with_exact_fixed_arguments(): void
+    {
+        $this->expectArtisan('location:reference-import', [
+            'country' => 'IR',
+            '--dataset-version' => 'v2',
+            '--apply' => true,
+            '--confirm' => 'APPLY-IR-1404-V2-PRODUCTION-ADDITIVE',
+        ], 0, 'Applied v2 additively');
+        $this->expectSanitizedAudit('iran_v2_reference_apply', true, 0, true, 51, null);
+
+        $result = app(DeploymentConsoleService::class)->run('iran_v2_reference_apply', 51);
+
+        $this->assertTrue($result['success']);
+    }
+
     public function test_service_runs_topology_dry_run_with_exact_fixed_arguments(): void
     {
         $this->expectArtisan('location-governance:reference-topology', [
