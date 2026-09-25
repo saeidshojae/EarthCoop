@@ -11,6 +11,7 @@ use App\Models\LocationSchemaType;
 use App\Models\LocationStructureClaim;
 use App\Models\LocationType;
 use App\Models\LocationTypeRelation;
+use App\Services\LocationGovernance\IranV2RuntimeState;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use App\Services\LocationGovernance\LocationStructureClaimPolicy;
@@ -34,23 +35,9 @@ final class LocationOptionsController extends Controller
     {
         $this->assertRuntimeEnabled();
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
-        // Importing the additive v2 geography must not switch a live menu by itself.
-        // Prefer v2 only after its reviewed Governance topology exists; this keeps
-        // reference-data staging separate from runtime cutover.
+        // Reference and topology data may be staged in Production without changing live menus.
         $iranV2CutoverReady = $countryCode === 'IR'
-            && GovernanceArea::query()
-                ->official()
-                ->active()
-                ->where('country_code', 'IR')
-                ->where('governance_type', 'country')
-                ->where('metadata->dataset_version', 'v2')
-                ->whereHas('locations', fn ($query) => $query
-                    ->where('locations.status', 'active')
-                    ->whereHas('schema', fn ($schema) => $schema
-                        ->where('key', 'ir-reference-v2')
-                        ->where('version', 'v2')
-                        ->where('status', 'active')))
-                ->exists();
+            && app(IranV2RuntimeState::class)->isActive();
 
         $locations = Location::query()->with(['type', 'schema'])->whereNull('parent_id')->where('status', 'active')
             ->whereNotNull('location_schema_id')->whereNotNull('location_type_id')
