@@ -92,7 +92,7 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString("const isRegistration = context === 'registration';", $core);
         $this->assertStringContainsString('isRegistration ? registrationPayload(normalized) : normalized', $core);
         $this->assertStringContainsString('shouldStopRegistrationAtProposal', $core);
-        $this->assertStringContainsString("proposal?.type_key === 'neighborhood'", $core);
+        $this->assertStringContainsString("item?.type_key === 'neighborhood'", $core);
         $this->assertStringContainsString('settlementSelect.value = settlementItem.identity', $core);
         $this->assertStringContainsString('parentReferenceSettlementExternalId', $core);
 
