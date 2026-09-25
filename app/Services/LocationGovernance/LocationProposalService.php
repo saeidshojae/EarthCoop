@@ -32,7 +32,9 @@ class LocationProposalService
 
     public function propose(User $proposer, Location $parent, LocationType $type, array $data, array $structuralClaims = []): LocationProposal|Location
     {
-        if (! $this->proposalPolicy->allowsForResidence($parent, $type, $structuralClaims)) {
+        $structuralClaims = $this->validatedStructuralClaimsForLocationParent($parent, $structuralClaims);
+
+        if (! $this->proposalPolicy->allowsForResidence($parent, $type, $structuralClaims->all())) {
             throw new DomainException('Crowdsourced proposals are not permitted for this location type in the active schema.');
         }
 
@@ -69,7 +71,7 @@ class LocationProposalService
             'localized_names' => $data['localized_names'] ?? null,
             'status' => LocationProposalStatus::Pending,
             'metadata' => array_merge($data['metadata'] ?? [], [
-                'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'structural_claim_ids' => $structuralClaims->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             ]),
             'audit_log' => [],
         ]);
@@ -83,8 +85,9 @@ class LocationProposalService
         array $structuralClaims = [],
     ): LocationProposal {
         $this->guardOpen($parent);
+        $structuralClaims = $this->validatedStructuralClaimsForProposalParent($parent, $structuralClaims);
 
-        if (! $this->proposalPolicy->allowsProposalParentForResidence($parent, $type, $structuralClaims)) {
+        if (! $this->proposalPolicy->allowsProposalParentForResidence($parent, $type, $structuralClaims->all())) {
             throw new DomainException('The requested location type is not a permitted crowdsourced child of this proposal.');
         }
 
@@ -118,7 +121,7 @@ class LocationProposalService
             'localized_names' => $data['localized_names'] ?? null,
             'status' => LocationProposalStatus::Pending,
             'metadata' => array_merge($data['metadata'] ?? [], [
-                'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'structural_claim_ids' => $structuralClaims->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
                 'reference_settlement_root_proposal_id' => $referenceRoot?->id,
                 'reference_settlement_id' => $referenceRoot?->parent_reference_settlement_id,
             ]),
@@ -133,7 +136,9 @@ class LocationProposalService
         array $data,
         array $structuralClaims = [],
     ): LocationProposal {
-        if (! $this->proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $type, $structuralClaims)) {
+        $structuralClaims = $this->validatedStructuralClaimsForReferenceSettlement($settlement, $structuralClaims);
+
+        if (! $this->proposalPolicy->allowsReferenceSettlementParentForResidence($settlement, $type, $structuralClaims->all())) {
             throw new DomainException('The requested pending child is not allowed under this reference settlement.');
         }
 
@@ -166,7 +171,7 @@ class LocationProposalService
             'metadata' => array_merge($data['metadata'] ?? [], [
                 'source' => 'reference_settlement_child',
                 'reference_settlement_external_id' => $settlement->external_id,
-                'structural_claim_ids' => collect($structuralClaims)
+                'structural_claim_ids' => $structuralClaims
                     ->pluck('id')->map(fn ($id) => (int) $id)->filter()->unique()->values()->all(),
             ]),
             'audit_log' => [],
@@ -410,6 +415,67 @@ class LocationProposalService
         if ($proposal->childProposals()->whereIn('status', self::OPEN_STATUSES)->exists()) {
             throw new DomainException('Resolve or re-parent open descendant proposals before rejecting this proposal.');
         }
+    }
+
+    private function validatedStructuralClaimsForLocationParent(Location $parent, array $structuralClaims): \Illuminate\Support\Collection
+    {
+        return $this->validatedStructuralClaims(
+            $structuralClaims,
+            fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->location_id === (int) $parent->id
+                && $claim->location_proposal_id === null
+                && $claim->reference_settlement_id === null,
+        );
+    }
+
+    private function validatedStructuralClaimsForProposalParent(LocationProposal $parent, array $structuralClaims): \Illuminate\Support\Collection
+    {
+        return $this->validatedStructuralClaims(
+            $structuralClaims,
+            fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->location_proposal_id === (int) $parent->id
+                && $claim->location_id === null
+                && $claim->reference_settlement_id === null,
+        );
+    }
+
+    private function validatedStructuralClaimsForReferenceSettlement(ReferenceSettlement $settlement, array $structuralClaims): \Illuminate\Support\Collection
+    {
+        return $this->validatedStructuralClaims(
+            $structuralClaims,
+            fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->reference_settlement_id === (int) $settlement->id
+                && $claim->location_id === null
+                && $claim->location_proposal_id === null,
+        );
+    }
+
+    private function validatedStructuralClaims(array $structuralClaims, callable $ownerMatches): \Illuminate\Support\Collection
+    {
+        $claims = collect($structuralClaims)
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+            ->unique('id')
+            ->values();
+
+        if ($claims->count() !== count($structuralClaims)
+            || $claims->contains(fn (LocationStructureClaim $claim): bool =>
+                ! $ownerMatches($claim)
+                || ! in_array($claim->status, [...LocationStructureClaimService::OPEN_STATUSES, 'approved'], true)
+            )) {
+            throw new DomainException('The selected structural claims are no longer valid for this proposal path.');
+        }
+
+        foreach ($claims as $claim) {
+            if (! $this->structureClaimPolicy->dependenciesSatisfied(
+                $claim,
+                [...LocationStructureClaimService::OPEN_STATUSES, 'approved'],
+                $claims,
+            )) {
+                throw new DomainException('A structural claim prerequisite is not selected or approved for this proposal path.');
+            }
+        }
+
+        return $claims;
     }
 
     private function canonicalName(array $data): string
