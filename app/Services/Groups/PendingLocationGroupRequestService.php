@@ -563,22 +563,55 @@ final class PendingLocationGroupRequestService
         $requests = LocationScopedGroupRequest::query()->where('location_structure_claim_id', $claim->id)
             ->whereIn('status', ['pending_location', 'ready_to_materialize'])->lockForUpdate()->get();
         if ($claim->status === 'rejected') {
-            LocationScopedGroupRequest::query()
+            $metadataDependent = LocationScopedGroupRequest::query()
                 ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                 ->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
-                ->update(['status' => 'rejected', 'updated_at' => now()]);
+                ->lockForUpdate()
+                ->get();
 
             $dependentProposalIds = LocationProposal::query()
                 ->whereIn('status', self::OPEN_STATUSES)
                 ->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
                 ->pluck('id');
 
-            if ($dependentProposalIds->isNotEmpty()) {
-                LocationScopedGroupRequest::query()
+            $proposalDependent = $dependentProposalIds->isEmpty()
+                ? collect()
+                : LocationScopedGroupRequest::query()
                     ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                     ->whereIn('location_proposal_id', $dependentProposalIds)
-                    ->update(['status' => 'rejected', 'updated_at' => now()]);
-            }
+                    ->lockForUpdate()
+                    ->get();
+
+            $metadataDependent
+                ->concat($proposalDependent)
+                ->unique('id')
+                ->each(function (LocationScopedGroupRequest $dependentRequest) use ($claim): void {
+                    $existing = LocationScopedGroupRequest::query()
+                        ->where('requester_user_id', $dependentRequest->requester_user_id)
+                        ->where('location_structure_claim_id', $claim->id)
+                        ->where('scope_kind', $dependentRequest->scope_kind)
+                        ->where('dimension_key', $dependentRequest->dimension_key)
+                        ->where('dimension_value_key', $dependentRequest->dimension_value_key)
+                        ->whereKeyNot($dependentRequest->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existing !== null) {
+                        $existing->forceFill(['status' => 'rejected'])->save();
+                        $dependentRequest->forceFill(['status' => 'cancelled'])->save();
+                        return;
+                    }
+
+                    $metadata = $dependentRequest->metadata ?? [];
+                    $metadata['rejected_from_structure_claim_id'] = $claim->id;
+                    $dependentRequest->forceFill([
+                        'location_id' => null,
+                        'location_proposal_id' => null,
+                        'location_structure_claim_id' => $claim->id,
+                        'status' => 'rejected',
+                        'metadata' => $metadata,
+                    ])->save();
+                });
         }
 
         foreach ($requests as $request) {
