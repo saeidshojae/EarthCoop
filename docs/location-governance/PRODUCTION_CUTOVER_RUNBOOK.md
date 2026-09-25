@@ -263,7 +263,19 @@ This checkpoint does **not** permit:
 - retirement or rewriting of v1 identities;
 - enabling Iran settlement feature flags.
 
-Any conflict or unexpected v1 dependency is a STOP condition. A separate reviewed Production write path with explicit confirmation tokens, idempotency, and rollback/fail-closed behavior is required before v2 data is mutated.
+Any conflict is a STOP condition. Existing reviewed v1 dependencies keep the **runtime/topology cutover** blocked, but they do not by themselves prohibit the separately guarded additive reference-data staging step below.
+
+After the three read-only outputs are reviewed, the only authorized v2 write at this checkpoint is the fixed Deployment Console operation:
+
+```text
+iran_v2_reference_apply
+```
+
+It invokes only `location:reference-import IR --dataset-version=v2 --apply --confirm=APPLY-IR-1404-V2-PRODUCTION-ADDITIVE` and requires the same exact secondary confirmation phrase in the browser console. The command refuses Production unless existing v1 reference identities are present. It preserves v1 identities and does not apply v2 Governance topology, migrate residence/group dependencies, import settlements, or change rollout flags.
+
+Immediately after it succeeds, rerun `iran_v2_reference_dry_run` and require exactly 6,158 v2 identities to be unchanged with `create=0`, `update=0`, `deactivate=0`, and `conflict=0`. Then rerun the runtime audit and v2 topology dry-run. **Do not apply v2 topology or treat v2 as the live Iran menu while shared cutover remains blocked.**
+
+A separate reviewed Production write path is still required for v2 Governance topology and dependency reconciliation.
 
 ## 10B. Stage C canonical group policy transition
 
