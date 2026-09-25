@@ -47,6 +47,38 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'iran_v1_v2_audit' => [
+            'command' => 'location:iran-v1-v2-runtime-audit',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'reference_v2_dry_run' => [
+            'command' => 'location:reference-import',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--dry-run' => true,
+            ],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'settlement_v2_dry_run' => [
+            'command' => 'location:iran-1404-settlement-catalog',
+            'arguments' => ['--dry-run' => true],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'topology_v2_dry_run' => [
+            'command' => 'location-governance:reference-topology',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--dry-run' => true,
+            ],
+            'write' => false,
+            'confirmation' => null,
+        ],
         'migrate' => [
             'command' => 'migrate',
             'arguments' => ['--force' => true],
@@ -90,6 +122,37 @@ class DeploymentConsoleService
             ],
             'write' => true,
             'confirmation' => 'APPLY-GOV-IR',
+        ],
+        'reference_v2_apply' => [
+            'command' => 'location:reference-import',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--apply' => true,
+                '--confirm' => 'APPLY-IR-1404-V2-PRODUCTION',
+            ],
+            'write' => true,
+            'confirmation' => 'APPLY-IR-1404-V2',
+        ],
+        'settlement_v2_apply' => [
+            'command' => 'location:iran-1404-settlement-catalog',
+            'arguments' => [
+                '--apply' => true,
+                '--confirm' => 'APPLY-IR-SETTLEMENT-CATALOG-PRODUCTION',
+            ],
+            'write' => true,
+            'confirmation' => 'APPLY-IR-1404-SETTLEMENTS',
+        ],
+        'topology_v2_apply' => [
+            'command' => 'location-governance:reference-topology',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--apply' => true,
+                '--confirm' => 'APPLY-GOV-IR-1404-V2-PRODUCTION',
+            ],
+            'write' => true,
+            'confirmation' => 'APPLY-GOV-IR-1404-V2',
         ],
     ];
 
