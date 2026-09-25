@@ -142,23 +142,32 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
             ->where('location_structure_claim_id', $noNeighborhood->id);
         $this->assertNotEmpty($requests);
 
+        $proposalUser = User::factory()->create();
+        $proposalNoRegion = $service->findOrCreateOpenClaim($city, 'no_urban_region', $proposalUser);
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $proposalUser,
+            $city,
+            ['source' => 'checkpoint_2_prerequisite_proposal_anchor'],
+            [$proposalNoRegion],
+        );
+
         $neighborhoodType = $schema->types->firstWhere('key', 'neighborhood');
         $pendingNeighborhood = app(LocationProposalService::class)->propose(
-            $user,
+            $proposalUser,
             $city,
             $neighborhoodType,
             ['canonical_name' => 'محله مستقیم وابسته به نبود منطقه'],
-            [$noRegion],
+            [$proposalNoRegion],
         );
         app(ResidenceService::class)->setPendingResidenceIntent(
-            $user,
+            $proposalUser,
             $pendingNeighborhood,
             ['source' => 'checkpoint_2_prerequisite_rejection'],
         );
-        app(PendingLocationGroupRequestService::class)->syncForPendingResidence($user, $pendingNeighborhood);
+        app(PendingLocationGroupRequestService::class)->syncForPendingResidence($proposalUser, $pendingNeighborhood);
         $this->assertSame(
             1,
-            $user->pendingResidenceIntents()->where('status', 'pending')->count(),
+            $proposalUser->pendingResidenceIntents()->where('status', 'pending')->count(),
         );
 
         $service->reject($noRegion, $reviewer, 'شهر در واقع منطقه‌بندی دارد');
@@ -178,11 +187,11 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         );
         $this->assertSame(
             0,
-            $user->pendingResidenceIntents()->where('status', 'pending')->count(),
+            $proposalUser->pendingResidenceIntents()->where('status', 'pending')->count(),
         );
         $this->assertSame(
             0,
-            $user->locationScopedGroupRequests()
+            $proposalUser->locationScopedGroupRequests()
                 ->where('location_proposal_id', $pendingNeighborhood->id)
                 ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                 ->count(),
