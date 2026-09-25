@@ -41,6 +41,9 @@ final class IranSettlementNeighborhoodUiContractTest extends TestCase
         $this->assertStringContainsString('/location/reference-settlements/${encodeURIComponent(parentReferenceSettlementExternalId)}/children', $selector);
         $this->assertStringContainsString('Number(settlement.id)', $selector);
         $this->assertStringContainsString("String(settlement.external_id || '')", $selector);
+        $this->assertStringContainsString('settlementSelect.value = settlementItem.identity', $selector);
+        $this->assertStringContainsString("settlementOption.dataset.referenceSettlementOption = ''", $selector);
+        $this->assertStringContainsString("settlementOption.dataset.typeKey = 'settlement'", $selector);
         $this->assertStringContainsString('earthcoop-location-path-changed', $selector);
         $this->assertStringContainsString('proposalPath', $selector);
         $this->assertStringContainsString("type_key: 'settlement'", $selector);
