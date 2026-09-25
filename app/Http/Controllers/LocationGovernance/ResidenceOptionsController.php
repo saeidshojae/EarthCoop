@@ -46,17 +46,16 @@ final class ResidenceOptionsController extends Controller
             ->orderBy('canonical_name')
             ->get();
 
-        $hasIranV2 = app(IranV2RuntimeState::class)->isActive()
-            && $countries->contains(fn (GovernanceArea $country): bool =>
-            $country->country_code === 'IR'
-            && data_get($country->metadata, 'dataset_version') === 'v2'
-        );
-        if ($hasIranV2) {
-            $countries = $countries->reject(fn (GovernanceArea $country): bool =>
-                $country->country_code === 'IR'
-                && data_get($country->metadata, 'dataset_version') !== 'v2'
-            )->values();
-        }
+        $iranV2Active = app(IranV2RuntimeState::class)->isActive();
+        $countries = $countries->reject(function (GovernanceArea $country) use ($iranV2Active): bool {
+            if ($country->country_code !== 'IR') {
+                return false;
+            }
+
+            $isV2 = data_get($country->metadata, 'dataset_version') === 'v2';
+
+            return $iranV2Active ? ! $isV2 : $isV2;
+        })->values();
 
         $items = $countries->map(function (GovernanceArea $country): ?array {
             $location = $country->locations->first(fn (Location $candidate): bool =>
