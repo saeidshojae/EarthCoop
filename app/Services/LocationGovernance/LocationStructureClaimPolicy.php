@@ -58,6 +58,18 @@ class LocationStructureClaimPolicy
         return in_array($claimType, $this->allowedClaimTypesForProposal($proposal, $contextClaims), true);
     }
 
+    /** @return array<int, string> */
+    public function conflictingClaimTypes(string $claimType): array
+    {
+        return match ($claimType) {
+            'single_urban_region' => ['no_urban_region'],
+            'no_urban_region' => ['single_urban_region'],
+            'single_neighborhood' => ['no_neighborhood'],
+            'no_neighborhood' => ['single_neighborhood'],
+            default => [],
+        };
+    }
+
     /**
      * Conditional claim types are schema-driven. A returned list represents
      * alternative prerequisite claim types: at least one must be valid.

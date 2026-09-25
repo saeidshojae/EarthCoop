@@ -174,7 +174,20 @@ class ResidenceService
                 }
 
                 return $locked;
-            });
+            })->values();
+
+            $structurePolicy = app(LocationStructureClaimPolicy::class);
+            foreach ($claims as $claim) {
+                if (! $structurePolicy->dependenciesSatisfied(
+                    $claim,
+                    array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                    $claims,
+                )) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'پیش‌نیاز ادعای ساختاری مسیر پیشنهادی انتخاب یا تأیید نشده است.',
+                    ]);
+                }
+            }
 
             $current = UserLocationRelationship::query()
                 ->where('user_id', $user->id)

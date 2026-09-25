@@ -374,6 +374,12 @@ class LocationProposalService
                 throw new DomainException('The merge target already has the same active structural claim; resolve the structural claim before merging.');
             }
 
+            if ($targetClaims->pluck('claim_type')->intersect(
+                $this->structureClaimPolicy->conflictingClaimTypes($claim->claim_type)
+            )->isNotEmpty()) {
+                throw new DomainException('The resolved target has a conflicting active structural claim.');
+            }
+
             if (! $this->structureClaimPolicy->allowsClaimType($target, $claim->claim_type, $targetClaims)) {
                 throw new DomainException('A structural claim on the proposal is not valid for the resolved target.');
             }

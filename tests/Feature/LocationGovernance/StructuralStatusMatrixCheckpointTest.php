@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Enums\Membership\GroupCreationMode;
 use App\Models\GovernanceArea;
+use App\Models\GroupCreationPolicy;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
@@ -35,11 +37,21 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
             'location-governance.groups_enabled' => true,
         ]);
 
-        MembershipDimension::query()->firstOrCreate(
+        $dimension = MembershipDimension::query()->firstOrCreate(
             ['key' => 'public'],
             [
                 'name' => 'Public',
                 'resolver_class' => PublicDimensionResolver::class,
+                'enabled' => true,
+            ],
+        );
+        GroupCreationPolicy::query()->firstOrCreate(
+            [
+                'membership_dimension_id' => $dimension->id,
+                'governance_area_id' => null,
+            ],
+            [
+                'mode' => GroupCreationMode::Automatic,
                 'enabled' => true,
             ],
         );
@@ -261,6 +273,12 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
             $mergeProposal,
             'no_neighborhood',
             $mergeUser,
+        );
+
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $mergeUser,
+            $city,
+            ['source' => 'checkpoint_2_merge_anchor'],
         );
 
         app(ResidenceService::class)->setPendingResidenceIntent(
