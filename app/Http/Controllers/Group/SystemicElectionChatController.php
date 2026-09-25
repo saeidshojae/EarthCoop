@@ -58,7 +58,9 @@ class SystemicElectionChatController extends Controller
         }
 
         $pivotRole = (int) $groupUser->role;
-        if (in_array($pivotRole, [2, 3, 4, 5], true)) {
+        if ((bool) config('location-governance.elections_enabled', false)) {
+            $yourRole = in_array($pivotRole, [0, 1, 2, 3, 4, 5], true) ? $pivotRole : 0;
+        } elseif (in_array($pivotRole, [2, 3, 4, 5], true)) {
             $yourRole = $pivotRole;
         } else {
             $level = strtolower(trim((string) ($group->getRawOriginal('location_level') ?? $group->location_level ?? '')));
