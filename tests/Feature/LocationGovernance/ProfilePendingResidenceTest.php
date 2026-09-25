@@ -242,6 +242,7 @@ class ProfilePendingResidenceTest extends TestCase
             'name' => 'Iran 1404',
             'version' => 'v2',
             'status' => 'active',
+            'metadata' => ['runtime_active' => true],
         ]);
         $types = $v1Schema->types->keyBy('key');
         $parent = null;
