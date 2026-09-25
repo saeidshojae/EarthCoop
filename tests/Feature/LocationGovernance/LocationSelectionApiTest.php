@@ -20,6 +20,7 @@ class LocationSelectionApiTest extends TestCase
         $this->assertFalse((bool) config('location-governance.registration_enabled'));
         $this->assertFalse((bool) config('location-governance.groups_enabled'));
         $this->assertFalse((bool) config('location-governance.elections_enabled'));
+        $this->assertFalse((bool) config('iran_settlement_catalog.v2_runtime_enabled'));
     }
 
     public function test_root_options_are_schema_driven_localized_and_hide_pending_locations(): void
@@ -66,7 +67,10 @@ class LocationSelectionApiTest extends TestCase
 
     public function test_ir_country_filter_prefers_active_v2_root_when_v1_and_v2_coexist(): void
     {
-        config(['location-governance.runtime_enabled' => true]);
+        config([
+            'location-governance.runtime_enabled' => true,
+            'iran_settlement_catalog.v2_runtime_enabled' => true,
+        ]);
 
         $v1 = LocationFixture::iranSchema();
         $countryType = $v1->types->firstWhere('key', 'country');
