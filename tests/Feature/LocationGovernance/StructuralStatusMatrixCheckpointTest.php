@@ -71,6 +71,13 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         $noRegion = $service->findOrCreateOpenClaim($city, 'no_urban_region', $cityUser);
         $noNeighborhood = $service->findOrCreateOpenClaim($city, 'no_neighborhood', $cityUser);
 
+        $this->assertSame(
+            [$noRegion->id],
+            collect(data_get($noNeighborhood->metadata, 'depends_on_claim_ids', []))
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all(),
+        );
         $this->assertTrue($tree->registrationEndpointAllowed($city, [$noRegion, $noNeighborhood]));
         try {
             $service->approve($noNeighborhood, $reviewer, 'نباید پیش از پیش‌نیاز تأیید شود');
