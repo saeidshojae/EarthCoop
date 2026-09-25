@@ -33,7 +33,8 @@ final class LocationOptionsController extends Controller
     {
         $this->assertRuntimeEnabled();
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
-        $preferIranV2 = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false)
+        $iranV2RuntimeEnabled = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false);
+        $preferIranV2 = $iranV2RuntimeEnabled
             && $countryCode === 'IR'
             && Location::query()
                 ->where('country_code', 'IR')
@@ -44,10 +45,14 @@ final class LocationOptionsController extends Controller
 
         $locations = Location::query()->with(['type', 'schema'])->whereNull('parent_id')->where('status', 'active')
             ->whereNotNull('location_schema_id')->whereNotNull('location_type_id')
-            ->whereHas('schema', function ($query) use ($preferIranV2): void {
+            ->whereHas('schema', function ($query) use ($preferIranV2, $iranV2RuntimeEnabled, $countryCode): void {
                 $query->where('status', 'active');
                 if ($preferIranV2) {
                     $query->where('key', 'ir-reference-v2')->where('version', 'v2');
+                } elseif ($countryCode === 'IR' && ! $iranV2RuntimeEnabled) {
+                    $query->where(fn ($candidate) => $candidate
+                        ->where('key', '!=', 'ir-reference-v2')
+                        ->orWhere('version', '!=', 'v2'));
                 }
             })
             ->when($countryCode !== '', fn ($query) => $query->where('country_code', $countryCode))
