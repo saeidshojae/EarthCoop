@@ -596,6 +596,56 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         );
     }
 
+    public function test_support_and_merge_fail_closed_after_parent_structural_provenance_is_rejected(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create();
+        $claims = app(LocationStructureClaimService::class);
+        $proposals = app(LocationProposalService::class);
+
+        $noRegion = $claims->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claims->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $proposal = $proposals->propose(
+            $user,
+            $city,
+            $streetType,
+            ['canonical_name' => 'خیابان وابسته به ساختار مردود'],
+            [$noRegion, $noNeighborhood],
+        );
+
+        $existing = Location::query()->create([
+            'parent_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $streetType->id,
+            'country_code' => 'IR',
+            'name' => 'خیابان موجود مقصد ادغام',
+            'canonical_name' => 'خیابان موجود مقصد ادغام',
+            'level' => 'street',
+            'status' => 'active',
+        ]);
+
+        $claims->reject($noNeighborhood, $reviewer, 'محله در این شهر وجود دارد');
+
+        try {
+            $proposals->support($proposal->fresh(), User::factory()->create(), ['source' => 'checkpoint_2']);
+            $this->fail('Invalid structural provenance must block new proposal support.');
+        } catch (DomainException) {
+            $this->assertSame(0, $proposal->fresh()->evidence()->count());
+        }
+
+        try {
+            $proposals->merge($proposal->fresh(), $existing, $reviewer, 'نباید ادغام شود');
+            $this->fail('Invalid structural provenance must block proposal merge.');
+        } catch (DomainException) {
+            $this->assertNull($proposal->fresh()->resolved_location_id);
+            $this->assertSame('pending', $proposal->fresh()->status->value);
+        }
+    }
+
     public function test_merge_fails_closed_when_target_already_has_same_active_structural_claim(): void
     {
         $schema = LocationFixture::iranSchema();
