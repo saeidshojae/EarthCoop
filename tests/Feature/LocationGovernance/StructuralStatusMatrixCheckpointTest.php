@@ -252,6 +252,17 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         ])])->save();
         $user = User::factory()->create();
 
+        $sectionArea = GovernanceArea::query()->create([
+            'key' => 'checkpoint-2-section-'.$section->id,
+            'country_code' => 'IR',
+            'governance_type' => 'section',
+            'area_kind' => 'official',
+            'canonical_name' => $section->canonical_name,
+            'rank' => 400,
+            'status' => 'active',
+        ]);
+        $sectionArea->locations()->attach($section->id);
+
         $proposal = app(LocationProposalService::class)->propose(
             $user,
             $section,
@@ -310,6 +321,49 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
             'location_proposal_id' => $proposal->id,
             'location_structure_claim_ids' => [$noRegionId, $noNeighborhoodId],
         ])->assertRedirect(route('home'));
+
+        $publicRequest = $user->locationScopedGroupRequests()
+            ->where('location_proposal_id', $proposal->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->sole();
+        $this->assertSame('pending_location', $publicRequest->status);
+
+        $reviewer = User::factory()->create();
+        $resolvedCity = app(LocationProposalService::class)->approve(
+            $proposal,
+            $reviewer,
+            'تأیید شهر پیشنهادی در ماتریس ایست دوم',
+        );
+
+        $noRegion = LocationStructureClaim::query()->findOrFail($noRegionId);
+        $noNeighborhood = LocationStructureClaim::query()->findOrFail($noNeighborhoodId);
+        $this->assertSame($resolvedCity->id, $noRegion->location_id);
+        $this->assertSame($resolvedCity->id, $noNeighborhood->location_id);
+        $this->assertNull($noRegion->location_proposal_id);
+        $this->assertNull($noNeighborhood->location_proposal_id);
+
+        $publicRequest->refresh();
+        $this->assertSame('pending_location', $publicRequest->status);
+        $this->assertSame($noNeighborhood->id, (int) $publicRequest->location_structure_claim_id);
+
+        $claimService = app(LocationStructureClaimService::class);
+        $claimService->approve($noRegion, $reviewer, 'نبود منطقه تأیید شد');
+        $publicRequest->refresh();
+        $this->assertSame('pending_location', $publicRequest->status);
+
+        $claimService->approve($noNeighborhood->fresh(), $reviewer, 'نبود محله تأیید شد');
+        $publicRequest->refresh();
+        $this->assertSame('materialized', $publicRequest->status);
+        $this->assertNotNull($publicRequest->group_id);
+        $this->assertSame(
+            1,
+            (int) $user->groups()->whereKey($publicRequest->group_id)
+                ->wherePivot('status', 1)
+                ->firstOrFail()
+                ->pivot
+                ->role,
+        );
     }
 
     public function test_pending_city_dependent_claim_cannot_be_approved_before_prerequisite_and_is_cascaded_on_rejection(): void
