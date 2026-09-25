@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\GovernanceArea;
+use App\Models\LocationSchema;
 use App\Models\User;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,8 +57,22 @@ class ResidenceContinentTraversalTest extends TestCase
             'level' => 'country',
             'status' => 'active',
         ]);
+        $v2Schema = LocationSchema::query()->create([
+            'key' => 'ir-reference-v2',
+            'country_code' => 'IR',
+            'name' => 'Iran 1404',
+            'version' => 'v2',
+            'status' => 'active',
+            'metadata' => ['runtime_active' => false],
+        ]);
+        $v2Schema->types()->attach($countryType->id, [
+            'is_root' => true,
+            'is_residence_endpoint' => false,
+            'sort_order' => 10,
+            'metadata' => json_encode([]),
+        ]);
         $v2Location = \App\Models\Location::factory()->create([
-            'location_schema_id' => $schema->id,
+            'location_schema_id' => $v2Schema->id,
             'location_type_id' => $countryType->id,
             'country_code' => 'IR',
             'name' => 'ایران',
@@ -105,6 +120,12 @@ class ResidenceContinentTraversalTest extends TestCase
         ]);
         $v1->locations()->attach($v1Location->id);
         $v2->locations()->attach($v2Location->id);
+
+        $staged = $this->getJson('/location/residence/options/governance/'.$asia->id.'/children')->assertOk();
+        $staged->assertJsonCount(1, 'data');
+        $staged->assertJsonPath('data.0.identity', 'location:'.$v1Location->id);
+
+        $v2Schema->forceFill(['metadata' => ['runtime_active' => true]])->save();
 
         $response = $this->getJson('/location/residence/options/governance/'.$asia->id.'/children')->assertOk();
         $response->assertJsonCount(1, 'data');
