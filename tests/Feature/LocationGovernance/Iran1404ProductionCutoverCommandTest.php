@@ -34,7 +34,7 @@ final class Iran1404ProductionCutoverCommandTest extends TestCase
         $this->assertStringContainsString("SOURCE_GIT_BLOB = 'ca9f4a0d69c7c9d77e6434447c7fe123a322271e'", $source);
         $this->assertStringContainsString('EXPECTED_COUNT = 99317', $source);
         $this->assertStringContainsString('array_chunk($requiredParents, 500)', $source);
-        $this->assertStringContainsString("count($batch) === 100", $source);
+        $this->assertStringContainsString("count($batch) === 500", $source);
         $this->assertStringContainsString('DB::transaction', $source);
         $this->assertStringContainsString("'classification' => 'unverified_settlement'", $source);
         $this->assertStringContainsString("'residential_eligibility' => 'unverified'", $source);
