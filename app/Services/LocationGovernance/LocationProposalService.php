@@ -209,6 +209,12 @@ class LocationProposalService
 
     public function support(LocationProposal $proposal, User $user, array $evidence): void
     {
+        $this->guardOpen($proposal);
+
+        if (! $this->proposalPolicy->storedStructuralProvenanceIsValid($proposal)) {
+            throw new DomainException('The proposal structural dependencies are no longer valid.');
+        }
+
         $this->proposalSupportService->record($proposal, $user, $evidence);
     }
 
@@ -326,6 +332,10 @@ class LocationProposalService
 
             if ((int) $existing->parent_id !== (int) $proposal->parent_location_id) {
                 throw new DomainException('The merge target must belong to the same canonical parent branch as the proposal.');
+            }
+
+            if (! $this->proposalPolicy->storedStructuralProvenanceIsValid($proposal)) {
+                throw new DomainException('The proposal structural dependencies are no longer valid.');
             }
 
             $this->reanchorOwnedStructuralClaims($proposal, $existing);
