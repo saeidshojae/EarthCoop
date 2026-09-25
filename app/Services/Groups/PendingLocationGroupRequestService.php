@@ -241,11 +241,14 @@ final class PendingLocationGroupRequestService
             return collect();
         }
 
+        // Load the complete selected structural context, not only the terminal
+        // no-neighborhood claim. A City terminal base depends on the selected
+        // no-urban-region prerequisite; filtering that prerequisite out here
+        // made openForUser() cancel an otherwise valid pending City base shell.
         $claims = LocationStructureClaim::query()
             ->whereIn('id', $claimIds)
             ->where('location_id', $relationship->location_id)
-            ->where('claim_type', 'no_neighborhood')
-            ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+            ->whereIn('status', array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']))
             ->get();
 
         return $this->syncForStructuralClaims(
