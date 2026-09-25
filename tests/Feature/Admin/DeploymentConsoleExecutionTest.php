@@ -125,6 +125,44 @@ class DeploymentConsoleExecutionTest extends TestCase
         $this->assertTrue($result['success']);
     }
 
+    public function test_iran_1404_cutover_operations_use_only_fixed_commands_tokens_and_arguments(): void
+    {
+        $cases = [
+            ['iran_v1_v2_audit', 'location:iran-v1-v2-runtime-audit', [], false, 'audit'],
+            ['reference_v2_dry_run', 'location:reference-import', [
+                'country' => 'IR', '--dataset-version' => 'v2', '--dry-run' => true,
+            ], false, 'reference dry'],
+            ['settlement_v2_dry_run', 'location:iran-1404-settlement-catalog', [
+                '--dry-run' => true,
+            ], false, 'settlement dry'],
+            ['topology_v2_dry_run', 'location-governance:reference-topology', [
+                'country' => 'IR', '--dataset-version' => 'v2', '--dry-run' => true,
+            ], false, 'topology dry'],
+            ['reference_v2_apply', 'location:reference-import', [
+                'country' => 'IR', '--dataset-version' => 'v2', '--apply' => true,
+                '--confirm' => 'APPLY-IR-1404-V2-PRODUCTION',
+            ], true, 'reference applied'],
+            ['settlement_v2_apply', 'location:iran-1404-settlement-catalog', [
+                '--apply' => true, '--confirm' => 'APPLY-IR-SETTLEMENT-CATALOG-PRODUCTION',
+            ], true, 'settlements applied'],
+            ['topology_v2_apply', 'location-governance:reference-topology', [
+                'country' => 'IR', '--dataset-version' => 'v2', '--apply' => true,
+                '--confirm' => 'APPLY-GOV-IR-1404-V2-PRODUCTION',
+            ], true, 'topology applied'],
+        ];
+
+        foreach ($cases as $index => [$operation, $command, $arguments, $write, $output]) {
+            $userId = 60 + $index;
+            $this->expectArtisan($command, $arguments, 0, $output);
+            $this->expectSanitizedAudit($operation, $write, 0, true, $userId, null);
+
+            $result = app(DeploymentConsoleService::class)->run($operation, $userId);
+
+            $this->assertTrue($result['success'], $operation);
+            $this->assertSame($output, $result['output'], $operation);
+        }
+    }
+
     public function test_flag_status_never_invokes_artisan_and_returns_only_five_rollout_flags(): void
     {
         config()->set('location-governance.runtime_enabled', true);
