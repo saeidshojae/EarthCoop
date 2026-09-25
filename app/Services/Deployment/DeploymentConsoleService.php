@@ -193,6 +193,9 @@ class DeploymentConsoleService
             'groups_enabled' => (bool) config('location-governance.groups_enabled', false),
             'elections_enabled' => (bool) config('location-governance.elections_enabled', false),
             'projects_enabled' => (bool) config('location-governance.projects_enabled', false),
+            'iran_v2_runtime_enabled' => (bool) config('iran_settlement_catalog.v2_runtime_enabled', false),
+            'iran_settlement_catalog_enabled' => (bool) config('iran_settlement_catalog.enabled', false),
+            'iran_settlement_claims_enabled' => (bool) config('iran_settlement_catalog.claims_enabled', false),
         ];
     }
 
