@@ -10,6 +10,7 @@ use App\Models\NotificationSetting;
 use App\Models\ReportedMessage;
 use App\Models\Setting;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
+use App\Services\LocationGovernance\GroupGovernanceContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -40,8 +41,13 @@ class FounderOperationalDomainObserver
         ];
 
         if ($model instanceof Group) {
+            $context = app(GroupGovernanceContext::class);
             $payload['group_type'] = $model->group_type;
-            $payload['location_level'] = $model->location_level;
+            $payload['location_level'] = $context->level($model);
+            $payload['governance_area_id'] = $model->governance_area_id !== null ? (int) $model->governance_area_id : null;
+            $payload['dimension_key'] = $model->dimension_key;
+            $payload['dimension_value_key'] = $model->dimension_value_key;
+            $payload['scope_key'] = $context->stableScopeKey($model);
             $payload['is_open'] = (bool) $model->is_open;
         } elseif ($model instanceof Election) {
             $payload['group_id'] = (int) $model->group_id;
