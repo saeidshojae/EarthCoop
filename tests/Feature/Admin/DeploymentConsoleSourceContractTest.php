@@ -104,12 +104,12 @@ class DeploymentConsoleSourceContractTest extends TestCase
         }
 
         $this->assertLessThan(
-            strpos($source, 'reference_v2_apply'),
-            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true')
+            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true'),
+            strpos($source, 'reference_v2_apply')
         );
         $this->assertLessThan(
-            strpos($source, 'topology_v2_apply'),
-            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true')
+            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true'),
+            strpos($source, 'topology_v2_apply')
         );
     }
 
