@@ -31,9 +31,11 @@ class ReferenceGovernanceTopologyCommand extends Command
             $version = (string) $this->option('dataset-version');
 
             if ($apply && $country === 'IR' && $version === 'v2') {
-                if (! app()->environment(['local', 'testing'])
-                    || (string) $this->option('confirm') !== 'APPLY-GOV-IR-1404-V2-UAT') {
-                    $this->error('Iran 1404 v2 governance apply requires explicit local/testing UAT confirmation.');
+                $confirmation = (string) $this->option('confirm');
+                $authorized = (app()->environment(['local', 'testing']) && $confirmation === 'APPLY-GOV-IR-1404-V2-UAT')
+                    || (app()->environment('production') && $confirmation === 'APPLY-GOV-IR-1404-V2-PRODUCTION');
+                if (! $authorized) {
+                    $this->error('Iran 1404 v2 governance apply requires the exact environment-specific confirmation token.');
                     return self::FAILURE;
                 }
             }

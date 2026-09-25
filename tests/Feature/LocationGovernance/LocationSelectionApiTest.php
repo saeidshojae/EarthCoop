@@ -20,6 +20,7 @@ class LocationSelectionApiTest extends TestCase
         $this->assertFalse((bool) config('location-governance.registration_enabled'));
         $this->assertFalse((bool) config('location-governance.groups_enabled'));
         $this->assertFalse((bool) config('location-governance.elections_enabled'));
+        $this->assertFalse((bool) config('iran_settlement_catalog.v2_runtime_enabled'));
     }
 
     public function test_root_options_are_schema_driven_localized_and_hide_pending_locations(): void
@@ -103,6 +104,12 @@ class LocationSelectionApiTest extends TestCase
             'level' => 'country',
             'status' => 'active',
         ]);
+
+        $dark = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $dark->assertJsonCount(1, 'data');
+        $dark->assertJsonPath('data.0.id', $v1Root->id);
+
+        config(['iran_settlement_catalog.v2_runtime_enabled' => true]);
 
         $response = $this->getJson('/location/options/root?country=IR')->assertOk();
         $response->assertJsonCount(1, 'data');

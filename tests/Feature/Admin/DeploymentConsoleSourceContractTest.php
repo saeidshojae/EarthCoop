@@ -76,4 +76,59 @@ class DeploymentConsoleSourceContractTest extends TestCase
             strpos($source, '## 10A. Explicit Governance topology')
         );
     }
+
+    public function test_iran_1404_production_runbook_requires_dark_import_and_fixed_cutover_sequence(): void
+    {
+        $path = base_path('docs/location-governance/IR_1404_V2_PRODUCTION_CUTOVER_RUNBOOK.md');
+        $this->assertFileExists($path);
+        $source = file_get_contents($path);
+
+        foreach ([
+            'IR_1404_V2_RUNTIME_ENABLED=false',
+            'iran_v1_v2_audit',
+            'reference_v2_dry_run',
+            'reference_v2_apply',
+            'APPLY-IR-1404-V2',
+            'settlement_v2_dry_run',
+            'settlement_v2_apply',
+            'APPLY-IR-1404-SETTLEMENTS',
+            'topology_v2_dry_run',
+            'topology_v2_apply',
+            'APPLY-GOV-IR-1404-V2',
+            'HARD STOP',
+            'IR_1404_V2_RUNTIME_ENABLED=true',
+            'IR_SETTLEMENT_CATALOG_ENABLED=true',
+            'IR_SETTLEMENT_CLAIMS_ENABLED=true',
+        ] as $required) {
+            $this->assertStringContainsString($required, $source);
+        }
+
+        $this->assertLessThan(
+            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true'),
+            strpos($source, 'reference_v2_apply')
+        );
+        $this->assertLessThan(
+            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true'),
+            strpos($source, 'topology_v2_apply')
+        );
+    }
+
+
+    public function test_deployment_route_allowlist_contains_every_iran_1404_operation(): void
+    {
+        $routes = file_get_contents(base_path('routes/deployment-console.php'));
+
+        foreach ([
+            'iran_v1_v2_audit',
+            'reference_v2_dry_run',
+            'settlement_v2_dry_run',
+            'topology_v2_dry_run',
+            'reference_v2_apply',
+            'settlement_v2_apply',
+            'topology_v2_apply',
+        ] as $operation) {
+            $this->assertStringContainsString("'".$operation."'", $routes);
+        }
+    }
+
 }

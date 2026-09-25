@@ -31,16 +31,24 @@ final class ProjectScopeOptionsController extends Controller
             ->orderBy('rank')->orderBy('canonical_name')->get();
 
         if ($governanceArea->key === 'earthcoop-continent-asia') {
-            $hasIranV2 = $children->contains(fn (GovernanceArea $child): bool =>
-                $child->country_code === 'IR'
-                && $child->governance_type === 'country'
-                && data_get($child->metadata, 'dataset_version') === 'v2'
-            );
+            $iranV2RuntimeEnabled = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false);
+            $hasIranV2 = $iranV2RuntimeEnabled
+                && $children->contains(fn (GovernanceArea $child): bool =>
+                    $child->country_code === 'IR'
+                    && $child->governance_type === 'country'
+                    && data_get($child->metadata, 'dataset_version') === 'v2'
+                );
             if ($hasIranV2) {
                 $children = $children->reject(fn (GovernanceArea $child): bool =>
                     $child->country_code === 'IR'
                     && $child->governance_type === 'country'
                     && data_get($child->metadata, 'dataset_version') !== 'v2'
+                )->values();
+            } elseif (! $iranV2RuntimeEnabled) {
+                $children = $children->reject(fn (GovernanceArea $child): bool =>
+                    $child->country_code === 'IR'
+                    && $child->governance_type === 'country'
+                    && data_get($child->metadata, 'dataset_version') === 'v2'
                 )->values();
             }
         }

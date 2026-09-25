@@ -106,6 +106,12 @@ class ResidenceContinentTraversalTest extends TestCase
         $v1->locations()->attach($v1Location->id);
         $v2->locations()->attach($v2Location->id);
 
+        $dark = $this->getJson('/location/residence/options/governance/'.$asia->id.'/children')->assertOk();
+        $dark->assertJsonCount(1, 'data');
+        $dark->assertJsonPath('data.0.identity', 'location:'.$v1Location->id);
+
+        config(['iran_settlement_catalog.v2_runtime_enabled' => true]);
+
         $response = $this->getJson('/location/residence/options/governance/'.$asia->id.'/children')->assertOk();
         $response->assertJsonCount(1, 'data');
         $response->assertJsonPath('data.0.identity', 'location:'.$v2Location->id);

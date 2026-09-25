@@ -18,11 +18,18 @@ class DeploymentConsoleServiceTest extends TestCase
             'topology_dry_run',
             'readiness',
             'flag_status',
+            'iran_v1_v2_audit',
+            'reference_v2_dry_run',
+            'settlement_v2_dry_run',
+            'topology_v2_dry_run',
             'migrate',
             'bootstrap',
             'stage_c_group_policy_apply',
             'reference_apply',
             'topology_apply',
+            'reference_v2_apply',
+            'settlement_v2_apply',
+            'topology_v2_apply',
         ], array_keys($service->operations()));
 
         $this->assertSame('MIGRATE', $service->confirmationFor('migrate'));
@@ -30,11 +37,18 @@ class DeploymentConsoleServiceTest extends TestCase
         $this->assertSame('APPLY-GROUP-POLICY', $service->confirmationFor('stage_c_group_policy_apply'));
         $this->assertSame('APPLY-IR', $service->confirmationFor('reference_apply'));
         $this->assertSame('APPLY-GOV-IR', $service->confirmationFor('topology_apply'));
+        $this->assertSame('APPLY-IR-1404-V2', $service->confirmationFor('reference_v2_apply'));
+        $this->assertSame('APPLY-IR-1404-SETTLEMENTS', $service->confirmationFor('settlement_v2_apply'));
+        $this->assertSame('APPLY-GOV-IR-1404-V2', $service->confirmationFor('topology_v2_apply'));
         $this->assertNull($service->confirmationFor('migration_status'));
         $this->assertNull($service->confirmationFor('reference_dry_run'));
         $this->assertNull($service->confirmationFor('topology_dry_run'));
         $this->assertNull($service->confirmationFor('readiness'));
         $this->assertNull($service->confirmationFor('flag_status'));
+        $this->assertNull($service->confirmationFor('iran_v1_v2_audit'));
+        $this->assertNull($service->confirmationFor('reference_v2_dry_run'));
+        $this->assertNull($service->confirmationFor('settlement_v2_dry_run'));
+        $this->assertNull($service->confirmationFor('topology_v2_dry_run'));
     }
 
     public function test_console_is_disabled_by_default_and_secret_compare_fails_closed(): void

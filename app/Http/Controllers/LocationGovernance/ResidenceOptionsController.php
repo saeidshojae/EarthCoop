@@ -45,14 +45,21 @@ final class ResidenceOptionsController extends Controller
             ->orderBy('canonical_name')
             ->get();
 
-        $hasIranV2 = $countries->contains(fn (GovernanceArea $country): bool =>
-            $country->country_code === 'IR'
-            && data_get($country->metadata, 'dataset_version') === 'v2'
-        );
+        $iranV2RuntimeEnabled = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false);
+        $hasIranV2 = $iranV2RuntimeEnabled
+            && $countries->contains(fn (GovernanceArea $country): bool =>
+                $country->country_code === 'IR'
+                && data_get($country->metadata, 'dataset_version') === 'v2'
+            );
         if ($hasIranV2) {
             $countries = $countries->reject(fn (GovernanceArea $country): bool =>
                 $country->country_code === 'IR'
                 && data_get($country->metadata, 'dataset_version') !== 'v2'
+            )->values();
+        } elseif (! $iranV2RuntimeEnabled) {
+            $countries = $countries->reject(fn (GovernanceArea $country): bool =>
+                $country->country_code === 'IR'
+                && data_get($country->metadata, 'dataset_version') === 'v2'
             )->values();
         }
 
