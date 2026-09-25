@@ -49,6 +49,7 @@ final class IranV2ProductionCutoverService
             'unmapped_project_targets' => $this->countWhereIn('najm_bahar_projects', 'target_location_id', $unmappedV1Ids),
             'unmapped_project_scopes' => $this->countWhereIn('najm_bahar_projects', 'governance_area_id', $unmappedAreaIds),
             'unmapped_active_group_memberships' => $this->activeMembershipsForAreaIds($unmappedAreaIds),
+            'unmapped_open_elections' => $this->openElectionsForAreaIds($unmappedAreaIds),
             'unmapped_area_overrides' => $this->countWhereIn('governance_area_overrides', 'governance_area_id', $unmappedAreaIds),
             'unmapped_enabled_group_policies' => $this->countWhereIn('group_creation_policies', 'governance_area_id', $unmappedAreaIds, fn ($q) => $q->where('enabled', true)),
         ];
@@ -302,6 +303,21 @@ final class IranV2ProductionCutoverService
         }
         return DB::table('group_user')->join('groups', 'groups.id', '=', 'group_user.group_id')
             ->where('group_user.status', 1)->whereIn('groups.governance_area_id', $areaIds)->count();
+    }
+
+    private function openElectionsForAreaIds(array $areaIds): int
+    {
+        if ($areaIds === [] || ! Schema::hasTable('elections') || ! Schema::hasColumn('elections', 'governance_area_id')) {
+            return 0;
+        }
+
+        return DB::table('elections')
+            ->whereIn('governance_area_id', $areaIds)
+            ->where(function ($query): void {
+                $query->where('is_closed', false)
+                    ->orWhereIn('lifecycle_status', ['scheduled', 'open']);
+            })
+            ->count();
     }
 
     private function countWhereIn(string $table, string $column, array $ids, ?callable $scope = null): int
