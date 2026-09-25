@@ -495,3 +495,12 @@ test('registration can terminate on a reference settlement only after the no-nei
     assert.match(core, /registrationEndpointAllowed[\s\S]*setRegistrationEndpoint\(parentItem\)/);
     assert.match(core, /referenceSettlementExternalId[\s\S]*structure-claims/);
 });
+
+
+test('reference settlement hydration restores the settlement option in its visible level menu', () => {
+    const core = coreSelectorSource();
+    assert.match(core, /settlementSelect\.value = settlementItem\.identity/);
+    assert.match(core, /settlementOption\.value = settlementItem\.identity/);
+    assert.match(core, /settlementOption\.dataset\.referenceSettlementOption = ''/);
+    assert.match(core, /settlementOption\.dataset\.typeKey = 'settlement'/);
+});
