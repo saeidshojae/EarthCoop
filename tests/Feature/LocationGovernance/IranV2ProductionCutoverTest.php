@@ -105,7 +105,7 @@ final class IranV2ProductionCutoverTest extends TestCase
             'user_id' => $user->id,
             'role' => 1,
             'status' => 1,
-            'expired' => 0,
+            'expired' => null,
         ]);
 
         $neighborhoodTypeId = DB::table('location_types')->where('key', 'neighborhood')->value('id');
@@ -134,10 +134,11 @@ final class IranV2ProductionCutoverTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->assertSame(0, Artisan::call('location:iran-v2-production-cutover', [
+        $readyExit = Artisan::call('location:iran-v2-production-cutover', [
             '--dry-run' => true,
-        ]), Artisan::output());
+        ]);
         $readyOutput = Artisan::output();
+        $this->assertSame(0, $readyExit, $readyOutput);
         $this->assertStringContainsString('READY_FOR_FINAL_CUTOVER: YES', $readyOutput);
         $this->assertStringContainsString('blocker_total: 0', $readyOutput);
 
@@ -148,10 +149,12 @@ final class IranV2ProductionCutoverTest extends TestCase
             ->where('user_id', $user->id)
             ->value('id');
 
-        $this->assertSame(0, Artisan::call('location:iran-v2-production-cutover', [
+        $applyExit = Artisan::call('location:iran-v2-production-cutover', [
             '--apply' => true,
             '--confirm' => 'CUTOVER-IR-1404-V2-PRODUCTION',
-        ]), Artisan::output());
+        ]);
+        $applyOutput = Artisan::output();
+        $this->assertSame(0, $applyExit, $applyOutput);
 
         $v2Area = $v2Region->governanceAreas()
             ->official()
@@ -194,21 +197,23 @@ final class IranV2ProductionCutoverTest extends TestCase
             ->where('key', 'ir-reference-v2')->value('metadata'), true);
         $this->assertTrue((bool) ($schemaMetadata['runtime_active'] ?? false));
 
-        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+        $topologyExit = Artisan::call('location-governance:reference-topology', [
             'country' => 'IR',
             '--dataset-version' => 'v2',
             '--dry-run' => true,
-        ]), Artisan::output());
+        ]);
         $topologyOutput = Artisan::output();
+        $this->assertSame(0, $topologyExit, $topologyOutput);
         $this->assertStringContainsString('create: 0', $topologyOutput);
         $this->assertStringContainsString('update: 0', $topologyOutput);
         $this->assertStringContainsString('conflict: 0', $topologyOutput);
         $this->assertStringContainsString('unchanged: 6160', $topologyOutput);
 
-        $this->assertSame(0, Artisan::call('location:iran-v2-production-cutover', [
+        $completeExit = Artisan::call('location:iran-v2-production-cutover', [
             '--dry-run' => true,
-        ]), Artisan::output());
+        ]);
         $completeOutput = Artisan::output();
+        $this->assertSame(0, $completeExit, $completeOutput);
         $this->assertStringContainsString('CUTOVER_COMPLETE: YES', $completeOutput);
         $this->assertStringContainsString('blocker_total: 0', $completeOutput);
     }
