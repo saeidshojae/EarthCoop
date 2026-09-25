@@ -241,6 +241,10 @@ jobs:
       - name: Syntax and targeted import safety regressions
         run: |
           php -l app/Console/Commands/LocationReferenceImportCommand.php
+          php -l app/Console/Commands/IranV2ProductionCutoverCommand.php
+          php -l app/Services/LocationGovernance/IranV2RuntimeState.php
+          php -l app/Services/LocationGovernance/IranV2ProductionCutoverService.php
+          php -l tests/Feature/LocationGovernance/IranV2ProductionCutoverTest.php
           php -l app/Data/LocationGovernance/ReferenceDataset.php
           php -l app/Console/Commands/ReferenceGovernanceTopologyCommand.php
           php -l app/Services/LocationGovernance/Import/ReferenceGovernanceTopologyImporter.php
@@ -302,6 +306,7 @@ jobs:
           php artisan test \
             tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php \
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
+            tests/Feature/LocationGovernance/IranV2ProductionCutoverTest.php \
             tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php \
             tests/Feature/LocationGovernance/ReferenceGovernanceTopologyImportTest.php \
             tests/Feature/LocationGovernance/LocationSelectionApiTest.php \
