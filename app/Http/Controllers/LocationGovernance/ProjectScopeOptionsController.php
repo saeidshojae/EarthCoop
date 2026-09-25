@@ -31,7 +31,8 @@ final class ProjectScopeOptionsController extends Controller
             ->orderBy('rank')->orderBy('canonical_name')->get();
 
         if ($governanceArea->key === 'earthcoop-continent-asia') {
-            $hasIranV2 = $children->contains(fn (GovernanceArea $child): bool =>
+            $hasIranV2 = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false)
+                && $children->contains(fn (GovernanceArea $child): bool =>
                 $child->country_code === 'IR'
                 && $child->governance_type === 'country'
                 && data_get($child->metadata, 'dataset_version') === 'v2'
