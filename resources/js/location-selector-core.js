@@ -749,6 +749,23 @@ const initializeLocationSelector = async (host) => {
             picker_kind: 'reference_settlement',
             status: 'pending',
         };
+
+        const settlementSelect = levels.querySelector(`[data-location-select="${anchorDepth + 1}"]`);
+        if (settlementSelect) {
+            let settlementOption = Array.from(settlementSelect.options)
+                .find((option) => option.value === settlementItem.identity);
+            if (!settlementOption) {
+                settlementOption = document.createElement('option');
+                settlementOption.value = settlementItem.identity;
+                settlementOption.textContent = settlementItem.label + ' — در انتظار بررسی سکونت';
+                settlementOption.dataset.referenceSettlementOption = '';
+                settlementOption.dataset.typeKey = 'settlement';
+                settlementOption.dataset.pickerKind = 'reference_settlement';
+                settlementSelect.appendChild(settlementOption);
+            }
+            settlementSelect.value = settlementItem.identity;
+        }
+
         selectedPath.set(anchorDepth + 1, settlementItem);
 
         if (!proposal) {
