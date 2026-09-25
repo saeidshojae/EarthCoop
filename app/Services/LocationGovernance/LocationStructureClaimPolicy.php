@@ -58,6 +58,20 @@ class LocationStructureClaimPolicy
         return in_array($claimType, $this->allowedClaimTypesForProposal($proposal, $contextClaims), true);
     }
 
+    public function contradictsPathTypes(LocationStructureClaim $claim, iterable $typeKeys): bool
+    {
+        $types = collect($typeKeys)
+            ->map(fn ($type): string => (string) $type)
+            ->filter()
+            ->unique();
+
+        return match ($claim->claim_type) {
+            'no_urban_region' => $types->contains('urban_region'),
+            'no_neighborhood' => $types->contains('neighborhood'),
+            default => false,
+        };
+    }
+
     /** @return array<int, string> */
     public function conflictingClaimTypes(string $claimType): array
     {

@@ -35,6 +35,7 @@ Conditional structural claims are schema-driven. For a dependent claim:
 
 - creation requires a valid open/approved prerequisite on the same canonical/proposed owner;
 - an open prerequisite must be explicitly selected in a residence commit unless already approved;
+- selecting or proposing a real Urban Region/Neighborhood fails closed if a contradictory `no_urban_region`/`no_neighborhood` claim is still submitted; the shared UI also clears that stale claim;
 - approval of the dependent requires an approved prerequisite;
 - rejecting a prerequisite automatically rejects open dependents, cancels pending residence intents that depend on the rejected branch, and rejects both direct and metadata-linked pending group shells;
 - an already-approved dependent blocks prerequisite rejection rather than being silently rewritten;
@@ -56,6 +57,7 @@ This keeps pending claims non-authoritative and prevents a rejected structural b
 8. fail-closed merge collision;
 9. explicit selection of open prerequisites during residence commit;
 10. immediate cancellation/rejection of pending residence/group state after prerequisite rejection;
-11. the same complete City terminal branch through Registration, Profile, and Admin entry points.
+11. the same complete City terminal branch through Registration, Profile, and Admin entry points;
+12. backend rejection of stale contradictory absence claims when a real Region/Neighborhood is selected or proposed.
 
 Existing Location/Governance tests remain the regression source for normal multi-level paths, pending proposal chains, Profile/Admin entry points, Communities, elections, and responsive behavior.

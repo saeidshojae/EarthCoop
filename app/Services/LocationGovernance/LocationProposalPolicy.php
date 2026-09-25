@@ -34,13 +34,22 @@ class LocationProposalPolicy
 
     public function allowsForResidence(Location $parent, LocationType $type, array $structuralClaims = []): bool
     {
+        $claims = collect($structuralClaims)
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim);
+
+        if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
+            $this->structureClaimPolicy->contradictsPathTypes($claim, [$type->key])
+        )) {
+            return false;
+        }
+
         if ($this->allows($parent, $type)) {
             return true;
         }
 
         $effectiveTypeCodes = $this->structureClaimPolicy->effectiveResidenceChildTypeCodes(
             $parent,
-            collect($structuralClaims)->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+            $claims
         );
 
         return in_array($type->key, $effectiveTypeCodes, true)
@@ -49,6 +58,15 @@ class LocationProposalPolicy
 
     public function allowsProposalParentForResidence(LocationProposal $parent, LocationType $type, array $structuralClaims = []): bool
     {
+        $claims = collect($structuralClaims)
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim);
+
+        if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
+            $this->structureClaimPolicy->contradictsPathTypes($claim, [$type->key])
+        )) {
+            return false;
+        }
+
         if ($this->allowsProposalParent($parent, $type)) {
             return true;
         }
@@ -57,7 +75,7 @@ class LocationProposalPolicy
             return false;
         }
 
-        $claimTypes = collect($structuralClaims)
+        $claimTypes = $claims
             ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
                 && (int) $claim->location_proposal_id === (int) $parent->id
                 && in_array($claim->status, array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']), true))

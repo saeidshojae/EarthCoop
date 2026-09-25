@@ -238,6 +238,86 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         $this->assertFalse($adminNoNeighborhood->fresh()->evidence()->where('user_id', $admin->id)->exists());
     }
 
+    public function test_real_region_or_neighborhood_cannot_be_committed_with_contradictory_absence_claims(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $claimService = app(LocationStructureClaimService::class);
+
+        $urbanPath = LocationFixture::createPath(
+            $schema,
+            ['country','province','county','section','city','urban_region','neighborhood'],
+        );
+        $city = $urbanPath->first(fn (Location $location) => $location->type?->key === 'city');
+        $region = $urbanPath->first(fn (Location $location) => $location->type?->key === 'urban_region');
+        $neighborhood = $urbanPath->last();
+
+        $user = User::factory()->create();
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        try {
+            app(ResidenceService::class)->setInitialPrimaryResidence(
+                $user,
+                $region,
+                ['source' => 'checkpoint_2_contradiction'],
+                [$noRegion],
+            );
+            $this->fail('A real urban region must contradict no_urban_region.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('location_structure_claim_ids', $exception->errors());
+        }
+
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $region,
+            ['source' => 'checkpoint_2_corrected_path'],
+        );
+        $this->assertSame(
+            $region->id,
+            $user->fresh()->locationRelationships()
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->sole()
+                ->location_id,
+        );
+
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+        try {
+            app(ResidenceService::class)->transferPrimaryResidence(
+                $user,
+                $neighborhood,
+                $user,
+                'checkpoint_2_neighborhood_contradiction',
+                false,
+                [$noNeighborhood],
+            );
+            $this->fail('A real neighborhood must contradict no_neighborhood.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('location_structure_claim_ids', $exception->errors());
+        }
+
+        $proposalUser = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $proposalUser,
+            $city,
+            ['source' => 'checkpoint_2_pending_anchor'],
+        );
+        $proposalNoRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $proposalUser);
+        $regionType = $schema->types->firstWhere('key', 'urban_region');
+
+        try {
+            app(LocationProposalService::class)->propose(
+                $proposalUser,
+                $city,
+                $regionType,
+                ['canonical_name' => 'منطقه واقعی پیشنهادی'],
+                [$proposalNoRegion],
+            );
+            $this->fail('A real urban-region proposal must contradict no_urban_region.');
+        } catch (DomainException) {
+            $this->assertTrue(true);
+        }
+    }
+
     public function test_pending_city_can_express_complete_no_region_no_neighborhood_branch_and_finish_registration(): void
     {
         $schema = LocationFixture::iranSchema();

@@ -380,7 +380,7 @@ final class UserResidenceController extends Controller
                     'source' => 'admin_user_residence',
                     'actor_user_id' => $actor->id,
                     'reason' => $reason,
-                ], $proposalStructuralClaims);
+                ], $proposalStructuralClaims, $canonicalStructuralClaims);
             } catch (DomainException $exception) {
                 throw ValidationException::withMessages([
                     'location_proposal_id' => $exception->getMessage(),

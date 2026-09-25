@@ -302,7 +302,7 @@ class Step3Controller extends Controller
 
                 $residenceService->setPendingResidenceIntent($user, $proposal, [
                     'source' => 'registration_step3',
-                ], $proposalStructuralClaims);
+                ], $proposalStructuralClaims, $canonicalStructuralClaims);
             });
 
             if ((bool) config('location-governance.groups_enabled', false)) {

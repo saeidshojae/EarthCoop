@@ -140,6 +140,7 @@ class ResidenceService
         LocationProposal $proposal,
         array $metadata = [],
         array $structuralClaims = [],
+        array $anchorStructuralClaims = [],
     ): PendingResidenceIntent {
         if (! in_array($proposal->status, [
             LocationProposalStatus::Pending,
@@ -151,13 +152,17 @@ class ResidenceService
             ]);
         }
 
-        return DB::transaction(function () use ($user, $proposal, $metadata, $structuralClaims): PendingResidenceIntent {
+        return DB::transaction(function () use ($user, $proposal, $metadata, $structuralClaims, $anchorStructuralClaims): PendingResidenceIntent {
             $proposalChainIds = collect();
+            $proposalPathTypeKeys = collect();
             $cursor = $proposal->loadMissing('parentProposal');
             $visited = [];
             while ($cursor !== null && ! isset($visited[$cursor->id])) {
                 $visited[$cursor->id] = true;
                 $proposalChainIds->push((int) $cursor->id);
+                if ($cursor->type?->key) {
+                    $proposalPathTypeKeys->push((string) $cursor->type->key);
+                }
                 $cursor = $cursor->parentProposal()->first();
             }
 
@@ -185,6 +190,20 @@ class ResidenceService
                 )) {
                     throw ValidationException::withMessages([
                         'location_structure_claim_ids' => 'پیش‌نیاز ادعای ساختاری مسیر پیشنهادی انتخاب یا تأیید نشده است.',
+                    ]);
+                }
+                if ($structurePolicy->contradictsPathTypes($claim, $proposalPathTypeKeys)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده با سطح واقعی مسیر پیشنهادی تعارض دارد.',
+                    ]);
+                }
+            }
+
+            foreach ($anchorStructuralClaims as $claim) {
+                if ($claim instanceof LocationStructureClaim
+                    && $structurePolicy->contradictsPathTypes($claim, $proposalPathTypeKeys)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری والد با سطح واقعی مسیر پیشنهادی تعارض دارد.',
                     ]);
                 }
             }
@@ -822,6 +841,13 @@ class ResidenceService
         })->values();
 
         $policy = app(LocationStructureClaimPolicy::class);
+        $pathTypeKeys = app(LocationTreeResolver::class)
+            ->ancestors($location)
+            ->push($location)
+            ->map(fn (Location $pathLocation): string => (string) $pathLocation->type?->key)
+            ->filter()
+            ->values();
+
         foreach ($claims as $claim) {
             if (! $policy->dependenciesSatisfied(
                 $claim,
@@ -830,6 +856,11 @@ class ResidenceService
             )) {
                 throw ValidationException::withMessages([
                     'location_structure_claim_ids' => 'پیش‌نیاز ادعای ساختاری انتخاب‌شده در همین مسیر تأیید یا انتخاب نشده است.',
+                ]);
+            }
+            if ($policy->contradictsPathTypes($claim, $pathTypeKeys)) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده با سطح واقعی محل سکونت تعارض دارد.',
                 ]);
             }
         }
