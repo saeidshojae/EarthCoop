@@ -35,7 +35,16 @@ class LocationProposalPolicy
     public function allowsForResidence(Location $parent, LocationType $type, array $structuralClaims = []): bool
     {
         $claims = collect($structuralClaims)
-            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim);
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+            ->concat(
+                LocationStructureClaim::query()
+                    ->where('location_id', $parent->id)
+                    ->whereNull('location_proposal_id')
+                    ->where('status', 'approved')
+                    ->get()
+            )
+            ->unique('id')
+            ->values();
 
         if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
             $this->structureClaimPolicy->contradictsPathTypes($claim, [$type->key])
@@ -59,7 +68,16 @@ class LocationProposalPolicy
     public function allowsProposalParentForResidence(LocationProposal $parent, LocationType $type, array $structuralClaims = []): bool
     {
         $claims = collect($structuralClaims)
-            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim);
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+            ->concat(
+                LocationStructureClaim::query()
+                    ->where('location_proposal_id', $parent->id)
+                    ->whereNull('location_id')
+                    ->where('status', 'approved')
+                    ->get()
+            )
+            ->unique('id')
+            ->values();
 
         if ($claims->contains(fn (LocationStructureClaim $claim): bool =>
             $this->structureClaimPolicy->contradictsPathTypes($claim, [$type->key])
@@ -223,9 +241,17 @@ class LocationProposalPolicy
         if ($anchor->type?->key !== 'rural_district' || ! $anchor->location_schema_id) return false;
 
         $claimTypes = collect($structuralClaims)
-            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
-                && (int) $claim->reference_settlement_id === (int) $settlement->id
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+            ->concat(
+                LocationStructureClaim::query()
+                    ->where('reference_settlement_id', $settlement->id)
+                    ->where('status', 'approved')
+                    ->get()
+            )
+            ->filter(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->reference_settlement_id === (int) $settlement->id
                 && in_array($claim->status, array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']), true))
+            ->unique('id')
             ->pluck('claim_type')
             ->unique();
 
