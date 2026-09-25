@@ -76,4 +76,41 @@ class DeploymentConsoleSourceContractTest extends TestCase
             strpos($source, '## 10A. Explicit Governance topology')
         );
     }
+
+    public function test_iran_1404_production_runbook_requires_dark_import_and_fixed_cutover_sequence(): void
+    {
+        $path = base_path('docs/location-governance/IR_1404_V2_PRODUCTION_CUTOVER_RUNBOOK.md');
+        $this->assertFileExists($path);
+        $source = file_get_contents($path);
+
+        foreach ([
+            'IR_1404_V2_RUNTIME_ENABLED=false',
+            'iran_v1_v2_audit',
+            'reference_v2_dry_run',
+            'reference_v2_apply',
+            'APPLY-IR-1404-V2',
+            'settlement_v2_dry_run',
+            'settlement_v2_apply',
+            'APPLY-IR-1404-SETTLEMENTS',
+            'topology_v2_dry_run',
+            'topology_v2_apply',
+            'APPLY-GOV-IR-1404-V2',
+            'HARD STOP',
+            'IR_1404_V2_RUNTIME_ENABLED=true',
+            'IR_SETTLEMENT_CATALOG_ENABLED=true',
+            'IR_SETTLEMENT_CLAIMS_ENABLED=true',
+        ] as $required) {
+            $this->assertStringContainsString($required, $source);
+        }
+
+        $this->assertLessThan(
+            strpos($source, 'reference_v2_apply'),
+            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true')
+        );
+        $this->assertLessThan(
+            strpos($source, 'topology_v2_apply'),
+            strpos($source, 'IR_1404_V2_RUNTIME_ENABLED=true')
+        );
+    }
+
 }
