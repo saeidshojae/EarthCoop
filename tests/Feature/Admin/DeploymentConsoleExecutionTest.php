@@ -64,6 +64,31 @@ class DeploymentConsoleExecutionTest extends TestCase
         $this->assertTrue($result['success']);
     }
 
+    public function test_service_runs_iran_v2_cutover_dry_run_with_exact_fixed_arguments(): void
+    {
+        $this->expectArtisan('location:iran-v2-production-cutover', [
+            '--dry-run' => true,
+        ], 0, 'READY_FOR_FINAL_CUTOVER: YES');
+        $this->expectSanitizedAudit('iran_v2_cutover_dry_run', false, 0, true, 52, null);
+
+        $result = app(DeploymentConsoleService::class)->run('iran_v2_cutover_dry_run', 52);
+
+        $this->assertTrue($result['success']);
+    }
+
+    public function test_service_runs_iran_v2_cutover_apply_with_exact_fixed_arguments(): void
+    {
+        $this->expectArtisan('location:iran-v2-production-cutover', [
+            '--apply' => true,
+            '--confirm' => 'CUTOVER-IR-1404-V2-PRODUCTION',
+        ], 0, 'Iran 1404 v2 Production cutover completed.');
+        $this->expectSanitizedAudit('iran_v2_cutover_apply', true, 0, true, 53, null);
+
+        $result = app(DeploymentConsoleService::class)->run('iran_v2_cutover_apply', 53);
+
+        $this->assertTrue($result['success']);
+    }
+
     public function test_service_runs_topology_dry_run_with_exact_fixed_arguments(): void
     {
         $this->expectArtisan('location-governance:reference-topology', [

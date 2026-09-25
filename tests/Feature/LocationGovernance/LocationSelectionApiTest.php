@@ -65,7 +65,7 @@ class LocationSelectionApiTest extends TestCase
         $response->assertJsonPath('data.0.status', 'active');
     }
 
-    public function test_ir_country_filter_keeps_v1_until_v2_governance_topology_exists(): void
+    public function test_ir_country_filter_keeps_v1_until_explicit_v2_runtime_activation(): void
     {
         config(['location-governance.runtime_enabled' => true]);
 
@@ -87,6 +87,7 @@ class LocationSelectionApiTest extends TestCase
             'name' => 'Iran 1404',
             'version' => 'v2',
             'status' => 'active',
+            'metadata' => ['runtime_active' => false],
         ]);
         $v2->types()->attach($countryType->id, [
             'is_root' => true,
@@ -117,6 +118,12 @@ class LocationSelectionApiTest extends TestCase
             'status' => 'active',
         ]);
         $v2Country->locations()->attach($v2Root->id);
+
+        $stillStaged = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $stillStaged->assertJsonCount(1, 'data');
+        $stillStaged->assertJsonPath('data.0.id', $v1Root->id);
+
+        $v2->forceFill(['metadata' => ['runtime_active' => true]])->save();
 
         $cutover = $this->getJson('/location/options/root?country=IR')->assertOk();
         $cutover->assertJsonCount(1, 'data');

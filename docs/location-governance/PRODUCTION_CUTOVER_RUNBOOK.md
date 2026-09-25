@@ -275,7 +275,29 @@ It invokes only `location:reference-import IR --dataset-version=v2 --apply --con
 
 Immediately after it succeeds, rerun `iran_v2_reference_dry_run` and require exactly 6,158 v2 identities to be unchanged with `create=0`, `update=0`, `deactivate=0`, and `conflict=0`. Then rerun the runtime audit and v2 topology dry-run. **Do not apply v2 topology or treat v2 as the live Iran menu while shared cutover remains blocked.**
 
-A separate reviewed Production write path is still required for v2 Governance topology and dependency reconciliation.
+The final reviewed Production transition uses a single fail-closed cutover boundary. After the additive 6,158-row reference stage is idempotent, run:
+
+```text
+iran_v2_cutover_dry_run
+```
+
+The dry-run performs no writes. It must report `reference_v2_count: 6158`, topology `update: 0`, topology `conflict: 0`, `blocker_total: 0`, and `READY_FOR_FINAL_CUTOVER: YES`. A nonzero blocker means a live dependency still points at an unreviewed/unmapped v1 identity and is a STOP condition.
+
+Only after that exact output is reviewed, run the fixed write operation:
+
+```text
+iran_v2_cutover_apply
+```
+
+with the exact secondary confirmation:
+
+```text
+CUTOVER-IR-1404-V2-PRODUCTION
+```
+
+This one operation stages the v2 Governance topology if still absent, verifies it becomes idempotent, migrates only reviewed verified-identity runtime dependencies from v1 to their equivalent v2 identities while preserving relationship/group/election history IDs, and marks the v2 schema runtime-active **last**. Presence of v2 reference/topology rows alone never switches the live residence, project-scope, root-location, or profile-hydration menus.
+
+After apply, rerun `iran_v2_cutover_dry_run`. A successful completed state reports `CUTOVER_COMPLETE: YES`, `blocker_total: 0`, and an idempotent v2 topology. Do not run the legacy v1 `topology_apply` or any settlement-catalog import as part of this transition.
 
 ## 10B. Stage C canonical group policy transition
 

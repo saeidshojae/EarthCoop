@@ -18,6 +18,8 @@ class DeploymentConsoleServiceTest extends TestCase
             'iran_v1_v2_runtime_audit',
             'iran_v2_reference_dry_run',
             'iran_v2_reference_apply',
+            'iran_v2_cutover_dry_run',
+            'iran_v2_cutover_apply',
             'iran_v2_topology_dry_run',
             'topology_dry_run',
             'readiness',
@@ -38,6 +40,8 @@ class DeploymentConsoleServiceTest extends TestCase
         $this->assertNull($service->confirmationFor('reference_dry_run'));
         $this->assertNull($service->confirmationFor('iran_v1_v2_runtime_audit'));
         $this->assertSame('APPLY-IR-1404-V2-PRODUCTION-ADDITIVE', $service->confirmationFor('iran_v2_reference_apply'));
+        $this->assertNull($service->confirmationFor('iran_v2_cutover_dry_run'));
+        $this->assertSame('CUTOVER-IR-1404-V2-PRODUCTION', $service->confirmationFor('iran_v2_cutover_apply'));
         $this->assertNull($service->confirmationFor('iran_v2_reference_dry_run'));
         $this->assertNull($service->confirmationFor('iran_v2_topology_dry_run'));
         $this->assertNull($service->confirmationFor('topology_dry_run'));

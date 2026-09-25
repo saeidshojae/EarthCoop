@@ -9,6 +9,7 @@ use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Modules\NajmBahar\Services\MembershipRemovalService;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\LocationGovernance\IranV2RuntimeState;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\Request;
 
@@ -241,7 +242,7 @@ class SafeUserController extends UserController
 
     private function preferredHydrationLocation(Location $location): Location
     {
-        if ($location->country_code !== 'IR') return $location;
+        if ($location->country_code !== 'IR' || ! app(IranV2RuntimeState::class)->isActive()) return $location;
 
         $alreadyV2 = LocationExternalId::query()
             ->where('location_id', $location->id)
