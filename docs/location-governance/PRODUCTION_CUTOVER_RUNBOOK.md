@@ -244,6 +244,27 @@ php artisan location-governance:reference-topology IR --dataset-version=v1 --dry
 
 Require `create=0`, `update=0`, `conflict=0` with the expected areas reported as unchanged before readiness.
 
+## 10A.1 Iran 1404 v2 shared-database preflight — READ ONLY
+
+Before any future v2 apply is authorized on Production, run the three fixed Deployment Console operations:
+
+```text
+iran_v1_v2_runtime_audit
+iran_v2_reference_dry_run
+iran_v2_topology_dry_run
+```
+
+They execute only the read-only audit/dry-run commands for the current Production database. Preserve their complete outputs as release evidence.
+
+This checkpoint does **not** permit:
+- v2 geography apply;
+- v2 governance-topology apply;
+- neutral settlement-catalog import;
+- retirement or rewriting of v1 identities;
+- enabling Iran settlement feature flags.
+
+Any conflict or unexpected v1 dependency is a STOP condition. A separate reviewed Production write path with explicit confirmation tokens, idempotency, and rollback/fail-closed behavior is required before v2 data is mutated.
+
 ## 10B. Stage C canonical group policy transition
 
 The bootstrap intentionally does not turn systemic group creation automatic. Before release readiness can pass, apply the dedicated reviewed idempotent transition for `public`, `profession`, `specialty`, `age`, and `gender`:
