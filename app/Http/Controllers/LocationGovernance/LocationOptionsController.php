@@ -105,8 +105,12 @@ final class LocationOptionsController extends Controller
                 ];
             });
 
-        $officialBase = $claims->where('status', 'approved')->pluck('claim_type')
-            ->contains('no_neighborhood');
+        $officialBase = $claims
+            ->where('status', 'approved')
+            ->where('claim_type', 'no_neighborhood')
+            ->contains(fn (LocationStructureClaim $claim): bool =>
+                $structurePolicy->dependenciesSatisfied($claim, ['approved'])
+            );
 
         return response()->json([
             'data' => $children->map(fn (Location $child) => $this->serialize($child))->values(),

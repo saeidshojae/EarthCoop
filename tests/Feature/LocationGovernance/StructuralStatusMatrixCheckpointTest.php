@@ -151,6 +151,13 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         $schema = LocationFixture::iranSchema();
         $section = LocationFixture::createPath($schema, ['country','province','county','section'])->last();
         $cityType = $schema->types->firstWhere('key', 'city');
+        $cityPivot = \App\Models\LocationSchemaType::query()
+            ->where('location_schema_id', $schema->id)
+            ->where('location_type_id', $cityType->id)
+            ->firstOrFail();
+        $cityPivot->forceFill(['metadata' => array_merge($cityPivot->metadata ?? [], [
+            'crowdsourced_proposal_allowed' => true,
+        ])])->save();
         $user = User::factory()->create();
 
         $proposal = app(LocationProposalService::class)->propose(
@@ -213,6 +220,13 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         $schema = LocationFixture::iranSchema();
         $section = LocationFixture::createPath($schema, ['country','province','county','section'])->last();
         $cityType = $schema->types->firstWhere('key', 'city');
+        $cityPivot = \App\Models\LocationSchemaType::query()
+            ->where('location_schema_id', $schema->id)
+            ->where('location_type_id', $cityType->id)
+            ->firstOrFail();
+        $cityPivot->forceFill(['metadata' => array_merge($cityPivot->metadata ?? [], [
+            'crowdsourced_proposal_allowed' => true,
+        ])])->save();
         $user = User::factory()->create();
         $reviewer = User::factory()->create();
 

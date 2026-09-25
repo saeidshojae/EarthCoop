@@ -27,31 +27,38 @@ class LocationStructureClaimService
 
     public function findOrCreateOpenClaim(Location $location, string $type, User $proposer): LocationStructureClaim
     {
-        $contextClaims = $this->activeClaimsForLocation($location);
-
-        if (! app(LocationStructureClaimPolicy::class)->allowsClaimType($location, $type, $contextClaims)) {
-            throw new DomainException('Structural claim type is not allowed for this location type.');
-        }
-
-        $this->assertNoConflictingClaim($contextClaims, $type);
-
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
-            $claim = LocationStructureClaim::query()
+            $contextClaims = LocationStructureClaim::query()
                 ->where('location_id', $location->id)
                 ->whereNull('location_proposal_id')
-                ->where('claim_type', $type)
                 ->whereIn('status', self::ACTIVE_STATUSES)
                 ->lockForUpdate()
-                ->orderBy('id')
-                ->first();
+                ->get();
 
-            return $claim ?? LocationStructureClaim::query()->create([
+            if (! app(LocationStructureClaimPolicy::class)->allowsClaimType($location, $type, $contextClaims)) {
+                throw new DomainException('Structural claim type is not allowed for this location type.');
+            }
+
+            $this->assertNoConflictingClaim($contextClaims, $type);
+
+            $claim = $contextClaims->firstWhere('claim_type', $type);
+            if ($claim instanceof LocationStructureClaim) {
+                return $claim;
+            }
+
+            $candidate = new LocationStructureClaim([
+                'location_id' => $location->id,
+                'claim_type' => $type,
+            ]);
+            $candidate->setRelation('location', $location);
+
+            return LocationStructureClaim::query()->create([
                 'location_id' => $location->id,
                 'location_proposal_id' => null,
                 'claim_type' => $type,
                 'status' => 'pending',
                 'proposer_user_id' => $proposer->id,
-                'metadata' => $this->dependencyMetadataForLocation($location, $type),
+                'metadata' => $this->dependencyMetadata($candidate, $contextClaims),
                 'audit_log' => [],
             ]);
         });
@@ -62,32 +69,49 @@ class LocationStructureClaimService
         string $type,
         User $proposer,
     ): LocationStructureClaim {
-        $contextClaims = $this->activeClaimsForProposal($proposal);
-        $policy = app(LocationStructureClaimPolicy::class);
-
-        if (! $policy->allowsProposalClaimType($proposal, $type, $contextClaims)) {
-            throw new DomainException('Structural claim type is not allowed for this proposed location type.');
+        $status = $proposal->status instanceof \BackedEnum
+            ? $proposal->status->value
+            : (string) $proposal->status;
+        if (! in_array($status, self::OPEN_STATUSES, true)) {
+            throw new DomainException('Terminal location proposal cannot accept structural claims.');
         }
 
-        $this->assertNoConflictingClaim($contextClaims, $type);
-
         return DB::transaction(function () use ($proposal, $type, $proposer): LocationStructureClaim {
-            $claim = LocationStructureClaim::query()
+            $contextClaims = LocationStructureClaim::query()
                 ->where('location_proposal_id', $proposal->id)
                 ->whereNull('location_id')
-                ->where('claim_type', $type)
                 ->whereIn('status', self::ACTIVE_STATUSES)
                 ->lockForUpdate()
-                ->orderBy('id')
-                ->first();
+                ->get();
 
-            return $claim ?? LocationStructureClaim::query()->create([
+            $policy = app(LocationStructureClaimPolicy::class);
+            if (! $policy->allowsProposalClaimType($proposal, $type, $contextClaims)) {
+                throw new DomainException('Structural claim type is not allowed for this proposed location type.');
+            }
+
+            $this->assertNoConflictingClaim($contextClaims, $type);
+
+            $claim = $contextClaims->firstWhere('claim_type', $type);
+            if ($claim instanceof LocationStructureClaim) {
+                return $claim;
+            }
+
+            $candidate = new LocationStructureClaim([
+                'location_proposal_id' => $proposal->id,
+                'claim_type' => $type,
+            ]);
+            $candidate->setRelation('locationProposal', $proposal);
+
+            return LocationStructureClaim::query()->create([
                 'location_id' => null,
                 'location_proposal_id' => $proposal->id,
                 'claim_type' => $type,
                 'status' => 'pending',
                 'proposer_user_id' => $proposer->id,
-                'metadata' => $this->dependencyMetadataForProposal($proposal, $type),
+                'metadata' => array_merge(
+                    ['source' => 'pending_location_structure'],
+                    $this->dependencyMetadata($candidate, $contextClaims),
+                ),
                 'audit_log' => [],
             ]);
         });
