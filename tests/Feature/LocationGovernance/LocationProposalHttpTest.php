@@ -3,7 +3,6 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
-use App\Models\Setting;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\User;
@@ -79,39 +78,32 @@ class LocationProposalHttpTest extends TestCase
         $this->assertSame(0, LocationProposal::query()->count());
     }
 
-    public function test_authenticated_user_can_support_a_proposal_and_same_user_remains_one_verifier(): void
+    public function test_manual_support_endpoint_is_not_exposed_and_proposal_creation_alone_is_not_support(): void
     {
-        Setting::singleton()->forceFill(['location_proposal_verification_threshold' => 2])->save();
-
         $schema = LocationFixture::iranSchema();
         $parent = LocationFixture::createPath($schema, [
             'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
         ])->last();
         $type = $schema->types->firstWhere('key', 'complex');
         $proposer = User::factory()->create();
-        $supporter = User::factory()->create();
 
         $this->actingAs($proposer)->postJson('/locations/proposals', [
             'parent_location_id' => $parent->id,
             'location_type_id' => $type->id,
-            'canonical_name' => 'مجتمع نیازمند تایید',
+            'canonical_name' => 'مجتمع نیازمند تأیید',
         ])->assertCreated();
 
         $proposal = LocationProposal::query()->sole();
+        $this->assertSame(0, $proposal->evidence()->count());
 
-        $this->actingAs($supporter)->postJson("/locations/proposals/{$proposal->id}/support", [
-            'evidence' => ['note' => 'نشانی را تایید می‌کنم.'],
-        ])->assertOk()->assertJsonPath('distinct_verifiers', 1);
+        $this->actingAs(User::factory()->create())
+            ->postJson("/locations/proposals/{$proposal->id}/support", [
+                'evidence' => ['note' => 'حمایت بدون ثبت محل سکونت'],
+            ])
+            ->assertNotFound();
 
-        $this->actingAs($supporter)->postJson("/locations/proposals/{$proposal->id}/support", [
-            'evidence' => ['note' => 'تایید دوباره همان کاربر'],
-        ])->assertOk()->assertJsonPath('distinct_verifiers', 1);
-
-        $this->actingAs(User::factory()->create())->postJson("/locations/proposals/{$proposal->id}/support", [
-            'evidence' => ['note' => 'تایید کاربر دوم'],
-        ])->assertOk()
-            ->assertJsonPath('distinct_verifiers', 2)
-            ->assertJsonPath('status', LocationProposalStatus::ReadyForReview->value);
+        $this->assertSame(0, $proposal->fresh()->evidence()->count());
+        $this->assertSame(LocationProposalStatus::Pending, $proposal->fresh()->status);
     }
 
     public function test_inactive_parent_cannot_receive_a_new_location_proposal(): void
