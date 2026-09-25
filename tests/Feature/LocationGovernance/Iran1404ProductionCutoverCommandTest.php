@@ -42,4 +42,21 @@ final class Iran1404ProductionCutoverCommandTest extends TestCase
         $this->assertStringContainsString("'operational_promotion_allowed' => false", $source);
         $this->assertStringContainsString('requires the complete Iran 1404 v2 rural-district geography first', $source);
     }
+
+    public function test_v2_imports_remain_dark_until_explicit_runtime_switch(): void
+    {
+        $config = file_get_contents(config_path('iran_settlement_catalog.php'));
+        $location = file_get_contents(app_path('Http/Controllers/LocationGovernance/LocationOptionsController.php'));
+        $residence = file_get_contents(app_path('Http/Controllers/LocationGovernance/ResidenceOptionsController.php'));
+        $projects = file_get_contents(app_path('Http/Controllers/LocationGovernance/ProjectScopeOptionsController.php'));
+
+        $this->assertStringContainsString("IR_1404_V2_RUNTIME_ENABLED', false", $config);
+        foreach ([$location, $residence, $projects] as $source) {
+            $this->assertStringContainsString("iran_settlement_catalog.v2_runtime_enabled", $source);
+        }
+        $this->assertStringContainsString("! $iranV2RuntimeEnabled", $location);
+        $this->assertStringContainsString("! $iranV2RuntimeEnabled", $residence);
+        $this->assertStringContainsString("! $iranV2RuntimeEnabled", $projects);
+    }
+
 }
