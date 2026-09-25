@@ -4,12 +4,15 @@ namespace App\Listeners;
 
 use App\Events\Elections\ElectionAppointmentApplied;
 use App\Services\ReputationService;
+use App\Services\LocationGovernance\GroupGovernanceContext;
 use Illuminate\Support\Facades\Log;
 
 class AwardElectionAppointmentParticipation
 {
-    public function __construct(private readonly ReputationService $reputation)
-    {
+    public function __construct(
+        private readonly ReputationService $reputation,
+        private readonly GroupGovernanceContext $groupContext,
+    ) {
     }
 
     public function handle(ElectionAppointmentApplied $event): void
@@ -28,7 +31,9 @@ class AwardElectionAppointmentParticipation
         }
 
         $action = 'elected_' . $position;
-        $eventKey = $action . ':user:' . $user->id . ':level:' . $group->location_level;
+        $governanceLevel = $this->groupContext->officialElectionLevel($group);
+        $scopeKey = $this->groupContext->stableScopeKey($group);
+        $eventKey = $action . ':user:' . $user->id . ':scope:' . $scopeKey;
 
         try {
             $this->reputation->applyAction(
@@ -39,7 +44,7 @@ class AwardElectionAppointmentParticipation
                     'election_id' => (int) $appointment->election_id,
                     'group_id' => (int) $group->id,
                     'position' => $position,
-                    'governance_level' => (string) $group->location_level,
+                    'governance_level' => $governanceLevel,
                 ],
                 $appointment->id,
                 'elections.appointment',
@@ -50,7 +55,7 @@ class AwardElectionAppointmentParticipation
                 'appointment_id' => (int) $appointment->id,
                 'user_id' => (int) $user->id,
                 'position' => $position,
-                'governance_level' => (string) $group->location_level,
+                'governance_level' => $governanceLevel,
                 'message' => $exception->getMessage(),
             ]);
         }
