@@ -137,36 +137,27 @@ final class IranSettlementCatalogImporter
     public function importPinnedSource(bool $apply = false, bool $allowProduction = false): array
     {
         $payload = $this->pinnedSourcePayload();
-        $batches = [];
-        $batch = [];
         $settlementCount = 0;
         $parentExternalIds = [];
 
-        $this->walkPinnedSource($payload, function (array $sourceRow) use (&$batch, &$batches, &$settlementCount, &$parentExternalIds): void {
+        // Pass 1: validate the complete pinned source before any database write.
+        $this->walkPinnedSource($payload, function (array $sourceRow) use (&$settlementCount, &$parentExternalIds): void {
             if ($sourceRow['type'] !== 6) {
                 return;
             }
 
             $settlementCount++;
             $parentExternalIds['IR-1404-'.$sourceRow['parent']] = true;
-            $batch[] = $this->pinnedSettlementRow($sourceRow);
-
-            if (count($batch) === 100) {
-                $batches[] = $batch;
-                $batch = [];
-            }
         });
 
-        if ($batch !== []) {
-            $batches[] = $batch;
-        }
         if ($settlementCount !== self::EXPECTED_COUNT) {
             throw new InvalidArgumentException('Pinned Iran 1404 settlement count mismatch.');
         }
 
-        $missingParents = array_keys($parentExternalIds);
-        if ($missingParents !== []) {
-            $presentParents = DB::table('location_external_ids')
+        $requiredParents = array_keys($parentExternalIds);
+        $presentParents = [];
+        foreach (array_chunk($requiredParents, 500) as $chunk) {
+            $presentParents = array_merge($presentParents, DB::table('location_external_ids')
                 ->join('locations', 'locations.id', '=', 'location_external_ids.location_id')
                 ->join('location_types', 'location_types.id', '=', 'locations.location_type_id')
                 ->where('location_external_ids.source', 'earthcoop-reference')
@@ -174,18 +165,32 @@ final class IranSettlementCatalogImporter
                 ->where('locations.country_code', 'IR')
                 ->where('locations.status', 'active')
                 ->where('location_types.key', 'rural_district')
-                ->whereIn('location_external_ids.external_id', $missingParents)
+                ->whereIn('location_external_ids.external_id', $chunk)
                 ->pluck('location_external_ids.external_id')
-                ->all();
-            $missingParents = array_values(array_diff($missingParents, $presentParents));
+                ->all());
         }
+        $missingParents = array_values(array_diff($requiredParents, $presentParents));
         if ($missingParents !== []) {
             throw new RuntimeException('Pinned settlement catalog requires the complete Iran 1404 v2 rural-district geography first.');
         }
 
+        // Pass 2: compare every protected identity before apply. Existing reviewed
+        // classification is never overwritten merely to make re-import succeed.
         $wouldInsert = 0;
-        foreach ($batches as $candidateBatch) {
-            $wouldInsert += count($this->validatedNewRows($candidateBatch));
+        $batch = [];
+        $this->walkPinnedSource($payload, function (array $sourceRow) use (&$batch, &$wouldInsert): void {
+            if ($sourceRow['type'] !== 6) {
+                return;
+            }
+
+            $batch[] = $this->pinnedSettlementRow($sourceRow);
+            if (count($batch) === 100) {
+                $wouldInsert += count($this->validatedNewRows($batch));
+                $batch = [];
+            }
+        });
+        if ($batch !== []) {
+            $wouldInsert += count($this->validatedNewRows($batch));
         }
 
         $summary = [
@@ -206,9 +211,22 @@ final class IranSettlementCatalogImporter
             throw new RuntimeException('Pinned settlement catalog apply is not authorized in this environment.');
         }
 
-        DB::transaction(function () use ($batches, &$summary): void {
-            foreach ($batches as $candidateBatch) {
-                $summary['applied'] += $this->insertNewBatch($candidateBatch);
+        // Pass 3: after the full read-only preflight has succeeded, apply atomically.
+        DB::transaction(function () use ($payload, &$summary): void {
+            $batch = [];
+            $this->walkPinnedSource($payload, function (array $sourceRow) use (&$batch, &$summary): void {
+                if ($sourceRow['type'] !== 6) {
+                    return;
+                }
+
+                $batch[] = $this->pinnedSettlementRow($sourceRow);
+                if (count($batch) === 100) {
+                    $summary['applied'] += $this->insertNewBatch($batch);
+                    $batch = [];
+                }
+            });
+            if ($batch !== []) {
+                $summary['applied'] += $this->insertNewBatch($batch);
             }
         });
 
