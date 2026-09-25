@@ -52,6 +52,21 @@ class DeploymentConsoleService
             'write' => true,
             'confirmation' => 'APPLY-IR-1404-V2-PRODUCTION-ADDITIVE',
         ],
+        'iran_v2_cutover_dry_run' => [
+            'command' => 'location:iran-v2-production-cutover',
+            'arguments' => ['--dry-run' => true],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'iran_v2_cutover_apply' => [
+            'command' => 'location:iran-v2-production-cutover',
+            'arguments' => [
+                '--apply' => true,
+                '--confirm' => 'CUTOVER-IR-1404-V2-PRODUCTION',
+            ],
+            'write' => true,
+            'confirmation' => 'CUTOVER-IR-1404-V2-PRODUCTION',
+        ],
         'iran_v2_topology_dry_run' => [
             'command' => 'location-governance:reference-topology',
             'arguments' => [
