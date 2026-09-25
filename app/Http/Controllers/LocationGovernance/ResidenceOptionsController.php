@@ -45,7 +45,8 @@ final class ResidenceOptionsController extends Controller
             ->orderBy('canonical_name')
             ->get();
 
-        $hasIranV2 = $countries->contains(fn (GovernanceArea $country): bool =>
+        $hasIranV2 = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false)
+            && $countries->contains(fn (GovernanceArea $country): bool =>
             $country->country_code === 'IR'
             && data_get($country->metadata, 'dataset_version') === 'v2'
         );
