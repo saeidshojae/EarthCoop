@@ -25,6 +25,32 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'iran_v1_v2_runtime_audit' => [
+            'command' => 'location:iran-v1-v2-runtime-audit',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'iran_v2_reference_dry_run' => [
+            'command' => 'location:reference-import',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--dry-run' => true,
+            ],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'iran_v2_topology_dry_run' => [
+            'command' => 'location-governance:reference-topology',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v2',
+                '--dry-run' => true,
+            ],
+            'write' => false,
+            'confirmation' => null,
+        ],
         'topology_dry_run' => [
             'command' => 'location-governance:reference-topology',
             'arguments' => [
