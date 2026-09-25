@@ -294,54 +294,11 @@ class LocationStructureClaimService
         return $reviewed;
     }
 
-    private function activeClaimsForLocation(Location $location): Collection
-    {
-        return LocationStructureClaim::query()
-            ->where('location_id', $location->id)
-            ->whereNull('location_proposal_id')
-            ->whereIn('status', self::ACTIVE_STATUSES)
-            ->get();
-    }
-
-    private function activeClaimsForProposal(LocationProposal $proposal): Collection
-    {
-        return LocationStructureClaim::query()
-            ->where('location_proposal_id', $proposal->id)
-            ->whereNull('location_id')
-            ->whereIn('status', self::ACTIVE_STATUSES)
-            ->get();
-    }
-
     private function assertNoConflictingClaim(Collection $contextClaims, string $type): void
     {
         if ($contextClaims->pluck('claim_type')->intersect(self::CONFLICTS[$type] ?? [])->isNotEmpty()) {
             throw new DomainException('Conflicting structural claim already exists for this location tier.');
         }
-    }
-
-    private function dependencyMetadataForLocation(Location $location, string $type): array
-    {
-        $candidate = new LocationStructureClaim([
-            'location_id' => $location->id,
-            'claim_type' => $type,
-        ]);
-        $candidate->setRelation('location', $location);
-
-        return $this->dependencyMetadata($candidate, $this->activeClaimsForLocation($location));
-    }
-
-    private function dependencyMetadataForProposal(LocationProposal $proposal, string $type): array
-    {
-        $candidate = new LocationStructureClaim([
-            'location_proposal_id' => $proposal->id,
-            'claim_type' => $type,
-        ]);
-        $candidate->setRelation('locationProposal', $proposal);
-
-        return array_merge(
-            ['source' => 'pending_location_structure'],
-            $this->dependencyMetadata($candidate, $this->activeClaimsForProposal($proposal)),
-        );
     }
 
     private function dependencyMetadata(LocationStructureClaim $candidate, Collection $contextClaims): array

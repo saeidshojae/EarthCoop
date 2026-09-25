@@ -80,6 +80,10 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         $service->approve($noRegion, $reviewer, 'نبود منطقه تأیید شد');
         $service->approve($noNeighborhood, $reviewer, 'نبود محله تأیید شد');
         $this->assertTrue($tree->registrationEndpointAllowed($city, [$noRegion->fresh(), $noNeighborhood->fresh()]));
+        $this->getJson('/location/options/'.$city->id.'/children')
+            ->assertOk()
+            ->assertJsonPath('official_governance_base', true)
+            ->assertJsonPath('registration_endpoint_allowed', true);
 
         foreach ([
             ['path' => ['country','province','county','section','city','urban_region'], 'type' => 'urban_region'],
@@ -197,6 +201,11 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
             ->assertCreated();
         $noNeighborhoodId = (int) $noNeighborhoodResponse->json('id');
 
+        $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
+            'location_proposal_id' => $proposal->id,
+            'location_structure_claim_ids' => [$noNeighborhoodId],
+        ])->assertSessionHasErrors('location_proposal_id');
+
         $terminal = $this->actingAs($user)->getJson(
             '/location/proposals/'.$proposal->id.'/children?'.http_build_query([
                 'location_structure_claim_ids' => [$noRegionId, $noNeighborhoodId],
@@ -241,13 +250,15 @@ final class StructuralStatusMatrixCheckpointTest extends TestCase
         $noRegion = $service->findOrCreateOpenClaimForProposal($proposal, 'no_urban_region', $user);
         $noNeighborhood = $service->findOrCreateOpenClaimForProposal($proposal, 'no_neighborhood', $user);
 
-        $this->expectException(DomainException::class);
         try {
             $service->approve($noNeighborhood, $reviewer, 'تلاش زودهنگام');
-        } finally {
-            $service->reject($noRegion, $reviewer, 'پیش‌نیاز رد شد');
-            $this->assertSame('rejected', $noNeighborhood->fresh()->status);
+            $this->fail('Dependent proposal claim must not be approved before its prerequisite.');
+        } catch (DomainException) {
+            $this->assertSame('pending', $noNeighborhood->fresh()->status);
         }
+
+        $service->reject($noRegion, $reviewer, 'پیش‌نیاز رد شد');
+        $this->assertSame('rejected', $noNeighborhood->fresh()->status);
     }
 
     public function test_structural_claims_reanchor_on_proposal_approval_and_merge_before_pending_resolution(): void
