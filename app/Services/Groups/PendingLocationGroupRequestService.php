@@ -592,7 +592,7 @@ final class PendingLocationGroupRequestService
                         ->where('scope_kind', $dependentRequest->scope_kind)
                         ->where('dimension_key', $dependentRequest->dimension_key)
                         ->where('dimension_value_key', $dependentRequest->dimension_value_key)
-                        ->whereKeyNot($dependentRequest->id)
+                        ->where('id', '<>', $dependentRequest->id)
                         ->lockForUpdate()
                         ->first();
 
