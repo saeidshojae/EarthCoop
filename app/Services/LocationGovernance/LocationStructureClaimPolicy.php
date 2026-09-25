@@ -108,9 +108,20 @@ class LocationStructureClaimPolicy
             return true;
         }
 
+        $storedDependencyIds = collect(data_get($claim->metadata, 'depends_on_claim_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
         $query = LocationStructureClaim::query()
-            ->whereIn('claim_type', $required)
             ->whereIn('status', $statuses);
+
+        if ($storedDependencyIds->isNotEmpty()) {
+            $query->whereIn('id', $storedDependencyIds);
+        } else {
+            $query->whereIn('claim_type', $required);
+        }
 
         if ($claim->location_id !== null) {
             $query->where('location_id', $claim->location_id)->whereNull('location_proposal_id');
