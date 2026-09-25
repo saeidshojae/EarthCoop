@@ -566,6 +566,18 @@ final class PendingLocationGroupRequestService
                 ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                 ->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
                 ->update(['status' => 'rejected', 'updated_at' => now()]);
+
+            $dependentProposalIds = LocationProposal::query()
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                ->pluck('id');
+
+            if ($dependentProposalIds->isNotEmpty()) {
+                LocationScopedGroupRequest::query()
+                    ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                    ->whereIn('location_proposal_id', $dependentProposalIds)
+                    ->update(['status' => 'rejected', 'updated_at' => now()]);
+            }
         }
 
         foreach ($requests as $request) {
