@@ -29,6 +29,10 @@ class LocationStructureClaimService
     {
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
             $location = Location::query()->lockForUpdate()->findOrFail($location->id);
+            if ($location->status !== 'active') {
+                throw new DomainException('Inactive location cannot accept structural claims.');
+            }
+
             $contextClaims = LocationStructureClaim::query()
                 ->where('location_id', $location->id)
                 ->whereNull('location_proposal_id')
@@ -79,6 +83,13 @@ class LocationStructureClaimService
 
         return DB::transaction(function () use ($proposal, $type, $proposer): LocationStructureClaim {
             $proposal = LocationProposal::query()->with('type')->lockForUpdate()->findOrFail($proposal->id);
+            $lockedStatus = $proposal->status instanceof \BackedEnum
+                ? $proposal->status->value
+                : (string) $proposal->status;
+            if (! in_array($lockedStatus, self::OPEN_STATUSES, true)) {
+                throw new DomainException('Terminal location proposal cannot accept structural claims.');
+            }
+
             $contextClaims = LocationStructureClaim::query()
                 ->where('location_proposal_id', $proposal->id)
                 ->whereNull('location_id')
@@ -164,6 +175,7 @@ class LocationStructureClaimService
     {
         DB::transaction(function () use ($claim, $user, $evidence): void {
             $claim = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+            $this->lockOwnerForClaim($claim);
 
             if (! in_array($claim->status, self::OPEN_STATUSES, true)) {
                 return;
@@ -220,6 +232,7 @@ class LocationStructureClaimService
                 throw new DomainException('Terminal structural claim cannot be reviewed again.');
             }
 
+            $this->lockOwnerForClaim($locked);
             $policy = app(LocationStructureClaimPolicy::class);
             if ($to === 'approved'
                 && ! $policy->dependenciesSatisfied($locked, ['approved'])) {
@@ -303,6 +316,23 @@ class LocationStructureClaimService
         }
 
         return $reviewed;
+    }
+
+    private function lockOwnerForClaim(LocationStructureClaim $claim): void
+    {
+        if ($claim->location_id !== null) {
+            Location::query()->whereKey($claim->location_id)->lockForUpdate()->firstOrFail();
+
+            return;
+        }
+
+        if ($claim->location_proposal_id !== null) {
+            LocationProposal::query()->whereKey($claim->location_proposal_id)->lockForUpdate()->firstOrFail();
+
+            return;
+        }
+
+        // Reference-settlement claims have no conditional owner-local prerequisites.
     }
 
     private function assertNoConflictingClaim(Collection $contextClaims, string $type): void
