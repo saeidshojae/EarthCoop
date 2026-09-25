@@ -155,7 +155,19 @@ STOP if:
 
 The reviewed clean-source expectations are 6,158 administrative v2 locations and the corresponding explicit v2 governance topology. The 99,317 neutral settlements are a separate catalog import and are **not** written by either dry-run above.
 
-No Production v2 apply command is authorized by this checkpoint.
+After the three read-only outputs are reviewed and the exact additive write is explicitly approved, the only v2 write permitted at this checkpoint is:
+
+```text
+iran_v2_reference_apply
+```
+
+It requires the exact secondary confirmation phrase:
+
+```text
+APPLY-IR-1404-V2-PRODUCTION-ADDITIVE
+```
+
+This operation stages only the 6,158 administrative v2 reference locations alongside v1. It does not apply v2 Governance topology, import settlements, migrate residence/group dependencies, or change rollout flags. After it succeeds, rerun `iran_v2_reference_dry_run` and require `unchanged=6158` with create/update/deactivate/conflict all zero. Runtime/topology cutover remains blocked until the separate dependency reconciliation is reviewed.
 
 ## G. Bootstrap canonical metadata
 
