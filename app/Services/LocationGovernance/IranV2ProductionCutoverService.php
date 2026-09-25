@@ -110,6 +110,13 @@ final class IranV2ProductionCutoverService
             (int) $pair['v1_location_id'] => (int) $pair['v2_location_id'],
         ])->all();
         $areaMap = $this->verifiedAreaMap($pairs);
+        $expectedSourceAreas = $this->officialAreaIdsForLocations(
+            collect($pairs)->pluck('v1_location_id')->map(fn ($id) => (int) $id)->all()
+        );
+        $missingAreaMappings = array_values(array_diff($expectedSourceAreas, array_keys($areaMap)));
+        if ($missingAreaMappings !== []) {
+            throw new RuntimeException('One or more verified v1 governance areas have no v2 topology equivalent.');
+        }
 
         $this->assertNoTargetGroupConflicts($areaMap);
 
