@@ -33,7 +33,8 @@ final class LocationOptionsController extends Controller
     {
         $this->assertRuntimeEnabled();
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
-        $preferIranV2 = $countryCode === 'IR'
+        $preferIranV2 = (bool) config('iran_settlement_catalog.v2_runtime_enabled', false)
+            && $countryCode === 'IR'
             && Location::query()
                 ->where('country_code', 'IR')
                 ->whereNull('parent_id')
