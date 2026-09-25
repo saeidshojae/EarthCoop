@@ -67,10 +67,7 @@ class LocationSelectionApiTest extends TestCase
 
     public function test_ir_country_filter_prefers_active_v2_root_when_v1_and_v2_coexist(): void
     {
-        config([
-            'location-governance.runtime_enabled' => true,
-            'iran_settlement_catalog.v2_runtime_enabled' => true,
-        ]);
+        config(['location-governance.runtime_enabled' => true]);
 
         $v1 = LocationFixture::iranSchema();
         $countryType = $v1->types->firstWhere('key', 'country');
@@ -107,6 +104,12 @@ class LocationSelectionApiTest extends TestCase
             'level' => 'country',
             'status' => 'active',
         ]);
+
+        $dark = $this->getJson('/location/options/root?country=IR')->assertOk();
+        $dark->assertJsonCount(1, 'data');
+        $dark->assertJsonPath('data.0.id', $v1Root->id);
+
+        config(['iran_settlement_catalog.v2_runtime_enabled' => true]);
 
         $response = $this->getJson('/location/options/root?country=IR')->assertOk();
         $response->assertJsonCount(1, 'data');
