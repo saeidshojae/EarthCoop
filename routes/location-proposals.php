@@ -21,7 +21,7 @@ Route::get('/location/reference-settlements/{externalId}/children', [\App\Http\C
 Route::get('/location/proposals/{locationProposal}/children', [LocationOptionsController::class, 'proposalChildren'])
     ->name('locations.proposals.children');
 
-// Proposal/claim creation and support mutate community state and require a real user.
+// Proposal/claim creation mutates community state and requires a real user.
 // Keeping these routes authenticated also preserves the non-null User contract used
 // by the proposal and structural-claim services.
 Route::middleware(Authenticate::class)->group(function () {
@@ -47,6 +47,4 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/locations/proposals', [LocationProposalController::class, 'store'])
         ->name('locations.proposals.store');
 
-    Route::post('/locations/proposals/{locationProposal}/support', [LocationProposalController::class, 'support'])
-        ->name('locations.proposals.support');
 });
