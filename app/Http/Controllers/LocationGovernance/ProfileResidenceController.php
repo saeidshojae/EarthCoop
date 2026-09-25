@@ -343,7 +343,7 @@ final class ProfileResidenceController extends Controller
 
             $residenceService->setPendingResidenceIntent($user, $proposal, [
                 'source' => 'profile_location_update',
-            ], $proposalStructuralClaims);
+            ], $proposalStructuralClaims, $canonicalStructuralClaims);
         });
 
         $profileCompletionService->maybeAward($user->fresh());

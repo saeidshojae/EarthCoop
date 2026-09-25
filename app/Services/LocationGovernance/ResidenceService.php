@@ -140,6 +140,7 @@ class ResidenceService
         LocationProposal $proposal,
         array $metadata = [],
         array $structuralClaims = [],
+        array $anchorStructuralClaims = [],
     ): PendingResidenceIntent {
         if (! in_array($proposal->status, [
             LocationProposalStatus::Pending,
@@ -151,13 +152,17 @@ class ResidenceService
             ]);
         }
 
-        return DB::transaction(function () use ($user, $proposal, $metadata, $structuralClaims): PendingResidenceIntent {
+        return DB::transaction(function () use ($user, $proposal, $metadata, $structuralClaims, $anchorStructuralClaims): PendingResidenceIntent {
             $proposalChainIds = collect();
+            $proposalPathTypeKeys = collect();
             $cursor = $proposal->loadMissing('parentProposal');
             $visited = [];
             while ($cursor !== null && ! isset($visited[$cursor->id])) {
                 $visited[$cursor->id] = true;
                 $proposalChainIds->push((int) $cursor->id);
+                if ($cursor->type?->key) {
+                    $proposalPathTypeKeys->push((string) $cursor->type->key);
+                }
                 $cursor = $cursor->parentProposal()->first();
             }
 
@@ -174,7 +179,25 @@ class ResidenceService
                 }
 
                 return $locked;
-            });
+            })->values();
+
+            $structurePolicy = app(LocationStructureClaimPolicy::class);
+            foreach ($claims as $claim) {
+                if (! $structurePolicy->dependenciesSatisfied(
+                    $claim,
+                    array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                    $claims,
+                )) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'پیش‌نیاز ادعای ساختاری مسیر پیشنهادی انتخاب یا تأیید نشده است.',
+                    ]);
+                }
+                if ($structurePolicy->contradictsPathTypes($claim, $proposalPathTypeKeys)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده با سطح واقعی مسیر پیشنهادی تعارض دارد.',
+                    ]);
+                }
+            }
 
             $current = UserLocationRelationship::query()
                 ->where('user_id', $user->id)
@@ -194,6 +217,32 @@ class ResidenceService
                 throw ValidationException::withMessages([
                     'location_proposal_id' => 'پیشنهاد مکان باید ادامهٔ همان مسیر محل سکونت تأییدشده باشد.',
                 ]);
+            }
+
+            $persistedAnchorClaimIds = collect(($current->metadata ?? [])['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+            $persistedAnchorClaims = $persistedAnchorClaimIds->isEmpty()
+                ? collect()
+                : LocationStructureClaim::query()
+                    ->whereIn('id', $persistedAnchorClaimIds)
+                    ->whereIn('status', array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']))
+                    ->get();
+
+            $effectiveAnchorClaims = collect($anchorStructuralClaims)
+                ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+                ->concat($persistedAnchorClaims)
+                ->unique('id')
+                ->values();
+
+            foreach ($effectiveAnchorClaims as $claim) {
+                if ($structurePolicy->contradictsPathTypes($claim, $proposalPathTypeKeys)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری والد با سطح واقعی مسیر پیشنهادی تعارض دارد.',
+                    ]);
+                }
             }
 
             $at = now();
@@ -394,6 +443,36 @@ class ResidenceService
 
             foreach ($intents as $intent) {
                 $this->cancelIntent($intent, $reason, $at);
+            }
+
+            return $intents->count();
+        });
+    }
+
+    public function cancelPendingIntentsDependingOnStructuralClaim(LocationStructureClaim $claim): int
+    {
+        if ($claim->status !== 'rejected') {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($claim): int {
+            $intents = PendingResidenceIntent::query()
+                ->where('status', 'pending')
+                ->where(function ($query) use ($claim): void {
+                    $query->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                        ->orWhereHas('anchorRelationship', fn ($anchor) =>
+                            $anchor->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                        )
+                        ->orWhereHas('locationProposal', fn ($proposal) =>
+                            $proposal->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                        );
+                })
+                ->lockForUpdate()
+                ->get();
+
+            $at = now();
+            foreach ($intents as $intent) {
+                $this->cancelIntent($intent, 'structural_claim_rejected', $at);
             }
 
             return $intents->count();
@@ -761,7 +840,7 @@ class ResidenceService
 
     private function validatedStructuralClaimsForResidence(Location $location, array $structuralClaims): Collection
     {
-        return collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
+        $claims = collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
             $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
             $matchesPath = (int) $locked->location_id === (int) $location->id;
             $cursor = $location;
@@ -776,7 +855,34 @@ class ResidenceService
                 ]);
             }
             return $locked;
-        });
+        })->values();
+
+        $policy = app(LocationStructureClaimPolicy::class);
+        $pathTypeKeys = app(LocationTreeResolver::class)
+            ->ancestors($location)
+            ->push($location)
+            ->map(fn (Location $pathLocation): string => (string) $pathLocation->type?->key)
+            ->filter()
+            ->values();
+
+        foreach ($claims as $claim) {
+            if (! $policy->dependenciesSatisfied(
+                $claim,
+                array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                $claims,
+            )) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'پیش‌نیاز ادعای ساختاری انتخاب‌شده در همین مسیر تأیید یا انتخاب نشده است.',
+                ]);
+            }
+            if ($policy->contradictsPathTypes($claim, $pathTypeKeys)) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده با سطح واقعی محل سکونت تعارض دارد.',
+                ]);
+            }
+        }
+
+        return $claims;
     }
 
     private function cancelPendingIntentRows(User $user, string $reason, $at): void

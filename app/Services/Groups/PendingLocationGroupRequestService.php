@@ -15,6 +15,8 @@ use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\User;
 use App\Services\Membership\MembershipEngine;
+use App\Services\LocationGovernance\LocationStructureClaimPolicy;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Support\LocationDisplayName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -239,11 +241,14 @@ final class PendingLocationGroupRequestService
             return collect();
         }
 
+        // Load the complete selected structural context, not only the terminal
+        // no-neighborhood claim. A City terminal base depends on the selected
+        // no-urban-region prerequisite; filtering that prerequisite out here
+        // made openForUser() cancel an otherwise valid pending City base shell.
         $claims = LocationStructureClaim::query()
             ->whereIn('id', $claimIds)
             ->where('location_id', $relationship->location_id)
-            ->where('claim_type', 'no_neighborhood')
-            ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+            ->whereIn('status', array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']))
             ->get();
 
         return $this->syncForStructuralClaims(
@@ -255,10 +260,16 @@ final class PendingLocationGroupRequestService
 
     public function syncForStructuralClaims(User $user, Location $location, array $claims): Collection
     {
+        $policy = app(LocationStructureClaimPolicy::class);
         $activeClaims = collect($claims)->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
             && (int) $claim->location_id === (int) $location->id
             && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence'], true)
-            && $claim->claim_type === 'no_neighborhood')->values();
+            && $claim->claim_type === 'no_neighborhood'
+            && $policy->dependenciesSatisfied(
+                $claim,
+                array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']),
+                collect($claims),
+            ))->values();
 
         $this->cancelStaleStructuralRequests($user, $activeClaims->pluck('id')->map(fn ($id) => (int) $id)->all());
 
@@ -554,6 +565,58 @@ final class PendingLocationGroupRequestService
     {
         $requests = LocationScopedGroupRequest::query()->where('location_structure_claim_id', $claim->id)
             ->whereIn('status', ['pending_location', 'ready_to_materialize'])->lockForUpdate()->get();
+        if ($claim->status === 'rejected') {
+            $metadataDependent = LocationScopedGroupRequest::query()
+                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                ->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                ->lockForUpdate()
+                ->get();
+
+            $dependentProposalIds = LocationProposal::query()
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereJsonContains('metadata->structural_claim_ids', (int) $claim->id)
+                ->pluck('id');
+
+            $proposalDependent = $dependentProposalIds->isEmpty()
+                ? collect()
+                : LocationScopedGroupRequest::query()
+                    ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                    ->whereIn('location_proposal_id', $dependentProposalIds)
+                    ->lockForUpdate()
+                    ->get();
+
+            $metadataDependent
+                ->concat($proposalDependent)
+                ->unique('id')
+                ->each(function (LocationScopedGroupRequest $dependentRequest) use ($claim): void {
+                    $existing = LocationScopedGroupRequest::query()
+                        ->where('requester_user_id', $dependentRequest->requester_user_id)
+                        ->where('location_structure_claim_id', $claim->id)
+                        ->where('scope_kind', $dependentRequest->scope_kind)
+                        ->where('dimension_key', $dependentRequest->dimension_key)
+                        ->where('dimension_value_key', $dependentRequest->dimension_value_key)
+                        ->where('id', '<>', $dependentRequest->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existing !== null) {
+                        $existing->forceFill(['status' => 'rejected'])->save();
+                        $dependentRequest->forceFill(['status' => 'cancelled'])->save();
+                        return;
+                    }
+
+                    $metadata = $dependentRequest->metadata ?? [];
+                    $metadata['rejected_from_structure_claim_id'] = $claim->id;
+                    $dependentRequest->forceFill([
+                        'location_id' => null,
+                        'location_proposal_id' => null,
+                        'location_structure_claim_id' => $claim->id,
+                        'status' => 'rejected',
+                        'metadata' => $metadata,
+                    ])->save();
+                });
+        }
+
         foreach ($requests as $request) {
             if ($claim->status === 'rejected') {
                 $request->forceFill(['status' => 'rejected'])->save();
@@ -562,7 +625,13 @@ final class PendingLocationGroupRequestService
             if ($claim->status !== 'approved' || $claim->location_id === null) continue;
             $metadata = $request->metadata ?? [];
             $metadata['resolved_from_structure_claim_id'] = $claim->id;
-            $request->forceFill(['location_id' => $claim->location_id, 'location_structure_claim_id' => null, 'status' => 'ready_to_materialize', 'metadata' => $metadata])->save();
+            $request->forceFill([
+                'location_id' => $claim->location_id,
+                'location_structure_claim_id' => null,
+                'status' => 'ready_to_materialize',
+                'metadata' => $metadata,
+            ])->save();
+            $this->healApprovedOfficialTopologyForRequest($request);
             $this->tryMaterializeOfficialRequest($request);
         }
     }

@@ -3,53 +3,128 @@
 namespace App\Services\LocationGovernance;
 
 use App\Models\Location;
+use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\ReferenceSettlement;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Groups\PendingLocationGroupRequestService;
+use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class LocationStructureClaimService
 {
     public const OPEN_STATUSES = ['pending', 'ready_for_review', 'needs_evidence'];
+    private const ACTIVE_STATUSES = ['pending', 'ready_for_review', 'needs_evidence', 'approved'];
+
+    private const CONFLICTS = [
+        'single_urban_region' => ['no_urban_region'],
+        'no_urban_region' => ['single_urban_region'],
+        'single_neighborhood' => ['no_neighborhood'],
+        'no_neighborhood' => ['single_neighborhood'],
+    ];
 
     public function findOrCreateOpenClaim(Location $location, string $type, User $proposer): LocationStructureClaim
     {
-        $contextClaims = LocationStructureClaim::query()
-            ->where('location_id', $location->id)
-            ->whereIn('status', array_merge(self::OPEN_STATUSES, ['approved']))
-            ->get();
-
-        if (! app(LocationStructureClaimPolicy::class)->allowsClaimType($location, $type, $contextClaims)) {
-            throw new \DomainException('Structural claim type is not allowed for this location type.');
-        }
-
-        $conflicts = [
-            'single_urban_region' => ['no_urban_region'],
-            'no_urban_region' => ['single_urban_region'],
-            'single_neighborhood' => ['no_neighborhood'],
-            'no_neighborhood' => ['single_neighborhood'],
-        ];
-
-        if ($contextClaims->pluck('claim_type')->intersect($conflicts[$type] ?? [])->isNotEmpty()) {
-            throw new \DomainException('Conflicting structural claim already exists for this location tier.');
-        }
-
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
-            $claim = LocationStructureClaim::query()
-                ->where('location_id', $location->id)
-                ->where('claim_type', $type)
-                ->whereIn('status', self::OPEN_STATUSES)
-                ->lockForUpdate()
-                ->orderBy('id')
-                ->first();
+            $location = Location::query()->lockForUpdate()->findOrFail($location->id);
+            if ($location->status !== 'active') {
+                throw new DomainException('Inactive location cannot accept structural claims.');
+            }
 
-            return $claim ?? LocationStructureClaim::query()->create([
+            $contextClaims = LocationStructureClaim::query()
+                ->where('location_id', $location->id)
+                ->whereNull('location_proposal_id')
+                ->whereIn('status', self::ACTIVE_STATUSES)
+                ->lockForUpdate()
+                ->get();
+
+            if (! app(LocationStructureClaimPolicy::class)->allowsClaimType($location, $type, $contextClaims)) {
+                throw new DomainException('Structural claim type is not allowed for this location type.');
+            }
+
+            $this->assertNoConflictingClaim($contextClaims, $type);
+
+            $claim = $contextClaims->firstWhere('claim_type', $type);
+            if ($claim instanceof LocationStructureClaim) {
+                return $claim;
+            }
+
+            $candidate = new LocationStructureClaim([
                 'location_id' => $location->id,
+                'claim_type' => $type,
+            ]);
+            $candidate->setRelation('location', $location);
+
+            return LocationStructureClaim::query()->create([
+                'location_id' => $location->id,
+                'location_proposal_id' => null,
                 'claim_type' => $type,
                 'status' => 'pending',
                 'proposer_user_id' => $proposer->id,
+                'metadata' => $this->dependencyMetadata($candidate, $contextClaims),
+                'audit_log' => [],
+            ]);
+        });
+    }
+
+    public function findOrCreateOpenClaimForProposal(
+        LocationProposal $proposal,
+        string $type,
+        User $proposer,
+    ): LocationStructureClaim {
+        $status = $proposal->status instanceof \BackedEnum
+            ? $proposal->status->value
+            : (string) $proposal->status;
+        if (! in_array($status, self::OPEN_STATUSES, true)) {
+            throw new DomainException('Terminal location proposal cannot accept structural claims.');
+        }
+
+        return DB::transaction(function () use ($proposal, $type, $proposer): LocationStructureClaim {
+            $proposal = LocationProposal::query()->with('type')->lockForUpdate()->findOrFail($proposal->id);
+            $lockedStatus = $proposal->status instanceof \BackedEnum
+                ? $proposal->status->value
+                : (string) $proposal->status;
+            if (! in_array($lockedStatus, self::OPEN_STATUSES, true)) {
+                throw new DomainException('Terminal location proposal cannot accept structural claims.');
+            }
+
+            $contextClaims = LocationStructureClaim::query()
+                ->where('location_proposal_id', $proposal->id)
+                ->whereNull('location_id')
+                ->whereIn('status', self::ACTIVE_STATUSES)
+                ->lockForUpdate()
+                ->get();
+
+            $policy = app(LocationStructureClaimPolicy::class);
+            if (! $policy->allowsProposalClaimType($proposal, $type, $contextClaims)) {
+                throw new DomainException('Structural claim type is not allowed for this proposed location type.');
+            }
+
+            $this->assertNoConflictingClaim($contextClaims, $type);
+
+            $claim = $contextClaims->firstWhere('claim_type', $type);
+            if ($claim instanceof LocationStructureClaim) {
+                return $claim;
+            }
+
+            $candidate = new LocationStructureClaim([
+                'location_proposal_id' => $proposal->id,
+                'claim_type' => $type,
+            ]);
+            $candidate->setRelation('locationProposal', $proposal);
+
+            return LocationStructureClaim::query()->create([
+                'location_id' => null,
+                'location_proposal_id' => $proposal->id,
+                'claim_type' => $type,
+                'status' => 'pending',
+                'proposer_user_id' => $proposer->id,
+                'metadata' => array_merge(
+                    ['source' => 'pending_location_structure'],
+                    $this->dependencyMetadata($candidate, $contextClaims),
+                ),
                 'audit_log' => [],
             ]);
         });
@@ -61,7 +136,7 @@ class LocationStructureClaimService
         User $proposer,
     ): LocationStructureClaim {
         if ($type !== 'no_neighborhood') {
-            throw new \DomainException('Only no-neighborhood is exposed for a reference settlement.');
+            throw new DomainException('Only no-neighborhood is exposed for a reference settlement.');
         }
 
         $claimable = (
@@ -73,14 +148,14 @@ class LocationStructureClaimService
         );
 
         if (! $claimable || $settlement->governance_authorized || $settlement->operational_promotion_allowed) {
-            throw new \DomainException('This reference settlement cannot accept an open structural claim.');
+            throw new DomainException('This reference settlement cannot accept an open structural claim.');
         }
 
         return DB::transaction(function () use ($settlement, $type, $proposer): LocationStructureClaim {
             return LocationStructureClaim::query()
                 ->where('reference_settlement_id', $settlement->id)
                 ->where('claim_type', $type)
-                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereIn('status', array_merge(self::OPEN_STATUSES, ['approved']))
                 ->lockForUpdate()
                 ->orderBy('id')
                 ->first()
@@ -100,9 +175,17 @@ class LocationStructureClaimService
     {
         DB::transaction(function () use ($claim, $user, $evidence): void {
             $claim = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+            $this->lockOwnerForClaim($claim);
 
             if (! in_array($claim->status, self::OPEN_STATUSES, true)) {
                 return;
+            }
+
+            if (! app(LocationStructureClaimPolicy::class)->dependenciesSatisfied(
+                $claim,
+                self::ACTIVE_STATUSES,
+            )) {
+                throw new DomainException('Structural claim prerequisite is no longer valid.');
             }
 
             $claim->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
@@ -121,6 +204,7 @@ class LocationStructureClaimService
             }
         });
     }
+
     public function markNeedsEvidence(LocationStructureClaim $claim, User $reviewer, string $reason): LocationStructureClaim
     {
         return $this->reviewTransition($claim, $reviewer, 'needs_evidence', $reason);
@@ -139,10 +223,57 @@ class LocationStructureClaimService
     private function reviewTransition(LocationStructureClaim $claim, User $reviewer, string $to, string $reason): LocationStructureClaim
     {
         return DB::transaction(function () use ($claim, $reviewer, $to, $reason): LocationStructureClaim {
-            $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+            $locked = LocationStructureClaim::query()
+                ->with(['location', 'locationProposal'])
+                ->lockForUpdate()
+                ->findOrFail($claim->id);
 
             if (! in_array($locked->status, self::OPEN_STATUSES, true)) {
-                throw new \DomainException('Terminal structural claim cannot be reviewed again.');
+                throw new DomainException('Terminal structural claim cannot be reviewed again.');
+            }
+
+            $this->lockOwnerForClaim($locked);
+            $policy = app(LocationStructureClaimPolicy::class);
+            if ($to === 'approved'
+                && ! $policy->dependenciesSatisfied($locked, ['approved'])) {
+                throw new DomainException('Approve the prerequisite structural claim before approving this dependent claim.');
+            }
+            if ($to === 'approved' && $this->hasContradictoryExistingChild($locked)) {
+                throw new DomainException('Resolve the contradictory child location or proposal before approving this structural absence claim.');
+            }
+
+            $dependents = collect();
+            if ($to === 'rejected') {
+                $dependentTypes = $policy->dependentClaimTypes($locked);
+                if ($dependentTypes !== []) {
+                    $dependents = $this->ownerClaimQuery($locked)
+                        ->whereIn('claim_type', $dependentTypes)
+                        ->whereIn('status', self::ACTIVE_STATUSES)
+                        ->lockForUpdate()
+                        ->get();
+
+                    if ($dependents->contains(fn (LocationStructureClaim $dependent): bool => $dependent->status === 'approved')) {
+                        throw new DomainException('An approved dependent structural claim must be resolved before rejecting its prerequisite.');
+                    }
+
+                    foreach ($dependents as $dependent) {
+                        $audit = $dependent->audit_log ?? [];
+                        $audit[] = [
+                            'from' => $dependent->status,
+                            'to' => 'rejected',
+                            'actor_user_id' => $reviewer->id,
+                            'reason' => 'prerequisite_rejected:'.$locked->id.' — '.$reason,
+                            'at' => now()->toIso8601String(),
+                        ];
+                        $dependent->forceFill([
+                            'status' => 'rejected',
+                            'reviewed_by_user_id' => $reviewer->id,
+                            'review_reason' => 'Prerequisite structural claim #'.$locked->id.' was rejected: '.$reason,
+                            'approved_at' => null,
+                            'audit_log' => $audit,
+                        ])->save();
+                    }
+                }
             }
 
             $from = $locked->status;
@@ -164,11 +295,134 @@ class LocationStructureClaimService
             ])->save();
 
             if (in_array($to, ['approved', 'rejected'], true)) {
-                app(PendingLocationGroupRequestService::class)->reconcileStructuralClaim($locked->fresh());
+                $pending = app(PendingLocationGroupRequestService::class);
+                $residence = app(ResidenceService::class);
+                $reviewed = $locked->fresh();
+
+                $pending->reconcileStructuralClaim($reviewed);
+                if ($to === 'rejected') {
+                    $residence->cancelPendingIntentsDependingOnStructuralClaim($reviewed);
+                }
+
+                foreach ($dependents as $dependent) {
+                    $dependent = $dependent->fresh();
+                    $pending->reconcileStructuralClaim($dependent);
+                    $residence->cancelPendingIntentsDependingOnStructuralClaim($dependent);
+                }
             }
 
-            return $locked;
+            return $locked->fresh();
         });
     }
 
+    private function hasContradictoryExistingChild(LocationStructureClaim $claim): bool
+    {
+        $childType = match ($claim->claim_type) {
+            'no_urban_region' => 'urban_region',
+            'no_neighborhood' => 'neighborhood',
+            default => null,
+        };
+
+        if ($childType === null) {
+            return false;
+        }
+
+        if ($claim->location_id !== null) {
+            $hasCanonicalChild = Location::query()
+                ->where('parent_id', $claim->location_id)
+                ->where('status', 'active')
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+
+            if ($hasCanonicalChild) {
+                return true;
+            }
+
+            return LocationProposal::query()
+                ->where('parent_location_id', $claim->location_id)
+                ->whereNull('parent_location_proposal_id')
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+        }
+
+        if ($claim->location_proposal_id !== null) {
+            return LocationProposal::query()
+                ->whereNull('parent_location_id')
+                ->where('parent_location_proposal_id', $claim->location_proposal_id)
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+        }
+
+        if ($claim->reference_settlement_id !== null) {
+            return LocationProposal::query()
+                ->whereNull('parent_location_id')
+                ->whereNull('parent_location_proposal_id')
+                ->where('parent_reference_settlement_id', $claim->reference_settlement_id)
+                ->whereIn('status', self::OPEN_STATUSES)
+                ->whereHas('type', fn ($query) => $query->where('key', $childType))
+                ->exists();
+        }
+
+        return false;
+    }
+
+    private function lockOwnerForClaim(LocationStructureClaim $claim): void
+    {
+        if ($claim->location_id !== null) {
+            Location::query()->whereKey($claim->location_id)->lockForUpdate()->firstOrFail();
+
+            return;
+        }
+
+        if ($claim->location_proposal_id !== null) {
+            LocationProposal::query()->whereKey($claim->location_proposal_id)->lockForUpdate()->firstOrFail();
+
+            return;
+        }
+
+        // Reference-settlement claims have no conditional owner-local prerequisites.
+    }
+
+    private function assertNoConflictingClaim(Collection $contextClaims, string $type): void
+    {
+        if ($contextClaims->pluck('claim_type')->intersect(self::CONFLICTS[$type] ?? [])->isNotEmpty()) {
+            throw new DomainException('Conflicting structural claim already exists for this location tier.');
+        }
+    }
+
+    private function dependencyMetadata(LocationStructureClaim $candidate, Collection $contextClaims): array
+    {
+        $required = app(LocationStructureClaimPolicy::class)->requiredContextClaimTypes($candidate);
+        if ($required === []) {
+            return [];
+        }
+
+        $ids = $contextClaims
+            ->whereIn('claim_type', $required)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $ids === [] ? [] : ['depends_on_claim_ids' => $ids];
+    }
+
+    private function ownerClaimQuery(LocationStructureClaim $claim)
+    {
+        $query = LocationStructureClaim::query();
+
+        if ($claim->location_id !== null) {
+            return $query->where('location_id', $claim->location_id)->whereNull('location_proposal_id');
+        }
+
+        if ($claim->location_proposal_id !== null) {
+            return $query->where('location_proposal_id', $claim->location_proposal_id)->whereNull('location_id');
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
 }
