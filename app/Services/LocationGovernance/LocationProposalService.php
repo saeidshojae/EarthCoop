@@ -207,33 +207,27 @@ class LocationProposalService
         $proposal->save();
     }
 
-    public function support(LocationProposal $proposal, User $user, array $evidence): void
-    {
-        $this->guardOpen($proposal);
-
-        if (! $this->proposalPolicy->storedStructuralProvenanceIsValid($proposal)) {
-            throw new DomainException('The proposal structural dependencies are no longer valid.');
-        }
-
-        $this->proposalSupportService->record($proposal, $user, $evidence);
-    }
-
     public function requestMoreEvidence(LocationProposal $proposal, User $reviewer, string $reason): void
     {
-        $this->guardOpen($proposal);
-        $this->transition($proposal, LocationProposalStatus::NeedsEvidence, $reviewer, $reason, true);
+        $reason = $this->reviewReason($reason);
+
+        DB::transaction(function () use ($proposal, $reviewer, $reason): void {
+            $locked = $this->lockOpenProposal($proposal->id);
+            $this->transition($locked, LocationProposalStatus::NeedsEvidence, $reviewer, $reason, true);
+        });
     }
 
     public function approve(LocationProposal $proposal, User $reviewer, string $reason): Location
     {
-        $this->guardOpen($proposal);
-
-        if ($proposal->parent_reference_settlement_id !== null) {
-            throw new DomainException('Promote the reference settlement to an operational Location before approving its neighborhood.');
-        }
+        $reason = $this->reviewReason($reason);
 
         return DB::transaction(function () use ($proposal, $reviewer, $reason): Location {
-            $proposal->refresh();
+            $proposal = $this->lockOpenProposal($proposal->id);
+
+            if ($proposal->parent_reference_settlement_id !== null) {
+                throw new DomainException('Promote the reference settlement to an operational Location before approving its neighborhood.');
+            }
+
             $parent = $proposal->parentLocation()->lockForUpdate()->first();
 
             if ($parent === null) {
@@ -310,17 +304,30 @@ class LocationProposalService
 
     public function reject(LocationProposal $proposal, User $reviewer, string $reason): void
     {
-        $this->guardOpen($proposal);
-        $this->guardNoOpenChildren($proposal);
-        $this->transition($proposal, LocationProposalStatus::Rejected, $reviewer, $reason, true);
-        app(PendingLocationGroupRequestService::class)->rejectForProposal($proposal->fresh());
+        $reason = $this->reviewReason($reason);
+
+        DB::transaction(function () use ($proposal, $reviewer, $reason): void {
+            $locked = $this->lockOpenProposal($proposal->id);
+            $this->guardNoOpenChildren($locked);
+            $this->transition($locked, LocationProposalStatus::Rejected, $reviewer, $reason, true);
+
+            $rejected = $locked->fresh();
+            $this->residenceService->cancelPendingResidenceIntentsForRejectedProposal(
+                $rejected,
+                'location_proposal_rejected',
+            );
+            app(PendingLocationGroupRequestService::class)->rejectForProposal($rejected);
+        });
     }
 
     public function merge(LocationProposal $proposal, Location $existing, User $reviewer, string $reason): void
     {
-        $this->guardOpen($proposal);
+        $reason = $this->reviewReason($reason);
 
         DB::transaction(function () use ($proposal, $existing, $reviewer, $reason): void {
+            $proposal = $this->lockOpenProposal($proposal->id);
+            $existing = Location::query()->whereKey($existing->id)->lockForUpdate()->firstOrFail();
+
             if ((int) $existing->location_schema_id !== (int) $proposal->location_schema_id
                 || (int) $existing->location_type_id !== (int) $proposal->location_type_id) {
                 throw new DomainException('The merge target must use the same location schema and type as the proposal.');
@@ -486,6 +493,35 @@ class LocationProposalService
         }
 
         return $claims;
+    }
+
+    private function reviewReason(string $reason): string
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new DomainException('A non-empty human review reason is required.');
+        }
+
+        return $reason;
+    }
+
+    private function lockOpenProposal(int $proposalId): LocationProposal
+    {
+        $proposal = LocationProposal::query()
+            ->with(['type', 'parentProposal.type'])
+            ->whereKey($proposalId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $status = $proposal->status instanceof LocationProposalStatus
+            ? $proposal->status->value
+            : (string) $proposal->status;
+
+        if (! in_array($status, self::OPEN_STATUSES, true)) {
+            throw new DomainException('This location proposal is already resolved.');
+        }
+
+        return $proposal;
     }
 
     private function canonicalName(array $data): string
