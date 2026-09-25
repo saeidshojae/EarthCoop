@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\GovernanceArea;
 use App\Models\Location;
+use App\Models\LocationExternalId;
 use App\Models\UserLocationRelationship;
 use App\Services\LocationGovernance\Import\ReferenceGeographyImporter;
 use Illuminate\Support\Facades\DB;
@@ -41,10 +42,24 @@ class LocationReferenceImportCommand extends Command
         if ($apply && strtoupper(trim((string) $this->argument('country'))) === 'IR'
             && trim((string) $this->option('dataset-version')) === 'v2') {
             $confirmation = (string) $this->option('confirm');
-            if (! app()->environment(['local', 'testing'])
-                || ! in_array($confirmation, ['APPLY-IR-1404-V2-ISOLATED', 'APPLY-IR-1404-V2-UAT'], true)) {
-                $this->error('IR v2 apply requires an explicit local/testing confirmation token.');
+            $allowed = app()->environment(['local', 'testing'])
+                ? ['APPLY-IR-1404-V2-ISOLATED', 'APPLY-IR-1404-V2-UAT']
+                : (app()->environment('production') ? ['APPLY-IR-1404-V2-PRODUCTION-ADDITIVE'] : []);
+
+            if (! in_array($confirmation, $allowed, true)) {
+                $this->error('IR v2 apply requires the exact environment-specific confirmation token.');
                 return self::FAILURE;
+            }
+
+            if ($confirmation === 'APPLY-IR-1404-V2-PRODUCTION-ADDITIVE') {
+                $hasV1 = LocationExternalId::query()
+                    ->where('source', 'earthcoop-reference')
+                    ->where('dataset_version', 'v1')
+                    ->exists();
+                if (! $hasV1) {
+                    $this->error('IR v2 Production additive apply refused: no existing v1 reference identity was found.');
+                    return self::FAILURE;
+                }
             }
 
             if ($confirmation === 'APPLY-IR-1404-V2-ISOLATED') {
