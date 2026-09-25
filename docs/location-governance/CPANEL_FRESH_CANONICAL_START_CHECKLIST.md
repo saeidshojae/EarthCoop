@@ -167,7 +167,11 @@ It requires the exact secondary confirmation phrase:
 APPLY-IR-1404-V2-PRODUCTION-ADDITIVE
 ```
 
-This operation stages only the 6,158 administrative v2 reference locations alongside v1. It does not apply v2 Governance topology, import settlements, migrate residence/group dependencies, or change rollout flags. After it succeeds, rerun `iran_v2_reference_dry_run` and require `unchanged=6158` with create/update/deactivate/conflict all zero. Runtime/topology cutover remains blocked until the separate dependency reconciliation is reviewed.
+This operation stages only the 6,158 administrative v2 reference locations alongside v1. It does not apply v2 Governance topology, import settlements, migrate residence/group dependencies, or change rollout flags. After it succeeds, rerun `iran_v2_reference_dry_run` and require `unchanged=6158` with create/update/deactivate/conflict all zero. Runtime/topology cutover remains dark until the dedicated final preflight is clean.
+
+For the final transition, run the read-only `iran_v2_cutover_dry_run`. It must report 6,158 v2 references, zero topology update/conflict, `blocker_total: 0`, and `READY_FOR_FINAL_CUTOVER: YES`. Then—and only then—use `iran_v2_cutover_apply` with the exact confirmation `CUTOVER-IR-1404-V2-PRODUCTION`.
+
+The final cutover stages v2 topology if needed, migrates only reviewed verified-identity live dependencies while preserving existing relationship/group/election history IDs, and activates v2 runtime last. Post-check by rerunning `iran_v2_cutover_dry_run` and require `CUTOVER_COMPLETE: YES` with `blocker_total: 0`. The 99,317 settlement catalog remains outside this operation.
 
 ## G. Bootstrap canonical metadata
 
