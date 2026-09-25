@@ -240,14 +240,21 @@ final class ProfileResidenceController extends Controller
                     'source' => 'profile_location_update',
                 ], $structuralClaims);
             } elseif ((int) $current->location_id !== (int) $location->id) {
-                $residenceService->transferPrimaryResidence(
+                $reanchored = $residenceService->reanchorPrimaryResidenceIfVerifiedReferenceEquivalent(
                     $user,
                     $location,
-                    $user,
-                    'profile_location_update',
-                    false,
-                    $structuralClaims,
+                    ['source' => 'profile_verified_reference_upgrade'],
                 );
+                if ($reanchored === null) {
+                    $residenceService->transferPrimaryResidence(
+                        $user,
+                        $location,
+                        $user,
+                        'profile_location_update',
+                        false,
+                        $structuralClaims,
+                    );
+                }
             } else {
                 $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);
                 $residenceService->clearPendingResidenceIntent($user, 'approved_location_selected');
