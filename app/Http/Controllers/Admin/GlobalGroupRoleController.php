@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\GovernanceArea;
 use App\Models\GroupRoleBulkOperation;
 use App\Models\GroupRoleBulkOperationItem;
 use App\Models\GroupUser;
@@ -174,20 +175,54 @@ class GlobalGroupRoleController extends Controller
             ->where('group_user.status', 1)
             ->where('group_user.role', (int) $validated['source_role']);
 
-        $types = match ($validated['group_category']) {
-            'general' => [0, '0', 'general'],
-            'specialized' => [1, '1', 2, '2', 'speciality', 'specialized'],
-            'exclusive' => [3, '3', 4, '4', 'exclusive'],
-            default => null,
-        };
-        if ($types !== null) {
-            $query->whereIn('groups.group_type', $types);
-        }
-        if (!empty($validated['location_level'])) {
-            $query->where('groups.location_level', $validated['location_level']);
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $dimensions = match ($validated['group_category']) {
+                'general' => ['public'],
+                'specialized' => ['profession', 'specialty'],
+                'exclusive' => ['age', 'gender'],
+                default => null,
+            };
+            if ($dimensions !== null) {
+                $query->whereIn('groups.dimension_key', $dimensions);
+            }
+
+            if (!empty($validated['location_level'])) {
+                $governanceTypes = $this->canonicalGovernanceTypesForLevel((string) $validated['location_level']);
+                $query->whereIn(
+                    'groups.governance_area_id',
+                    GovernanceArea::query()
+                        ->select('id')
+                        ->whereIn('governance_type', $governanceTypes)
+                        ->where('status', 'active')
+                );
+            }
+        } else {
+            $types = match ($validated['group_category']) {
+                'general' => [0, '0', 'general'],
+                'specialized' => [1, '1', 2, '2', 'speciality', 'specialized'],
+                'exclusive' => [3, '3', 4, '4', 'exclusive'],
+                default => null,
+            };
+            if ($types !== null) {
+                $query->whereIn('groups.group_type', $types);
+            }
+            if (!empty($validated['location_level'])) {
+                $query->where('groups.location_level', $validated['location_level']);
+            }
         }
 
         return $query;
+    }
+
+    /** @return array<int, string> */
+    private function canonicalGovernanceTypesForLevel(string $level): array
+    {
+        return match (strtolower(trim($level))) {
+            'rural' => ['rural_district'],
+            'region' => ['urban_region'],
+            'neighborhood' => ['local', 'neighborhood'],
+            default => [strtolower(trim($level))],
+        };
     }
 
     private function validateInput(Request $request, bool $withDuration): array
