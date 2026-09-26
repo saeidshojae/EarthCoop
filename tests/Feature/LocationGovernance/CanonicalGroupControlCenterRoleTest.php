@@ -10,8 +10,8 @@ final class CanonicalGroupControlCenterRoleTest extends TestCase
     {
         $panel = file_get_contents(resource_path('views/groups/partials/group_info_panel.blade.php'));
 
-        $this->assertStringContainsString(
-            'GroupMembershipRoleResolver::class)->effectiveRole($group2, $member)',
+        $this->assertMatchesRegularExpression(
+            '/GroupMembershipRoleResolver::class\)\s*->effectiveRole\(\$group2,\s*\$member\)/',
             $panel,
         );
         $this->assertStringNotContainsString(
