@@ -34,35 +34,26 @@ final class CanonicalGroupSearchRuntimeTest extends TestCase
         $guest = User::factory()->create();
         $temporary = User::factory()->create();
 
-        $guestGroup = Group::query()->create([
-            'name' => 'Canonical guest group',
+        $group = Group::query()->create([
+            'name' => 'Canonical role group',
             'group_type' => '0',
             'governance_area_id' => $area->id,
             'dimension_key' => 'public',
             'dimension_value_key' => 'public',
             'location_level' => 'province',
         ]);
-        $guest->groups()->attach($guestGroup->id, ['role' => 4, 'status' => 1]);
-
-        $temporaryGroup = Group::query()->create([
-            'name' => 'Canonical temporary group',
-            'group_type' => '0',
-            'governance_area_id' => $area->id,
-            'dimension_key' => 'public',
-            'dimension_value_key' => 'public',
-            'location_level' => 'province',
-        ]);
-        $temporary->groups()->attach($temporaryGroup->id, ['role' => 5, 'status' => 1]);
+        $guest->groups()->attach($group->id, ['role' => 4, 'status' => 1]);
+        $temporary->groups()->attach($group->id, ['role' => 5, 'status' => 1]);
 
         $guestPayload = $this->actingAs($guest)
-            ->getJson('/api/groups/search?q=Canonical+guest&type=name')
+            ->getJson('/api/groups/search?q=Canonical+role&type=name')
             ->assertOk()
             ->json('groups.0');
         $this->assertSame('region', $guestPayload['location_level']);
         $this->assertSame('مهمان', $guestPayload['role']);
 
         $temporaryPayload = $this->actingAs($temporary)
-            ->getJson('/api/groups/search?q=Canonical+temporary&type=name')
+            ->getJson('/api/groups/search?q=Canonical+role&type=name')
             ->assertOk()
             ->json('groups.0');
         $this->assertSame('region', $temporaryPayload['location_level']);
