@@ -44,7 +44,7 @@ class HomeDashboardViewContractTest extends TestCase
         $this->assertStringContainsString('membership_fee_due', $polish);
         $this->assertStringContainsString('حق عضویت دوره جاری', $polish);
         $this->assertStringContainsString('data-home-hoda-intro', $polish);
-        $this->assertStringContainsString("route('najm-hoda.about')", $polish);
+        $this->assertStringContainsString("route('najm-hoda.profile')", $polish);
         $this->assertStringContainsString('آشنایی با نجم هدا', $polish);
         $this->assertStringContainsString("Number.parseInt(item.querySelector('strong')", $polish);
         $this->assertStringContainsString('if (!Number.isFinite(value) || value <= 0) item.hidden = true;', $polish);
