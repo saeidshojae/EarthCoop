@@ -23,9 +23,6 @@
             $pendingLocationGroupCount = $pendingRequests->count();
         }
         $sidebarGroupCount = $groups->count() + $pendingLocationGroupCount;
-        $generalGroups = $groups->where('type', 'general');
-        $specializedGroups = $groups->where('type', 'specialized');
-        $exclusiveGroups = $groups->where('type', 'exclusive');
         $docsLinks = config('docs-links');
     @endphp
 
@@ -41,9 +38,7 @@
                 letter-spacing: .01em;
                 pointer-events: none;
             }
-            .unified-public-sidebar .sidebar-section-label:first-child {
-                margin-top: .35rem;
-            }
+            .unified-public-sidebar .sidebar-section-label:first-child { margin-top: .35rem; }
             .unified-public-sidebar .support-submenu {
                 margin-top: .5rem !important;
                 margin-inline-start: 1.5rem !important;
@@ -52,10 +47,7 @@
                 border-radius: .75rem;
                 background: rgba(248, 250, 252, .72);
             }
-            .unified-public-sidebar .support-submenu > li {
-                margin: 0 !important;
-                padding: 0 !important;
-            }
+            .unified-public-sidebar .support-submenu > li { margin: 0 !important; padding: 0 !important; }
             .unified-public-sidebar .support-submenu-link {
                 display: grid !important;
                 grid-template-columns: 1.125rem minmax(0, 1fr) auto;
@@ -90,15 +82,8 @@
                 text-align: center;
                 color: var(--color-ocean-blue) !important;
             }
-            .unified-public-sidebar .support-submenu-label {
-                min-width: 0;
-                text-align: start;
-                line-height: 1.5;
-            }
-            .unified-public-sidebar .support-submenu-link .badge {
-                margin: 0 !important;
-                justify-self: end;
-            }
+            .unified-public-sidebar .support-submenu-label { min-width: 0; text-align: start; line-height: 1.5; }
+            .unified-public-sidebar .support-submenu-link .badge { margin: 0 !important; justify-self: end; }
             .unified-public-sidebar .docs-submenu {
                 margin-top: .35rem !important;
                 margin-inline-start: .75rem !important;
@@ -107,17 +92,13 @@
                 border-radius: .7rem;
                 background: rgba(255, 255, 255, .82);
             }
-            .unified-public-sidebar .docs-parent-button {
-                cursor: pointer;
-            }
+            .unified-public-sidebar .docs-parent-button { cursor: pointer; }
             .unified-public-sidebar .docs-parent-button .support-submenu-label {
                 width: 100%;
                 justify-self: stretch;
                 text-align: start !important;
             }
-            body.dark-mode .unified-public-sidebar .sidebar-section-label {
-                color: #94a3b8;
-            }
+            body.dark-mode .unified-public-sidebar .sidebar-section-label { color: #94a3b8; }
             body.dark-mode .unified-public-sidebar .support-submenu {
                 background: rgba(15, 23, 42, .5);
                 border-color: rgba(52, 211, 153, .25);
@@ -126,9 +107,7 @@
                 background: rgba(15, 23, 42, .72);
                 border-color: rgba(96, 165, 250, .25);
             }
-            body.dark-mode .unified-public-sidebar .support-submenu-link {
-                color: var(--text-dark) !important;
-            }
+            body.dark-mode .unified-public-sidebar .support-submenu-link { color: var(--text-dark) !important; }
             body.dark-mode .unified-public-sidebar .support-submenu-link:hover,
             body.dark-mode .unified-public-sidebar .support-submenu-link.active {
                 color: #a7f3d0 !important;
@@ -137,114 +116,107 @@
         </style>
     @endonce
 
-    <!-- Right Sidebar - Collapsible on mobile -->
     <aside x-data="{ open: false }" @click.away="open = false" class="home-sidebar unified-public-sidebar w-full lg:w-80 bg-white rounded-2xl shadow-lg p-0 lg:p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
            style="background-color: var(--color-pure-white);">
         <button type="button" @click="open = !open" class="home-sidebar-toggle w-full text-left text-xl lg:text-2xl font-bold text-gentle-black flex items-center justify-between gap-3 px-4 py-3 lg:px-0 lg:py-3 border-gray-200" :class="open ? 'border-b' : 'lg:border-b'" style="color: var(--color-gentle-black);">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-bars" style="color: var(--color-earth-green);"></i>
-                <span>منو</span>
-            </div>
+            <div class="flex items-center gap-3"><i class="fas fa-bars" style="color: var(--color-earth-green);"></i><span>منو</span></div>
             <i class="lg:hidden" :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
         </button>
 
         <nav x-cloak :class="open ? 'block' : 'hidden lg:block'" class="home-sidebar-nav lg:block overflow-hidden transition-all duration-200 ease-out lg:border-t lg:border-gray-200">
             <ul class="space-y-2">
-                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="network" aria-hidden="true">شبکه و ارتباطات</li>
-
-                <!-- Notifications -->
+                <!-- Home: intentionally standalone, before categorized navigation. -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('notifications.index') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('home') }}" class="sidebar-menu-link {{ request()->routeIs('home') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-bell" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">اعلان‌ها</span>
-                        @if(auth()->user()->unreadNotifications->count() > 0)
-                            <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ auth()->user()->unreadNotifications->count() }}</span>
-                        @endif
+                        <i class="fas fa-home" style="color: var(--color-earth-green);"></i><span class="flex-grow text-right mx-3">خانه</span>
                     </a>
                 </li>
 
-                <!-- Private Conversations -->
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="network" aria-hidden="true">شبکه و ارتباطات</li>
+
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('notifications.index') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-bell" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">اعلان‌ها</span>
+                        @if(auth()->user()->unreadNotifications->count() > 0)<span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ auth()->user()->unreadNotifications->count() }}</span>@endif
+                    </a>
+                </li>
+
                 @php
-                    $pendingChatRequestCount = \App\Models\ChatRequest::where('receiver_id', auth()->id())
-                        ->where('status', 'pending')
-                        ->count();
+                    $pendingChatRequestCount = \App\Models\ChatRequest::where('receiver_id', auth()->id())->where('status', 'pending')->count();
                 @endphp
                 <li class="sidebar-menu-item">
                     <a href="{{ route('chat-requests.index') }}" class="sidebar-menu-link {{ request()->routeIs('chat-requests.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-comments" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">گفتگوهای خصوصی</span>
-                        @if($pendingChatRequestCount > 0)
-                            <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ $pendingChatRequestCount }}</span>
-                        @endif
+                        <i class="fas fa-comments" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">گفتگوهای خصوصی</span>
+                        @if($pendingChatRequestCount > 0)<span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ $pendingChatRequestCount }}</span>@endif
                     </a>
                 </li>
 
-                <!-- Groups -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('groups.index') }}" class="sidebar-menu-link {{ request()->routeIs('groups.index') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-users" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">{{ __('navigation.footer_my_groups') }}</span>
-                        @if($sidebarGroupCount > 0)
-                            <span class="badge text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-digital-gold); color: var(--color-pure-white);">{{ $sidebarGroupCount }}</span>
-                        @endif
+                        <i class="fas fa-users" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">{{ __('navigation.footer_my_groups') }}</span>
+                        @if($sidebarGroupCount > 0)<span class="badge text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-digital-gold); color: var(--color-pure-white);">{{ $sidebarGroupCount }}</span>@endif
+                    </a>
+                </li>
+
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('my-invation-code') }}" class="sidebar-menu-link {{ request()->routeIs('my-invation-code') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-user-plus" style="color: var(--color-earth-green);"></i><span class="flex-grow text-right mx-3">دعوت از دوستان</span>
                     </a>
                 </li>
 
                 <li class="sidebar-section-label hidden lg:block" data-sidebar-section="governance" aria-hidden="true">حکمرانی و مشارکت</li>
 
                 @if((bool) config('location-governance.runtime_enabled'))
-                    <!-- My Location & Governance -->
                     <li class="sidebar-menu-item">
                         <a href="{{ route('location-governance.me') }}" class="sidebar-menu-link {{ request()->routeIs('location-governance.me') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                             <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                            <i class="fas fa-location-dot" style="color: var(--color-earth-green);"></i>
-                            <span class="flex-grow text-right mx-3">مکان و حکمرانی من</span>
+                            <i class="fas fa-location-dot" style="color: var(--color-earth-green);"></i><span class="flex-grow text-right mx-3">مکان و حکمرانی من</span>
                         </a>
                     </li>
                 @endif
 
-                <!-- Collaborations -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.index') }}" class="sidebar-menu-link {{ request()->routeIs('history.index') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-handshake" style="color: var(--color-digital-gold);"></i>
-                        <span class="flex-grow text-right mx-3">مشارکت‌های من</span>
+                        <i class="fas fa-handshake" style="color: var(--color-digital-gold);"></i><span class="flex-grow text-right mx-3">مشارکت‌های من</span>
                     </a>
                 </li>
 
-                <!-- Elections -->
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('community-stories.index') }}" class="sidebar-menu-link {{ request()->routeIs('community-stories.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-feather" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">داستان من در EarthCoop</span>
+                    </a>
+                </li>
+
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.election') }}" class="sidebar-menu-link {{ request()->routeIs('history.election') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-vote-yea" style="color: var(--color-earth-green);"></i>
-                        <span class="flex-grow text-right mx-3">انتخابات جاری</span>
+                        <i class="fas fa-vote-yea" style="color: var(--color-earth-green);"></i><span class="flex-grow text-right mx-3">انتخابات جاری</span>
                     </a>
                 </li>
 
-                <!-- Election History -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.election-history') }}" class="sidebar-menu-link {{ request()->routeIs('history.election-history') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-clock-rotate-left" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">تاریخچه انتخابات من</span>
+                        <i class="fas fa-clock-rotate-left" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">تاریخچه انتخابات من</span>
                     </a>
                 </li>
 
-                <!-- Polls -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.poll') }}" class="sidebar-menu-link {{ request()->routeIs('history.poll') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-chart-pie" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">نظرسنجی‌های جاری</span>
+                        <i class="fas fa-chart-pie" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">نظرسنجی‌های جاری</span>
                     </a>
                 </li>
 
                 <li class="sidebar-section-label hidden lg:block" data-sidebar-section="economy" aria-hidden="true">اقتصاد</li>
 
-                <!-- Spring Account -->
                 @php
                     $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
                     $needsNajmAgreement = !$accountService->hasMainAccount(auth()->id());
@@ -252,185 +224,113 @@
                 <li class="sidebar-menu-item">
                     <a href="{{ route('najm-bahar.dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('najm-bahar.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group {{ $needsNajmAgreement ? 'blinking-item' : '' }}" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-wallet" style="color: var(--color-digital-gold);"></i>
-                        <span class="flex-grow text-right mx-3">حساب مالی نجم بهار</span>
+                        <i class="fas fa-wallet" style="color: var(--color-digital-gold);"></i><span class="flex-grow text-right mx-3">حساب مالی نجم بهار</span>
                     </a>
                 </li>
 
-                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="account-support" aria-hidden="true">حساب و راهنما</li>
-
-                <!-- Invite Friends -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('my-invation-code') }}" class="sidebar-menu-link {{ request()->routeIs('my-invation-code') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('stock.book') }}" class="sidebar-menu-link {{ request()->routeIs('stock.book') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-user-plus" style="color: var(--color-earth-green);"></i>
-                        <span class="flex-grow text-right mx-3">دعوت از دوستان</span>
+                        <i class="fas fa-chart-line" style="color: var(--color-digital-gold);"></i><span class="flex-grow text-right mx-3">دفتر سهام ارزش</span>
                     </a>
                 </li>
 
-                <!-- Edit Profile -->
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('auction.index') }}" class="sidebar-menu-link {{ request()->routeIs('auction.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-gavel" style="color: var(--color-digital-gold);"></i><span class="flex-grow text-right mx-3">حراج‌های سهم ارزش</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="organization" aria-hidden="true">سازمان و همکاری</li>
+
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('secretariat.directory') }}" class="sidebar-menu-link {{ request()->routeIs('secretariat.directory') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-box-archive" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">دبیرخانه‌های من</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="account-support" aria-hidden="true">حساب و پشتیبانی</li>
+
                 <li class="sidebar-menu-item">
                     <a href="{{ route('profile.edit') }}" class="sidebar-menu-link {{ request()->routeIs('profile.edit*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-cog" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">ویرایش حساب کاربری</span>
+                        <i class="fas fa-cog" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">ویرایش حساب کاربری</span>
                     </a>
                 </li>
 
-                <!-- Support -->
                 <li class="sidebar-menu-item" x-data="{ open: {{ request()->routeIs('support.kb.*', 'user.tickets.*', 'user.support-chat.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="sidebar-menu-link {{ request()->routeIs('support.kb.*', 'user.tickets.*', 'user.support-chat.*') ? 'active' : '' }} w-full block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <div class="flex items-center">
-                            <i class="fas fa-headset" style="color: var(--color-ocean-blue);"></i>
-                            <span class="flex-grow text-right mx-3">پشتیبانی</span>
-                        </div>
+                        <div class="flex items-center"><i class="fas fa-headset" style="color: var(--color-ocean-blue);"></i><span class="flex-grow text-right mx-3">پشتیبانی</span></div>
                         <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': open }"></i>
                     </button>
-                    <ul x-show="open"
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 transform -translate-y-2"
-                        x-transition:enter-end="opacity-100 transform translate-y-0"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 transform translate-y-0"
-                        x-transition:leave-end="opacity-0 transform -translate-y-2"
-                        class="support-submenu space-y-1">
-                        <li>
-                            <a href="{{ route('support.kb.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('support.kb.*') ? 'active' : '' }} relative group">
-                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-book text-sm" aria-hidden="true"></i>
-                                <span class="support-submenu-label">پایگاه دانش</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('user.tickets.create') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.create') ? 'active' : '' }} relative group">
-                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-plus-circle text-sm" aria-hidden="true"></i>
-                                <span class="support-submenu-label">ارسال تیکت</span>
-                            </a>
-                        </li>
+                    <ul x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform -translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform -translate-y-2" class="support-submenu space-y-1">
+                        <li><a href="{{ route('support.kb.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('support.kb.*') ? 'active' : '' }} relative group"><i class="fas fa-book text-sm" aria-hidden="true"></i><span class="support-submenu-label">پایگاه دانش</span></a></li>
+                        <li><a href="{{ route('user.tickets.create') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.create') ? 'active' : '' }} relative group"><i class="fas fa-plus-circle text-sm" aria-hidden="true"></i><span class="support-submenu-label">ارسال تیکت</span></a></li>
                         <li>
                             <a href="{{ route('user.tickets.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.index', 'user.tickets.show') ? 'active' : '' }} relative group">
-                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-ticket-alt text-sm" aria-hidden="true"></i>
-                                <span class="support-submenu-label">تیکت‌ها</span>
+                                <i class="fas fa-ticket-alt text-sm" aria-hidden="true"></i><span class="support-submenu-label">تیکت‌ها</span>
                                 @php
                                     $openTicketsCount = \App\Models\Ticket::where(function($q) {
-                                        $q->where('user_id', auth()->id())
-                                          ->orWhere('email', auth()->user()->email);
+                                        $q->where('user_id', auth()->id())->orWhere('email', auth()->user()->email);
                                     })->whereIn('status', ['open', 'in-progress'])->count();
                                 @endphp
-                                @if($openTicketsCount > 0)
-                                    <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-red-tomato);">{{ $openTicketsCount }}</span>
-                                @endif
+                                @if($openTicketsCount > 0)<span class="badge text-white text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-red-tomato);">{{ $openTicketsCount }}</span>@endif
                             </a>
                         </li>
-                        <li>
-                            <a href="{{ route('user.support-chat.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.support-chat.*') ? 'active' : '' }} relative group">
-                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-comments text-sm" aria-hidden="true"></i>
-                                <span class="support-submenu-label">چت پشتیبانی</span>
-                            </a>
-                        </li>
+                        <li><a href="{{ route('user.support-chat.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.support-chat.*') ? 'active' : '' }} relative group"><i class="fas fa-comments text-sm" aria-hidden="true"></i><span class="support-submenu-label">چت پشتیبانی</span></a></li>
                     </ul>
                 </li>
 
-                <!-- Explore EarthCoop -->
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="explore-docs" aria-hidden="true">کاوش و اسناد</li>
+
                 <li class="sidebar-menu-item" x-data="{ exploreOpen: false, docsOpen: false }">
                     <button type="button" @click="exploreOpen = !exploreOpen" class="sidebar-menu-link w-full block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);" :aria-expanded="exploreOpen">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <div class="flex items-center">
-                            <i class="fas fa-earth-americas" style="color: var(--color-earth-green);"></i>
-                            <span class="flex-grow text-right mx-3">کاوش EarthCoop</span>
-                        </div>
+                        <div class="flex items-center"><i class="fas fa-earth-americas" style="color: var(--color-earth-green);"></i><span class="flex-grow text-right mx-3">کاوش و اسناد</span></div>
                         <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': exploreOpen }" aria-hidden="true"></i>
                     </button>
                     <ul x-show="exploreOpen" x-transition class="support-submenu space-y-1">
                         <li>
-                            <div class="relative"
-                                 @mouseenter="docsOpen = true"
-                                 @mouseleave="docsOpen = false"
-                                 @focusin="docsOpen = true"
-                                 @focusout="if (!$el.contains($event.relatedTarget)) docsOpen = false">
-                                <button type="button"
-                                        @click="docsOpen = !docsOpen"
-                                        class="sidebar-menu-link support-submenu-link docs-parent-button relative group"
-                                        :aria-expanded="docsOpen"
-                                        aria-haspopup="true">
-                                    <i class="fas fa-folder-open text-sm" aria-hidden="true"></i>
-                                    <span class="support-submenu-label">اسناد</span>
-                                    <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': docsOpen }" aria-hidden="true"></i>
+                            <div class="relative" @mouseenter="docsOpen = true" @mouseleave="docsOpen = false" @focusin="docsOpen = true" @focusout="if (!$el.contains($event.relatedTarget)) docsOpen = false">
+                                <button type="button" @click="docsOpen = !docsOpen" class="sidebar-menu-link support-submenu-link docs-parent-button relative group" :aria-expanded="docsOpen" aria-haspopup="true">
+                                    <i class="fas fa-folder-open text-sm" aria-hidden="true"></i><span class="support-submenu-label">اسناد</span><i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': docsOpen }" aria-hidden="true"></i>
                                 </button>
                                 <ul x-show="docsOpen" x-transition class="docs-submenu space-y-1">
-                                    <li>
-                                        <a href="{{ $docsLinks['base_url'] }}/fa/introduction" target="_blank" rel="noopener noreferrer" class="sidebar-menu-link support-submenu-link relative group">
-                                            <i class="fas fa-book-open text-sm" aria-hidden="true"></i>
-                                            <span class="support-submenu-label">مرکز اسناد</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ $docsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="sidebar-menu-link support-submenu-link relative group">
-                                            <i class="fas fa-landmark text-sm" aria-hidden="true"></i>
-                                            <span class="support-submenu-label">اسناد بنیادین</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ route('terms') }}" class="sidebar-menu-link support-submenu-link relative group">
-                                            <i class="fas fa-scroll text-sm" aria-hidden="true"></i>
-                                            <span class="support-submenu-label">اساسنامه</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ route('najm-bahar.agreement') }}" class="sidebar-menu-link support-submenu-link relative group">
-                                            <i class="fas fa-file-contract text-sm" aria-hidden="true"></i>
-                                            <span class="support-submenu-label">توافقنامه مالی</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ route('elections.guideline') }}" class="sidebar-menu-link support-submenu-link relative group">
-                                            <i class="fas fa-vote-yea text-sm" aria-hidden="true"></i>
-                                            <span class="support-submenu-label">شیوه‌نامه انتخابات سیال</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ route('participation.credit-regulation') }}" class="sidebar-menu-link support-submenu-link relative group">
-                                            <i class="fas fa-award text-sm" aria-hidden="true"></i>
-                                            <span class="support-submenu-label">نظام‌نامه اعتبارات مشارکت</span>
-                                        </a>
-                                    </li>
+                                    <li><a href="{{ $docsLinks['base_url'] }}/fa/introduction" target="_blank" rel="noopener noreferrer" class="sidebar-menu-link support-submenu-link relative group"><i class="fas fa-book-open text-sm" aria-hidden="true"></i><span class="support-submenu-label">مرکز اسناد</span></a></li>
+                                    <li><a href="{{ $docsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="sidebar-menu-link support-submenu-link relative group"><i class="fas fa-landmark text-sm" aria-hidden="true"></i><span class="support-submenu-label">اسناد بنیادین</span></a></li>
+                                    <li><a href="{{ route('terms') }}" class="sidebar-menu-link support-submenu-link relative group"><i class="fas fa-scroll text-sm" aria-hidden="true"></i><span class="support-submenu-label">اساسنامه</span></a></li>
+                                    <li><a href="{{ route('najm-bahar.agreement') }}" class="sidebar-menu-link support-submenu-link relative group"><i class="fas fa-file-contract text-sm" aria-hidden="true"></i><span class="support-submenu-label">توافقنامه مالی</span></a></li>
+                                    <li><a href="{{ route('elections.guideline') }}" class="sidebar-menu-link support-submenu-link relative group"><i class="fas fa-vote-yea text-sm" aria-hidden="true"></i><span class="support-submenu-label">شیوه‌نامه انتخابات سیال</span></a></li>
+                                    <li><a href="{{ route('participation.credit-regulation') }}" class="sidebar-menu-link support-submenu-link relative group"><i class="fas fa-award text-sm" aria-hidden="true"></i><span class="support-submenu-label">نظام‌نامه اعتبارات مشارکت</span></a></li>
                                 </ul>
                             </div>
                         </li>
                     </ul>
                 </li>
 
-                <!-- Admin Panel (if admin) -->
                 @if (auth()->user()->is_admin == 1)
+                    <li class="sidebar-section-label hidden lg:block" data-sidebar-section="admin" aria-hidden="true">مدیریت</li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('admin.dashboard') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                             <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                            <i class="fas fa-user-shield" style="color: #9333ea;"></i>
-                            <span class="flex-grow text-right mx-3">{{ __('navigation.admin_dashboard') }}</span>
+                            <i class="fas fa-user-shield" style="color: #9333ea;"></i><span class="flex-grow text-right mx-3">{{ __('navigation.admin_dashboard') }}</span>
                         </a>
                     </li>
                 @endif
 
-                <!-- Logout -->
                 <li class="sidebar-menu-item">
                     <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form-sidebar').submit();" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                        <i class="fas fa-sign-out-alt" style="color: var(--color-digital-gold);"></i>
-                        <span class="flex-grow text-right mx-3">{{ __('navigation.logout') }}</span>
+                        <i class="fas fa-sign-out-alt" style="color: var(--color-digital-gold);"></i><span class="flex-grow text-right mx-3">{{ __('navigation.logout') }}</span>
                     </a>
-                    <form id="logout-form-sidebar" action="{{ route('logout') }}" method="POST" class="hidden">
-                        @csrf
-                    </form>
+                    <form id="logout-form-sidebar" action="{{ route('logout') }}" method="POST" class="hidden">@csrf</form>
                 </li>
             </ul>
         </nav>
 
-        <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500 hidden lg:block">
-            نسخه ۲.۱.۰ - EarthCoop
-        </div>
+        <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500 hidden lg:block">نسخه ۲.۱.۰ - EarthCoop</div>
     </aside>
 @endif
