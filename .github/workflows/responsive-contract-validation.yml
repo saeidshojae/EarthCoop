@@ -9,6 +9,9 @@ on:
       - 'public/Css/responsive-system.css'
       - 'resources/views/layouts/unified.blade.php'
       - 'resources/views/groups/**'
+      - 'resources/views/home.blade.php'
+      - 'resources/views/auth/register_step1.blade.php'
+      - 'resources/views/auth/register_step2.blade.php'
       - 'tests/js/responsive/**'
       - 'docs/superpowers/specs/2026-08-28-responsive-system-and-my-groups-mobile-design.md'
       - 'docs/superpowers/plans/2026-08-28-responsive-system-my-groups-implementation.md'
@@ -31,4 +34,4 @@ jobs:
           node-version: '20'
 
       - name: Validate responsive contract
-        run: node --test tests/js/responsive/my-groups-mobile-contract.test.js
+        run: node --test tests/js/responsive/*.test.js
