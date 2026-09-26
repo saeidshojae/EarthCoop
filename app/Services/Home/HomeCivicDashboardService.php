@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Services\Elections\CurrentElectionCenterService;
 use App\Services\InvitationLifecycleService;
+use App\Services\MembershipParticipationEligibilityService;
 use App\Services\ProfileCompletionService;
 
 class HomeCivicDashboardService
@@ -16,6 +17,7 @@ class HomeCivicDashboardService
         private readonly AccountService $accounts,
         private readonly InvitationLifecycleService $invitations,
         private readonly CurrentElectionCenterService $elections,
+        private readonly MembershipParticipationEligibilityService $participationEligibility,
     ) {
     }
 
@@ -23,6 +25,8 @@ class HomeCivicDashboardService
     {
         $residenceComplete = $this->profileCompletion->hasRequiredResidence($user);
         $hasNajmBaharAccount = $this->accounts->hasMainAccount((int) $user->id);
+        $participationStatus = $this->participationEligibility->status($user);
+        $membershipFeePaid = $participationStatus === MembershipParticipationEligibilityService::ELIGIBLE;
         $remainingInvitationSlots = max(0, $this->invitations->remainingSlots($user));
         $electionSnapshot = $this->elections->forUser($user);
         $electionActionRequired = (int) data_get($electionSnapshot, 'summary.action_required', 0);
@@ -39,8 +43,11 @@ class HomeCivicDashboardService
                 'complete' => $residenceComplete,
             ],
             'najm_bahar' => [
-                'status' => $hasNajmBaharAccount ? 'active' : 'needs_attention',
+                'status' => ! $hasNajmBaharAccount
+                    ? 'needs_attention'
+                    : ($membershipFeePaid ? 'active' : 'membership_fee_due'),
                 'active' => $hasNajmBaharAccount,
+                'membership_fee_paid' => $membershipFeePaid,
             ],
             'groups' => [
                 'status' => $totalGroups > 0 ? 'active' : 'empty',
@@ -68,6 +75,7 @@ class HomeCivicDashboardService
             'next_action' => $this->nextAction(
                 $residenceComplete,
                 $hasNajmBaharAccount,
+                $participationStatus,
                 $electionActionRequired,
                 $pollActionRequired,
                 $remainingInvitationSlots,
@@ -97,6 +105,7 @@ class HomeCivicDashboardService
     private function nextAction(
         bool $residenceComplete,
         bool $hasNajmBaharAccount,
+        string $participationStatus,
         int $electionActionRequired,
         int $pollActionRequired,
         int $remainingInvitationSlots,
@@ -105,6 +114,7 @@ class HomeCivicDashboardService
             return [
                 'key' => 'residence',
                 'route' => 'register.step3',
+                'fragment' => null,
                 'label' => 'تکمیل مکان و حکمرانی',
                 'description' => 'مکان پایهٔ حکمرانی خود را تکمیل کنید تا مسیر مشارکت شما کامل شود.',
             ];
@@ -114,8 +124,19 @@ class HomeCivicDashboardService
             return [
                 'key' => 'najm_bahar',
                 'route' => 'najm-bahar.dashboard',
+                'fragment' => null,
                 'label' => 'راه‌اندازی نجم بهار',
                 'description' => 'حساب اصلی نجم بهار را فعال کنید تا بخش اقتصادی ارث‌کوپ برای شما آماده شود.',
+            ];
+        }
+
+        if ($participationStatus === MembershipParticipationEligibilityService::MEMBERSHIP_FEE_DUE) {
+            return [
+                'key' => 'membership_fee',
+                'route' => 'najm-bahar.dashboard',
+                'fragment' => 'membership-fee',
+                'label' => 'پرداخت حق عضویت',
+                'description' => 'حق عضویت دورهٔ جاری را پرداخت کنید تا دسترسی کامل مشارکتی شما فعال بماند.',
             ];
         }
 
@@ -123,6 +144,7 @@ class HomeCivicDashboardService
             return [
                 'key' => 'election',
                 'route' => 'history.election',
+                'fragment' => null,
                 'label' => 'رسیدگی به انتخابات جاری',
                 'description' => 'در انتخابات جاری موردی وجود دارد که به اقدام شما نیاز دارد.',
             ];
@@ -132,6 +154,7 @@ class HomeCivicDashboardService
             return [
                 'key' => 'poll',
                 'route' => 'history.poll',
+                'fragment' => null,
                 'label' => 'شرکت در نظرسنجی جاری',
                 'description' => 'یک نظرسنجی فعال در گروه‌های شما هنوز منتظر رأی شماست.',
             ];
@@ -141,6 +164,7 @@ class HomeCivicDashboardService
             return [
                 'key' => 'invitation',
                 'route' => 'my-invation-code',
+                'fragment' => null,
                 'label' => 'دعوت و گسترش مشارکت',
                 'description' => 'از سهمیهٔ دعوت آزاد خود برای افزودن اعضای واقعی به شبکه استفاده کنید.',
             ];
@@ -149,6 +173,7 @@ class HomeCivicDashboardService
         return [
             'key' => 'civic_anchor',
             'route' => 'location-governance.me',
+            'fragment' => null,
             'label' => 'مشاهده مکان و حکمرانی من',
             'description' => 'وضعیت محلی و جایگاه حکمرانی خود را مرور کنید.',
         ];
