@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\GroupChat\GroupFeedService;
 use App\Services\GroupChat\GroupSessionService;
+use App\Services\Groups\GroupMembershipRoleResolver;
 
 class ChatController extends Controller
 {
@@ -56,23 +57,11 @@ class ChatController extends Controller
             abort(403, 'Unauthorized');
         }
         
-        // تعیین نقش بر اساس location_level:
-        // - سطح محله و پایین‌تر (neighborhood, street, alley) → فعال (role 1)
-        // - سطح منطقه و بالاتر (region, village, rural, city و ...) → ناظر (role 0)
-        // اگر role در pivot وجود داشت و معتبر بود (2, 3, 4, 5)، از همان استفاده می‌کنیم
-        $pivotRole = $groupUser ? (int) $groupUser->role : null;
-
-        if ((bool) config('location-governance.groups_enabled', false)) {
-            // Canonical membership reconciliation owns the effective role.
-            // Never infer active/observer status from the legacy location_level.
-            $yourRole = in_array($pivotRole, [0, 1, 2, 3, 4, 5], true) ? $pivotRole : 0;
-        } elseif (in_array($pivotRole, [2, 3, 4, 5], true)) {
-            $yourRole = $pivotRole;
-        } else {
-            $locationLevel = strtolower(trim((string)($group->location_level ?? '')));
-            $yourRole = in_array($locationLevel, ['neighborhood', 'street', 'alley'], true) ? 1 : 0;
+        $yourRole = app(GroupMembershipRoleResolver::class)->effectiveRole($group, $groupUser);
+        if ($yourRole === null) {
+            abort(403, 'Unauthorized');
         }
-        
+
         $lastReadMessageId = $groupUser ? $groupUser->last_read_message_id : null;
         $unreadContentCounts = $this->countUnreadContent($group, (int) auth()->id());
         \Log::info('ChatController@chat T1 (after groupUser): ' . round((microtime(true)-$t0)*1000) . 'ms');
