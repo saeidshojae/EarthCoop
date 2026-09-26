@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Group\CanonicalGroupSearchController;
 use App\Http\Controllers\LocationGovernance\CanonicalGroupIndexController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,3 +11,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/groups', CanonicalGroupIndexController::class)
     ->middleware('auth')
     ->name('groups.index');
+
+// Shadow only the legacy group-search closure after web.php. The surrounding
+// route group is authenticated for /groups, but AJAX group search historically
+// returns JSON 401 rather than a login redirect, so preserve that contract here.
+Route::get('/api/groups/search', CanonicalGroupSearchController::class)
+    ->withoutMiddleware(\App\Http\Middleware\Authenticate::class);

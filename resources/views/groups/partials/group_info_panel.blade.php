@@ -259,13 +259,8 @@
                                 $full = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) ?: '—';
                                 $email = $person->email ?? '';
                                 $initial = Str::upper(Str::substr($email ?: $full, 0, 1));
-                                $pivotRole = isset($member->role) ? (int)$member->role : null;
-                                if (in_array($pivotRole, [2,3,4,5], true)) {
-                                    $finalRole = $pivotRole;
-                                } else {
-                                    $locationLevel = strtolower(trim((string)($group2->location_level ?? '')));
-                                    $finalRole = in_array($locationLevel, ['neighborhood','street','alley'], true) ? 1 : 0;
-                                }
+                                $finalRole = app(\App\Services\Groups\GroupMembershipRoleResolver::class)
+                                    ->effectiveRole($group2, $member);
                                 $memberRoleLabel = match($finalRole) { 0=>'ناظر',1=>'فعال',2=>'بازرس',3=>'مدیر',4=>'مهمان',5=>'فعال موقت',default=>'عضو' };
                                 $profileUrl = $person?->id ? route('profile.member.show', $person->id) : '#';
                                 $isOnline = method_exists($person, 'isOnline') ? (bool)$person->isOnline() : false;

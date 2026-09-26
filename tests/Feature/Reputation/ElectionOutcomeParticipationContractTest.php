@@ -13,7 +13,8 @@ class ElectionOutcomeParticipationContractTest extends TestCase
 
         $this->assertStringContainsString("\$appointment->appointment_kind !== 'direct'", $listener);
         $this->assertStringContainsString("'elected_' . \$position", $listener);
-        $this->assertStringContainsString("':user:' . \$user->id . ':level:' . \$group->location_level", $listener);
+        $this->assertStringContainsString('$scopeKey = $this->groupContext->stableScopeKey($group);', $listener);
+        $this->assertStringContainsString("':user:' . \$user->id . ':scope:' . \$scopeKey", $listener);
         $this->assertStringContainsString('AwardElectionAppointmentParticipation::class', $provider);
     }
 
