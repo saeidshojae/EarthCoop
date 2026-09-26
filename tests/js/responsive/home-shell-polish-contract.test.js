@@ -8,13 +8,19 @@ const hoda = read('resources/views/components/najm-hoda-widget.blade.php');
 const layout = read('resources/views/layouts/unified.blade.php');
 const polish = read('resources/views/components/home-shell-polish.blade.php');
 
-test('Home sidebar exposes lightweight semantic sections without changing established destinations', () => {
-    for (const section of ['network', 'governance', 'economy', 'account-support']) {
-        assert.match(polish, new RegExp(`key:\\s*["']${section}["']`));
+test('Shared sidebar owns semantic sections on every page instead of Home injecting them with JavaScript', () => {
+    for (const section of [
+        ['network', 'شبکه و ارتباطات'],
+        ['governance', 'حکمرانی و مشارکت'],
+        ['economy', 'اقتصاد'],
+        ['account-support', 'حساب و راهنما'],
+    ]) {
+        assert.match(sidebar, new RegExp(`data-sidebar-section=["']${section[0]}["']`));
+        assert.match(sidebar, new RegExp(section[1]));
     }
-    assert.match(polish, /sidebar-section-label/);
-    assert.match(polish, /dataset\.sidebarSection/);
-    assert.match(layout, /routeIs\(['"]home['"]\)[\s\S]*components\.home-shell-polish/s);
+
+    assert.doesNotMatch(polish, /installHomeSidebarSections/);
+    assert.doesNotMatch(polish, /dataset\.sidebarSection/);
 
     for (const route of [
         'notifications.index',
@@ -40,4 +46,5 @@ test('Najm Hoda mobile launcher respects safe areas and keeps a compact Home foo
     assert.match(polish, /#najm-hoda-widget\[data-route-name=["']home["']\][\s\S]*?\.najm-hoda-toggle-btn\s*\{[^}]*width:\s*(?:44|46|48)px[^}]*height:\s*(?:44|46|48)px/s);
     assert.match(hoda, /\.najm-hoda-toggle-btn\s*\{[^}]*width:\s*(?:5[2-9]|6\d)px[^}]*height:\s*(?:5[2-9]|6\d)px/s);
     assert.match(polish, /bottom:\s*calc\([^;]*env\(safe-area-inset-bottom\)[^;]*\)/);
+    assert.match(layout, /routeIs\(['"]home['"]\)[\s\S]*components\.home-shell-polish/s);
 });
