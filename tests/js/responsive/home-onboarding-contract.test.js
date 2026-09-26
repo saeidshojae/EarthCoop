@@ -18,7 +18,7 @@ test('Home explicitly inherits the Welcome/Register visual language instead of i
     }
 
     assert.match(home, /data-home-identity-surface/);
-    assert.match(home, /home-identity-surface::before/);
+    assert.match(home, /home-hero::before/);
     assert.match(home, /linear-gradient\(90deg,\s*var\(--color-earth-green\),\s*var\(--color-ocean-blue\),\s*var\(--color-digital-gold\)\)/);
     assert.match(home, /linear-gradient\(145deg,\s*var\(--color-pure-white\)\s*0%,\s*#f0f4f7\s*100%\)/);
 });
@@ -64,4 +64,31 @@ test('Home preserves admin-managed slider and content inside the redesigned hier
     assert.match(home, /\$homeSliders->isNotEmpty\(\)/);
     assert.match(home, /\$homeSetting\?->home_content/);
     assert.match(home, /data-home-admin-content/);
+});
+
+test('Home consumes the civic dashboard read model for journey, today and next action presentation', () => {
+    assert.match(home, /\$homeDashboard\[['"]journey['"]\]/);
+    assert.match(home, /\$homeDashboard\[['"]today['"]\]/);
+    assert.match(home, /\$homeDashboard\[['"]next_action['"]\]/);
+    assert.match(home, /data-home-today/);
+    assert.match(home, /data-home-today-zero-state/);
+    assert.match(home, /data-home-next-action/);
+    assert.match(home, /route\(\s*\$nextAction\[['"]route['"]\]\s*\)/);
+    assert.doesNotMatch(home, /AccountService::class|CurrentElectionCenterService::class|Poll::(?:query|where)/);
+});
+
+test('Home reserves the tri-color identity stripe for the Hero and demotes secondary content', () => {
+    assert.match(home, /\.home-hero::before\s*\{/);
+    assert.doesNotMatch(home, /\.home-identity-surface::before\s*\{/);
+    assert.match(home, /\.home-secondary-surface\s*\{/);
+
+    const journey = home.indexOf('data-home-journey');
+    const today = home.indexOf('data-home-today');
+    const groups = home.indexOf('data-home-groups');
+    const admin = home.indexOf('data-home-admin-content');
+
+    assert.ok(journey !== -1 && today !== -1 && groups !== -1 && admin !== -1);
+    assert.ok(journey < today, 'journey should precede today');
+    assert.ok(today < groups, 'today should precede groups');
+    assert.ok(groups < admin, 'admin/news content should follow personal surfaces');
 });

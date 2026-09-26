@@ -7,11 +7,12 @@ use Illuminate\Http\Request;
 use App\Models\UserExperience;
 use App\Models\Setting;
 use App\Models\Slider;
+use App\Services\Home\HomeCivicDashboardService;
 use App\Services\ProfileCompletionService;
 
 class HomeController extends Controller
 {
-    public function index()
+    public function index(HomeCivicDashboardService $homeCivicDashboardService)
     {
         if (!auth()->check()) {
             return redirect()->route('login');
@@ -52,6 +53,7 @@ class HomeController extends Controller
         // '2' = علمی/تجربی (experience_id دارد)
         // '3' = سنی (age_group_id دارد)
         // '4' = جنسیتی (gender دارد)
+        $pendingLocationGroupCount = 0;
         
         if ((bool) config('location-governance.groups_enabled', false)) {
             // Canonical identity is dimension-based. Legacy group_type is only a
@@ -60,6 +62,7 @@ class HomeController extends Controller
             $pendingRequests = $pendingService->openForUser($user);
             $groups = $pendingService->presentableCanonicalGroups($groups, $pendingRequests);
             $pendingGroups = $pendingService->presentationGroups($pendingRequests);
+            $pendingLocationGroupCount = $pendingGroups->count();
             $allSystemGroups = $groups->concat($pendingGroups);
             $generalGroups = $allSystemGroups->where('dimension_key', 'public');
             $specializedGroups = $allSystemGroups->whereIn('dimension_key', ['profession', 'specialty']);
@@ -74,6 +77,12 @@ class HomeController extends Controller
                 return $group->group_type == '3' || $group->group_type == '4';
             });
         }
+
+        $homeDashboard = $homeCivicDashboardService->forUser($user, [
+            'public' => $generalGroups->count(),
+            'specialized' => $specializedGroups->count(),
+            'exclusive' => $exclusiveGroups->count(),
+        ], $pendingLocationGroupCount);
         
         // دریافت حراج‌های فعال
         $activeAuctions = \App\Modules\Stock\Models\Auction::where('status', 'running')
@@ -92,8 +101,7 @@ class HomeController extends Controller
         // ارسال متغیرها به ویو
         return view('home', compact(
             'groups', 'generalGroups', 'specializedGroups', 'exclusiveGroups',
-            'activeAuctions', 'homeSetting', 'homeSliders'
+            'activeAuctions', 'homeSetting', 'homeSliders', 'homeDashboard'
         ));
     }
 }
-

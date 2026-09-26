@@ -181,6 +181,10 @@
         @include('components.najm-hoda-widget')
     @endif
 
+    @if(request()->routeIs('home'))
+        @include('components.home-shell-polish')
+    @endif
+
     <!-- SweetAlert Helper Functions -->
     <script>
         function showAlert(message, type = 'info') {

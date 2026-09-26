@@ -29,13 +29,31 @@
         box-shadow: var(--home-shadow);
     }
 
-    .home-identity-surface::before {
+    .home-secondary-surface {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, .68);
+        border: 1px solid var(--home-border);
+        border-radius: 16px;
+        box-shadow: var(--home-shadow-soft);
+    }
+
+    .home-hero::before {
         content: '';
         position: absolute;
         inset: 0 0 auto 0;
         height: 6px;
         background: linear-gradient(90deg, var(--color-earth-green), var(--color-ocean-blue), var(--color-digital-gold));
         z-index: 2;
+    }
+
+    .home-hero,
+    .home-journey-surface,
+    .home-today-surface,
+    .home-groups-surface,
+    .home-admin-surface,
+    .home-auctions-surface {
+        padding: 1.15rem;
     }
 
     .home-hero {
@@ -48,9 +66,7 @@
         align-items: center;
     }
 
-    .home-hero-copy {
-        min-width: 0;
-    }
+    .home-hero-copy { min-width: 0; }
 
     .home-eyebrow {
         display: inline-flex;
@@ -114,13 +130,6 @@
         box-shadow: 0 8px 18px rgba(16, 185, 129, .22);
     }
 
-    .home-primary-action:hover,
-    .home-primary-action:focus-visible {
-        color: #fff;
-        transform: translateY(-2px);
-        box-shadow: 0 11px 23px rgba(16, 185, 129, .28);
-    }
-
     .home-secondary-action {
         border: 1px solid rgba(59, 130, 246, .28);
         color: var(--color-dark-blue);
@@ -128,12 +137,21 @@
         box-shadow: 0 5px 14px rgba(15, 23, 42, .05);
     }
 
+    .home-primary-action:hover,
+    .home-primary-action:focus-visible,
+    .home-secondary-action:hover,
+    .home-secondary-action:focus-visible {
+        transform: translateY(-2px);
+    }
+
+    .home-primary-action:hover,
+    .home-primary-action:focus-visible { color: #fff; box-shadow: 0 11px 23px rgba(16, 185, 129, .28); }
+
     .home-secondary-action:hover,
     .home-secondary-action:focus-visible {
         color: var(--color-dark-blue);
         border-color: rgba(59, 130, 246, .48);
         background: #fff;
-        transform: translateY(-2px);
         box-shadow: 0 8px 18px rgba(59, 130, 246, .1);
     }
 
@@ -188,9 +206,7 @@
         box-shadow: 0 14px 30px rgba(16, 185, 129, .2);
     }
 
-    .home-section {
-        margin-top: 1.35rem;
-    }
+    .home-section { margin-top: 1.35rem; }
 
     .home-section-header {
         display: flex;
@@ -213,13 +229,6 @@
         color: #64748b;
         font-size: .84rem;
         line-height: 1.8;
-    }
-
-    .home-journey-surface,
-    .home-groups-surface,
-    .home-admin-surface,
-    .home-auctions-surface {
-        padding: 1.15rem;
     }
 
     .home-journey-grid {
@@ -258,7 +267,7 @@
         align-items: center;
         justify-content: space-between;
         gap: .75rem;
-        margin-bottom: .85rem;
+        margin-bottom: .7rem;
     }
 
     .home-card-icon {
@@ -295,10 +304,37 @@
     }
 
     .home-card-text {
-        margin: .35rem 0 .8rem;
+        margin: .35rem 0 .55rem;
         color: #64748b;
         font-size: .79rem;
         line-height: 1.75;
+    }
+
+    .home-card-state {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: .35rem;
+        margin: 0 0 .7rem;
+        padding: .28rem .55rem;
+        border-radius: 9999px;
+        color: #475569;
+        background: rgba(148, 163, 184, .11);
+        font-size: .73rem;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .home-card-state[data-state='complete'],
+    .home-card-state[data-state='active'],
+    .home-card-state[data-state='available'] {
+        color: var(--color-dark-green);
+        background: rgba(16, 185, 129, .1);
+    }
+
+    .home-card-state[data-state='needs_attention'] {
+        color: #92400e;
+        background: rgba(245, 158, 11, .12);
     }
 
     .home-card-link {
@@ -309,6 +345,74 @@
         color: var(--card-accent);
         font-size: .78rem;
         font-weight: 700;
+    }
+
+    .home-today-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .7rem;
+        margin-bottom: .9rem;
+    }
+
+    .home-today-item {
+        min-width: 0;
+        padding: .85rem;
+        border: 1px solid rgba(148, 163, 184, .2);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, .72);
+    }
+
+    .home-today-item strong {
+        display: block;
+        margin-bottom: .15rem;
+        color: var(--color-gentle-black);
+        font-size: 1.35rem;
+        line-height: 1.25;
+    }
+
+    .home-today-item span {
+        color: #64748b;
+        font-size: .76rem;
+        line-height: 1.65;
+    }
+
+    .home-today-zero {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+        margin-bottom: .9rem;
+        padding: .9rem 1rem;
+        border: 1px solid rgba(16, 185, 129, .14);
+        border-radius: 12px;
+        color: #475569;
+        background: rgba(16, 185, 129, .055);
+        font-size: .84rem;
+        line-height: 1.75;
+    }
+
+    .home-today-zero i { color: var(--color-earth-green); }
+
+    .home-next-action {
+        display: grid;
+        gap: .85rem;
+        padding: 1.05rem;
+        border: 1px solid rgba(16, 185, 129, .15);
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(16, 185, 129, .07), rgba(59, 130, 246, .045));
+    }
+
+    .home-next-action-copy h3 {
+        margin: 0;
+        color: var(--color-gentle-black);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .home-next-action-copy p {
+        margin: .3rem 0 0;
+        color: #64748b;
+        font-size: .82rem;
+        line-height: 1.75;
     }
 
     .home-slider-shell {
@@ -350,34 +454,40 @@
         transition: transform .3s ease;
     }
 
-    .home-slider-shell:hover swiper-slide img {
-        transform: scale(1.015);
+    .home-slider-shell:hover swiper-slide img { transform: scale(1.015); }
+
+    .home-admin-surface {
+        background: rgba(255, 255, 255, .52);
+    }
+
+    .home-admin-surface .home-eyebrow {
+        background: rgba(148, 163, 184, .1);
+        color: #64748b;
+    }
+
+    .home-admin-surface .home-section-title {
+        font-size: 1.05rem;
+        font-weight: 600;
     }
 
     .home-admin-copy {
         margin-top: 1rem;
-        color: #475569;
-        font-size: .92rem;
-        line-height: 1.95;
+        color: #64748b;
+        font-size: .86rem;
+        line-height: 1.9;
     }
 
-    .home-admin-copy > :last-child {
-        margin-bottom: 0;
-    }
+    .home-admin-copy > :last-child { margin-bottom: 0; }
 
-    .home-groups-grid {
+    .home-groups-grid,
+    .home-auctions-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: .8rem;
     }
 
-    .group-stat-card {
-        --card-accent: var(--color-earth-green);
-    }
-
-    .group-stat-card .home-card-topline {
-        margin-bottom: .55rem;
-    }
+    .group-stat-card { --card-accent: var(--color-earth-green); }
+    .group-stat-card .home-card-topline { margin-bottom: .55rem; }
 
     .group-stat-number {
         margin: .05rem 0 .45rem;
@@ -399,38 +509,7 @@
         line-height: 1.5;
     }
 
-    .group-stat-meta i {
-        color: var(--card-accent);
-    }
-
-    .home-next-action {
-        display: grid;
-        gap: .85rem;
-        padding: 1.15rem;
-        border: 1px solid rgba(16, 185, 129, .15);
-        border-radius: 14px;
-        background: linear-gradient(135deg, rgba(16, 185, 129, .07), rgba(59, 130, 246, .045));
-    }
-
-    .home-next-action-copy h3 {
-        margin: 0;
-        color: var(--color-gentle-black);
-        font-size: 1rem;
-        font-weight: 700;
-    }
-
-    .home-next-action-copy p {
-        margin: .3rem 0 0;
-        color: #64748b;
-        font-size: .82rem;
-        line-height: 1.75;
-    }
-
-    .home-auctions-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: .8rem;
-    }
+    .group-stat-meta i { color: var(--card-accent); }
 
     .home-auction-card h3 {
         margin: 0;
@@ -469,7 +548,9 @@
     }
 
     body.dark-mode .home-identity-surface,
+    body.dark-mode .home-secondary-surface,
     body.dark-mode .home-interactive-card,
+    body.dark-mode .home-today-item,
     body.dark-mode .home-slider-shell,
     body.dark-mode .home-toast {
         background: var(--card-dark, #252525);
@@ -479,6 +560,7 @@
     body.dark-mode .home-hero-title,
     body.dark-mode .home-section-title,
     body.dark-mode .home-card-title,
+    body.dark-mode .home-today-item strong,
     body.dark-mode .group-stat-number,
     body.dark-mode .home-next-action-copy h3,
     body.dark-mode .home-auction-card h3 {
@@ -488,6 +570,8 @@
     body.dark-mode .home-hero-subtitle,
     body.dark-mode .home-section-description,
     body.dark-mode .home-card-text,
+    body.dark-mode .home-today-item span,
+    body.dark-mode .home-today-zero,
     body.dark-mode .group-stat-meta,
     body.dark-mode .home-admin-copy,
     body.dark-mode .home-next-action-copy p,
@@ -500,11 +584,7 @@
             grid-template-columns: minmax(0, 1fr) 210px;
             gap: 2rem;
         }
-
-        .home-hero-mark {
-            display: flex;
-        }
-
+        .home-hero-mark { display: flex; }
         .home-next-action {
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
@@ -512,13 +592,8 @@
     }
 
     @media (max-width: 1023.98px) {
-        .home-page-shell {
-            padding-top: .75rem;
-        }
-
-        .home-layout {
-            gap: 1rem;
-        }
+        .home-page-shell { padding-top: .75rem; }
+        .home-layout { gap: 1rem; }
     }
 
     @media (max-width: 767.98px) {
@@ -529,25 +604,15 @@
 
         .home-hero,
         .home-journey-surface,
+        .home-today-surface,
         .home-groups-surface,
         .home-admin-surface,
-        .home-auctions-surface {
-            padding: .95rem;
-        }
+        .home-auctions-surface { padding: .95rem; }
 
-        .home-identity-surface {
-            border-radius: 12px;
-        }
-
-        .home-hero-title {
-            font-size: 1.55rem;
-            line-height: 1.45;
-        }
-
-        .home-hero-subtitle {
-            font-size: .88rem;
-            line-height: 1.85;
-        }
+        .home-identity-surface,
+        .home-secondary-surface { border-radius: 12px; }
+        .home-hero-title { font-size: 1.55rem; line-height: 1.45; }
+        .home-hero-subtitle { font-size: .88rem; line-height: 1.85; }
 
         .home-hero-actions {
             display: grid;
@@ -582,46 +647,33 @@
             grid-template-areas:
                 'icon title step'
                 'icon text text'
+                'icon state state'
                 'icon link link';
             column-gap: .75rem;
             row-gap: .18rem;
             align-items: start;
         }
 
-        .home-journey-grid .home-card-topline {
-            display: contents;
-        }
+        .home-journey-grid .home-card-topline { display: contents; }
+        .home-journey-grid .home-card-icon { grid-area: icon; width: 40px; height: 40px; margin-top: .1rem; }
+        .home-journey-grid .home-step-number { grid-area: step; }
+        .home-journey-grid .home-card-title { grid-area: title; align-self: center; }
+        .home-journey-grid .home-card-text { grid-area: text; margin: .15rem 0 .2rem; }
+        .home-journey-grid .home-card-state { grid-area: state; margin: .1rem 0 .25rem; }
+        .home-journey-grid .home-card-link { grid-area: link; margin-top: .1rem; }
 
-        .home-journey-grid .home-card-icon {
-            grid-area: icon;
-            width: 40px;
-            height: 40px;
-            margin-top: .1rem;
-        }
-
-        .home-journey-grid .home-step-number {
-            grid-area: step;
-        }
-
-        .home-journey-grid .home-card-title {
-            grid-area: title;
-            align-self: center;
-        }
-
-        .home-journey-grid .home-card-text {
-            grid-area: text;
-            margin: .15rem 0 .3rem;
-        }
-
-        .home-journey-grid .home-card-link {
-            grid-area: link;
-            margin-top: .1rem;
-        }
-
+        .home-today-grid,
         .home-groups-grid,
-        .home-auctions-grid {
-            grid-template-columns: 1fr;
+        .home-auctions-grid { grid-template-columns: 1fr; }
+
+        .home-today-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            padding: .72rem .8rem;
         }
+        .home-today-item strong { margin: 0; font-size: 1.15rem; }
 
         .group-stat-card {
             display: grid;
@@ -629,49 +681,21 @@
             gap: .3rem .8rem;
             align-items: center;
         }
+        .group-stat-card .home-card-topline { margin: 0; }
+        .group-stat-number { grid-column: 2; grid-row: 1 / span 2; font-size: 2.1rem; margin: 0; }
+        .group-stat-meta { padding-top: .45rem; margin-top: .2rem; }
 
-        .group-stat-card .home-card-topline {
-            margin: 0;
-        }
-
-        .group-stat-number {
-            grid-column: 2;
-            grid-row: 1 / span 2;
-            font-size: 2.1rem;
-            margin: 0;
-        }
-
-        .group-stat-meta {
-            padding-top: .45rem;
-            margin-top: .2rem;
-        }
-
-        .home-slider-shell {
-            aspect-ratio: 16 / 9;
-            border-radius: 12px;
-        }
-
-        .home-admin-copy {
-            font-size: .86rem;
-            line-height: 1.9;
-        }
-
-        .home-next-action {
-            padding: .95rem;
-        }
-
-        .home-next-action .home-primary-action {
-            width: 100%;
-        }
+        .home-slider-shell { aspect-ratio: 16 / 9; border-radius: 12px; }
+        .home-admin-copy { font-size: .84rem; line-height: 1.85; }
+        .home-next-action { padding: .95rem; }
+        .home-next-action .home-primary-action { width: 100%; }
     }
 
     @media (prefers-reduced-motion: reduce) {
         .home-primary-action,
         .home-secondary-action,
         .home-interactive-card,
-        swiper-slide img {
-            transition: none !important;
-        }
+        swiper-slide img { transition: none !important; }
 
         .home-primary-action:hover,
         .home-primary-action:focus-visible,
@@ -679,14 +703,22 @@
         .home-secondary-action:focus-visible,
         .home-interactive-card:hover,
         .home-interactive-card:focus-visible,
-        .home-slider-shell:hover swiper-slide img {
-            transform: none !important;
-        }
+        .home-slider-shell:hover swiper-slide img { transform: none !important; }
     }
 </style>
 @endpush
 
 @section('content')
+@php
+    $journey = $homeDashboard['journey'];
+    $today = $homeDashboard['today'];
+    $nextAction = $homeDashboard['next_action'];
+    $todayTotal = (int) $today['unread_notifications']
+        + (int) $today['election_action_required']
+        + (int) $today['poll_action_required']
+        + (int) $today['pending_location_groups'];
+@endphp
+
 <div class="home-page-shell">
     <div class="home-layout container mx-auto flex flex-col lg:flex-row gap-6 px-3 sm:px-5 md:px-7">
         @include('partials.sidebar-unified')
@@ -709,59 +741,143 @@
                 </div>
             </section>
 
-            <section class="home-section home-identity-surface home-journey-surface" id="home-journey" data-home-journey>
+            <section class="home-section home-secondary-surface home-journey-surface" id="home-journey" data-home-journey>
                 <div class="home-section-header">
                     <div>
                         <span class="home-eyebrow"><i class="fas fa-compass" aria-hidden="true"></i>قدم‌های بعدی</span>
                         <h2 class="home-section-title">مسیر من در ارث‌کوپ</h2>
-                        <p class="home-section-description">چهار مسیر اصلی را هر زمان لازم بود مرور یا تکمیل کنید.</p>
+                        <p class="home-section-description">چهار مسیر اصلی را با وضعیت واقعی حساب خودتان دنبال کنید.</p>
                     </div>
                 </div>
 
                 <div class="home-journey-grid">
-                    <a href="{{ route('location-governance.me') }}" class="home-interactive-card" style="--card-accent: var(--color-earth-green);">
+                    <a href="{{ route('location-governance.me') }}" class="home-interactive-card" style="--card-accent: var(--color-earth-green);" data-journey-status="{{ $journey['residence']['status'] }}">
                         <div class="home-card-topline">
                             <span class="home-card-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
                             <span class="home-step-number">۱</span>
                         </div>
                         <h3 class="home-card-title">مکان و حکمرانی</h3>
                         <p class="home-card-text">محل سکونت و حوزه‌های رسمی حکمرانی خود را ببینید و در صورت نیاز تکمیل کنید.</p>
+                        <span class="home-card-state" data-state="{{ $journey['residence']['status'] }}">
+                            <i class="fas {{ $journey['residence']['complete'] ? 'fa-circle-check' : 'fa-circle-exclamation' }}" aria-hidden="true"></i>
+                            {{ $journey['residence']['complete'] ? 'مکان پایه تکمیل است' : 'نیاز به تکمیل مکان پایه' }}
+                        </span>
                         <span class="home-card-link">بررسی مکان من <i class="fas fa-arrow-left" aria-hidden="true"></i></span>
                     </a>
 
-                    <a href="{{ route('najm-bahar.dashboard') }}" class="home-interactive-card" style="--card-accent: var(--color-ocean-blue);">
+                    <a href="{{ route('najm-bahar.dashboard') }}" class="home-interactive-card" style="--card-accent: var(--color-ocean-blue);" data-journey-status="{{ $journey['najm_bahar']['status'] }}">
                         <div class="home-card-topline">
                             <span class="home-card-icon"><i class="fas fa-coins" aria-hidden="true"></i></span>
                             <span class="home-step-number">۲</span>
                         </div>
                         <h3 class="home-card-title">نجم بهار</h3>
                         <p class="home-card-text">حساب اقتصادی، موجودی و مسیرهای مشارکت مالی خود را از نجم بهار دنبال کنید.</p>
+                        <span class="home-card-state" data-state="{{ $journey['najm_bahar']['status'] }}">
+                            <i class="fas {{ $journey['najm_bahar']['active'] ? 'fa-circle-check' : 'fa-circle-exclamation' }}" aria-hidden="true"></i>
+                            {{ $journey['najm_bahar']['active'] ? 'حساب اصلی فعال است' : 'حساب اصلی هنوز فعال نیست' }}
+                        </span>
                         <span class="home-card-link">ورود به نجم بهار <i class="fas fa-arrow-left" aria-hidden="true"></i></span>
                     </a>
 
-                    <a href="{{ route('groups.index') }}" class="home-interactive-card" style="--card-accent: var(--color-digital-gold);">
+                    <a href="{{ route('groups.index') }}" class="home-interactive-card" style="--card-accent: var(--color-digital-gold);" data-journey-status="{{ $journey['groups']['status'] }}">
                         <div class="home-card-topline">
                             <span class="home-card-icon"><i class="fas fa-people-group" aria-hidden="true"></i></span>
                             <span class="home-step-number">۳</span>
                         </div>
                         <h3 class="home-card-title">گروه‌های من</h3>
                         <p class="home-card-text">مجامع عمومی، گروه‌های تخصصی و گروه‌های اختصاصی خود را یکجا ببینید.</p>
+                        <span class="home-card-state" data-state="{{ $journey['groups']['status'] }}">
+                            <i class="fas fa-layer-group" aria-hidden="true"></i>
+                            {{ $journey['groups']['total'] }} گروه در مسیر شما
+                        </span>
                         <span class="home-card-link">مشاهده گروه‌ها <i class="fas fa-arrow-left" aria-hidden="true"></i></span>
                     </a>
 
-                    <a href="{{ route('my-invation-code') }}" class="home-interactive-card" style="--card-accent: var(--color-earth-green);">
+                    <a href="{{ route('my-invation-code') }}" class="home-interactive-card" style="--card-accent: var(--color-earth-green);" data-journey-status="{{ $journey['invitation']['status'] }}">
                         <div class="home-card-topline">
                             <span class="home-card-icon"><i class="fas fa-user-plus" aria-hidden="true"></i></span>
                             <span class="home-step-number">۴</span>
                         </div>
                         <h3 class="home-card-title">دعوت و مشارکت</h3>
                         <p class="home-card-text">دوستان خود را دعوت کنید و شبکهٔ محلی و حرفه‌ای ارث‌کوپ را گسترش دهید.</p>
+                        <span class="home-card-state" data-state="{{ $journey['invitation']['status'] }}">
+                            <i class="fas fa-ticket" aria-hidden="true"></i>
+                            {{ $journey['invitation']['remaining_slots'] }} سهمیه دعوت آزاد
+                        </span>
                         <span class="home-card-link">دعوت دوستان <i class="fas fa-arrow-left" aria-hidden="true"></i></span>
                     </a>
                 </div>
             </section>
 
-            <section class="home-section home-identity-surface home-admin-surface" data-home-admin-content>
+            <section class="home-section home-secondary-surface home-today-surface" data-home-today>
+                <div class="home-section-header">
+                    <div>
+                        <span class="home-eyebrow"><i class="fas fa-bolt" aria-hidden="true"></i>امروز در ارث‌کوپ</span>
+                        <h2 class="home-section-title">چیزهایی که به توجه شما نیاز دارند</h2>
+                        <p class="home-section-description">خلاصه‌ای از سیگنال‌های واقعی حساب شما؛ بدون شلوغی اضافه.</p>
+                    </div>
+                </div>
+
+                @if($todayTotal === 0)
+                    <div class="home-today-zero" data-home-today-zero-state>
+                        <i class="fas fa-circle-check" aria-hidden="true"></i>
+                        <span>امروز مورد فوری برای پیگیری ندارید. هر زمان وضعیت تازه‌ای ایجاد شود، همین‌جا دیده می‌شود.</span>
+                    </div>
+                @else
+                    <div class="home-today-grid" data-home-today-signals>
+                        <div class="home-today-item"><strong>{{ $today['unread_notifications'] }}</strong><span>اعلان خوانده‌نشده</span></div>
+                        <div class="home-today-item"><strong>{{ $today['election_action_required'] }}</strong><span>اقدام انتخاباتی</span></div>
+                        <div class="home-today-item"><strong>{{ $today['poll_action_required'] }}</strong><span>نظرسنجی منتظر رأی</span></div>
+                        <div class="home-today-item"><strong>{{ $today['pending_location_groups'] }}</strong><span>گروه مکانی در انتظار</span></div>
+                    </div>
+                @endif
+
+                <div class="home-next-action" data-home-next-action>
+                    <div class="home-next-action-copy">
+                        <span class="home-eyebrow"><i class="fas fa-lightbulb" aria-hidden="true"></i>قدم پیشنهادی</span>
+                        <h3>{{ $nextAction['label'] }}</h3>
+                        <p>{{ $nextAction['description'] }}</p>
+                    </div>
+                    <a href="{{ route($nextAction['route']) }}" class="home-primary-action">
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i>{{ $nextAction['label'] }}
+                    </a>
+                </div>
+            </section>
+
+            @if($groups->count() > 0)
+                <section class="home-section home-secondary-surface home-groups-surface" data-home-groups>
+                    <div class="home-section-header">
+                        <div>
+                            <span class="home-eyebrow"><i class="fas fa-users" aria-hidden="true"></i>شبکهٔ من</span>
+                            <h2 class="home-section-title">گروه‌های من</h2>
+                            <p class="home-section-description">نمای سریع گروه‌هایی که از عضویت و مشارکت شما شکل گرفته‌اند.</p>
+                        </div>
+                        <a href="{{ route('groups.index') }}" class="home-secondary-action">همه گروه‌ها <i class="fas fa-arrow-left" aria-hidden="true"></i></a>
+                    </div>
+
+                    <div class="home-groups-grid">
+                        <a href="{{ route('groups.index', ['tab' => 'public']) }}" class="home-interactive-card group-stat-card" style="--card-accent: var(--color-earth-green);" aria-label="مشاهده گروه‌های عمومی من">
+                            <div class="home-card-topline"><h3 class="home-card-title">گروه‌های عمومی</h3><span class="home-card-icon"><i class="fas fa-users" aria-hidden="true"></i></span></div>
+                            <div class="group-stat-number">{{ $generalGroups->count() }}</div>
+                            <div class="group-stat-meta"><i class="fas fa-layer-group" aria-hidden="true"></i><span>مجامع عمومی و حوزه‌های حکمرانی</span></div>
+                        </a>
+
+                        <a href="{{ route('groups.index', ['tab' => 'specialty']) }}" class="home-interactive-card group-stat-card" style="--card-accent: var(--color-ocean-blue);" aria-label="مشاهده گروه‌های تخصصی من">
+                            <div class="home-card-topline"><h3 class="home-card-title">گروه‌های تخصصی</h3><span class="home-card-icon"><i class="fas fa-briefcase" aria-hidden="true"></i></span></div>
+                            <div class="group-stat-number">{{ $specializedGroups->count() }}</div>
+                            <div class="group-stat-meta"><i class="fas fa-graduation-cap" aria-hidden="true"></i><span>حرفه، تخصص و تجربه</span></div>
+                        </a>
+
+                        <a href="{{ route('groups.index', ['tab' => 'exclusive']) }}" class="home-interactive-card group-stat-card" style="--card-accent: var(--color-digital-gold);" aria-label="مشاهده گروه‌های اختصاصی من">
+                            <div class="home-card-topline"><h3 class="home-card-title">گروه‌های اختصاصی</h3><span class="home-card-icon"><i class="fas fa-star" aria-hidden="true"></i></span></div>
+                            <div class="group-stat-number">{{ $exclusiveGroups->count() }}</div>
+                            <div class="group-stat-meta"><i class="fas fa-sparkles" aria-hidden="true"></i><span>گروه‌های ویژه و اختصاصی شما</span></div>
+                        </a>
+                    </div>
+                </section>
+            @endif
+
+            <section class="home-section home-secondary-surface home-admin-surface" data-home-admin-content>
                 <div class="home-section-header">
                     <div>
                         <span class="home-eyebrow"><i class="fas fa-bullhorn" aria-hidden="true"></i>از ارث‌کوپ</span>
@@ -790,61 +906,8 @@
                 @endif
             </section>
 
-            @if($groups->count() > 0)
-                <section class="home-section home-identity-surface home-groups-surface" data-home-groups>
-                    <div class="home-section-header">
-                        <div>
-                            <span class="home-eyebrow"><i class="fas fa-users" aria-hidden="true"></i>شبکهٔ من</span>
-                            <h2 class="home-section-title">گروه‌های من</h2>
-                            <p class="home-section-description">نمای سریع گروه‌هایی که از عضویت و مشارکت شما شکل گرفته‌اند.</p>
-                        </div>
-                        <a href="{{ route('groups.index') }}" class="home-secondary-action">همه گروه‌ها <i class="fas fa-arrow-left" aria-hidden="true"></i></a>
-                    </div>
-
-                    <div class="home-groups-grid">
-                        <a href="{{ route('groups.index', ['tab' => 'public']) }}" class="home-interactive-card group-stat-card" style="--card-accent: var(--color-earth-green);" aria-label="مشاهده گروه‌های عمومی من">
-                            <div class="home-card-topline">
-                                <h3 class="home-card-title">گروه‌های عمومی</h3>
-                                <span class="home-card-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
-                            </div>
-                            <div class="group-stat-number">{{ $generalGroups->count() }}</div>
-                            <div class="group-stat-meta"><i class="fas fa-layer-group" aria-hidden="true"></i><span>مجامع عمومی و حوزه‌های حکمرانی</span></div>
-                        </a>
-
-                        <a href="{{ route('groups.index', ['tab' => 'specialty']) }}" class="home-interactive-card group-stat-card" style="--card-accent: var(--color-ocean-blue);" aria-label="مشاهده گروه‌های تخصصی من">
-                            <div class="home-card-topline">
-                                <h3 class="home-card-title">گروه‌های تخصصی</h3>
-                                <span class="home-card-icon"><i class="fas fa-briefcase" aria-hidden="true"></i></span>
-                            </div>
-                            <div class="group-stat-number">{{ $specializedGroups->count() }}</div>
-                            <div class="group-stat-meta"><i class="fas fa-graduation-cap" aria-hidden="true"></i><span>حرفه، تخصص و تجربه</span></div>
-                        </a>
-
-                        <a href="{{ route('groups.index', ['tab' => 'exclusive']) }}" class="home-interactive-card group-stat-card" style="--card-accent: var(--color-digital-gold);" aria-label="مشاهده گروه‌های اختصاصی من">
-                            <div class="home-card-topline">
-                                <h3 class="home-card-title">گروه‌های اختصاصی</h3>
-                                <span class="home-card-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-                            </div>
-                            <div class="group-stat-number">{{ $exclusiveGroups->count() }}</div>
-                            <div class="group-stat-meta"><i class="fas fa-sparkles" aria-hidden="true"></i><span>گروه‌های ویژه و اختصاصی شما</span></div>
-                        </a>
-                    </div>
-                </section>
-            @endif
-
-            <section class="home-section home-identity-surface home-groups-surface" data-home-next-action>
-                <div class="home-next-action">
-                    <div class="home-next-action-copy">
-                        <span class="home-eyebrow"><i class="fas fa-lightbulb" aria-hidden="true"></i>قدم پیشنهادی</span>
-                        <h3>مشارکت را از نزدیک‌ترین مسیر به خودتان ادامه دهید</h3>
-                        <p>از «مکان و حکمرانی من» شروع کنید؛ سپس گروه‌های مرتبط را ببینید و در گفتگوها، نظرسنجی‌ها و انتخابات فعال مشارکت کنید.</p>
-                    </div>
-                    <a href="{{ route('location-governance.me') }}" class="home-primary-action"><i class="fas fa-location-dot" aria-hidden="true"></i>رفتن به مکان و حکمرانی</a>
-                </div>
-            </section>
-
             @if(isset($activeAuctions) && $activeAuctions->count() > 0)
-                <section class="home-section home-identity-surface home-auctions-surface" data-home-auctions>
+                <section class="home-section home-secondary-surface home-auctions-surface" data-home-auctions>
                     <div class="home-section-header">
                         <div>
                             <span class="home-eyebrow"><i class="fas fa-gavel" aria-hidden="true"></i>فرصت‌های جاری</span>
@@ -854,9 +917,7 @@
                     <div class="home-auctions-grid">
                         @foreach($activeAuctions as $auction)
                             <article class="home-interactive-card home-auction-card" style="--card-accent: var(--color-digital-gold);">
-                                <div class="home-card-topline">
-                                    <span class="home-card-icon"><i class="fas fa-gavel" aria-hidden="true"></i></span>
-                                </div>
+                                <div class="home-card-topline"><span class="home-card-icon"><i class="fas fa-gavel" aria-hidden="true"></i></span></div>
                                 <h3>{{ $auction->stock->name ?? 'حراج' }}</h3>
                                 <p>پایان: {{ $auction->ends_at->diffForHumans() }}</p>
                                 <span class="home-card-link">مشاهده جزئیات <i class="fas fa-arrow-left" aria-hidden="true"></i></span>
