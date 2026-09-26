@@ -11,7 +11,7 @@ class ExploreDocumentsNavigationTest extends TestCase
         $source = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString('کاوش EarthCoop', $source);
+        $this->assertStringContainsString('کاوش و اسناد', $source);
         $this->assertStringContainsString('اسناد', $source);
         $this->assertStringContainsString('docs-submenu', $source);
         $this->assertStringContainsString('@mouseenter="docsOpen = true"', $source);
@@ -36,7 +36,7 @@ class ExploreDocumentsNavigationTest extends TestCase
         $source = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString('کاوش EarthCoop', $source);
+        $this->assertStringContainsString('کاوش و اسناد', $source);
         $this->assertStringContainsString("openDocumentSection", $source);
         $this->assertStringContainsString("@click=\"openDocumentSection = !openDocumentSection\"", $source);
         $this->assertStringContainsString('documents-navigation-toggle', $source);
