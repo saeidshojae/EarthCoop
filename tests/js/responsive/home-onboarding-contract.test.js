@@ -18,7 +18,7 @@ test('Home explicitly inherits the Welcome/Register visual language instead of i
     }
 
     assert.match(home, /data-home-identity-surface/);
-    assert.match(home, /home-identity-surface::before/);
+    assert.match(home, /home-hero::before/);
     assert.match(home, /linear-gradient\(90deg,\s*var\(--color-earth-green\),\s*var\(--color-ocean-blue\),\s*var\(--color-digital-gold\)\)/);
     assert.match(home, /linear-gradient\(145deg,\s*var\(--color-pure-white\)\s*0%,\s*#f0f4f7\s*100%\)/);
 });
