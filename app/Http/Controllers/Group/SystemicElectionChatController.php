@@ -23,6 +23,7 @@ use App\Models\Vote;
 use App\Services\Elections\ElectionPolicyResolver;
 use App\Services\GroupChat\GroupFeedService;
 use App\Services\GroupChat\GroupSessionService;
+use App\Services\Groups\GroupMembershipRoleResolver;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -57,14 +58,9 @@ class SystemicElectionChatController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $pivotRole = (int) $groupUser->role;
-        if ((bool) config('location-governance.elections_enabled', false)) {
-            $yourRole = in_array($pivotRole, [0, 1, 2, 3, 4, 5], true) ? $pivotRole : 0;
-        } elseif (in_array($pivotRole, [2, 3, 4, 5], true)) {
-            $yourRole = $pivotRole;
-        } else {
-            $level = strtolower(trim((string) ($group->getRawOriginal('location_level') ?? $group->location_level ?? '')));
-            $yourRole = in_array($level, ['neighborhood', 'street', 'alley'], true) ? 1 : 0;
+        $yourRole = app(GroupMembershipRoleResolver::class)->effectiveRole($group, $groupUser);
+        if ($yourRole === null) {
+            abort(403, 'Unauthorized');
         }
 
         $lastReadMessageId = $groupUser->last_read_message_id;
