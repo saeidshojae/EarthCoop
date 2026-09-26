@@ -125,7 +125,6 @@
 
         <nav x-cloak :class="open ? 'block' : 'hidden lg:block'" class="home-sidebar-nav lg:block overflow-hidden transition-all duration-200 ease-out lg:border-t lg:border-gray-200">
             <ul class="space-y-2">
-                <!-- Home: intentionally standalone, before categorized navigation. -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('home') }}" class="sidebar-menu-link {{ request()->routeIs('home') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
@@ -267,10 +266,21 @@
                         <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': open }"></i>
                     </button>
                     <ul x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform -translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform -translate-y-2" class="support-submenu space-y-1">
-                        <li><a href="{{ route('support.kb.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('support.kb.*') ? 'active' : '' }} relative group"><i class="fas fa-book text-sm" aria-hidden="true"></i><span class="support-submenu-label">پایگاه دانش</span></a></li>
-                        <li><a href="{{ route('user.tickets.create') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.create') ? 'active' : '' }} relative group"><i class="fas fa-plus-circle text-sm" aria-hidden="true"></i><span class="support-submenu-label">ارسال تیکت</span></a></li>
+                        <li>
+                            <a href="{{ route('support.kb.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('support.kb.*') ? 'active' : '' }} relative group">
+                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                                <i class="fas fa-book text-sm" aria-hidden="true"></i><span class="support-submenu-label">پایگاه دانش</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('user.tickets.create') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.create') ? 'active' : '' }} relative group">
+                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                                <i class="fas fa-plus-circle text-sm" aria-hidden="true"></i><span class="support-submenu-label">ارسال تیکت</span>
+                            </a>
+                        </li>
                         <li>
                             <a href="{{ route('user.tickets.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.index', 'user.tickets.show') ? 'active' : '' }} relative group">
+                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                                 <i class="fas fa-ticket-alt text-sm" aria-hidden="true"></i><span class="support-submenu-label">تیکت‌ها</span>
                                 @php
                                     $openTicketsCount = \App\Models\Ticket::where(function($q) {
@@ -280,7 +290,12 @@
                                 @if($openTicketsCount > 0)<span class="badge text-white text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-red-tomato);">{{ $openTicketsCount }}</span>@endif
                             </a>
                         </li>
-                        <li><a href="{{ route('user.support-chat.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.support-chat.*') ? 'active' : '' }} relative group"><i class="fas fa-comments text-sm" aria-hidden="true"></i><span class="support-submenu-label">چت پشتیبانی</span></a></li>
+                        <li>
+                            <a href="{{ route('user.support-chat.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.support-chat.*') ? 'active' : '' }} relative group">
+                                <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                                <i class="fas fa-comments text-sm" aria-hidden="true"></i><span class="support-submenu-label">چت پشتیبانی</span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 
