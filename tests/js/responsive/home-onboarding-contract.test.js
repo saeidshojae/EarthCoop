@@ -65,3 +65,14 @@ test('Home preserves admin-managed slider and content inside the redesigned hier
     assert.match(home, /\$homeSetting\?->home_content/);
     assert.match(home, /data-home-admin-content/);
 });
+
+test('Home consumes the civic dashboard read model for journey, today and next action presentation', () => {
+    assert.match(home, /\$homeDashboard\[['"]journey['"]\]/);
+    assert.match(home, /\$homeDashboard\[['"]today['"]\]/);
+    assert.match(home, /\$homeDashboard\[['"]next_action['"]\]/);
+    assert.match(home, /data-home-today/);
+    assert.match(home, /data-home-today-zero-state/);
+    assert.match(home, /data-home-next-action/);
+    assert.match(home, /route\(\s*\$nextAction\[['"]route['"]\]\s*\)/);
+    assert.doesNotMatch(home, /AccountService::class|CurrentElectionCenterService::class|Poll::(?:query|where)/);
+});
