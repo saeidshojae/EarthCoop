@@ -78,7 +78,7 @@ class NajmBaharDashboardMobileUxContractTest extends TestCase
         $runtime = file_get_contents(resource_path('js/najm-bahar-membership-source.js'));
         $this->assertStringContainsString('membershipFeeModal', $runtime);
         $this->assertStringContainsString("modal.style.zIndex = '2147483000'", $runtime);
-        $this->assertStringContainsString("window.location.hash === '#membership-fee'", $runtime);
+        $this->assertStringContainsString("window.location.hash !== '#membership-fee'", $runtime);
         $this->assertStringContainsString("NajmBahar.modal.open('membershipFeeModal')", $runtime);
     }
 }
