@@ -115,6 +115,10 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/najm-hoda-group-attention.php'));
 
+            // Read-only member introduction to the global Najm Hoda companion.
+            Route::middleware('web')
+                ->group(base_path('routes/najm-hoda-about.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/najm-bahar.php'));
 

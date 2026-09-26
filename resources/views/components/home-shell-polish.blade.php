@@ -1,22 +1,81 @@
-{{-- Home-only presentation polish for the shared sidebar and Najm Hoda launcher. --}}
+{{-- Home-only presentation polish for the shared shell and state-aware Home surfaces. --}}
 <style>
-    .home-sidebar .sidebar-section-label {
-        margin: .7rem .25rem .25rem;
-        padding: .35rem .7rem .2rem;
+    .home-hoda-intro {
+        display: grid;
+        gap: .9rem;
+        margin-top: 1.35rem;
+        padding: 1rem 1.15rem;
+        border: 1px solid rgba(59, 130, 246, .14);
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, .055), rgba(16, 185, 129, .055));
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .045);
+    }
+
+    .home-hoda-intro-copy { min-width: 0; }
+    .home-hoda-intro-title {
+        margin: 0;
+        color: var(--color-gentle-black);
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1.6;
+    }
+    .home-hoda-intro-text {
+        margin: .3rem 0 0;
         color: #64748b;
-        font-size: .72rem;
+        font-size: .82rem;
+        line-height: 1.85;
+    }
+    .home-hoda-intro-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .55rem;
+        align-items: center;
+    }
+    .home-hoda-intro-link,
+    .home-hoda-chat-link {
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        padding: .6rem .9rem;
+        border-radius: 999px;
+        font-size: .8rem;
         font-weight: 700;
-        line-height: 1.5;
-        letter-spacing: .01em;
-        pointer-events: none;
+        text-decoration: none;
+    }
+    .home-hoda-intro-link {
+        color: var(--color-dark-blue);
+        border: 1px solid rgba(59, 130, 246, .22);
+        background: rgba(255, 255, 255, .84);
+    }
+    .home-hoda-chat-link {
+        color: #fff;
+        border: 0;
+        background: linear-gradient(135deg, var(--color-earth-green), var(--color-dark-green));
     }
 
-    .home-sidebar .sidebar-section-label:first-child {
-        margin-top: .35rem;
+    .home-today-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
     }
 
-    body.dark-mode .home-sidebar .sidebar-section-label {
-        color: #94a3b8;
+    .home-card-state[data-state='membership_fee_due'] {
+        color: #92400e;
+        background: rgba(245, 158, 11, .12);
+    }
+
+    body.dark-mode .home-hoda-intro {
+        border-color: rgba(96, 165, 250, .18);
+        background: linear-gradient(135deg, rgba(59, 130, 246, .09), rgba(16, 185, 129, .08));
+    }
+    body.dark-mode .home-hoda-intro-title { color: var(--text-dark); }
+    body.dark-mode .home-hoda-intro-text { color: #94a3b8; }
+
+    @media (min-width: 768px) {
+        .home-hoda-intro {
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+        }
     }
 
     @media (max-width: 768px) {
@@ -31,6 +90,11 @@
             font-size: 22px;
             box-shadow: 0 4px 12px rgba(55, 196, 180, .38);
         }
+
+        .home-hoda-intro-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
     }
 
     @media (max-width: 480px) {
@@ -41,38 +105,57 @@
     }
 </style>
 
+<template id="home-hoda-intro-template">
+    <section class="home-hoda-intro" data-home-hoda-intro>
+        <div class="home-hoda-intro-copy">
+            <span class="home-eyebrow"><i class="fas fa-sparkles" aria-hidden="true"></i>همراه شما</span>
+            <h2 class="home-hoda-intro-title">نجم هدا، همراه شما در ارث‌کوپ</h2>
+            <p class="home-hoda-intro-text">هرجا درباره مسیر عضویت، گروه‌ها، حکمرانی یا کارهای خود سؤال داشتید، می‌توانید از نجم هدا راهنمایی بخواهید.</p>
+        </div>
+        <div class="home-hoda-intro-actions">
+            <a href="{{ route('najm-hoda.about') }}" class="home-hoda-intro-link"><i class="fas fa-circle-info" aria-hidden="true"></i>آشنایی با نجم هدا</a>
+            <button type="button" class="home-hoda-chat-link" data-open-najm-hoda><i class="fas fa-comments" aria-hidden="true"></i>گفتگو با نجم هدا</button>
+        </div>
+    </section>
+</template>
+
 <script>
 (function () {
-    const installHomeSidebarSections = () => {
-        const sidebarList = document.querySelector('.unified-public-sidebar .home-sidebar-nav > ul');
-        if (!sidebarList || sidebarList.querySelector('[data-sidebar-section]')) return;
+    const installHomePolish = () => {
+        const journey = document.querySelector('[data-home-journey]');
+        const template = document.getElementById('home-hoda-intro-template');
+        if (journey && template && !document.querySelector('[data-home-hoda-intro]')) {
+            journey.insertAdjacentElement('afterend', template.content.firstElementChild.cloneNode(true));
+        }
 
-        const sections = [
-            { key: 'network', label: 'شبکه و ارتباطات', route: @json(route('notifications.index')) },
-            { key: 'governance', label: 'حکمرانی و مشارکت', route: @json(route((bool) config('location-governance.runtime_enabled') ? 'location-governance.me' : 'history.index')) },
-            { key: 'economy', label: 'اقتصاد', route: @json(route('najm-bahar.dashboard')) },
-            { key: 'account-support', label: 'حساب و راهنما', route: @json(route('my-invation-code')) },
-        ];
+        document.querySelector('[data-open-najm-hoda]')?.addEventListener('click', () => {
+            document.getElementById('najm-hoda-toggle')?.click();
+        });
 
-        for (const section of sections) {
-            const anchor = Array.from(sidebarList.querySelectorAll('a[href]'))
-                .find(link => link.href === section.route);
-            const item = anchor?.closest('li.sidebar-menu-item');
-            if (!item) continue;
+        document.querySelectorAll('[data-home-today-signals] .home-today-item').forEach((item) => {
+            const value = Number.parseInt(item.querySelector('strong')?.textContent?.trim() || '0', 10);
+            if (!Number.isFinite(value) || value <= 0) item.hidden = true;
+        });
 
-            const label = document.createElement('li');
-            label.className = 'sidebar-section-label';
-            label.dataset.sidebarSection = section.key;
-            label.setAttribute('aria-hidden', 'true');
-            label.textContent = section.label;
-            item.before(label);
+        const membershipCard = document.querySelector('[data-journey-status="membership_fee_due"]');
+        if (membershipCard) {
+            const state = membershipCard.querySelector('.home-card-state');
+            const link = membershipCard.querySelector('.home-card-link');
+            if (state) state.innerHTML = '<i class="fas fa-circle-exclamation" aria-hidden="true"></i>حق عضویت دوره جاری هنوز پرداخت نشده است';
+            if (link) link.innerHTML = 'پرداخت حق عضویت <i class="fas fa-arrow-left" aria-hidden="true"></i>';
+        }
+
+        const nextActionFragment = @json(data_get($homeDashboard ?? [], 'next_action.fragment'));
+        if (nextActionFragment) {
+            const nextActionLink = document.querySelector('[data-home-next-action] a[href]');
+            if (nextActionLink) nextActionLink.hash = nextActionFragment;
         }
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', installHomeSidebarSections, { once: true });
+        document.addEventListener('DOMContentLoaded', installHomePolish, { once: true });
     } else {
-        installHomeSidebarSections();
+        installHomePolish();
     }
 })();
 </script>

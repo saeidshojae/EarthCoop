@@ -31,6 +31,19 @@
 
     @once
         <style>
+            .unified-public-sidebar .sidebar-section-label {
+                margin: .7rem .25rem .2rem;
+                padding: .35rem .7rem .15rem;
+                color: #64748b;
+                font-size: .72rem;
+                font-weight: 700;
+                line-height: 1.5;
+                letter-spacing: .01em;
+                pointer-events: none;
+            }
+            .unified-public-sidebar .sidebar-section-label:first-child {
+                margin-top: .35rem;
+            }
             .unified-public-sidebar .support-submenu {
                 margin-top: .5rem !important;
                 margin-inline-start: 1.5rem !important;
@@ -102,6 +115,9 @@
                 justify-self: stretch;
                 text-align: start !important;
             }
+            body.dark-mode .unified-public-sidebar .sidebar-section-label {
+                color: #94a3b8;
+            }
             body.dark-mode .unified-public-sidebar .support-submenu {
                 background: rgba(15, 23, 42, .5);
                 border-color: rgba(52, 211, 153, .25);
@@ -134,6 +150,8 @@
 
         <nav x-cloak :class="open ? 'block' : 'hidden lg:block'" class="home-sidebar-nav lg:block overflow-hidden transition-all duration-200 ease-out lg:border-t lg:border-gray-200">
             <ul class="space-y-2">
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="network" aria-hidden="true">شبکه و ارتباطات</li>
+
                 <!-- Notifications -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('notifications.index') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -174,6 +192,8 @@
                         @endif
                     </a>
                 </li>
+
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="governance" aria-hidden="true">حکمرانی و مشارکت</li>
 
                 @if((bool) config('location-governance.runtime_enabled'))
                     <!-- My Location & Governance -->
@@ -222,6 +242,8 @@
                     </a>
                 </li>
 
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="economy" aria-hidden="true">اقتصاد</li>
+
                 <!-- Spring Account -->
                 @php
                     $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
@@ -234,6 +256,8 @@
                         <span class="flex-grow text-right mx-3">حساب مالی نجم بهار</span>
                     </a>
                 </li>
+
+                <li class="sidebar-section-label hidden lg:block" data-sidebar-section="account-support" aria-hidden="true">حساب و راهنما</li>
 
                 <!-- Invite Friends -->
                 <li class="sidebar-menu-item">

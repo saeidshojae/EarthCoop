@@ -11,6 +11,7 @@ use App\Modules\NajmBahar\Services\AccountService;
 use App\Services\Elections\CurrentElectionCenterService;
 use App\Services\Home\HomeCivicDashboardService;
 use App\Services\InvitationLifecycleService;
+use App\Services\MembershipParticipationEligibilityService;
 use App\Services\ProfileCompletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -40,6 +41,7 @@ class HomeCivicDashboardServiceTest extends TestCase
             hasNajmBaharAccount: false,
             remainingInvitationSlots: 6,
             electionActionRequired: 2,
+            participationStatus: MembershipParticipationEligibilityService::NO_NAJM_BAHAR_ACCOUNT,
         );
 
         $dashboard = $service->forUser($user, [
@@ -51,36 +53,63 @@ class HomeCivicDashboardServiceTest extends TestCase
         $this->assertSame(81, $dashboard['journey']['groups']['total']);
         $this->assertSame('needs_attention', $dashboard['journey']['najm_bahar']['status']);
         $this->assertFalse($dashboard['journey']['najm_bahar']['active']);
+        $this->assertFalse($dashboard['journey']['najm_bahar']['membership_fee_paid']);
         $this->assertSame(6, $dashboard['journey']['invitation']['remaining_slots']);
         $this->assertSame(2, $dashboard['today']['election_action_required']);
         $this->assertSame(1, $dashboard['today']['poll_action_required']);
         $this->assertSame(3, $dashboard['today']['pending_location_groups']);
         $this->assertSame('najm-bahar.dashboard', $dashboard['next_action']['route']);
+        $this->assertSame('najm_bahar', $dashboard['next_action']['key']);
         $this->assertSame($actionable->id, Poll::query()->whereKey($actionable->id)->value('id'));
     }
 
-    public function test_recommendation_priority_is_residence_then_najm_bahar_then_election_then_poll_then_invitation_then_civic_fallback(): void
+    public function test_membership_fee_due_becomes_najm_bahar_state_and_next_action_before_civic_actions(): void
     {
         [$user, $group] = $this->memberGroup();
         $this->poll($group, $user, true, now()->addDay());
 
-        $this->assertSame('register.step3', $this->service(false, false, 5, 4)
+        $dashboard = $this->service(
+            residenceComplete: true,
+            hasNajmBaharAccount: true,
+            remainingInvitationSlots: 5,
+            electionActionRequired: 4,
+            participationStatus: MembershipParticipationEligibilityService::MEMBERSHIP_FEE_DUE,
+        )->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0]);
+
+        $this->assertSame('membership_fee_due', $dashboard['journey']['najm_bahar']['status']);
+        $this->assertTrue($dashboard['journey']['najm_bahar']['active']);
+        $this->assertFalse($dashboard['journey']['najm_bahar']['membership_fee_paid']);
+        $this->assertSame('membership_fee', $dashboard['next_action']['key']);
+        $this->assertSame('najm-bahar.dashboard', $dashboard['next_action']['route']);
+        $this->assertSame('پرداخت حق عضویت', $dashboard['next_action']['label']);
+        $this->assertSame('membership-fee', $dashboard['next_action']['fragment']);
+    }
+
+    public function test_recommendation_priority_is_residence_then_najm_bahar_then_membership_fee_then_election_then_poll_then_invitation_then_civic_fallback(): void
+    {
+        [$user, $group] = $this->memberGroup();
+        $this->poll($group, $user, true, now()->addDay());
+
+        $this->assertSame('register.step3', $this->service(false, false, 5, 4, MembershipParticipationEligibilityService::NO_NAJM_BAHAR_ACCOUNT)
             ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['route']);
 
-        $this->assertSame('najm-bahar.dashboard', $this->service(true, false, 5, 4)
+        $this->assertSame('najm_bahar', $this->service(true, false, 5, 4, MembershipParticipationEligibilityService::NO_NAJM_BAHAR_ACCOUNT)
+            ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['key']);
+
+        $this->assertSame('membership_fee', $this->service(true, true, 5, 4, MembershipParticipationEligibilityService::MEMBERSHIP_FEE_DUE)
+            ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['key']);
+
+        $this->assertSame('history.election', $this->service(true, true, 5, 4, MembershipParticipationEligibilityService::ELIGIBLE)
             ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['route']);
 
-        $this->assertSame('history.election', $this->service(true, true, 5, 4)
-            ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['route']);
-
-        $this->assertSame('history.poll', $this->service(true, true, 5, 0)
+        $this->assertSame('history.poll', $this->service(true, true, 5, 0, MembershipParticipationEligibilityService::ELIGIBLE)
             ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['route']);
 
         Poll::query()->update(['is_active' => false]);
-        $this->assertSame('my-invation-code', $this->service(true, true, 5, 0)
+        $this->assertSame('my-invation-code', $this->service(true, true, 5, 0, MembershipParticipationEligibilityService::ELIGIBLE)
             ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['route']);
 
-        $this->assertSame('location-governance.me', $this->service(true, true, 0, 0)
+        $this->assertSame('location-governance.me', $this->service(true, true, 0, 0, MembershipParticipationEligibilityService::ELIGIBLE)
             ->forUser($user, ['public' => 1, 'specialized' => 0, 'exclusive' => 0])['next_action']['route']);
     }
 
@@ -89,6 +118,7 @@ class HomeCivicDashboardServiceTest extends TestCase
         bool $hasNajmBaharAccount,
         int $remainingInvitationSlots,
         int $electionActionRequired,
+        string $participationStatus = MembershipParticipationEligibilityService::ELIGIBLE,
     ): HomeCivicDashboardService {
         $profile = Mockery::mock(ProfileCompletionService::class);
         $profile->shouldReceive('hasRequiredResidence')->andReturn($residenceComplete);
@@ -110,7 +140,10 @@ class HomeCivicDashboardServiceTest extends TestCase
             ],
         ]);
 
-        return new HomeCivicDashboardService($profile, $accounts, $invitations, $elections);
+        $eligibility = Mockery::mock(MembershipParticipationEligibilityService::class);
+        $eligibility->shouldReceive('status')->andReturn($participationStatus);
+
+        return new HomeCivicDashboardService($profile, $accounts, $invitations, $elections, $eligibility);
     }
 
     private function memberGroup(): array

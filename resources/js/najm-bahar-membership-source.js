@@ -1,5 +1,6 @@
 (() => {
     let latestMembershipInfo = null;
+    let membershipDeepLinkOpened = false;
     const originalFetch = window.fetch?.bind(window);
 
     const prepareMembershipModal = () => {
@@ -126,9 +127,28 @@
         });
     };
 
+    const openMembershipDeepLink = () => {
+        if (membershipDeepLinkOpened || window.location.hash !== '#membership-fee') return;
+
+        const modal = document.getElementById('membershipFeeModal');
+        if (!modal) return;
+
+        membershipDeepLinkOpened = true;
+
+        if (typeof window.openMembershipModal === 'function') {
+            window.openMembershipModal();
+            return;
+        }
+
+        if (window.NajmBahar?.modal?.open) {
+            NajmBahar.modal.open('membershipFeeModal');
+        }
+    };
+
     const scan = () => {
         prepareMembershipModal();
         enhanceForm(document.getElementById('payMembershipForm'));
+        openMembershipDeepLink();
     };
 
     if (document.readyState === 'loading') {
@@ -136,6 +156,8 @@
     } else {
         scan();
     }
+
+    window.addEventListener('hashchange', openMembershipDeepLink);
 
     const observer = new MutationObserver(scan);
     observer.observe(document.documentElement, { childList: true, subtree: true });
