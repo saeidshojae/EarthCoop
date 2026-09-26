@@ -1,30 +1,21 @@
 # Global Location & Governance — Implementation Progress
 
-**Plan:** `docs/superpowers/plans/2026-09-10-global-location-governance-implementation-final.md`  
+**Original plan:** `docs/superpowers/plans/2026-09-10-global-location-governance-implementation-final.md`  
 **Spec:** `docs/superpowers/specs/2026-09-10-global-location-governance-architecture-design.md`  
-**Implementation branch:** `agent/global-location-governance-implementation-20260910`  
-**Baseline:** `main@767a276b962a62234f70878071d007930903577a`  
-**Approved spec checkpoint:** `2217d2e95c36d7f8760a95f12c23ebc4d6e8926c`
+**Current status baseline:** `main@9b936dd9c9b194098f6736eeac8917ccb2d622f6`  
+**Last reconciled:** 2026-09-26
 
-## Current checkpoint
+> This progress file is the current status ledger for the Location/Governance workstream. Historical plan/checkpoint SHAs below are architecture evidence, not the current next-task pointer. For the program after Location/Governance, use `docs/PRE_NATIVE_MOBILE_READINESS_STATUS.fa.md`.
 
-C13 production cutover preparation is complete and technically validated. The latest non-documentation C13 implementation candidate is `c34f7ef406cac4bf512ee789c31688e65c764189`.
+## Current program verdict
 
-GitHub Actions evidence:
+The global Location/Governance architecture, Production administrative v2 cutover, structural-state matrix, proposal/review lifecycle, and canonical runtime consumer alignment have all progressed beyond the old C13-preparation state.
 
-- Full Validation #2424 / run `34610982735`
-- Job `103301574562`
-- Conclusion: `success`
-- Focused `Regression — Location / Governance`: `success`
-- Mature release gates: all retained and green
-- Full Project PHPUnit: `success`
-- Enforce regression gate: `success`
+The workstream is **closed enough to return to the main Pre-Native Mobile Readiness program**. Remaining Location/Governance items are either optional/feature-gated operational UAT, UX polish, or the separately approval-gated C14 legacy-retirement phase.
 
-Documentation/evidence checkpoint `943804fbcac2c702790466ae266cce8a2557a0d5` was subsequently validated by Full Validation #2426 / run `34616614013`, job `103320370800`, also fully green.
+## Current checkpoint status
 
-## Checkpoint status
-
-| Checkpoint | Scope | Status |
+| Checkpoint / closure | Scope | Current status |
 |---|---|---|
 | C0 | Legacy spatial behavior freeze and consumer inventory | Complete |
 | C1 | Generic Location core, topology, lifecycle | Complete |
@@ -37,57 +28,103 @@ Documentation/evidence checkpoint `943804fbcac2c702790466ae266cce8a2557a0d5` was
 | C8 | Canonical Election topology | Complete |
 | C9 | Secretariat / Projects / Polls scope routing | Complete |
 | C10 | Community policy and crowdsourced proposals | Complete |
-| C11 | Optional geolocation, admin control center, Najm Hoda human-gated review | Complete |
+| C11 | Optional geolocation, admin control center, Najm Hoda human-gated review | Complete as architecture/runtime foundation; external reverse-geocoder provider remains independent/deferred |
 | C12-A | Fresh bootstrap and permanent global/UAT scenarios | Complete |
 | C12-B | Focused CI gate, full validation and UAT candidate | Complete |
-| C13 | Production cutover package | Prepared and CI-validated; Fresh Canonical Start policy approved; activation not yet authorized |
-| C14 | Legacy retirement | Not started; separate explicit approval required |
+| C13 | Production cutover package | **Completed beyond preparation:** guarded Iran 1404 v2 administrative cutover subsequently executed through PRs #143–#145; later structural/review/consumer hardening also merged |
+| Post-C13 Checkpoint 2 | Complete City/Region/Village structural-state matrix | Complete — PR #146 |
+| Post-C13 Checkpoint 3 | Proposal support/review lifecycle | Complete — PR #147 |
+| Post-C13 Checkpoint 4 | Canonical active-consumer audit | Complete — PR #148; fixed-SHA Responsive #707 + Integration #3266 green before merge |
+| C14 | Legacy retirement | **Not started intentionally**; post-cutover observation/audit + second explicit approval required |
 
-## Fresh Canonical Start decision
+## Manual UAT reconciliation
 
-The owner has explicitly approved continuing the initial cutover without making migration of the current small set of users' legacy geographic/profile data a prerequisite.
+The following structural flows are **not open backlog**:
 
-The policy is recorded in `docs/location-governance/FRESH_CANONICAL_START_DECISION.md`.
+- City without Urban Region (including Kiasar UAT line);
+- Urban Region without Neighborhood;
+- Village without Neighborhood;
+- registration stopping at the deepest available governance base rather than Street/micro-address;
+- pending exact-location/group presentation and group-count/role behavior hardened through the September UAT line.
 
-Operational consequences:
+These scenarios remain in `docs/location-governance/UAT_SCENARIOS.md` because that file is a permanent regression matrix, not because they still require first-time UAT.
 
-- canonical Location/Governance can begin with zero or partial existing-user canonical residence rows;
-- no risky bulk legacy-user geography conversion is required before launch;
-- existing users can establish/correct canonical Primary Residence through the canonical profile flow after activation;
-- new registrations use the canonical flow after registration/profile activation;
-- the rest of Production state is still protected: no database reset/truncate/drop, and no deletion of users, groups, elections, Najm Bahar, Stock, messages, projects, or other mature data;
-- legacy geography remains available during C13 for compatibility and rollback.
+## Iran 1404 administrative v2 status
 
-The current `location-governance:readiness` contract already supports this policy: it validates canonical schema/import/governance/release evidence and does not require every existing user to have a canonical residence row.
+The old status in this file ended at C13 preparation. Subsequent work changed that materially:
 
-## C13 package
+1. PR #141 established the Iran 1404 national administrative hierarchy/runtime foundation.
+2. PR #143 added Production-safe read-only v1→v2 runtime/preflight operations.
+3. PR #144 added guarded additive v2 staging.
+4. PR #145 completed the fail-closed Production cutover path and activation boundary.
+5. Project operator evidence on 2026-09-25 records successful shared/Production execution with runtime v2 active, blockers=0, and bounded migration of verified live dependencies.
 
-C13 now contains:
+The administrative v2 cutover **does not** imply nationwide residential/governance promotion of the 99,317 source settlements. Reference-settlement classification/rollout remains independently evidence-gated.
 
-- read-only fail-closed `location-governance:readiness` command;
-- tests for release evidence, canonical import/governance readiness and conflict failure;
-- Production cutover runbook;
-- Production rollback runbook;
-- Fresh Canonical Start decision record;
-- staged rollout with reversible flags;
-- explicit C14 hard stop before legacy retirement.
+## Reference-settlement status
 
-## Production access boundary
+The 2026-09-24 settlement catalog plan is no longer PLAN ONLY. Current main includes the neutral catalog, residence claims, review/evidence model, registration bridge, pending exact settlement display/group shells, and settlement-backed pending-neighborhood flow.
 
-This execution environment can operate on GitHub/CI but does not have cPanel/SSH/MySQL Production access. Therefore no Production backup, schema command, reference import or flag change has been falsely claimed as executed.
+Manual UAT evidence exists for the «وری» line including search, registration, shared Step3/Profile/Admin picker behavior, hydration/path display and pending group behavior.
 
-Before additive Production writes, the hosting operator should have a current recoverable database backup/provider snapshot. Fresh Canonical Start removes existing-user geography conversion from the critical path, but does not make all other Production data disposable.
+Still not falsely claimed as fully manually closed:
 
-## Safety state
+- ten independent real UAT users reaching one settlement threshold;
+- complete human evidence-review → residential/nonresidential operator matrix;
+- manual nonresidential cleanup end-to-end;
+- full settlement feature-flag replay;
+- complete settlement admin/review mobile+RTL matrix;
+- nationwide residential classification/promotion.
 
-- No direct change or merge to `main` has been performed.
-- PR #103 remains Draft.
-- No Production `migrate:fresh`, truncation, table drop, destructive migration, bootstrap or reference import has been performed.
-- No Location/Governance Production feature flag has been enabled.
-- Legacy spatial data remains available as rollback support.
-- Najm Hoda sensitive Location/Governance actions remain human-approval-gated.
-- C14 destructive retirement work requires a second, separate explicit approval.
+These are operational/feature-scope items, not reasons to reopen the core global Location/Governance architecture before Mobile Readiness.
 
-## Next checkpoint
+## Proposal support/review status
 
-The next operational step is Production-safe backup/preflight and additive deployment/bootstrap/reference-import preparation under the approved Fresh Canonical Start policy. **Canonical runtime feature flags must remain disabled until the owner separately approves activation.**
+The old backlog item “default 10 supporters” must be split correctly:
+
+- **Backend lifecycle:** complete. Distinct-user support, committed-selection provenance, ancestry propagation, ready-for-review semantics, rejection cleanup and admin dependency visibility are covered by Checkpoint 3 / PR #147.
+- **Potential future UX polish:** progress indicator, clearer pending/ready/approved explanation, nearby-user invite CTA, and higher-volume admin queue/filter ergonomics.
+
+Do not reimplement the support lifecycle when addressing those UX items.
+
+## Canonical consumer closure
+
+PR #148 / Checkpoint 4 reconciled active runtime consumers with canonical Residence/GovernanceArea/Membership truth, including Profile/Admin/My Groups, group chat/role presentation, election policy/conflict/appointments, admin filters/temporary roles, Najm Bahar salary targeting, Najm Hoda context and the live group-search endpoint.
+
+Final branch SHA `1138435326f1a0bf1f3cb6f1e217438fee5157b8` passed Responsive #707 and Integration Full Validation #3266, then merged into main as `9b936dd9c9b194098f6736eeac8917ccb2d622f6`.
+
+## Safety state now
+
+- Legacy geography/history remains intentionally available for rollback/compatibility.
+- C14 is not authorized by completion of Checkpoint 4.
+- No `migrate:fresh`, truncate/drop or broad destructive cleanup is implied by this progress update.
+- Reference-settlement source identity does not automatically grant residential eligibility, GovernanceArea, active group or vote rights.
+- Najm Hoda remains human/authority-gated for sensitive Location/Governance decisions.
+
+## Historical C13 evidence
+
+The original C13 implementation candidate `c34f7ef406cac4bf512ee789c31688e65c764189` was validated by Full Validation #2424 / run `34610982735`; the documentation checkpoint `943804fbcac2c702790466ae266cce8a2557a0d5` was validated by #2426. Those remain useful historical architecture evidence, but they no longer describe the current project state.
+
+## Next program — not another Location/Governance checkpoint
+
+The next main program is **Pre-Native Mobile Readiness Foundations**, beginning with:
+
+**M0 — API Constitution + mobile capability/domain inventory**.
+
+Why M0 is next:
+
+- Sanctum and scattered APIs exist, but there is no clean, frozen `/api/v1` mobile contract boundary;
+- `routes/api.php` still contains substantial closure-based and legacy geography surfaces;
+- Native should consume stable domain/API contracts rather than reproduce web-specific coupling.
+
+The planned sequence and blocker/non-blocker classification are maintained in `docs/PRE_NATIVE_MOBILE_READINESS_STATUS.fa.md`.
+
+## Explicitly not the next step
+
+Do **not** restart any of the following merely because old plans still contain them:
+
+- first-time UAT of city/region/village absence states;
+- C1 settlement catalog implementation;
+- generic Production backup/preflight for a v2 administrative cutover that already occurred;
+- C14 legacy retirement;
+- full Marketplace/Company build before API/mobile foundations.
