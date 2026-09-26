@@ -161,7 +161,7 @@
 </style>
 @endonce
 
-<div class="mobile-navigation-drawer" x-data="{ openSection: 'primary', openDocumentSection: false }">
+<div class="mobile-navigation-drawer" x-data="{ openSection: 'network', openDocumentSection: false }">
     <div class="mobile-navigation-drawer__backdrop" @click="headerMenuOpen = false" aria-hidden="true"></div>
 
     <aside class="mobile-navigation-drawer__panel" role="dialog" aria-modal="true" aria-label="ناوبری EarthCoop">
@@ -186,16 +186,13 @@
                     <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
                     <div class="navigation-section__links">
                         <a href="{{ route('login') }}" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--login">
-                            <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
-                            <span>ورود</span>
+                            <i class="fas fa-right-to-bracket" aria-hidden="true"></i><span>ورود</span>
                         </a>
                         <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--join">
-                            <i class="fas fa-user-plus" aria-hidden="true"></i>
-                            <span>عضویت</span>
+                            <i class="fas fa-user-plus" aria-hidden="true"></i><span>عضویت</span>
                         </button>
                         <a href="{{ route('invite') }}" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--invite">
-                            <i class="fas fa-ticket" aria-hidden="true"></i>
-                            <span>درخواست کد دعوت</span>
+                            <i class="fas fa-ticket" aria-hidden="true"></i><span>درخواست کد دعوت</span>
                         </a>
                     </div>
                 </section>
@@ -205,35 +202,40 @@
                     <div class="navigation-section__links">
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" @click="headerMenuOpen = false" class="navigation-link">
-                                <i class="fas {{ $link['icon'] }}" aria-hidden="true"></i>
-                                <span>{{ $link['label'] }}</span>
+                                <i class="fas {{ $link['icon'] }}" aria-hidden="true"></i><span>{{ $link['label'] }}</span>
                             </a>
                         @endforeach
                     </div>
                 </section>
             @elseif($isAuth)
                 <section class="navigation-section">
-                    <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'primary' ? null : 'primary'">
-                        <span><i class="fas fa-compass" aria-hidden="true"></i> اصلی</span>
-                        <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'primary' }" aria-hidden="true"></i>
-                    </button>
-                    <div x-show="openSection === 'primary'" x-transition class="navigation-section__links">
+                    <div class="navigation-section__links">
                         <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>خانه</span></a>
-                        <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() + $mobileNavPendingGroupCount }}</span></a>
-                        @if((bool) config('location-governance.runtime_enabled'))
-                            <a href="{{ route('location-governance.me') }}" class="navigation-link"><i class="fas fa-location-dot"></i><span>مکان و حکمرانی من</span></a>
-                        @endif
-                        <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>اعلان‌ها</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
-                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>گفتگوهای خصوصی</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
-                    <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'participation' ? null : 'participation'">
-                        <span><i class="fas fa-people-arrows" aria-hidden="true"></i> مشارکت</span>
-                        <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'participation' }"></i>
+                    <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'network' ? null : 'network'">
+                        <span><i class="fas fa-users" aria-hidden="true"></i> شبکه و ارتباطات</span>
+                        <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'network' }" aria-hidden="true"></i>
                     </button>
-                    <div x-show="openSection === 'participation'" x-transition class="navigation-section__links">
+                    <div x-show="openSection === 'network'" x-transition class="navigation-section__links">
+                        <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() + $mobileNavPendingGroupCount }}</span></a>
+                        <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>اعلان‌ها</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
+                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>گفتگوهای خصوصی</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
+                        <a href="{{ route('my-invation-code') }}" class="navigation-link"><i class="fas fa-user-plus"></i><span>دعوت از دوستان</span></a>
+                    </div>
+                </section>
+
+                <section class="navigation-section">
+                    <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'governance' ? null : 'governance'">
+                        <span><i class="fas fa-people-arrows" aria-hidden="true"></i> حکمرانی و مشارکت</span>
+                        <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'governance' }"></i>
+                    </button>
+                    <div x-show="openSection === 'governance'" x-transition class="navigation-section__links">
+                        @if((bool) config('location-governance.runtime_enabled'))
+                            <a href="{{ route('location-governance.me') }}" class="navigation-link"><i class="fas fa-location-dot"></i><span>مکان و حکمرانی من</span></a>
+                        @endif
                         <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>
                         <a href="{{ route('community-stories.index') }}" class="navigation-link"><i class="fas fa-feather"></i><span>داستان من در EarthCoop</span></a>
                         <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>انتخابات جاری</span></a>
@@ -249,16 +251,14 @@
                     </button>
                     <div x-show="openSection === 'economy'" x-transition class="navigation-section__links">
                         <a href="{{ route('najm-bahar.dashboard') }}" class="navigation-link"><i class="fas fa-wallet"></i><span>حساب مالی نجم بهار</span></a>
-                        <a href="{{ route('stock.book') }}" class="navigation-link"><i class="fas fa-chart-line"></i><span>{{ __('navigation.stock_office') }}</span></a>
-                        <a href="{{ route('auction.index') }}" class="navigation-link"><i class="fas fa-gavel"></i><span>{{ __('navigation.auctions') }}</span></a>
-                        <a href="{{ route('wallet.index') }}" class="navigation-link"><i class="fas fa-wallet"></i><span>{{ __('navigation.wallet') }}</span></a>
-                        <a href="{{ route('holding.index') }}" class="navigation-link"><i class="fas fa-layer-group"></i><span>{{ __('navigation.holdings') }}</span></a>
+                        <a href="{{ route('stock.book') }}" class="navigation-link"><i class="fas fa-chart-line"></i><span>دفتر سهام ارزش</span></a>
+                        <a href="{{ route('auction.index') }}" class="navigation-link"><i class="fas fa-gavel"></i><span>حراج‌های سهم ارزش</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'organization' ? null : 'organization'">
-                        <span><i class="fas fa-sitemap" aria-hidden="true"></i> سازمان و ارتباطات</span>
+                        <span><i class="fas fa-sitemap" aria-hidden="true"></i> سازمان و همکاری</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'organization' }"></i>
                     </button>
                     <div x-show="openSection === 'organization'" x-transition class="navigation-section__links">
@@ -266,16 +266,16 @@
                         @if($mobileCurrentGroup)
                             <a href="{{ route('secretariat.group', $mobileCurrentGroup) }}" class="navigation-link"><i class="fas fa-people-group"></i><span>دبیرخانه گروه</span></a>
                         @endif
-                        <a href="{{ route('my-invation-code') }}" class="navigation-link"><i class="fas fa-user-plus"></i><span>دعوت از دوستان</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'support' ? null : 'support'">
-                        <span><i class="fas fa-headset" aria-hidden="true"></i> راهنما و پشتیبانی</span>
+                        <span><i class="fas fa-headset" aria-hidden="true"></i> حساب و پشتیبانی</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'support' }"></i>
                     </button>
                     <div x-show="openSection === 'support'" x-transition class="navigation-section__links">
+                        <a href="{{ route('profile.edit') }}" class="navigation-link"><i class="fas fa-user-gear"></i><span>ویرایش حساب کاربری</span></a>
                         <a href="{{ route('support.kb.index') }}" class="navigation-link"><i class="fas fa-book"></i><span>پایگاه دانش</span></a>
                         <a href="{{ route('user.tickets.create') }}" class="navigation-link"><i class="fas fa-plus-circle"></i><span>ارسال تیکت</span></a>
                         <a href="{{ route('user.tickets.index') }}" class="navigation-link"><i class="fas fa-ticket-alt"></i><span>تیکت‌های من</span></a>
@@ -285,7 +285,7 @@
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'explore' ? null : 'explore'">
-                        <span><i class="fas fa-earth-americas" aria-hidden="true"></i> کاوش EarthCoop</span>
+                        <span><i class="fas fa-earth-americas" aria-hidden="true"></i> کاوش و اسناد</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'explore' }"></i>
                     </button>
                     <div x-show="openSection === 'explore'" x-transition class="navigation-section__links">
@@ -294,8 +294,7 @@
                         @endforeach
 
                         <button type="button" class="navigation-link documents-navigation-toggle w-full" @click="openDocumentSection = !openDocumentSection" :aria-expanded="openDocumentSection">
-                            <i class="fas fa-folder-open" aria-hidden="true"></i>
-                            <span>اسناد</span>
+                            <i class="fas fa-folder-open" aria-hidden="true"></i><span>اسناد</span>
                             <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': openDocumentSection }" aria-hidden="true"></i>
                         </button>
                         <div x-show="openDocumentSection" x-transition class="navigation-section__links ms-3 border-s border-gray-200 ps-2">
@@ -322,6 +321,15 @@
                         </div>
                     </section>
                 @endif
+
+                <section class="navigation-section">
+                    <div class="navigation-section__links">
+                        <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form-mobile-drawer').submit();" class="navigation-link">
+                            <i class="fas fa-sign-out-alt"></i><span>{{ __('navigation.logout') }}</span>
+                        </a>
+                        <form id="logout-form-mobile-drawer" action="{{ route('logout') }}" method="POST" class="hidden">@csrf</form>
+                    </div>
+                </section>
             @else
                 <section class="navigation-section">
                     <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
