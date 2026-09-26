@@ -141,7 +141,7 @@ class HomeCivicDashboardServiceTest extends TestCase
         ]);
 
         $eligibility = Mockery::mock(MembershipParticipationEligibilityService::class);
-        $eligibility->shouldReceive('status')->with($user ?? Mockery::any())->andReturn($participationStatus);
+        $eligibility->shouldReceive('status')->andReturn($participationStatus);
 
         return new HomeCivicDashboardService($profile, $accounts, $invitations, $elections, $eligibility);
     }
