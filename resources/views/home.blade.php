@@ -29,7 +29,16 @@
         box-shadow: var(--home-shadow);
     }
 
-    .home-identity-surface::before {
+    .home-secondary-surface {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, .68);
+        border: 1px solid var(--home-border);
+        border-radius: 16px;
+        box-shadow: var(--home-shadow-soft);
+    }
+
+    .home-hero::before {
         content: '';
         position: absolute;
         inset: 0 0 auto 0;
@@ -447,11 +456,25 @@
 
     .home-slider-shell:hover swiper-slide img { transform: scale(1.015); }
 
+    .home-admin-surface {
+        background: rgba(255, 255, 255, .52);
+    }
+
+    .home-admin-surface .home-eyebrow {
+        background: rgba(148, 163, 184, .1);
+        color: #64748b;
+    }
+
+    .home-admin-surface .home-section-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+    }
+
     .home-admin-copy {
         margin-top: 1rem;
-        color: #475569;
-        font-size: .92rem;
-        line-height: 1.95;
+        color: #64748b;
+        font-size: .86rem;
+        line-height: 1.9;
     }
 
     .home-admin-copy > :last-child { margin-bottom: 0; }
@@ -525,6 +548,7 @@
     }
 
     body.dark-mode .home-identity-surface,
+    body.dark-mode .home-secondary-surface,
     body.dark-mode .home-interactive-card,
     body.dark-mode .home-today-item,
     body.dark-mode .home-slider-shell,
@@ -585,7 +609,8 @@
         .home-admin-surface,
         .home-auctions-surface { padding: .95rem; }
 
-        .home-identity-surface { border-radius: 12px; }
+        .home-identity-surface,
+        .home-secondary-surface { border-radius: 12px; }
         .home-hero-title { font-size: 1.55rem; line-height: 1.45; }
         .home-hero-subtitle { font-size: .88rem; line-height: 1.85; }
 
@@ -661,7 +686,7 @@
         .group-stat-meta { padding-top: .45rem; margin-top: .2rem; }
 
         .home-slider-shell { aspect-ratio: 16 / 9; border-radius: 12px; }
-        .home-admin-copy { font-size: .86rem; line-height: 1.9; }
+        .home-admin-copy { font-size: .84rem; line-height: 1.85; }
         .home-next-action { padding: .95rem; }
         .home-next-action .home-primary-action { width: 100%; }
     }
@@ -716,7 +741,7 @@
                 </div>
             </section>
 
-            <section class="home-section home-identity-surface home-journey-surface" id="home-journey" data-home-journey>
+            <section class="home-section home-secondary-surface home-journey-surface" id="home-journey" data-home-journey>
                 <div class="home-section-header">
                     <div>
                         <span class="home-eyebrow"><i class="fas fa-compass" aria-hidden="true"></i>قدم‌های بعدی</span>
@@ -784,7 +809,7 @@
                 </div>
             </section>
 
-            <section class="home-section home-identity-surface home-today-surface" data-home-today>
+            <section class="home-section home-secondary-surface home-today-surface" data-home-today>
                 <div class="home-section-header">
                     <div>
                         <span class="home-eyebrow"><i class="fas fa-bolt" aria-hidden="true"></i>امروز در ارث‌کوپ</span>
@@ -819,37 +844,8 @@
                 </div>
             </section>
 
-            <section class="home-section home-identity-surface home-admin-surface" data-home-admin-content>
-                <div class="home-section-header">
-                    <div>
-                        <span class="home-eyebrow"><i class="fas fa-bullhorn" aria-hidden="true"></i>از ارث‌کوپ</span>
-                        <h2 class="home-section-title">تازه‌ها و راهنمای مسیر</h2>
-                    </div>
-                </div>
-
-                @if($homeSliders->isNotEmpty())
-                    <div class="home-slider-shell">
-                        <swiper-container class="mySwiper"
-                            @if($homeSliders->count() > 1) pagination="true" loop="true" autoplay-delay="6000" autoplay-disable-on-interaction="false" @endif
-                            style="--swiper-pagination-color: var(--color-earth-green); --swiper-pagination-bullet-inactive-color: #d1d5db;">
-                            @foreach($homeSliders as $slider)
-                                <swiper-slide>
-                                    <img src="{{ asset('images/sliders/' . $slider->src) }}" alt="{{ $slider->alt ?: 'اسلایدر ' . $loop->iteration }}">
-                                </swiper-slide>
-                            @endforeach
-                        </swiper-container>
-                    </div>
-                @endif
-
-                @if(filled($homeSetting?->home_content))
-                    <div class="home-admin-copy prose max-w-none">
-                        {!! $homeSetting?->home_content !!}
-                    </div>
-                @endif
-            </section>
-
             @if($groups->count() > 0)
-                <section class="home-section home-identity-surface home-groups-surface" data-home-groups>
+                <section class="home-section home-secondary-surface home-groups-surface" data-home-groups>
                     <div class="home-section-header">
                         <div>
                             <span class="home-eyebrow"><i class="fas fa-users" aria-hidden="true"></i>شبکهٔ من</span>
@@ -881,8 +877,37 @@
                 </section>
             @endif
 
+            <section class="home-section home-secondary-surface home-admin-surface" data-home-admin-content>
+                <div class="home-section-header">
+                    <div>
+                        <span class="home-eyebrow"><i class="fas fa-bullhorn" aria-hidden="true"></i>از ارث‌کوپ</span>
+                        <h2 class="home-section-title">تازه‌ها و راهنمای مسیر</h2>
+                    </div>
+                </div>
+
+                @if($homeSliders->isNotEmpty())
+                    <div class="home-slider-shell">
+                        <swiper-container class="mySwiper"
+                            @if($homeSliders->count() > 1) pagination="true" loop="true" autoplay-delay="6000" autoplay-disable-on-interaction="false" @endif
+                            style="--swiper-pagination-color: var(--color-earth-green); --swiper-pagination-bullet-inactive-color: #d1d5db;">
+                            @foreach($homeSliders as $slider)
+                                <swiper-slide>
+                                    <img src="{{ asset('images/sliders/' . $slider->src) }}" alt="{{ $slider->alt ?: 'اسلایدر ' . $loop->iteration }}">
+                                </swiper-slide>
+                            @endforeach
+                        </swiper-container>
+                    </div>
+                @endif
+
+                @if(filled($homeSetting?->home_content))
+                    <div class="home-admin-copy prose max-w-none">
+                        {!! $homeSetting?->home_content !!}
+                    </div>
+                @endif
+            </section>
+
             @if(isset($activeAuctions) && $activeAuctions->count() > 0)
-                <section class="home-section home-identity-surface home-auctions-surface" data-home-auctions>
+                <section class="home-section home-secondary-surface home-auctions-surface" data-home-auctions>
                     <div class="home-section-header">
                         <div>
                             <span class="home-eyebrow"><i class="fas fa-gavel" aria-hidden="true"></i>فرصت‌های جاری</span>
