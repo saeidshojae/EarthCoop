@@ -31,7 +31,15 @@ final class GroupGovernanceContext
                 throw new RuntimeException("Governance area [{$area->id}] does not define a governance type.");
             }
 
-            return $level;
+            // Conflict-policy rows predate the canonical governance vocabulary.
+            // Map canonical types to the existing versioned policy keys rather
+            // than silently falling through to the default "allowed" decision.
+            return match ($level) {
+                'local' => 'neighborhood',
+                'urban_region' => 'region',
+                'rural_district' => 'rural',
+                default => $level,
+            };
         }
 
         $level = strtolower(trim((string) ($group->getAttributes()['location_level'] ?? '')));
