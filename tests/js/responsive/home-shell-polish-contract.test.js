@@ -7,6 +7,7 @@ const sidebar = read('resources/views/partials/sidebar-unified.blade.php');
 const hoda = read('resources/views/components/najm-hoda-widget.blade.php');
 const layout = read('resources/views/layouts/unified.blade.php');
 const polish = read('resources/views/components/home-shell-polish.blade.php');
+const membershipRuntime = read('resources/js/najm-bahar-membership-source.js');
 
 test('Shared sidebar owns semantic sections on every page instead of Home injecting them with JavaScript', () => {
     for (const section of [
@@ -37,6 +38,13 @@ test('Shared sidebar owns semantic sections on every page instead of Home inject
     ]) {
         assert.match(sidebar, new RegExp(`route\\(['"]${route.replaceAll('.', '\\.')}`));
     }
+});
+
+test('Home membership fee recommendation deep-links to the existing Najm Bahar modal', () => {
+    assert.match(polish, /next_action\.fragment/);
+    assert.match(polish, /membership-fee/);
+    assert.match(membershipRuntime, /window\.location\.hash\s*===\s*["']#membership-fee["']/);
+    assert.match(membershipRuntime, /openMembershipModal|NajmBahar\.modal\.open\(['"]membershipFeeModal['"]\)/);
 });
 
 test('Najm Hoda mobile launcher respects safe areas and keeps a compact Home footprint', () => {
