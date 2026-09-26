@@ -2,6 +2,24 @@
 
 These scenarios are the permanent acceptance matrix for the global Location/Governance architecture. Use test/UAT users and disposable test data only. No scenario authorizes production cutover or destructive production work.
 
+## Execution-status note — 2026-09-26
+
+**This file is a permanent acceptance/regression matrix, not a current backlog.** A row remains here after successful implementation/UAT so future changes can be checked against it.
+
+For current program status and the remaining work before Native Mobile foundations, use `docs/PRE_NATIVE_MOBILE_READINESS_STATUS.fa.md` as the source of truth.
+
+Reconciliation against merged code and project UAT evidence:
+
+- **LG-UAT-03 / 18 / 19 / 20 — structural absence paths:** the Village-without-Neighborhood, City-without-Urban-Region, City-without-Urban-Region-or-Neighborhood, and Urban-Region-without-Neighborhood lines were exercised during the September UAT work, defects were fixed, and the durable structural contracts were closed through PR #133 and Checkpoint 2 / PR #146. They are not pending UAT tasks merely because they remain in this matrix.
+- **LG-UAT-21 / 22 / 25 / 26 — stopping rule, pending micro-location, canonical groups/elections:** these areas received repeated UAT/regression hardening and were subsequently re-audited as canonical consumers; Checkpoint 4 / PR #148 closed the live consumer alignment. They remain permanent regression requirements.
+- **LG-UAT-23 — proposal support vs approval:** the backend support/review lifecycle is closed through Checkpoint 3 / PR #147. Distinct support remains review readiness/priority only and never automatic approval. Future work here is UX/presentation improvement, not a missing core lifecycle.
+- **LG-UAT-28–36 — reference-settlement flow:** implementation exists on current main. Manual project UAT recorded search, registration, shared Step3/Profile/Admin picker behavior, pending exact settlement/neighborhood presentation, hydration and pending-group behavior for the «وری» flow. Do not infer that every settlement row in this matrix received a complete manual operator run.
+- **LG-UAT-31–33 / 37 — settlement threshold, human evidence review, nonresidential cleanup, flag replay:** automated contracts exist, but a complete manual ten-independent-user threshold + full admin evidence/rejection + flag on/off replay matrix is not documented as completed. These remain feature-gated operational UAT if/when settlement rollout is placed in launch scope; they do not reopen the core Location/Governance architecture.
+- **LG-UAT-27 / settlement mobile-RTL checks:** automated responsive contracts are green at the relevant checkpoints, but automated responsive validation never substitutes for a specific manual viewport matrix when a feature is prepared for rollout.
+- **LG-UAT-38 — v1→v2 read-only audit:** the read-only audit contract remains a permanent safety regression. Operationally, the project later passed guarded preflight and completed the bounded Iran 1404 v2 administrative cutover through PRs #143–#145; this row must therefore not be read as evidence that the v2 administrative cutover is still pending.
+
+The matrix below is intentionally preserved as the durable acceptance contract.
+
 | ID | Scenario | Expected result | Permanent regression |
 |---|---|---|---|
 | LG-UAT-01 | Urban Sari residence | Country → province → county → section → city is accepted as a canonical residence path; deeper urban region/neighborhood/street remains valid where present. | `RegistrationPrimaryResidenceTest`, `GlobalArchitectureScenarioTest` |

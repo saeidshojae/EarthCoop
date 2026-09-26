@@ -1,8 +1,40 @@
 # Location / Governance Cutover Readiness
 
-This document records **readiness evidence only**. It is not authorization to change Production.
+> **CURRENT STATUS UPDATE — 2026-09-26**  
+> This document began as a pre-cutover readiness record. Its older sections are preserved below as historical evidence, but the former verdict `Production canonical activation: NOT AUTHORIZED` is no longer the current project state.
+>
+> Current repository baseline: `main@9b936dd9c9b194098f6736eeac8917ccb2d622f6`.
+>
+> Since the original readiness snapshot:
+>
+> - PR #131 merged the global Location/Governance architecture and initial final-UAT hardening;
+> - PR #133 merged the no-neighborhood registration UAT line;
+> - PR #141 merged the Iran 1404 national administrative hierarchy/runtime foundation;
+> - PR #143 added Production read-only v1→v2 preflight;
+> - PR #144 added guarded additive v2 staging;
+> - PR #145 completed the guarded Iran 1404 v2 Production cutover path;
+> - PR #146 closed the structural-state matrix;
+> - PR #147 closed proposal/review lifecycle;
+> - PR #148 closed canonical runtime consumer alignment and merged at `main@9b936dd9...` after Responsive #707 and Integration Full Validation #3266 succeeded.
+>
+> Operational evidence recorded in the 2026-09-25 project conversation confirms the v1→v2 administrative cutover was actually executed successfully on the shared/Production line: runtime v2 became active, blockers were 0, and only bounded verified live dependencies were migrated (including one residence, proposal-chain dependencies, canonical groups and one project target/scope). Test memberships were explicitly cleaned to inactive before cutover. This is operator evidence and is distinct from CI evidence.
+>
+> **What remains intentionally NOT implied by that cutover:**
+>
+> - nationwide residential classification/authorization of all 99,317 reference settlements;
+> - public rollout of settlement claims merely because administrative v2 is active;
+> - C14 legacy retirement;
+> - destructive deletion of legacy geography/history.
+>
+> C14 remains separately approval-gated and post-observation. The current next program is documented in `docs/PRE_NATIVE_MOBILE_READINESS_STATUS.fa.md`.
 
-## Current hardened post-UI candidate
+---
+
+## Historical pre-cutover readiness record
+
+This section records the readiness evidence and constraints as they stood before the later 2026-09-25 cutover work. It must not be read as the present-state verdict.
+
+## Current hardened post-UI candidate (historical)
 
 - Current Production/main baseline before this hardening PR: `c26f012e9b683b69342050f435931486a3bb6874`
 - Hardened branch: `agent/location-governance-production-readiness-membership-fix-20260914`
@@ -85,25 +117,25 @@ No Production backup or restore rehearsal has been performed from this workspace
 
 Before any additive Production write, a current recoverable cPanel/database backup or provider snapshot must exist. If hosting limitations make an isolated restore rehearsal impractical, that limitation must be recorded honestly and explicitly accepted; it must never be represented as verified restore evidence.
 
-## Human-approval boundary — activation still stopped
+## Human-approval boundary — historical pre-activation state
 
-`DEPLOYMENT_CONSOLE_ENABLED` must remain `false` until the backup/preflight checkpoint is accepted. When the controlled preparation window is explicitly approved, the console may be enabled temporarily with a high-entropy secret for its fixed allowlisted operations, then must be disabled again before activation.
+At this historical checkpoint, `DEPLOYMENT_CONSOLE_ENABLED` was required to remain `false` until the backup/preflight checkpoint was accepted. The later cutover was performed through separately reviewed guarded operations; this paragraph documents the earlier boundary only.
 
-Until separate activation approval, do not:
+At that time, before separate activation approval, the following were forbidden:
 
-- enable any `LOCATION_GOVERNANCE_*_ENABLED` Production flag;
-- delete or retire legacy geography or membership history;
-- perform destructive database operations;
-- perform C14 legacy retirement.
+- enabling `LOCATION_GOVERNANCE_*_ENABLED` Production flags;
+- deleting or retiring legacy geography or membership history;
+- destructive database operations;
+- C14 legacy retirement.
 
-C14 remains a post-cutover audit/observation phase requiring a new, separate explicit approval.
+The last three constraints remain relevant unless separately approved; especially, C14 is still post-cutover and separately approval-gated.
 
-## Readiness verdict
+## Historical readiness verdict
 
-**C13 architecture and Stage C/UI package: implemented.**
+At the time this document was first written:
 
-**Post-UI Production-readiness hardening: GREEN on checkpoint `3b8bca8905839d5a23d170984093e99a99371131` via Full Validation #2620.**
+- **C13 architecture and Stage C/UI package:** implemented;
+- **Post-UI Production-readiness hardening:** GREEN on `3b8bca8905839d5a23d170984093e99a99371131` via Full Validation #2620;
+- **Production canonical activation:** not yet authorized at that historical point.
 
-**Current documentation checkpoint: awaiting its own fresh Full Validation before PR #113 is merge-ready.**
-
-**Production canonical activation: NOT AUTHORIZED.** The next operational phase after a final merge-approved candidate is safe Production backup/preflight and additive preparation with all rollout flags still OFF.
+That verdict has been superseded by the later 2026-09-25 guarded v2 cutover and the subsequent Checkpoints 2–4 closure described at the top of this file.
