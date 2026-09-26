@@ -1,6 +1,31 @@
 # Iran 1404 settlement catalog — dependency-ordered implementation plan
 
-Status: **PLAN ONLY / Draft**. This document authorizes no existing or Production database writes, no PR merge, no deletion, and no migration of real user/group/location identity. Parent: PR #133 (registration/UAT), child: PR #134 (Iran reference staging).
+> **STATUS UPDATE — 2026-09-26**  
+> This file is now a **historical implementation plan**, not the current backlog. Its original C0–C6 text is preserved below for design provenance. Current status must be read together with `docs/PRE_NATIVE_MOBILE_READINESS_STATUS.fa.md` and current `main`.
+>
+> **Current baseline:** `main@9b936dd9c9b194098f6736eeac8917ccb2d622f6`.
+>
+> The original header `PLAN ONLY / Draft` is obsolete as a statement of present implementation state. Major parts of the plan were subsequently implemented and merged through PRs #133, #141 and later Location/Governance checkpoints.
+>
+> Current reconciliation:
+>
+> | Original checkpoint | 2026-09-26 status | Evidence / note |
+> |---|---|---|
+> | C0 — evidence/branch reconciliation | **DONE / SUPERSEDED** | PR chain was reconciled; no-region/no-neighborhood UAT line ultimately merged via #133 and closed structurally via #146. |
+> | C1 — neutral settlement catalog | **IMPLEMENTED** | `ReferenceSettlement` runtime/model exists on main; 99,317 neutral settlement identities were imported/validated in isolated UAT evidence. |
+> | C2 — evidence classification | **IMPLEMENTED CORE / PARTIAL OPERATIONAL UAT** | review/evidence models and `ReferenceSettlementReviewService` exist; nationwide human classification remains intentionally incomplete. |
+> | C3 — user residence claim | **IMPLEMENTED** | settlement residence claim, registration bridge, pending exact residence and pending-group behavior exist on main. |
+> | C4 — performance/full-volume isolated validation | **DONE for catalog foundation** | isolated full-volume import/replay evidence was recorded for 99,317 rows; this does not mean nationwide residential classification is complete. |
+> | C5 — local E2E UAT/crosswalk | **PARTIAL MANUAL UAT + CUTOVER COMPLETED FOR ADMIN v2** | manual «وری» flow covered search/registration/shared picker/hydration/pending settlement-neighborhood/group presentation; broader support-threshold/admin-evidence/nonresidential/flag/mobile-RTL manual matrix is not fully documented as complete. v1→v2 administrative cutover was later completed via #143–#145. |
+> | C6 — release gates | **SPLIT** | automated exact-SHA gates and the Iran v2 administrative cutover were completed; settlement public rollout/classification remains separately feature-gated and is not implied by the v2 admin cutover. |
+>
+> Important: the original `Immediate next code slice` at the end of this document is **historical and already executed**. Do not start C1 again.
+
+---
+
+## Historical plan text (preserved)
+
+Status at authoring time (2026-09-24): **PLAN ONLY / Draft**. This statement describes the original planning moment only. It does not describe current main.
 
 ## Verified baseline (2026-09-24)
 
@@ -71,6 +96,6 @@ Perform read-only crosswalk against *all* actual current DB identities (not mere
 
 Before any merge: exact-SHA targeted and full validations, diff/security audit, local UAT evidence, performance envelope and PR #133 dependency resolved. Before a shared/Production DB apply: separately reviewed and owner-approved operational plan specifying backup/restore test, DB identity, zero/expected write counts, traffic-safe batches, reversible identity crosswalk, rollback, partial failure behavior, feature flags and audit. Production remains blocked unless explicitly authorized.
 
-## Immediate next code slice
+## Immediate next code slice (historical)
 
-Start C1 with the *read-only catalog representation and tests* on a new child branch off PR #134 HEAD. Avoid touching the existing v1 schema or reusing the current per-row operational importer for catalog records. First RED tests should establish that importing the entire catalog cannot create a `Location`, `GovernanceArea`, `Group`, `UserLocationRelationship`, or election privilege; only then implement the isolated importer. Keep PR #134 Draft until these gates are independently satisfied.
+At authoring time the next step was C1 with a read-only catalog representation and tests on a child branch off PR #134. That work was later implemented and is no longer the current next task. See `docs/PRE_NATIVE_MOBILE_READINESS_STATUS.fa.md` for the current sequence.
