@@ -15,6 +15,7 @@ use App\Services\LocationGovernance\GroupGovernanceContext;
 use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -32,6 +33,26 @@ final class CanonicalConsumerAlignmentCheckpoint4Test extends TestCase
             'location-governance.groups_enabled' => true,
             'location-governance.elections_enabled' => true,
         ]);
+    }
+
+    public function test_live_routes_resolve_to_canonical_consumers(): void
+    {
+        $this->assertSame(
+            \App\Http\Controllers\Profile\RuntimeProfileController::class.'@showProfile',
+            Route::getRoutes()->getByName('profile.show')?->getActionName(),
+        );
+        $this->assertSame(
+            \App\Http\Controllers\LocationGovernance\CanonicalGroupIndexController::class,
+            Route::getRoutes()->getByName('groups.index')?->getActionName(),
+        );
+        $this->assertSame(
+            \App\Http\Controllers\Group\SystemicElectionChatController::class.'@chat',
+            Route::getRoutes()->getByName('groups.chat')?->getActionName(),
+        );
+        $this->assertSame(
+            \App\Http\Controllers\LocationGovernance\MyLocationGovernanceController::class,
+            Route::getRoutes()->getByName('location-governance.me')?->getActionName(),
+        );
     }
 
     public function test_canonical_membership_pivot_role_is_authoritative_while_legacy_fallback_is_preserved(): void
