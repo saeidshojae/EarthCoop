@@ -60,6 +60,26 @@ final class CanonicalGroupSearchRuntimeTest extends TestCase
         $this->assertSame('فعال موقت', $temporaryPayload['role']);
     }
 
+    public function test_search_preserves_the_group_member_count_contract(): void
+    {
+        $user = User::factory()->create();
+        $otherMember = User::factory()->create();
+        $group = Group::query()->create([
+            'name' => 'Member count target',
+            'group_type' => '0',
+            'location_level' => 'city',
+        ]);
+        $user->groups()->attach($group->id, ['role' => 1, 'status' => 1]);
+        $otherMember->groups()->attach($group->id, ['role' => 0, 'status' => 1]);
+
+        $payload = $this->actingAs($user)
+            ->getJson('/api/groups/search?q=Member+count&type=name')
+            ->assertOk()
+            ->json('groups.0');
+
+        $this->assertSame(2, $payload['members_count']);
+    }
+
     public function test_search_excludes_inactive_memberships(): void
     {
         $user = User::factory()->create();

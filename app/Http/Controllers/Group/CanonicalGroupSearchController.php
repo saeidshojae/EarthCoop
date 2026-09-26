@@ -36,10 +36,8 @@ final class CanonicalGroupSearchController extends Controller
                     $query->where('user_id', $user->id)
                         ->where('status', 1);
                 },
-                'users' => function ($query) use ($user): void {
-                    $query->where('user_id', $user->id);
-                },
-            ]);
+            ])
+            ->withCount('users');
 
         if ($searchType === 'content') {
             $query->where(function ($query) use ($searchText): void {
@@ -71,9 +69,7 @@ final class CanonicalGroupSearchController extends Controller
                 'id' => $group->id,
                 'name' => $group->name,
                 'avatar' => $group->avatar ? asset('images/groups/'.$group->avatar) : null,
-                // Preserve the mature endpoint contract: the eager-loaded users
-                // relation contains only the caller, so this remains 1 for a member.
-                'members_count' => $group->users->count(),
+                'members_count' => (int) $group->users_count,
                 'location_level' => $governance->legacyCompatibleLevel($group),
                 'is_approved' => 1,
                 'status' => 1,
