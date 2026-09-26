@@ -158,10 +158,16 @@ class ElectionPolicyResolver
     {
         $base = strtolower(trim($level));
 
-        // Legacy group data uses `section` while GroupSetting uses `district`.
-        // Apply the same compatibility normalization to canonical governance_type
-        // so existing versioned election policy records remain authoritative.
-        return $base === 'section' ? 'district' : $base;
+        // GroupSetting keeps the mature policy vocabulary while canonical
+        // GovernanceArea uses structural type names. Normalize only at this
+        // policy boundary; canonical identity itself remains unchanged.
+        return match ($base) {
+            'section' => 'district',
+            'rural_district' => 'city',
+            'urban_region', 'village' => 'region',
+            'local' => 'neighborhood',
+            default => $base,
+        };
     }
 
     private function canonicalEnabled(): bool
