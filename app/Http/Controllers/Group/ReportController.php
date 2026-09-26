@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\ReportedMessage;
+use App\Services\Groups\GroupMembershipRoleResolver;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
@@ -27,21 +28,10 @@ class ReportController extends Controller
                 'message' => 'شما عضو این گروه نیستید.'
             ], 403);
         }
-        
-        // تعیین نقش بر اساس location_level (مثل ChatController):
-        // - سطح محله و پایین‌تر (neighborhood, street, alley) → فعال (role 1)
-        // - سطح منطقه و بالاتر (region, village, rural, city و ...) → ناظر (role 0)
-        // اگر role در pivot وجود داشت و معتبر بود (2, 3, 4, 5)، از همان استفاده می‌کنیم
-        $pivotRole = (int) $groupUser->role;
 
-        if ((bool) config('location-governance.groups_enabled', false)) {
-            $yourRole = in_array($pivotRole, [0, 1, 2, 3, 4, 5], true) ? $pivotRole : 0;
-        } elseif (in_array($pivotRole, [2, 3, 4, 5], true)) {
-            $yourRole = $pivotRole;
-        } else {
-            $locationLevel = strtolower(trim((string)($group->location_level ?? '')));
-            $yourRole = in_array($locationLevel, ['neighborhood', 'street', 'alley'], true) ? 1 : 0;
-        }
+        // نقش مؤثر از قرارداد مشترک عضویت خوانده می‌شود. در runtime canonical
+        // خود pivot مرجع است و fallback قدیمی فقط پشت feature flag باقی می‌ماند.
+        $yourRole = app(GroupMembershipRoleResolver::class)->effectiveRole($group, $groupUser);
         
         // فقط مدیران (role 3) دسترسی دارند
         if ($yourRole !== 3) {

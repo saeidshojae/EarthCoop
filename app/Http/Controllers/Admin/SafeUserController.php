@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Modules\NajmBahar\Services\MembershipRemovalService;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\IranV2RuntimeState;
+use App\Services\LocationGovernance\UserResidenceReadModel;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\Request;
 
@@ -19,6 +20,7 @@ class SafeUserController extends UserController
         private readonly MembershipRemovalService $membershipRemoval,
         private readonly UserManagementService $userManagement,
         private readonly CanonicalGroupMembershipReconciler $canonicalGroupMembershipReconciler,
+        private readonly UserResidenceReadModel $residenceReadModel,
     ) {
     }
 
@@ -165,6 +167,104 @@ class SafeUserController extends UserController
             count($validated['user_ids']) . ' عضویت با حفظ دارایی‌ها و سوابق مالی خاتمه یافت'
         );
     }
+
+    public function exportUsers($userIds = null)
+    {
+        if (! $this->residenceReadModel->canonicalEnabled()) {
+            return parent::exportUsers($userIds);
+        }
+
+        $query = User::members()->with([
+            'address.country',
+            'address.province',
+            'address.county',
+            'address.section',
+            'address.city',
+            'address.rural',
+            'address.region',
+            'address.village',
+            'address.neighborhood',
+            'address.street',
+            'address.alley',
+            'locationRelationships.location.type',
+            'occupationalFields',
+            'experienceFields',
+        ]);
+
+        if ($userIds) {
+            $query->whereIn('id', $userIds);
+        }
+
+        $users = $query->get();
+        $filename = 'users_export_' . date('Y-m-d_H-i-s') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($users): void {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($file, [
+                'نام', 'نام خانوادگی', 'ایمیل', 'شماره تماس', 'کد ملی',
+                'جنسیت', 'تاریخ تولد', 'وضعیت', 'ایمیل تایید شده',
+                'کشور', 'استان', 'شهرستان', 'بخش', 'شهر/روستا',
+                'منطقه/دهستان', 'محله', 'خیابان', 'کوچه',
+                'صنف', 'تخصص', 'تاریخ ثبت‌نام'
+            ]);
+
+            foreach ($users as $user) {
+                $canonical = $this->residenceReadModel->labelsFor($user);
+                $hasCanonical = collect($canonical)->contains(
+                    static fn (string $label): bool => trim($label) !== ''
+                );
+
+                $location = $hasCanonical ? [
+                    $canonical['country'],
+                    $canonical['province'],
+                    $canonical['county'],
+                    $canonical['section'],
+                    $canonical['city_or_village'],
+                    $canonical['region_or_rural'],
+                    $canonical['neighborhood'],
+                    $canonical['street'],
+                    $canonical['alley'],
+                ] : [
+                    $user->address?->country?->name ?? '',
+                    $user->address?->province?->name ?? '',
+                    $user->address?->county?->name ?? '',
+                    $user->address?->section?->name ?? '',
+                    $user->address?->city?->name ?? $user->address?->rural?->name ?? '',
+                    $user->address?->region?->name ?? $user->address?->village?->name ?? '',
+                    $user->address?->neighborhood?->name ?? '',
+                    $user->address?->street?->name ?? '',
+                    $user->address?->alley?->name ?? '',
+                ];
+
+                fputcsv($file, [
+                    $user->first_name,
+                    $user->last_name,
+                    $user->email,
+                    $user->phone,
+                    $user->national_id,
+                    $user->gender == 'male' ? 'مرد' : 'زن',
+                    $user->birth_date,
+                    $user->status ?? 'active',
+                    $user->email_verified_at ? 'بله' : 'خیر',
+                    ...$location,
+                    $user->occupationalFields->pluck('name')->implode(', '),
+                    $user->experienceFields->pluck('name')->implode(', '),
+                    $user->created_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     /** @return array<int, string> */
     private function residenceHydrationPath(?Location $location, ?PendingResidenceIntent $intent): array
     {
