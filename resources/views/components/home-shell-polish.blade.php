@@ -113,7 +113,7 @@
             <p class="home-hoda-intro-text">هرجا درباره مسیر عضویت، گروه‌ها، حکمرانی یا کارهای خود سؤال داشتید، می‌توانید از نجم هدا راهنمایی بخواهید.</p>
         </div>
         <div class="home-hoda-intro-actions">
-            <a href="{{ route('najm-hoda.about') }}" class="home-hoda-intro-link"><i class="fas fa-circle-info" aria-hidden="true"></i>آشنایی با نجم هدا</a>
+            <a href="{{ route('najm-hoda.profile') }}" class="home-hoda-intro-link"><i class="fas fa-circle-info" aria-hidden="true"></i>آشنایی با نجم هدا</a>
             <button type="button" class="home-hoda-chat-link" data-open-najm-hoda><i class="fas fa-comments" aria-hidden="true"></i>گفتگو با نجم هدا</button>
         </div>
     </section>
