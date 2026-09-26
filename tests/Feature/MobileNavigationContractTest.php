@@ -28,7 +28,7 @@ class MobileNavigationContractTest extends TestCase
             $this->assertStringContainsString($routeContract, $drawer);
         }
 
-        foreach (['primary', 'participation', 'economy', 'organization', 'support', 'explore'] as $section) {
+        foreach (['network', 'governance', 'economy', 'organization', 'support', 'explore'] as $section) {
             $this->assertStringContainsString("openSection === '{$section}'", $drawer);
         }
 
