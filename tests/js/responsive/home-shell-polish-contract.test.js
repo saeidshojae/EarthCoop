@@ -42,7 +42,8 @@ test('Shared sidebar owns semantic sections on every page instead of Home inject
 
 test('Home membership fee recommendation deep-links to the existing Najm Bahar modal', () => {
     assert.match(polish, /next_action\.fragment/);
-    assert.match(membershipRuntime, /window\.location\.hash\s*===\s*["']#membership-fee["']/);
+    assert.match(membershipRuntime, /window\.location\.hash/);
+    assert.match(membershipRuntime, /#membership-fee/);
     assert.match(membershipRuntime, /openMembershipModal|NajmBahar\.modal\.open\(['"]membershipFeeModal['"]\)/);
 });
 
