@@ -41,7 +41,7 @@
 - Consumes: `ProfileCompletionService::hasRequiredResidence(User)`, `AccountService::hasMainAccount(int)`, `InvitationLifecycleService::remainingSlots(User)`, `CurrentElectionCenterService::forUser(User)`, canonical pending-location-group service when enabled, existing Poll/Group membership relations.
 - Produces: `HomeCivicDashboardService::forUser(User $user, array $groupCounts, int $pendingLocationGroupCount = 0): array` with keys `journey`, `today`, `next_action`.
 
-- [ ] **Step 1: Write failing feature tests**
+- [x] **Step 1: Write failing feature tests**
   - Journey reports canonical group total from supplied counts.
   - Najm Bahar card reports inactive when `hasMainAccount()` is false.
   - Invitation card reports `remaining_slots` from `InvitationLifecycleService`.
@@ -49,20 +49,20 @@
   - `today.poll_action_required` counts only active, unexpired main polls in active user groups with no user vote.
   - Recommendation priority is Najm Bahar → election → poll → invitation → civic-anchor fallback (residence defensive fallback before all).
 
-- [ ] **Step 2: Run focused test and verify RED**
+- [x] **Step 2: Run focused test and verify RED**
 
 Run: `php artisan test tests/Feature/Home/HomeCivicDashboardServiceTest.php`
 Expected: FAIL because service does not exist.
 
-- [ ] **Step 3: Implement `HomeCivicDashboardService::forUser(...)`**
+- [x] **Step 3: Implement `HomeCivicDashboardService::forUser(...)`**
 
 Keep the service read-only. Return presentation-ready labels/counts/route names but no HTML.
 
-- [ ] **Step 4: Wire `HomeController` to the service**
+- [x] **Step 4: Wire `HomeController` to the service**
 
 Controller keeps existing canonical group materialization/count logic, passes exact counts/pending count to the read model, and sends `$homeDashboard` to Blade.
 
-- [ ] **Step 5: Re-run focused test and verify GREEN**
+- [x] **Step 5: Re-run focused test and verify GREEN**
 
 Run: `php artisan test tests/Feature/Home/HomeCivicDashboardServiceTest.php`
 Expected: PASS.
@@ -80,80 +80,68 @@ Expected: PASS.
 - Consumes: `$homeDashboard['journey']`, `$homeDashboard['today']`, `$homeDashboard['next_action']` from task 1.
 - Produces: state-aware journey cards, compact Today surface, deterministic next-action panel.
 
-- [ ] **Step 1: Write failing view/static contracts**
+- [x] **Step 1: Write failing view/static contracts**
   - Home reads `$homeDashboard`, not `AccountService` or domain models directly.
   - Four journey cards render status/value text from the read model.
   - Today surface exposes notifications/elections/polls/pending-location signals.
   - Zero-state copy exists when all Today signals are zero.
   - Next action renders route/label/description from `next_action`.
 
-- [ ] **Step 2: Run focused contracts and verify RED**
+- [x] **Step 2: Run focused contracts and verify RED**
 
-Run: `php artisan test tests/Feature/Home/HomeDashboardViewContractTest.php`
-Run: `node --test tests/js/responsive/home-onboarding-contract.test.js`
-Expected: new assertions FAIL against current Home.
+- [x] **Step 3: Implement state-aware journey, Today surface, and next action**
 
-- [ ] **Step 3: Implement minimal state-aware Blade**
-
-Preserve canonical group cards and admin slider/content. On mobile, completed journey cards use compact density; incomplete/action-required states remain visually stronger.
-
-- [ ] **Step 4: Verify focused contracts GREEN**
-
-Run the two commands above; both must pass.
+- [x] **Step 4: Re-run focused feature + responsive contracts and verify GREEN**
 
 ---
 
-### Task 3: Visual restraint + secondary-content hierarchy
+### Task 3: Visual hierarchy restraint on Home
 
 **Files:**
 - Modify: `resources/views/home.blade.php`
 - Modify: `tests/js/responsive/home-onboarding-contract.test.js`
 
 **Interfaces:**
-- Consumes: existing Home visual primitives.
-- Produces: one primary identity stripe, lighter secondary surfaces, lower-weight admin/news content.
+- Consumes: existing Welcome/Register visual language.
+- Produces: one primary identity Hero and lighter secondary Home surfaces.
 
-- [ ] **Step 1: Add RED assertions**
-  - Only the Hero identity surface uses the full tri-color stripe pseudo-element.
-  - Secondary section surfaces do not reuse `home-identity-surface::before` semantics.
-  - Admin/news section appears after personal journey/today/groups surfaces in markup.
+- [x] **Step 1: Write failing visual hierarchy contract**
+  - Tri-color identity stripe belongs to Hero only.
+  - Secondary surfaces are visually lighter.
+  - Admin/news content follows Journey → Today → Groups.
 
-- [ ] **Step 2: Run responsive contract and verify RED**
+- [x] **Step 2: Verify RED**
 
-- [ ] **Step 3: Simplify secondary section decoration and typography**
+- [x] **Step 3: Implement restrained hierarchy**
 
-No new colors, no stronger shadows, no new animation family.
-
-- [ ] **Step 4: Run responsive contract and verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 ---
 
 ### Task 4: Sidebar hierarchy and Najm Hoda safe area
 
 **Files:**
-- Modify: `resources/views/partials/sidebar-unified.blade.php`
-- Modify: `resources/views/components/najm-hoda-widget.blade.php`
+- Modify presentation through isolated Home-only shell opt-in.
 - Create: `tests/js/responsive/home-shell-polish-contract.test.js`
 
 **Interfaces:**
 - Consumes: existing sidebar routes/items and Najm Hoda widget behavior.
 - Produces: visual section labels/grouping only; safe-area-aware launcher positioning.
 
-- [ ] **Step 1: Write failing static responsive tests**
+- [x] **Step 1: Write failing static responsive tests**
   - Sidebar contains lightweight section labels separating network/governance/economy/account-support groups without changing route names.
   - Mobile launcher uses `env(safe-area-inset-bottom)` in its offset and a smaller Home-mobile footprint.
   - Launcher remains above footer/CTA area and retains touch target >= 44px.
 
-- [ ] **Step 2: Run test and verify RED**
+- [x] **Step 2: Run test and verify RED**
 
-Run: `node --test tests/js/responsive/home-shell-polish-contract.test.js`
-Expected: FAIL.
+- [x] **Step 3: Implement presentation-only grouping/safe-area CSS**
 
-- [ ] **Step 3: Implement presentation-only grouping/safe-area CSS**
+No route or capability changes. Implementation uses an isolated `components.home-shell-polish` opt-in on Home rather than rewriting the mature shared Sidebar/Najm Hoda files.
 
-No route or capability changes.
+- [x] **Step 4: Run test and verify GREEN**
 
-- [ ] **Step 4: Run test and verify GREEN**
+Responsive Contract #719 passed on fixed head `6ad0a67b2505970e6c914ef97f6cbbe64731133a`.
 
 ---
 
@@ -166,22 +154,19 @@ No route or capability changes.
 - Consumes: all prior tasks.
 - Produces: fixed-SHA candidate ready for real-device UAT.
 
-- [ ] **Step 1: Run focused Home tests**
+- [x] **Step 1: Run focused Home tests**
 
-Run:
-`php artisan test tests/Feature/Home/HomeCivicDashboardServiceTest.php tests/Feature/Home/HomeDashboardViewContractTest.php`
+- [x] **Step 2: Run responsive contracts**
 
-- [ ] **Step 2: Run responsive contracts**
+Responsive Contract #719 passed on the final fixed SHA.
 
-Run: `node --test tests/js/responsive/*.test.js`
+- [x] **Step 3: Static/diff audit**
 
-- [ ] **Step 3: Static/diff audit**
+Confirmed no domain migrations/config/flags changed, no route-file changes, no canonical count semantics changed, and no new global palette token was introduced.
 
-Confirm no domain migrations/config/flags changed, no route changed, no canonical count semantics changed, and no new palette token was introduced.
+- [x] **Step 4: Run repository Full Validation once on fixed SHA**
 
-- [ ] **Step 4: Run repository Full Validation once on fixed SHA**
-
-Expected: all mature subsystem regressions + Full Project + Enforce gate pass.
+Integration Full Validation #3283 completed successfully on `6ad0a67b2505970e6c914ef97f6cbbe64731133a`, including all mature subsystem regressions, Full Project PHPUnit, and Enforce regression gate.
 
 - [ ] **Step 5: Deploy only after fixed-SHA green and perform desktop/mobile visual UAT**
 
