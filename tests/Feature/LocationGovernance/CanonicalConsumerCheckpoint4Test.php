@@ -180,7 +180,7 @@ final class CanonicalConsumerCheckpoint4Test extends TestCase
         $appointment = file_get_contents(app_path('Listeners/AwardElectionAppointmentParticipation.php'));
 
         $this->assertStringContainsString('GroupGovernanceContext::class)->legacyCompatibleLevel($group)', $systemicChat);
-        $this->assertStringNotContainsString("where('group_level', $group->location_level)", $systemicChat);
+        $this->assertStringNotContainsString("where('group_level', \$group->location_level)", $systemicChat);
         $this->assertStringNotContainsString("getRawOriginal('location_level')", $systemicChat);
         $this->assertStringNotContainsString('$group->location_level', $reports);
         $this->assertStringNotContainsString('$group->location_level', $classifier);
