@@ -18,6 +18,24 @@ final class GroupGovernanceContext
         return strtolower(trim((string) ($group->getAttributes()['location_level'] ?? '')));
     }
 
+    /**
+     * Return the mature legacy presentation vocabulary for a group while making
+     * canonical GovernanceArea the authority whenever canonical groups are on.
+     * This is a read-only compatibility adapter for UI/announcement consumers;
+     * it never writes the legacy location_level column.
+     */
+    public function legacyCompatibleLevel(Group $group): string
+    {
+        $level = $this->level($group);
+
+        return match ($level) {
+            'local' => 'neighborhood',
+            'urban_region' => 'region',
+            'rural_district' => 'rural',
+            default => $level,
+        };
+    }
+
     public function officialElectionLevel(Group $group): string
     {
         if ($this->canonicalElectionsEnabled()) {

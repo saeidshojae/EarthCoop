@@ -24,6 +24,7 @@ use App\Services\Elections\ElectionPolicyResolver;
 use App\Services\GroupChat\GroupFeedService;
 use App\Services\GroupChat\GroupSessionService;
 use App\Services\Groups\GroupMembershipRoleResolver;
+use App\Services\LocationGovernance\GroupGovernanceContext;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -62,6 +63,11 @@ class SystemicElectionChatController extends Controller
         if ($yourRole === null) {
             abort(403, 'Unauthorized');
         }
+
+        // Canonical GovernanceArea is authoritative in Stage C. The chat UI and
+        // Announcement model still consume the mature legacy level vocabulary,
+        // so adapt it once in memory without persisting location_level.
+        $groupPresentationLevel = app(GroupGovernanceContext::class)->legacyCompatibleLevel($group);
 
         $lastReadMessageId = $groupUser->last_read_message_id;
         $unreadContentCounts = $this->countUnreadContent($group, (int) auth()->id());
@@ -142,7 +148,7 @@ class SystemicElectionChatController extends Controller
             }
         }
 
-        $anns = Announcement::query()->where('group_level', $group->location_level)
+        $anns = Announcement::query()->where('group_level', $groupPresentationLevel)
             ->orderBy('created_at')->select('*')->addSelect(DB::raw("'ann' as type"))->get();
         $sessions = GroupSession::query()->where('group_id', $group->id)
             ->whereIn('status', ['active', 'ended'])->whereNotNull('started_at')
@@ -215,6 +221,11 @@ class SystemicElectionChatController extends Controller
         $allManagers = GroupUser::query()->where('group_id', $group->id)->where('role', 3)->pluck('user_id');
         $chatRequests = ChatRequest::query()->whereIn('receiver_id', $allManagers)
             ->where('request_to_group', $group->id)->where('status', 'pending')->with('sender')->latest()->get();
+
+        // Existing Hero/Control-Center partials still render location_level. Give
+        // them the canonical-derived presentation value for this response only;
+        // the database column remains untouched and legacy groups keep fallback.
+        $group->setAttribute('location_level', $groupPresentationLevel);
 
         return view('groups.chat', [
             'group' => $group,

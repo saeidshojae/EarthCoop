@@ -10,6 +10,7 @@ use App\Models\GroupUser;
 use App\Models\MembershipDimension;
 use App\Models\User;
 use App\Services\Elections\ElectionGroupDomainClassifier;
+use App\Services\LocationGovernance\GroupGovernanceContext;
 use App\Services\LocationGovernance\ResidenceService;
 use App\Services\Membership\PublicDimensionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -131,13 +132,55 @@ final class CanonicalConsumerCheckpoint4Test extends TestCase
         $this->assertStringContainsString('محله مرجع', $csv);
     }
 
-    public function test_live_group_and_election_consumers_do_not_read_legacy_location_level_directly(): void
+    public function test_group_presentation_level_uses_canonical_area_and_preserves_legacy_vocabulary(): void
+    {
+        $context = app(GroupGovernanceContext::class);
+
+        foreach ([
+            'local' => 'neighborhood',
+            'urban_region' => 'region',
+            'rural_district' => 'rural',
+            'city' => 'city',
+        ] as $governanceType => $expectedLevel) {
+            $area = GovernanceArea::factory()->official()->create([
+                'governance_type' => $governanceType,
+                'status' => 'active',
+            ]);
+            $group = Group::query()->create([
+                'name' => 'Canonical '.$governanceType,
+                'group_type' => '0',
+                'governance_area_id' => $area->id,
+                'dimension_key' => 'public',
+                'dimension_value_key' => 'public',
+                // A stale value must never beat canonical GovernanceArea.
+                'location_level' => 'province',
+            ]);
+
+            $this->assertSame($expectedLevel, $context->legacyCompatibleLevel($group));
+            $this->assertSame('province', $group->getRawOriginal('location_level'));
+        }
+
+        config([
+            'location-governance.groups_enabled' => false,
+            'location-governance.elections_enabled' => false,
+        ]);
+        $legacy = Group::query()->create([
+            'name' => 'Legacy street',
+            'group_type' => '0',
+            'location_level' => 'street',
+        ]);
+        $this->assertSame('street', $context->legacyCompatibleLevel($legacy));
+    }
+
+    public function test_live_group_and_election_consumers_do_not_read_legacy_location_level_as_runtime_authority(): void
     {
         $systemicChat = file_get_contents(app_path('Http/Controllers/Group/SystemicElectionChatController.php'));
         $reports = file_get_contents(app_path('Http/Controllers/Group/ReportController.php'));
         $classifier = file_get_contents(app_path('Services/Elections/ElectionGroupDomainClassifier.php'));
         $appointment = file_get_contents(app_path('Listeners/AwardElectionAppointmentParticipation.php'));
 
+        $this->assertStringContainsString('GroupGovernanceContext::class)->legacyCompatibleLevel($group)', $systemicChat);
+        $this->assertStringNotContainsString("where('group_level', $group->location_level)", $systemicChat);
         $this->assertStringNotContainsString("getRawOriginal('location_level')", $systemicChat);
         $this->assertStringNotContainsString('$group->location_level', $reports);
         $this->assertStringNotContainsString('$group->location_level', $classifier);
