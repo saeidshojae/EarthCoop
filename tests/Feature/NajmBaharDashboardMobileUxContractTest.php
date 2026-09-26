@@ -73,10 +73,12 @@ class NajmBaharDashboardMobileUxContractTest extends TestCase
         $this->assertStringNotContainsString('rotate(-10deg)', $coin);
     }
 
-    public function test_membership_modal_runtime_places_overlay_above_page_chrome(): void
+    public function test_membership_modal_runtime_places_overlay_above_page_chrome_and_supports_home_deep_link(): void
     {
         $runtime = file_get_contents(resource_path('js/najm-bahar-membership-source.js'));
         $this->assertStringContainsString('membershipFeeModal', $runtime);
         $this->assertStringContainsString("modal.style.zIndex = '2147483000'", $runtime);
+        $this->assertStringContainsString("window.location.hash === '#membership-fee'", $runtime);
+        $this->assertStringContainsString("NajmBahar.modal.open('membershipFeeModal')", $runtime);
     }
 }
