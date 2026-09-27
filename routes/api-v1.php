@@ -5,6 +5,7 @@ use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
+use App\Http\Controllers\API\V1\NajmHodaConversationController;
 use App\Http\Controllers\API\V1\NotificationController;
 use App\Http\Controllers\API\V1\ProfileController;
 use App\Http\Controllers\API\V1\ProjectController;
@@ -53,5 +54,10 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->middleware('api.v1.idempotency')->name('notifications.read');
         Route::get('/notifications/preferences', [NotificationController::class, 'preferences'])->name('notifications.preferences');
         Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences'])->middleware('api.v1.idempotency')->name('notifications.preferences.update');
+
+        Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
+        Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
+        Route::get('/najm-hoda/conversations/{conversation}', [NajmHodaConversationController::class, 'show'])->name('najm-hoda.conversations.show');
+        Route::post('/najm-hoda/conversations/{conversation}/messages', [NajmHodaConversationController::class, 'message'])->name('najm-hoda.conversations.messages.store');
     });
 });
