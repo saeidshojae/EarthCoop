@@ -112,6 +112,15 @@ class SafeTransactionService extends TransactionService
             && $to
             && $from->type === 'subaccount'
             && $to->type === 'subaccount') {
+            // Keep Release-D's public generic fallback retired. Only a trusted
+            // server application boundary may opt into canonical child-account
+            // routing; this marker is never accepted from the public API body.
+            if (! (bool) ($meta['trusted_canonical_subaccount_transfer'] ?? false)) {
+                throw new \RuntimeException(
+                    'Sub-account to sub-account transfers must use an explicit canonical executor.'
+                );
+            }
+
             if (! in_array($balanceType, ['active', 'faded'], true)) {
                 throw new \RuntimeException(
                     'Sub-account to sub-account transfers require an explicit Active or Dim money state.'
