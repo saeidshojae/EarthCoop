@@ -10,6 +10,7 @@ on:
       - 'tests/Feature/Api/V1/**'
       - 'tests/Feature/LocationGovernance/**'
       - 'tests/Feature/GroupChat/**'
+      - 'tests/Feature/Elections/**'
       - '.github/workflows/m1-api-v1-targeted.yml'
       - 'composer.json'
       - 'composer.lock'
@@ -76,7 +77,7 @@ jobs:
           sed -i 's/name="DB_CONNECTION" value="mysql" force="true"/name="DB_CONNECTION" value="sqlite" force="true"/' phpunit.m1.xml
           sed -i 's/name="DB_DATABASE" value="newearthcoop-test" force="true"/name="DB_DATABASE" value=":memory:" force="true"/' phpunit.m1.xml
       - name: Run fast M1 API v1 contracts
-        run: vendor/bin/phpunit -c phpunit.m1.xml --exclude-group mysql-location --exclude-group mysql-group tests/Feature/Api/V1
+        run: vendor/bin/phpunit -c phpunit.m1.xml --exclude-group mysql-location --exclude-group mysql-group --exclude-group mysql-core-journeys tests/Feature/Api/V1
       - name: Run Location/Governance v1 and canonical parity contracts
         run: |
           vendor/bin/phpunit -c phpunit.xml.dist \
@@ -88,3 +89,9 @@ jobs:
           vendor/bin/phpunit -c phpunit.xml.dist \
             tests/Feature/Api/V1/GroupContractTest.php \
             tests/Feature/GroupChat/FeedCursorTest.php
+      - name: Run Elections/Projects/Notifications v1 and mature parity contracts
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist \
+            tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php \
+            tests/Feature/Elections/ElectionBallotServiceTest.php \
+            tests/Feature/LocationGovernance/ProjectScopeStoppingPointPersistenceTest.php
