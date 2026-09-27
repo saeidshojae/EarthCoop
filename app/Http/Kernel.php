@@ -70,6 +70,8 @@ class Kernel extends HttpKernel
         'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'permission' => \App\Http\Middleware\PermissionMiddleware::class,
+        'api.v1.context' => \App\Http\Middleware\ApiV1RequestContext::class,
+        'api.v1.envelope' => \App\Http\Middleware\ApiV1ResponseEnvelope::class,
 
         'email.verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         'update.lastseen.logout' => \App\Http\Middleware\UpdateLastSeenOnLogout::class,

@@ -64,6 +64,10 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
+        if ($request->is('api/v1/*')) {
+            return app(ApiV1ExceptionRenderer::class)->render($request, $e);
+        }
+
         if ($this->isGroupChatJsonRequest($request)) {
             $status = match (true) {
                 $e instanceof ValidationException => 422,
