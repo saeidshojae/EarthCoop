@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\V1;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
+use App\Modules\NajmBahar\Services\AccountNumberService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -19,7 +20,7 @@ class NajmBaharAccountContractTest extends TestCase
         [$user, $token, $deviceId] = $this->nativeSession();
 
         $account = Account::create([
-            'account_number' => '100000'.$user->id,
+            'account_number' => AccountNumberService::makeMainAccountNumberForUser($user->id),
             'user_id' => $user->id,
             'name' => 'Main account',
             'type' => 'user',
