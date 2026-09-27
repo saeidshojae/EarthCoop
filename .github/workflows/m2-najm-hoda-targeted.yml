@@ -80,5 +80,7 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaCapabilityContractTest.php
       - name: Run M2 authority contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaAuthorityContractTest.php
+      - name: Run M2 durable action lifecycle contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaActionContractTest.php
       - name: Run mature Hoda execution capability and resource regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/ExecutionBoundaryTest.php tests/Feature/NajmHoda/InteractionBoundaryTest.php tests/Feature/NajmHoda/CapabilityRegistryTest.php tests/Feature/NajmHoda/ResourceAuthorizationServiceTest.php
