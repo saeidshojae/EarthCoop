@@ -65,6 +65,9 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
             ->name('najm-bahar.accounts.balance');
         Route::get('/najm-bahar/transactions', [NajmBaharTransactionController::class, 'index'])
             ->name('najm-bahar.transactions.index');
+        Route::post('/najm-bahar/transfers', [NajmBaharTransactionController::class, 'storeTransfer'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.transfers.store');
 
         Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
         Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
