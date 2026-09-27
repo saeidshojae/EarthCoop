@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Group\CanonicalGroupFeedDeltaController;
 use App\Http\Controllers\Group\CanonicalGroupSearchController;
 use App\Http\Controllers\LocationGovernance\CanonicalGroupIndexController;
 use Illuminate\Support\Facades\Route;
@@ -17,3 +18,9 @@ Route::get('/groups', CanonicalGroupIndexController::class)
 // returns JSON 401 rather than a login redirect, so preserve that contract here.
 Route::get('/api/groups/search', CanonicalGroupSearchController::class)
     ->withoutMiddleware(\App\Http\Middleware\Authenticate::class);
+
+// Shadow the monolithic ChatController delta route with the shared canonical
+// assembler used by API v1. Keep the mature web path, auth and request context.
+Route::get('/api/groups/{group}/feed/delta', CanonicalGroupFeedDeltaController::class)
+    ->middleware(['auth', 'group.chat.context'])
+    ->name('groups.feed.delta');

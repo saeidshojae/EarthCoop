@@ -17,6 +17,11 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
+            Route::middleware(['api', 'throttle:api-v1'])
+                ->prefix('api/v1')
+                ->name('api.v1.')
+                ->group(base_path('routes/api-v1.php'));
+
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
@@ -138,6 +143,10 @@ class RouteServiceProvider extends ServiceProvider
     {
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by('api:' . ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('api-v1', function (Request $request) {
+            return Limit::perMinute(60)->by('api-v1:' . ($request->user()?->id ?: $request->ip()));
         });
 
         RateLimiter::for('najm-hoda-autonomy-read', function (Request $request) {

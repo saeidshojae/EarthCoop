@@ -19,6 +19,7 @@ class Project extends Model
         'owner_type',
         'owner_id',
         'governance_area_id',
+        'target_location_id',
         'category_level1_id',
         'category_level2_id',
         'category_level3_id',
@@ -77,7 +78,6 @@ class Project extends Model
         'reviewed_at',
         'approved_at',
         'archived_at',
-        // Assignment fields
         'assigned_to_type',
         'assigned_to_id',
         'assigned_at',
@@ -113,113 +113,71 @@ class Project extends Model
         'assignment_completed_at' => 'datetime',
     ];
 
-    /**
-     * صاحب پروژه (User یا Group) - Polymorphic
-     */
     public function owner()
     {
         return $this->morphTo();
     }
 
-    /**
-     * Canonical Governance scope for the project.
-     */
     public function governanceArea()
     {
         return $this->belongsTo(GovernanceArea::class);
     }
 
-    /**
-     * مقصد ارجاع (User یا Group برای بررسی) - Polymorphic
-     */
     public function assignedTo()
     {
         return $this->morphTo('assigned_to');
     }
 
-    /**
-     * دسته‌بندی سطح 1 (صنعت)
-     */
     public function categoryLevel1()
     {
         return $this->belongsTo(ProjectCategory::class, 'category_level1_id');
     }
 
-    /**
-     * دسته‌بندی سطح 2 (زیرصنعت)
-     */
     public function categoryLevel2()
     {
         return $this->belongsTo(ProjectCategory::class, 'category_level2_id');
     }
 
-    /**
-     * دسته‌بندی سطح 3 (نوع پروژه)
-     */
     public function categoryLevel3()
     {
         return $this->belongsTo(ProjectCategory::class, 'category_level3_id');
     }
 
-    /**
-     * تاریخچه بررسی‌ها
-     */
     public function reviews()
     {
         return $this->hasMany(ProjectReview::class)->orderBy('created_at', 'desc');
     }
 
-    /**
-     * سرمایه‌گذاری‌های این پروژه
-     */
     public function investments()
     {
         return $this->hasMany(Investment::class);
     }
 
-    /**
-     * اسکوپ برای پروژه‌های تایید شده
-     */
     public function scopeApproved($query)
     {
         return $query->where('status', 'approved');
     }
 
-    /**
-     * اسکوپ برای پروژه‌های در انتظار بررسی
-     */
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
     }
 
-    /**
-     * اسکوپ برای پروژه‌های رد شده
-     */
     public function scopeRejected($query)
     {
         return $query->where('status', 'rejected');
     }
 
-    /**
-     * اسکوپ برای پروژه‌های عمومی
-     */
     public function scopePublic($query)
     {
         return $query->where('project_visibility', 'public');
     }
 
-    /**
-     * اسکوپ برای پروژه‌های خصوصی
-     */
     public function scopePrivate($query)
     {
         return $query->where('project_visibility', 'private');
     }
 
-    /**
-     * محاسبه مجموع سرمایه‌گذاری‌های انجام شده
-     */
     public function getTotalInvestedAttribute(): int
     {
         return $this->investments()
@@ -227,9 +185,6 @@ class Project extends Model
             ->sum('amount');
     }
 
-    /**
-     * محاسبه درصد تکمیل سرمایه‌گذاری
-     */
     public function getInvestmentProgressAttribute(): float
     {
         if ($this->required_capital <= 0) {
@@ -239,9 +194,6 @@ class Project extends Model
         return min(100, ($this->total_invested / $this->required_capital) * 100);
     }
 
-    /**
-     * بررسی اینکه آیا پروژه کامل سرمایه‌گذاری شده
-     */
     public function getIsFullyFundedAttribute(): bool
     {
         return $this->total_invested >= $this->required_capital;
