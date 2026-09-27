@@ -21,13 +21,13 @@ class NajmHodaActionResource extends JsonResource
             'consent_required' => (bool) $this->consent_required,
             'status' => (string) $this->status,
             'consent_evidence_id' => $this->consent_evidence_id,
-            'consented_at' => optional($this->consented_at)->utc()->toIso8601String(),
+            'consented_at' => $this->consented_at?->utc()->toIso8601String(),
             'evidence_id' => $this->evidence_id,
             'runtime_run_id' => $this->runtime_run_id,
-            'applied_at' => optional($this->applied_at)->utc()->toIso8601String(),
+            'applied_at' => $this->applied_at?->utc()->toIso8601String(),
             'error_code' => $this->error_code,
-            'created_at' => optional($this->created_at)->utc()->toIso8601String(),
-            'updated_at' => optional($this->updated_at)->utc()->toIso8601String(),
+            'created_at' => $this->created_at?->utc()->toIso8601String(),
+            'updated_at' => $this->updated_at?->utc()->toIso8601String(),
         ];
     }
 }
