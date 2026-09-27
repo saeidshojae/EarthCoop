@@ -51,10 +51,10 @@ class DocsCenterLinkContractTest extends TestCase
         $source = file_get_contents(resource_path('views/components/footer-docs-links.blade.php'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString("$docsLinks['center']['href']", $source);
-        $this->assertStringContainsString("$docsLinks['publication_policy']['href']", $source);
-        $this->assertStringNotContainsString("$docsLinks['base_url'] }}/fa/introduction", $source);
-        $this->assertStringNotContainsString("@foreach($docsLinks['main'] as $link)", $source);
+        $this->assertStringContainsString("\$docsLinks['center']['href']", $source);
+        $this->assertStringContainsString("\$docsLinks['publication_policy']['href']", $source);
+        $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $source);
+        $this->assertStringNotContainsString("@foreach(\$docsLinks['main'] as \$link)", $source);
     }
 
     public function test_welcome_and_authenticated_navigation_consume_docs_config_while_internal_rules_stay_internal(): void
@@ -67,8 +67,8 @@ class DocsCenterLinkContractTest extends TestCase
         $this->assertIsString($sidebar);
         $this->assertIsString($drawer);
 
-        $this->assertStringContainsString("$docsLinks['center']['href']", $welcome);
-        $this->assertStringNotContainsString("$docsLinks['base_url'] }}/fa/introduction", $welcome);
+        $this->assertStringContainsString("\$docsLinks['center']['href']", $welcome);
+        $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $welcome);
 
         foreach ([$sidebar, $drawer] as $source) {
             $this->assertStringContainsString("['center']['href']", $source);
