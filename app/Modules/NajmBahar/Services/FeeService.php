@@ -12,7 +12,11 @@ use Throwable;
 class FeeService
 {
     /**
-     * Get membership fee amount
+     * Get membership fee amount.
+     *
+     * A currently-effective versioned monetary policy is authoritative when it
+     * explicitly declares a positive annual membership fee. Legacy settings /
+     * fee-table fallbacks stay intact when no versioned policy is active.
      */
     public function getMembershipFee(): int
     {
@@ -23,6 +27,18 @@ class FeeService
         $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.requested', $context);
 
         try {
+            $policy = app(MonetaryPolicyService::class)->current();
+            $policyAmount = (int) data_get($policy, 'parameters.membership_fee_gol', 0);
+            if (($policy['source'] ?? null) === 'versioned_policy' && $policyAmount > 0) {
+                $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.succeeded', array_merge($context, [
+                    'source' => 'versioned_policy',
+                    'amount' => $policyAmount,
+                    'policy_version_id' => $policy['version_id'] ?? null,
+                ]));
+
+                return $policyAmount;
+            }
+
             $settings = Setting::firstNajmBaharSettings();
             $configuredAmount = (int) ($settings?->najm_bahar_membership_fee_amount ?? 0);
             if ($configuredAmount > 0) {
