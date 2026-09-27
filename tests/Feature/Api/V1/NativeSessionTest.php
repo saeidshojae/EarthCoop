@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -150,7 +151,7 @@ class NativeSessionTest extends TestCase
         $a = $this->postJson('/api/v1/auth/session', $this->loginPayload($user->email, 'secret-password'))->assertCreated();
         $b = $this->postJson('/api/v1/auth/session', $this->loginPayload($user->email, 'secret-password'))->assertCreated();
 
-        $this->withToken($a->json('data.token'))
+        $this->withFreshToken($a->json('data.token'))
             ->withHeader('X-Device-ID', $b->json('data.device.id'))
             ->getJson('/api/v1/auth/session')
             ->assertStatus(403)
@@ -167,7 +168,7 @@ class NativeSessionTest extends TestCase
         $deviceA = $a->json('data.device.id');
         $tokenB = $b->json('data.token');
 
-        $rotated = $this->withToken($oldAToken)
+        $rotated = $this->withFreshToken($oldAToken)
             ->withHeader('X-Device-ID', $deviceA)
             ->postJson('/api/v1/auth/session/rotate')
             ->assertOk();
@@ -175,9 +176,9 @@ class NativeSessionTest extends TestCase
         $newAToken = $rotated->json('data.token');
         $this->assertNotSame($oldAToken, $newAToken);
 
-        $this->withToken($oldAToken)->getJson('/api/v1/auth/session')->assertStatus(401);
-        $this->withToken($newAToken)->withHeader('X-Device-ID', $deviceA)->getJson('/api/v1/auth/session')->assertOk();
-        $this->withToken($tokenB)->withHeader('X-Device-ID', $b->json('data.device.id'))->getJson('/api/v1/auth/session')->assertOk();
+        $this->withFreshToken($oldAToken)->getJson('/api/v1/auth/session')->assertStatus(401);
+        $this->withFreshToken($newAToken)->withHeader('X-Device-ID', $deviceA)->getJson('/api/v1/auth/session')->assertOk();
+        $this->withFreshToken($tokenB)->withHeader('X-Device-ID', $b->json('data.device.id'))->getJson('/api/v1/auth/session')->assertOk();
     }
 
     public function test_logout_revokes_only_current_session_and_marks_its_device_revoked(): void
@@ -186,13 +187,13 @@ class NativeSessionTest extends TestCase
         $a = $this->postJson('/api/v1/auth/session', $this->loginPayload($user->email, 'secret-password'))->assertCreated();
         $b = $this->postJson('/api/v1/auth/session', $this->loginPayload($user->email, 'secret-password'))->assertCreated();
 
-        $this->withToken($a->json('data.token'))
+        $this->withFreshToken($a->json('data.token'))
             ->withHeader('X-Device-ID', $a->json('data.device.id'))
             ->deleteJson('/api/v1/auth/session')
             ->assertNoContent();
 
-        $this->withToken($a->json('data.token'))->getJson('/api/v1/auth/session')->assertStatus(401);
-        $this->withToken($b->json('data.token'))->withHeader('X-Device-ID', $b->json('data.device.id'))->getJson('/api/v1/auth/session')->assertOk();
+        $this->withFreshToken($a->json('data.token'))->getJson('/api/v1/auth/session')->assertStatus(401);
+        $this->withFreshToken($b->json('data.token'))->withHeader('X-Device-ID', $b->json('data.device.id'))->getJson('/api/v1/auth/session')->assertOk();
 
         $this->assertNotNull(
             DB::table('native_devices')->where('public_id', $a->json('data.device.id'))->value('revoked_at')
@@ -208,7 +209,7 @@ class NativeSessionTest extends TestCase
             ->where('native_device_id', DB::table('native_devices')->where('public_id', $session->json('data.device.id'))->value('id'))
             ->update(['expires_at' => now()->subMinute()]);
 
-        $this->withToken($session->json('data.token'))
+        $this->withFreshToken($session->json('data.token'))
             ->getJson('/api/v1/auth/session')
             ->assertStatus(401)
             ->assertJsonPath('error.code', 'unauthenticated');
@@ -226,6 +227,13 @@ class NativeSessionTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertSame(0, DB::table('personal_access_tokens')->count());
         $this->assertSame(0, DB::table('native_devices')->count());
+    }
+
+    private function withFreshToken(string $token): self
+    {
+        Auth::forgetGuards();
+
+        return $this->withToken($token);
     }
 
     private function createUser(string $email, string $password, bool $system = false): User
