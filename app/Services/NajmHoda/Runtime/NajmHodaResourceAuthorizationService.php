@@ -21,8 +21,24 @@ class NajmHodaResourceAuthorizationService
     {
         return match ($action) {
             'set_ticket_needs_review' => $this->authorizeTicketMutation($actorId, $input),
-            default => ['allowed' => true, 'reason' => 'no_resource_rule_required'],
+            default => $this->authorizeUnruledAction($action),
         };
+    }
+
+    /**
+     * @return array{allowed: bool, reason: string}
+     */
+    protected function authorizeUnruledAction(string $action): array
+    {
+        $contract = config("najm-hoda.runtime.autonomy.capabilities.{$action}");
+        $requiresResourceAuthorization = is_array($contract)
+            && (bool) ($contract['resource_authorization_required'] ?? false);
+
+        if ($requiresResourceAuthorization) {
+            return ['allowed' => false, 'reason' => 'resource_rule_missing'];
+        }
+
+        return ['allowed' => true, 'reason' => 'no_resource_rule_required'];
     }
 
     /**
