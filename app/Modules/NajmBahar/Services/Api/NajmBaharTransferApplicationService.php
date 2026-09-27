@@ -66,6 +66,10 @@ class NajmBaharTransferApplicationService
             [
                 'api_v1_operation' => 'member_transfer',
                 'api_v1_actor_id' => (int) $user->id,
+                // Server-minted only. Public request validation rejects client
+                // metadata/authority fields, so this cannot be forged by the
+                // mobile caller to reopen the retired generic child fallback.
+                'trusted_canonical_subaccount_transfer' => true,
             ],
             $domainKey,
             $balanceType,
