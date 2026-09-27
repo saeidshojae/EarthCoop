@@ -89,9 +89,10 @@ jobs:
           vendor/bin/phpunit -c phpunit.xml.dist \
             tests/Feature/Api/V1/GroupContractTest.php \
             tests/Feature/GroupChat/FeedCursorTest.php
-      - name: Run Elections/Projects/Notifications v1 and mature parity contracts
+      - name: Run mature Election and Project backend parity contracts
         run: |
-          vendor/bin/phpunit -c phpunit.xml.dist \
-            tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php \
-            tests/Feature/Elections/ElectionBallotServiceTest.php \
-            tests/Feature/LocationGovernance/ProjectScopeStoppingPointPersistenceTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Elections/ElectionBallotServiceTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist --filter '/test_canonical_project_(store|update)/' \
+            tests/Feature/LocationGovernance/ProjectScopeCutoverFlagTest.php
+      - name: Run Task 8 v1 Election/Project/Notification contracts
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php
