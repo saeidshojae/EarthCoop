@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/m2-najm-hoda-mobile-contract-20260927
+      - agent/m2-final-regression-debug-20260927
     paths:
       - 'app/Services/NajmHoda/**'
       - 'app/Http/Controllers/API/NajmHodaController.php'
@@ -13,6 +14,7 @@ on:
       - 'database/migrations/**najm_hoda**'
       - 'routes/api-v1.php'
       - 'tests/Feature/Api/V1/NajmHoda*'
+      - 'tests/Feature/Api/V1/IdempotencyContractTest.php'
       - 'tests/Feature/NajmHoda/**'
       - '.github/workflows/m2-najm-hoda-targeted.yml'
 
@@ -74,6 +76,8 @@ jobs:
           EOF
           php artisan key:generate --force
           php artisan migrate:fresh --force
+      - name: Reproduce idempotency isolation regression before M2 actions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/Api/V1/NajmHodaActionContractTest.php tests/Feature/Api/V1/NajmHodaMobileJourneyTest.php
       - name: Run M2 conversation boundary contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaConversationContractTest.php
       - name: Run M2 capability contract
