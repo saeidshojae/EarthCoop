@@ -8,8 +8,10 @@ on:
       - 'app/Modules/NajmBahar/**'
       - 'app/Http/Controllers/API/V1/NajmBahar*'
       - 'app/Http/Controllers/ReputationConversionController.php'
+      - 'app/Http/Controllers/NajmBaharMembershipFeeController.php'
       - 'app/Http/Resources/API/V1/NajmBahar*'
       - 'app/Services/ParticipationPointSummaryService.php'
+      - 'app/Services/MembershipFeeStatusService.php'
       - 'routes/api-v1.php'
       - 'tests/Feature/Api/V1/NajmBahar*'
       - 'tests/Feature/NajmBahar/**'
@@ -85,3 +87,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php tests/Feature/NajmBahar/SafeTransactionBindingTest.php tests/Feature/NajmBahar/GenericSubAccountFallbackRetirementTest.php tests/Feature/NajmBahar/DimTransferRestrictionTest.php tests/Feature/NajmBahar/ActiveBaharReservationServiceTest.php tests/Feature/NajmBahar/TransactionReservationProtectionTest.php tests/Feature/NajmBahar/FinancialIdempotencyReplayServiceTest.php
       - name: Run M3 policy-backed activation contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharActivationContractTest.php tests/Feature/NajmBahar/MonetaryServiceTest.php tests/Feature/Reputation/ParticipationConversionLedgerContractTest.php tests/Feature/Reputation/ParticipationConversionAtomicIdentityTest.php tests/Feature/Reputation/ParticipationSummaryBoundaryContractTest.php tests/Feature/Reputation/ParticipationConversionUiIdempotencyContractTest.php tests/Feature/Reputation/ParticipationConversionInfoTransparencyContractTest.php
+      - name: Run M3 membership fee contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMembershipFeeContractTest.php tests/Feature/NajmBahar/MembershipFeePaymentTest.php tests/Feature/NajmBahar/MembershipFeePolicyIntegrityTest.php tests/Feature/NajmBahar/TreasuryServiceTest.php
