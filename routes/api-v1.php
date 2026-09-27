@@ -6,6 +6,7 @@ use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
+use App\Http\Controllers\API\V1\NajmBaharActivationController;
 use App\Http\Controllers\API\V1\NajmBaharTransactionController;
 use App\Http\Controllers\API\V1\NajmHodaActionController;
 use App\Http\Controllers\API\V1\NajmHodaCapabilityController;
@@ -68,6 +69,11 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::post('/najm-bahar/transfers', [NajmBaharTransactionController::class, 'storeTransfer'])
             ->middleware('api.v1.idempotency')
             ->name('najm-bahar.transfers.store');
+        Route::get('/najm-bahar/activation/eligibility', [NajmBaharActivationController::class, 'eligibility'])
+            ->name('najm-bahar.activation.eligibility');
+        Route::post('/najm-bahar/activation', [NajmBaharActivationController::class, 'store'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.activation.store');
 
         Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
         Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
