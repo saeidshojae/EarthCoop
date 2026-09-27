@@ -80,6 +80,17 @@ class NajmHodaConversationContractTest extends TestCase
             ->assertJsonPath('error.code', 'unauthenticated');
     }
 
+    public function test_public_legacy_welcome_remains_separate_from_authenticated_conversation_state(): void
+    {
+        $before = Conversation::query()->count();
+
+        $this->getJson('/api/najm-hoda/welcome')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame($before, Conversation::query()->count());
+    }
+
     public function test_v1_create_list_and_show_are_owner_scoped_and_use_m1_envelope(): void
     {
         [$actor, $token, $deviceId] = $this->nativeSession();
