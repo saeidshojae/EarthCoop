@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\Setting;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountNumberService;
+use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\ActiveBaharReservationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -153,6 +157,194 @@ class NajmBaharTransactionContractTest extends TestCase
             ->assertJsonPath('error.code', 'validation_failed');
     }
 
+    public function test_transfer_requires_idempotency_key_and_positive_integer_gol(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+        [, , $sourceMirror] = $this->subAccountFor($user, 1_000, 500, 1);
+        [, , $destinationMirror] = $this->subAccountFor($other, 0, 0, 1);
+
+        $payload = [
+            'source_account_id' => $sourceMirror->id,
+            'destination_account_number' => $destinationMirror->account_number,
+            'amount_gol' => 100,
+            'balance_bucket' => 'active',
+        ];
+
+        $this->bearer($token, $deviceId)
+            ->postJson('/api/v1/najm-bahar/transfers', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'idempotency_key_required');
+
+        foreach ([0, -1, 1.5] as $index => $amount) {
+            $invalid = $payload;
+            $invalid['amount_gol'] = $amount;
+
+            $this->bearer($token, $deviceId)
+                ->withHeader('Idempotency-Key', 'invalid-amount-'.$index.'-0001')
+                ->postJson('/api/v1/najm-bahar/transfers', $invalid)
+                ->assertStatus(422)
+                ->assertJsonPath('error.code', 'validation_failed');
+        }
+    }
+
+    public function test_transfer_source_must_belong_to_authenticated_effective_owner(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+        $third = User::factory()->create(['is_system' => false]);
+
+        [, , $foreignSource] = $this->subAccountFor($other, 1_000, 0, 1);
+        [, , $destination] = $this->subAccountFor($third, 0, 0, 1);
+        $this->openCrossUserTransfers();
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'foreign-source-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', [
+                'source_account_id' => $foreignSource->id,
+                'destination_account_number' => $destination->account_number,
+                'amount_gol' => 100,
+                'balance_bucket' => 'active',
+            ])
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'not_found');
+
+        $this->assertSame(1_000, (int) $foreignSource->fresh()->balance_active);
+        $this->assertSame(0, (int) $destination->fresh()->balance_active);
+    }
+
+    public function test_cross_user_active_transfer_obeys_threshold_and_dim_is_never_transferable(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+
+        [, $sourceSub, $sourceMirror] = $this->subAccountFor($user, 1_000, 500, 1);
+        [, $destinationSub, $destinationMirror] = $this->subAccountFor($other, 0, 0, 1);
+
+        $activePayload = [
+            'source_account_id' => $sourceMirror->id,
+            'destination_account_number' => $destinationMirror->account_number,
+            'amount_gol' => 300,
+            'balance_bucket' => 'active',
+            'description' => 'Member transfer',
+        ];
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'threshold-block-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', $activePayload)
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'transfer_not_allowed');
+
+        $this->openCrossUserTransfers();
+
+        $success = $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'threshold-open-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', $activePayload)
+            ->assertCreated()
+            ->assertJsonPath('data.transaction.amount_gol', 300)
+            ->assertJsonPath('data.transaction.balance_bucket', 'active')
+            ->assertJsonPath('data.transaction.direction', 'outgoing')
+            ->assertJsonPath('data.source_balance.local.active_gol', 700);
+
+        $this->assertIsInt($success->json('data.transaction.amount_gol'));
+        $this->assertSame(700, (int) $sourceSub->fresh()->balance_active);
+        $this->assertSame(300, (int) $destinationSub->fresh()->balance_active);
+
+        $dimPayload = $activePayload;
+        $dimPayload['amount_gol'] = 100;
+        $dimPayload['balance_bucket'] = 'dim';
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'dim-block-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', $dimPayload)
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'transfer_not_allowed');
+
+        $this->assertSame(500, (int) $sourceSub->fresh()->balance_faded);
+        $this->assertSame(0, (int) $destinationSub->fresh()->balance_faded);
+    }
+
+    public function test_cross_user_transfer_cannot_spend_reserved_active_bahar(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+        [, $sourceSub, $sourceMirror] = $this->subAccountFor($user, 1_000, 0, 1);
+        [, $destinationSub, $destinationMirror] = $this->subAccountFor($other, 0, 0, 1);
+        $this->openCrossUserTransfers();
+
+        app(ActiveBaharReservationService::class)->reserve(
+            $sourceMirror->account_number,
+            800,
+            'reservation-api-transfer-0001',
+            'test',
+            'reserved',
+        );
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'reserved-active-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', [
+                'source_account_id' => $sourceMirror->id,
+                'destination_account_number' => $destinationMirror->account_number,
+                'amount_gol' => 300,
+                'balance_bucket' => 'active',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'insufficient_available_funds');
+
+        $this->assertSame(1_000, (int) $sourceSub->fresh()->balance_active);
+        $this->assertSame(0, (int) $destinationSub->fresh()->balance_active);
+    }
+
+    public function test_transfer_replay_is_single_effect_and_same_key_different_payload_is_conflict(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+        [, $sourceSub, $sourceMirror] = $this->subAccountFor($user, 1_000, 0, 1);
+        [, $destinationSub, $destinationMirror] = $this->subAccountFor($other, 0, 0, 1);
+        $this->openCrossUserTransfers();
+
+        $payload = [
+            'source_account_id' => $sourceMirror->id,
+            'destination_account_number' => $destinationMirror->account_number,
+            'amount_gol' => 250,
+            'balance_bucket' => 'active',
+        ];
+        $headers = ['Idempotency-Key' => 'transfer-replay-0001'];
+
+        $first = $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/transfers', $payload)
+            ->assertCreated();
+
+        $transactionId = $first->json('data.transaction.id');
+        $this->assertDatabaseCount('najm_transactions', 1);
+        $this->assertDatabaseCount('najm_ledger_entries', 2);
+
+        $second = $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/transfers', $payload)
+            ->assertCreated()
+            ->assertHeader('Idempotency-Replayed', 'true')
+            ->assertJsonPath('data.transaction.id', $transactionId);
+
+        $this->assertDatabaseCount('najm_transactions', 1);
+        $this->assertDatabaseCount('najm_ledger_entries', 2);
+        $this->assertSame(750, (int) $sourceSub->fresh()->balance_active);
+        $this->assertSame(250, (int) $destinationSub->fresh()->balance_active);
+
+        $changed = $payload;
+        $changed['amount_gol'] = 251;
+
+        $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/transfers', $changed)
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'idempotency_key_reused');
+
+        $this->assertDatabaseCount('najm_transactions', 1);
+        $this->assertSame(750, (int) $sourceSub->fresh()->balance_active);
+    }
+
     private function recordTransaction(
         Account $from,
         Account $to,
@@ -195,6 +387,31 @@ class NajmBaharTransactionContractTest extends TestCase
         ]);
 
         return $transaction->fresh();
+    }
+
+    private function subAccountFor(User $user, int $active, int $dim, int $index): array
+    {
+        $accounts = app(AccountService::class);
+        $main = $accounts->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
+        $sub = SubAccount::create([
+            'account_id' => $main->id,
+            'sub_account_code' => AccountNumberService::makeSubAccountCode($main->account_number, $index),
+            'name' => 'Wallet '.$index,
+            'balance' => $active + $dim,
+            'balance_active' => $active,
+            'balance_faded' => $dim,
+            'status' => 1,
+        ]);
+        $mirror = $accounts->ensureSubAccountAccount($sub);
+
+        return [$main, $sub, $mirror];
+    }
+
+    private function openCrossUserTransfers(): void
+    {
+        $settings = Setting::singleton();
+        $settings->najm_bahar_user_threshold = User::count();
+        $settings->save();
     }
 
     private function userAccount(User $user, string $name): Account
