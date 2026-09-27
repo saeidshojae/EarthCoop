@@ -1,242 +1,170 @@
 # وضعیت مرجع پیش از بازگشت به مسیر Native Mobile
 
-**تاریخ تطبیق:** 2026-09-26  
-**Baseline مخزن:** `main@9b936dd9c9b194098f6736eeac8917ccb2d622f6`  
-**وضعیت این سند:** مرجع جاری برای تشخیص «انجام‌شده / باز / عمداً deferred» تا پیش از شروع دوبارهٔ مسیر آماده‌سازی Native Mobile.
+**تاریخ تطبیق:** 2026-09-27  
+**Baseline مخزن:** `main@b0f6e6082e3f248187a0bed66fb899dd0d7701c2`  
+**وضعیت این سند:** مرجع جاری برای تشخیص «انجام‌شده / باز / عمداً deferred» تا پیش از شروع مسیر Native Mobile.
 
-## هدف
+## هدف و ترتیب اعتبار شواهد
 
-این سند برای رفع اختلاف میان planهای تاریخی، UATهای واقعی، گفتگوهای پروژه و وضعیت merge‌شدهٔ مخزن ایجاد شده است. وجود یک سناریو در plan یا UAT matrix به معنی «انجام‌نشده» بودن آن نیست؛ وضعیت واقعی ابتدا از `main` و PRهای merge‌شده، سپس از شواهد UAT اپراتور/کاربر، و بعد از اسناد تاریخی خوانده می‌شود.
+این سند اختلاف میان planهای تاریخی، UATهای واقعی، گفتگوهای پروژه و وضعیت merge‌شدهٔ مخزن را رفع می‌کند. وجود یک سناریو در plan یا UAT matrix به معنی «انجام‌نشده» بودن آن نیست.
 
-ترتیب اعتبار شواهد در این سند:
+ترتیب اعتبار شواهد:
 
 1. کد و قرارداد merge‌شده در `main`؛
 2. Full/Responsive validation روی SHA ثابت؛
-3. UAT دستی ثبت‌شده در گفتگوهای پروژه؛
+3. UAT دستی ثبت‌شده؛
 4. plan/runbook تاریخی که ممکن است بعداً اجرا یا supersede شده باشد.
 
-## خلاصهٔ اجرایی
+برای backlog تفصیلی Product/UX، مرجع مکمل این سند `docs/PRODUCT_UX_BACKLOG_PRE_NATIVE.fa.md` است.
 
-کار بزرگ Location/Governance که در میانهٔ برنامهٔ اصلی وارد آن شدیم، از نظر معماری canonical، UAT ساختاری، Iran 1404 v2 cutover، proposal/review lifecycle و canonical consumer audit بسته شده است.
+---
 
-سه جریان زیر **backlog نیستند** و نباید دوباره به‌عنوان «UAT بعدی» برنامه‌ریزی شوند:
+# 1. کارهای بزرگ بسته‌شده تا این Baseline
+
+## 1.1 Location/Governance canonical architecture — **CLOSED**
+
+کار بزرگ Location/Governance از نظر معماری canonical، residence/history، multidimensional membership، canonical groups، election topology، project target scope، Community separation، Registration/Profile/Admin/My Location/My Groups/current elections و responsive/UAT hardening بسته است.
+
+سه جریان زیر backlog نیستند و نباید دوباره به‌عنوان UAT بعدی باز شوند:
 
 - City without urban region؛
 - Urban Region without neighborhood؛
 - Village without neighborhood.
 
-این مسیرها در UAT واقعی پیدا/اصلاح شدند و بعد در قرارداد ساختاری دائمی و Checkpoint 2 بسته شدند.
+## 1.2 Iran 1404 v2 runtime/cutover — **CLOSED**
 
-همچنین «support threshold» دیگر یک قابلیت backend انجام‌نشده نیست. منطق distinct-user support، committed residence selection، propagation، ready-for-review و rejection cleanup در Checkpoint 3 بسته شده است. آنچه ممکن است بعداً برای این بخش بخواهیم، **UX بهترِ progress/invite و مقیاس‌پذیری صف ادمین** است، نه اختراع دوبارهٔ lifecycle حمایت.
+baseline ملی ۱۴۰۴، staging، guarded cutover، migration محدود وابستگی‌های identity-equivalent و runtime activation v2 در Production انجام شده است. C14 legacy retirement عمداً خارج از این closure است.
 
----
+## 1.3 Checkpoint 2 — Structural Matrix — **CLOSED**
 
-# 1. کارهایی که واقعاً انجام و merge شده‌اند
+PR #146 قرارداد no-region/no-neighborhood، prerequisite/dependent structural claims، pending traversal، approval/rejection cleanup، re-anchor و contradiction guards را بست.
 
-## 1.1 معماری جهانی Location/Governance — بسته
+## 1.4 Checkpoint 3 — Proposal/Review Lifecycle — **CLOSED**
 
-PR #131 معماری global Location/Governance و hardening نهایی اولیه را merge کرد، شامل:
+PR #147 distinct-user support، committed residence provenance، propagation، ready-for-review، atomic review transitions، reason/evidence و rejection cleanup را بست. Threshold پیش‌فرض ۱۰ approval نیست؛ فقط signal آمادگی برای review است.
 
-- canonical Location و GovernanceArea مستقل؛
-- residence/history؛
-- multidimensional membership؛
-- canonical groups؛
-- systemic election topology؛
-- project target scope؛
-- Community separation؛
-- Registration/Profile/Admin/My Location/My Groups/current elections؛
-- responsive/UAT hardening.
+## 1.5 Checkpoint 4 — Canonical Consumer Audit — **CLOSED**
 
-این مرحله پایهٔ architectural detour را بسته است؛ حذف legacy در آن انجام نشده و نباید هم انجام می‌شد.
-
-## 1.2 Residence picker / proposal chain / mobile web polish — بسته
-
-PRهای #123 تا #130 مجموعهٔ UAT و اصلاحات production-facing را بستند، از جمله:
-
-- canonical Step 3 UX؛
-- deep pending proposal chain؛
-- continent traversal؛
-- mobile-first proposal UX؛
-- Street/Alley/Complex/Building branching؛
-- cancel-without-submit side-effect bug؛
-- readiness guard برای migrationهای proposal-chain.
-
-Project scope نیز در PRهای #120 تا #122 قرارداد «stop at any selected valid level» و mobile UAT/polish را دریافت کرد.
-
-## 1.3 UAT واقعی no-region / no-neighborhood — بسته
-
-شواهد UAT کاربر و mergeهای بعدی نشان می‌دهد:
-
-- Kiasar برای City without Urban Region عملاً تست شد؛
-- Village without Neighborhood در UAT اشکال داشت، اصلاح و دوباره بررسی شد؛
-- Urban Region without Neighborhood در UAT اشکال terminal/street داشت، اصلاح شد؛
-- PR #133 با عنوان `complete no-neighborhood registration UAT` همین خط UAT را merge کرد؛
-- PR #146 کل canonical + pending structural-state matrix را به‌صورت نهایی بست.
-
-بنابراین LG-UAT-03 / 18 / 19 / 20 سناریوهای پذیرش دائمی‌اند، نه فهرست کارهای انجام‌نشده.
-
-## 1.4 Iran 1404 national administrative runtime و v1→v2 cutover — بسته
-
-PR #141 baseline ملی ۱۴۰۴ را وارد runtime کرد: 31 استان، 484 شهرستان، 1,193 بخش، 2,777 دهستان، 1,481 شهر و 191 منطقهٔ شهری، با حفظ v1 history و fail-closed conflict policy.
-
-PRهای #143 تا #145 سپس مسیر Production-safe را تکمیل کردند:
-
-- read-only runtime audit / dry-run؛
-- additive staging؛
-- guarded topology/cutover path؛
-- DB-backed runtime activation boundary؛
-- migration of verified identity-equivalent live dependencies؛
-- activation در آخرین مرحله.
-
-شواهد عملیاتی ثبت‌شده در گفتگو در 2026-09-25 نیز cutover واقعی را موفق گزارش کرد: runtime v2 active، blocker=0، و migration محدودِ وابستگی‌های موجود شامل residence، proposal chainها، canonical groups و project target/scope انجام شد. این شواهد اپراتوری است و باید از CI-only evidence تفکیک شود.
-
-## 1.5 Checkpoint 2 — Structural Matrix — بسته
-
-PR #146 (`Close Checkpoint 2 structural-state matrix`) قراردادهای زیر را نهایی کرد:
-
-- `no_urban_region`؛
-- `no_neighborhood` برای City / Urban Region / Village؛
-- prerequisite/dependent structural claims؛
-- pending proposal traversal؛
-- approval/rejection cleanup؛
-- re-anchor on approval/merge؛
-- contradiction guards؛
-- Registration/Profile/Admin entry-point parity.
-
-## 1.6 Checkpoint 3 — Proposal/Review Lifecycle — بسته
-
-PR #147 (`Close Checkpoint 3 proposal and review lifecycle`) این موارد را بست:
-
-- support فقط از residence selection معتبر و committed؛
-- support propagation روی proposal ancestry باز؛
-- atomic review transitions؛
-- reason-gated review؛
-- pending residence cancellation on rejection؛
-- anchor residence preservation؛
-- dependent pending-group visibility/count در admin queue؛
-- lifecycle regression coverage.
-
-پس «آستانهٔ ۱۰ حمایت» از نظر lifecycle/backend انجام شده است؛ ۱۰ حمایت approval نیست و فقط review priority/readiness است.
-
-## 1.7 Checkpoint 4 — Canonical Consumer Audit — بسته
-
-PR #148 در `main@9b936dd9...` merge شد و active consumerها را با Residence/GovernanceArea/Membership canonical هم‌راستا کرد:
-
-- Profile/Admin/My Groups؛
-- group chat / moderation role presentation؛
-- elections/policy/conflict/appointments؛
-- project/community re-audit؛
-- admin group filters / temporary roles؛
-- Najm Bahar salary targeting؛
-- Najm Hoda context؛
-- canonical `/api/groups/search` scope/roles/security/member-count contract.
-
-SHA نهایی branch یعنی `1138435326f1a0bf1f3cb6f1e217438fee5157b8` روی Responsive #707 و Integration Full Validation #3266 سبز شد و سپس با merge commit `9b936dd9c9b194098f6736eeac8917ccb2d622f6` وارد main شد.
+PR #148 active consumerهای Profile/Admin/My Groups، chat roles، elections/policy/conflict/appointments، project/community، admin filters/temporary roles، Najm Bahar salary targeting، Najm Hoda context و `/api/groups/search` را با canonical truth هم‌راستا کرد.
 
 ---
 
-# 2. Iran 1404 settlement/reference-settlement — وضعیت واقعی
+# 2. کارهای پس از چهار Checkpoint که اکنون بسته شده‌اند
 
-Plan تاریخی 2026-09-24 دیگر `PLAN ONLY` نیست. روی main اکنون مدل‌ها و سرویس‌های `ReferenceSettlement`, residence claim, review, structure claim, registration bridge و admin review وجود دارند.
+این بخش در تطبیق 2026-09-27 اضافه شد تا کارهایی که بعد از Checkpoint 4 انجام شدند دوباره به‌عنوان backlog باز نشوند.
 
-## انجام‌شده و موجود در main
+## 2.1 Home / Onboarding redesign — **CLOSED**
 
-- neutral `reference_settlements` catalog؛
-- 99,317 settlement source identity در مسیر catalog/UAT؛
-- evidence/review model؛
-- residence claim روی source identity؛
-- registration bridge با canonical parent anchor؛
-- pending settlement display؛
-- pending group shells؛
-- settlement→pending-neighborhood bridge؛
-- non-authorizing policy؛
-- read-only v1→v2 runtime audit؛
-- fail-closed parent/crosswalk behavior؛
-- support threshold به‌عنوان review signal، نه approval.
+PR #151 بازطراحی Home را با visual language ثبت‌نام، onboarding چهارمرحله‌ای، mobile-first composition، حفظ سه کارت canonical گروه‌ها، slider/content ادمین و responsive contract بست.
 
-## UAT دستی که واقعاً انجام شده
+PR #152 لایهٔ read-only `HomeCivicDashboardService`، journey state، Today signals، next action، pending-location visibility و Home polish را اضافه کرد.
 
-در UAT «وری» و مسیرهای مرتبط، شواهد گفتگو ثبت می‌کند که موارد زیر عملاً بررسی شدند:
+PR #153 وضعیت حق عضویت، deep-link پرداخت، معرفی نجم هدا و shared sidebar section polish را تکمیل کرد.
 
-- settlement search زیر parent معتبر؛
-- تکمیل registration تا pending neighborhood؛
-- Step 3 / Profile / Admin shared picker و hydration؛
-- breadcrumb/path نمایش «وری»؛
-- pending settlement/neighborhood bridge؛
-- pending group ordering/role presentation.
+بنابراین «بازطراحی Home/Onboarding» دیگر P0 باز نیست؛ real-device polish عمومی می‌تواند جداگانه VERIFY شود.
 
-## UAT دستی که نباید به اشتباه سبز اعلام شود
+## 2.2 Authenticated navigation taxonomy — **CLOSED**
 
-برای همهٔ موارد زیر evidence دستی کامل در گفتگوها ثبت نشده است، حتی اگر automated contract وجود داشته باشد:
+PR #154 Sidebar و Drawer را روی یک taxonomy مشترک تثبیت کرد:
 
-- رسیدن واقعی ۱۰ کاربر مستقل به threshold برای یک settlement؛
-- full admin evidence-review lifecycle از needs-evidence تا residential/nonresidential؛
-- manual nonresidential cleanup end-to-end؛
-- manual flag-off/flag-on replay؛
-- کامل‌بودن mobile/RTL manual matrix برای settlement admin/review؛
-- classification/promotion lifecycle در مقیاس ملی.
+- خانه؛
+- شبکه و ارتباطات؛
+- حکمرانی و مشارکت؛
+- اقتصاد؛
+- سازمان و همکاری؛
+- حساب و پشتیبانی؛
+- کاوش و اسناد؛
+- مدیریت برای ادمین.
 
-این موارد **feature-flagged/operational UAT backlog** هستند و blocker معماری برای شروع Mobile Readiness محسوب نمی‌شوند، تا زمانی که settlement rollout عمومی جزو launch scope انتخاب نشده باشد.
+همچنین لینک‌های legacy wallet/holding از navigation حذف و نام‌های «دفتر سهام ارزش» و «حراج‌های سهم ارزش» تثبیت شدند. پروفایل canonical نجم هدا جای duplicate about route را گرفت.
 
----
+## 2.3 Main-site ↔ self-hosted Docs Center alignment — **CLOSED for current URL contract**
 
-# 3. کارهای باقی‌ماندهٔ Location/Governance که باید درست طبقه‌بندی شوند
+PR #155:
 
-## 3.1 UX polish — باز، اما نه canonical blocker
+- legacy Mintlify links را از source-of-truth مرکزی حذف کرد؛
+- `https://docs.earthcoop.ir` را مرکز canonical فعلی کرد؛
+- FC تا STD را به ۱۰ سند بنیادین رساند؛
+- publication policy را ثبت کرد؛
+- duplication Footer را حذف کرد؛
+- Welcome/Footer/Navigation را با config مرکزی هم‌راستا کرد؛
+- چهار سند داخلی Laravel را عمداً حفظ کرد.
 
-کارهای ثبت‌شده‌ای که هنوز ارزش انجام دارند:
+PR #156 سپس workaround موقت `docs-center-link-normalizer.js` را حذف کرد و Sidebar/Drawer را مستقیماً به `config/docs-links.php` متصل کرد.
 
-- نمایش بهتر progress حمایت برای proposal/claim؛
-- CTA مناسب برای دعوت کاربران محلی به حمایت؛
-- بهبود صف/فیلتر/تراکم Admin Location/Governance برای حجم بالا؛
-- توضیح بهترِ تفاوت `pending`, `ready_for_review`, `approved` برای کاربر و ادمین.
+Full Validation #3313 و #3314 روی SHAهای ثابت سبز شدند و نسخهٔ نهایی deploy شد.
 
-این‌ها enhancement هستند؛ core support/review lifecycle قبلاً بسته شده است.
-
-## 3.2 Reverse geolocation provider — deferred external/independent
-
-UI و abstraction کمک مکانی وجود دارد، اما provider واقعی reverse geocoding قبلاً عمداً به‌عنوان تغییر مستقل privacy/configuration باقی گذاشته شد. این مورد blocker شروع Mobile Readiness نیست؛ در M5 می‌تواند همراه device/location policy دوباره تصمیم‌گیری شود.
-
-## 3.3 C14 legacy retirement — عمداً فعلاً انجام نمی‌شود
-
-`Address`, legacy geography columns/routes و rollback scaffolding نباید صرفاً برای «تمیزشدن کد» حذف شوند. C14 فقط بعد از post-cutover observation/audit و تأیید صریح جداگانه مجاز است. بنابراین C14 جزو کارهای لازم پیش از Native Mobile نیست.
+**نکته:** professional SEO / canonical non-hash routing خود Docs Center هنوز backlog مستقل است و این closure آن را ادعا نمی‌کند.
 
 ---
 
-# 4. برنامهٔ اصلی که باید حالا به آن برگردیم: Mobile Readiness Foundations
+# 3. Location/Governance — باقی‌مانده‌های واقعی و درست‌طبقه‌بندی‌شده
 
-تصمیم قبلی پروژه این بود که قبل از Native Production، یک لایهٔ پایدار بین Laravel core و clientها ساخته شود:
+## 3.1 Product/Operations UX — **OPEN, non-canonical blocker**
+
+- نمایش بهتر support progress برای proposal/claim؛
+- CTA دعوت کاربران محلی/مرتبط برای حمایت؛
+- توضیح روشن `pending / ready_for_review / approved`؛
+- redesign صف Admin Location/Governance برای حجم بالا؛
+- filter/sort/density/evidence/dependency visibility بهتر.
+
+Core support/review lifecycle قبلاً بسته شده است.
+
+## 3.2 Reference-settlement operational UAT — **PARTIAL / FEATURE-FLAGGED**
+
+Automated contracts و بخش‌های مهم UAT وجود دارند، اما evidence دستی کامل برای تمام موارد زیر ثبت نشده است:
+
+- threshold واقعی با ۱۰ کاربر مستقل؛
+- full admin evidence-review lifecycle؛
+- nonresidential cleanup end-to-end؛
+- flag-off/flag-on replay؛
+- mobile/RTL manual matrix کامل؛
+- nationwide classification/promotion lifecycle.
+
+این‌ها blocker معماری شروع Mobile Readiness نیستند مگر rollout عمومی settlement داخل launch scope قرار گیرد.
+
+## 3.3 Reverse geolocation provider — **DEFERRED**
+
+provider واقعی reverse geocoding تغییر مستقل privacy/configuration است و می‌تواند در M5 همراه device/location policy تصمیم‌گیری شود.
+
+## 3.4 C14 legacy retirement — **DEFERRED / APPROVAL-GATED**
+
+حذف `Address`، geography legacy، rollback scaffolding و تاریخچه صرفاً برای تمیزی کد مجاز نیست. C14 فقط پس از observation/audit و تأیید صریح جداگانه انجام می‌شود.
+
+---
+
+# 4. Mobile Readiness Foundations — مسیر فنی اصلی
+
+معماری هدف:
 
 `Laravel/domain core → stable services/capabilities/events → versioned API → Web/PWA + Native clients + Najm Hoda`
 
-این به معنی تکمیل همهٔ featureهای آینده قبل از موبایل نیست. هدف این است که Native روی قراردادهای ناپایدار web-only ساخته نشود.
+هدف این نیست که تمام featureهای آینده قبل از موبایل ساخته شوند؛ هدف این است که Native روی قراردادهای web-only و ناپایدار بنا نشود.
 
-## M0 — API Constitution / domain boundary inventory — **باز و اولین کار بعدی**
+## M0 — API Constitution / domain boundary inventory — **OPEN / NEXT MAIN TASK**
 
-وضعیت امروز: **RED/YELLOW**.
+وضعیت: **RED/YELLOW**.
 
-Sanctum در پروژه وجود دارد، اما `routes/api.php` هنوز versioned mobile contract نیست و endpointهای legacy/closure-based، از جمله legacy geography، در آن وجود دارند.
+Sanctum و APIهای پراکنده وجود دارند، اما `/api/v1` mobile contract یکپارچه هنوز freeze نشده است.
 
-خروجی لازم M0:
+خروجی لازم:
 
-- تعریف `/api/v1` contract boundary؛
+- `/api/v1` boundary؛
 - auth/session/token/device rules؛
 - response/error envelope؛
-- pagination/filter/sort contract؛
-- idempotency/retry contract برای mutationها؛
+- pagination/filter/sort؛
+- idempotency/retry mutation contract؛
 - authorization/resource policy boundary؛
 - locale/timezone/date/number conventions؛
 - upload/media/deep-link conventions؛
 - deprecation/versioning policy؛
-- inventory دقیق اینکه کدام use-caseها برای Native باید API شوند.
+- capability/use-case inventory برای Native.
 
-**این اولین task اصلی بعد از بستن مستندات فعلی است.**
+**این اولین task فنی اصلی بعدی است.**
 
-## M1 — API v1 implementation — **باز**
+## M1 — API v1 implementation — **OPEN / RED**
 
-وضعیت امروز: **RED** به‌عنوان API یکپارچهٔ mobile-first، هرچند APIهای پراکنده و Sanctum موجودند.
-
-حداقل API v1 باید pilot/core journey را پوشش دهد، نه تمام صفحات سایت:
+حداقل pilot/core journey باید API شود:
 
 - auth/account/profile؛
 - canonical residence/location/governance؛
@@ -244,125 +172,121 @@ Sanctum در پروژه وجود دارد، اما `routes/api.php` هنوز ver
 - polls/elections؛
 - projects core؛
 - notifications؛
-- Najm Bahar core account/actions؛
+- Najm Bahar core؛
 - Najm Hoda interaction context/capabilities.
 
 ## M2 — Najm Hoda stable mobile contract — **PARTIAL / YELLOW**
 
-نجم هدی از نظر capability/runtime/safety/audit زیرساخت بالغی دارد، اما mobile contract هنوز freeze نشده است.
+زیرساخت capability/runtime/safety/audit بالغ است، اما client contract هنوز freeze نشده است.
 
-کارهای ضروری قبل از قرار دادن آن پشت Native client:
+ضروری:
 
-- explicit authority minting services؛
-- کامل‌کردن resource authorization برای capabilityهای گروه/مالی/content/admin در صورت executable شدن؛
-- mutation endpoint CSRF/session/Sanctum review؛
-- action/consent/audit contract قابل مصرف توسط client؛
-- جلوگیری از اینکه client دادهٔ context را authority تلقی کند؛
-- stable API schema برای propose/apply/approval/error/evidence.
+- explicit authority minting؛
+- resource authorization برای capabilityهای executable؛
+- mutation endpoint/session/Sanctum review؛
+- action/consent/audit contract؛
+- context ≠ authority؛
+- stable schema برای propose/apply/approval/error/evidence.
 
-مواردی مانند autonomy کامل نجم هدی یا همهٔ agentهای آینده شرط شروع Native نیستند.
+Autonomy کامل نجم هدا blocker Native PoC نیست.
 
-## M3 — Najm Bahar mobile contract — **CORE GREEN / MOBILE CONTRACT OPEN**
+## M3 — Najm Bahar mobile contract — **CORE GREEN / CONTRACT OPEN**
 
-هستهٔ اقتصادی نسبت به roadmap اولیه بسیار جلوتر رفته است:
+هستهٔ issuance، ledger/events، Active/Dim/Committed/Reserved، activation، transfer، scheduled transfer، membership fee، treasury foundations و reservation/commitment invariants موجود است.
 
-- issuance؛
-- ledger/events؛
-- Active/Dim/Committed/Reserved؛
-- activation؛
-- transfers؛
-- scheduled transfers؛
-- membership fee؛
-- treasury foundations؛
-- reservation/commitment invariants.
+قبل از Native باید contract موبایل account/balance/transfer/fee/activation/audit freeze شود و mutationها idempotent باشند.
 
-قبل از Native لازم نیست همهٔ roadmap اقتصادی تمام شود. لازم است contract موبایل برای account/wallet/balance/transfer/fee/activation/audit freeze شود و idempotent mutation semantics داشته باشد.
+موارد غیرالزامی برای شروع PoC مگر وارد launch scope شوند:
 
-این موارد می‌توانند جدا بمانند و شروع Native را block نکنند مگر وارد launch scope شوند:
-
-- idle-tax redistribution engine کامل؛
-- normalized future account schema migration؛
+- idle-tax redistribution کامل؛
+- normalized future account migration؛
 - provider واقعی Servix/ZarinPal؛
-- همهٔ retirement/treasury UATهای نهایی.
+- تمام retirement/treasury UATهای نهایی.
 
-## M4 — Organization / Marketplace / Shop domain foundation — **PARTIAL/RED**
+## M4 — Organization / Marketplace / Shop boundary — **PARTIAL / RED**
 
-Project و Secretariat domain foundation موجود و نسبتاً بالغ‌اند، اما Marketplace/Shop/Company به‌عنوان subsystem یکپارچهٔ production-grade روی main پیدا نمی‌شود.
+Project و Secretariat foundation موجودند؛ Company/Marketplace/Shop subsystem کامل نیست.
 
-تصمیم فعلی:
+قبل از Native فقط boundary حداقلی برای organization/legal-entity/shop/market actor لازم است تا API آینده breaking redesign نخواهد. ساخت broad marketplace و full company ecosystem blocker PoC نیست.
 
-- **قبل از Native:** contract/domain boundary حداقلی برای organization/legal-entity/shop/market actor تعریف شود تا client بعداً مجبور به API breaking redesign نشود؛
-- **قبل از Native لازم نیست:** broad marketplace و company ecosystem کامل ساخته شود.
+## M5 — Device / Push / Upload / Realtime / Offline — **OPEN / NATIVE-CRITICAL**
 
-این مرزبندی تصمیم قدیمی «اول همه‌چیز را کامل کنیم» را با roadmap بعدی pilot/mobile reconciliation می‌کند.
-
-## M5 — Device / Push / Upload / Realtime / Offline foundation — **باز و Native-critical**
-
-وضعیت امروز:
-
-- Web/PWA و service worker وجود دارد؛
-- responsive/mobile web contracts بالغ‌تر شده‌اند؛
-- اما native device registration/push contract (APNs/FCM abstraction)، device session model و unified native notification/deep-link contract هنوز به‌صورت subsystem پایدار دیده نمی‌شود.
-
-قبل از Native PoC باید تصمیم/قرارداد حداقلی این موارد بسته شود:
+قبل از Native PoC باید حداقل این قراردادها بسته شوند:
 
 - device registration + revoke/rotate؛
-- push provider abstraction + notification preferences؛
+- APNs/FCM abstraction + notification preferences؛
 - deep links؛
 - upload/media API؛
 - realtime transport/fallback؛
-- offline/cache/sync/idempotent replay policy؛
-- app/version compatibility and forced-minimum-version policy.
+- offline/cache/sync/idempotent replay؛
+- app/version compatibility + forced-minimum-version policy.
 
-## M6 — Native PoC — **شروع نشود تا M0–M5 gate تعریف شود**
+## M6 — Native PoC — **GATED**
 
-PoC می‌تواند قبل از کامل‌شدن تمام featureهای EarthCoop آغاز شود، اما نه قبل از اینکه M0/M1 و قراردادهای critical M2–M5 به حد کافی پایدار باشند.
+PoC فقط بعد از تعریف و عبور gate مناسب M0/M1 و قراردادهای critical M2–M5 آغاز می‌شود.
 
 ---
 
-# 5. چیزهایی که «قبل از Native» نباید به اشتباه blocker شوند
+# 5. مسیر موازی Product/UX پیش از Native
 
-موارد زیر کارهای واقعی پروژه‌اند، اما completion آن‌ها شرط شروع Native foundation/PoC نیست مگر scope محصول تغییر کند:
+فهرست تفصیلی و وضعیت هر مورد در `docs/PRODUCT_UX_BACKLOG_PRE_NATIVE.fa.md` نگهداری می‌شود.
+
+پس از PRهای #151 تا #156، P0های اصلی باز عبارت‌اند از:
+
+1. Admin Location/Governance high-volume review UX؛
+2. proposal support progress + invite UX؛
+3. Project create/edit mobile redesign؛
+4. Najm Bahar mobile UX verification/follow-upهای تأییدشده؛
+5. breakpoint architecture برای Mobile / Tablet-Compact / Desktop؛
+6. real-device/browser verificationهای نهایی در نقاطی که automated responsive contract کافی نیست.
+
+Home/Onboarding، taxonomy اصلی navigation و اتصال main-site به self-hosted Docs Center دیگر در این فهرست باز نیستند.
+
+---
+
+# 6. کارهایی که نباید به اشتباه blocker Native شوند
 
 - C14 legacy retirement؛
 - broad Marketplace implementation؛
 - full Company ecosystem؛
 - nationwide settlement residential classification/promotion؛
-- کامل‌کردن تمام autonomous Najm Hoda capabilities؛
-- idle-tax redistribution engine نهایی؛
+- autonomy کامل نجم هدا؛
+- idle-tax redistribution نهایی؛
 - reverse-geocoder provider واقعی؛
 - external payment provider UAT؛
-- تمام cosmetic UX backlogهای وب.
+- تمام cosmetic UX backlogهای وب؛
+- professional SEO نهایی Docs Center، مگر launch scope صریحاً آن را gate کند.
 
 ---
 
-# 6. ترتیب عملی از این لحظه
+# 7. ترتیب عملی از این Baseline
 
-1. **بستن این documentation reconciliation** و مشخص‌کردن planهای historical/superseded.
-2. **M0 — API Constitution + mobile capability inventory** روی main فعلی.
-3. M1 — `/api/v1` foundation و mobile auth/device boundary.
-4. M2/M3 — freeze contractهای Najm Hoda و Najm Bahar برای mobile client.
-5. M4 — حداقل Organization/Marketplace/Shop domain contracts، بدون ساخت کامل بازار.
+1. **Documentation reconciliation 2026-09-27 — CLOSED.**
+2. **M0 — API Constitution + Mobile Capability Inventory.**
+3. M1 — `/api/v1` foundation + auth/device boundary.
+4. M2/M3 — freeze قراردادهای Najm Hoda و Najm Bahar.
+5. M4 — حداقل Organization/Marketplace/Shop domain boundary.
 6. M5 — device/push/upload/realtime/offline foundation.
 7. Architecture gate.
-8. سپس Native PoC و انتخاب/تثبیت technology path.
+8. Native PoC و سپس تثبیت technology path.
 
-این ترتیب جایگزین برنامه‌های قدیمی‌ای است که ممکن است از متن آن‌ها چنین برداشت شود که Location/Governance UAT یا کل Marketplace/Company باید دوباره/کامل قبل از شروع mobile foundation انجام شود.
+P0های Product/UX می‌توانند موازی با M0/M1 پیش بروند، اما نباید جای API foundation را بگیرند یا کارهای canonical بسته‌شده را دوباره باز کنند.
 
 ---
 
-# 7. اسناد مرتبط و نحوهٔ خواندن آن‌ها
+# 8. اسناد مرتبط
 
-- `docs/location-governance/UAT_SCENARIOS.md`: **ماتریس پذیرش دائمی**؛ backlog execution نیست.
-- `docs/location-governance/CHECKPOINT_2_STRUCTURAL_MATRIX_2026-09-25.md`: closure ساختاری no-region/no-neighborhood.
-- `docs/location-governance/CHECKPOINT_4_CANONICAL_CONSUMER_AUDIT_2026-09-26.md`: closure consumerهای canonical؛ C14 نیست.
-- `docs/location-governance/IR_1404_SETTLEMENT_CATALOG_IMPLEMENTATION_PLAN_2026-09-24.md`: plan تاریخی؛ بخش عمدهٔ C1–C5 بعداً اجرا شد و باید با status update خوانده شود.
-- `docs/location-governance/CUTOVER_READINESS.md`: سند تاریخی pre-cutover؛ وضعیت بعد از 2026-09-25 باید با update جدید آن خوانده شود.
-- `docs/NAJM_HODA_SECURITY_HARDENING_STATUS.md`: مرجع شکاف‌های security/autonomy نجم هدی، ولی همهٔ آن‌ها blocker Native PoC نیستند.
-- `docs/NAJM_BAHAR_UAT_READINESS_MATRIX.fa.md`: مرجع maturity هستهٔ اقتصادی و UATهای باقیمانده.
+- `docs/PRODUCT_UX_BACKLOG_PRE_NATIVE.fa.md`: backlog تفصیلی Product/UX و وضعیت جاری.
+- `docs/location-governance/UAT_SCENARIOS.md`: ماتریس پذیرش دائمی، نه backlog execution.
+- `docs/location-governance/CHECKPOINT_2_STRUCTURAL_MATRIX_2026-09-25.md`: closure ساختاری.
+- `docs/location-governance/CHECKPOINT_4_CANONICAL_CONSUMER_AUDIT_2026-09-26.md`: closure canonical consumers.
+- `docs/location-governance/IR_1404_SETTLEMENT_CATALOG_IMPLEMENTATION_PLAN_2026-09-24.md`: plan تاریخی/بخشی اجراشده.
+- `docs/location-governance/CUTOVER_READINESS.md`: pre-cutover historical readiness.
+- `docs/NAJM_HODA_SECURITY_HARDENING_STATUS.md`: شکاف‌های security/autonomy نجم هدا.
+- `docs/NAJM_BAHAR_UAT_READINESS_MATRIX.fa.md`: maturity و UAT هستهٔ اقتصادی.
 
 ## نتیجهٔ مرجع
 
-**Location/Governance detour برای بازگشت به برنامهٔ اصلی، از نظر canonical architecture و checkpointهای 2–4 بسته است.**
+**Location/Governance detour، چهار Checkpoint، Home/Onboarding follow-up، navigation taxonomy و main-site Docs Center alignment بسته شده‌اند.**
 
-کار اصلی بعدی، تکرار UAT شهر/منطقه/روستای بدون سطح نیست؛ **M0 — API Constitution و Mobile Readiness inventory** است.
+کار اصلی بعدی دیگر documentation cleanup یا تکرار UAT ساختاری نیست؛ **M0 — API Constitution و Mobile Capability Inventory** است، در کنار P0های Product/UX باقی‌مانده که در سند مکمل ثبت شده‌اند.
