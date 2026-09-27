@@ -11,6 +11,8 @@ use Tests\TestCase;
 
 class IdempotencyContractTest extends TestCase
 {
+    private bool $createdIdempotencyTable = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -29,6 +31,7 @@ class IdempotencyContractTest extends TestCase
                 $table->timestamp('expires_at')->nullable();
                 $table->unique(['actor_key', 'scope', 'idempotency_key'], 'api_v1_idem_actor_scope_key_unique');
             });
+            $this->createdIdempotencyTable = true;
         }
 
         app()->instance('api-v1-test-counter', (object) ['count' => 0]);
@@ -59,7 +62,18 @@ class IdempotencyContractTest extends TestCase
 
     protected function tearDown(): void
     {
-        Schema::dropIfExists('api_v1_idempotency_keys');
+        if ($this->createdIdempotencyTable) {
+            Schema::dropIfExists('api_v1_idempotency_keys');
+        } elseif (Schema::hasTable('api_v1_idempotency_keys')) {
+            DB::table('api_v1_idempotency_keys')
+                ->where('actor_key', 'user:123')
+                ->whereIn('scope', [
+                    'api.v1.contract.idempotency',
+                    'api.v1.contract.idempotency-server-error',
+                ])
+                ->delete();
+        }
+
         parent::tearDown();
     }
 
