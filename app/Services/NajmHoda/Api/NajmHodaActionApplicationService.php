@@ -42,6 +42,11 @@ class NajmHodaActionApplicationService
 
         $normalized = $this->normalize($input);
 
+        // A proposal cannot execute, but protected-resource proposals must still
+        // pass the same server-owned resource boundary before durable persistence.
+        // The minted propose authority is intentionally not serialized or stored.
+        $this->authorityFactory->propose($actor, $action, $normalized, 'mobile_api');
+
         return NajmHodaAction::query()->create([
             'public_id' => (string) Str::uuid(),
             'user_id' => $actor->id,
