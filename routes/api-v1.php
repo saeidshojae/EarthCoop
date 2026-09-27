@@ -6,6 +6,7 @@ use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
+use App\Http\Controllers\API\V1\NajmBaharTransactionController;
 use App\Http\Controllers\API\V1\NajmHodaActionController;
 use App\Http\Controllers\API\V1\NajmHodaCapabilityController;
 use App\Http\Controllers\API\V1\NajmHodaConversationController;
@@ -62,6 +63,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::get('/najm-bahar/accounts/{account}/balance', [NajmBaharAccountController::class, 'balance'])
             ->whereNumber('account')
             ->name('najm-bahar.accounts.balance');
+        Route::get('/najm-bahar/transactions', [NajmBaharTransactionController::class, 'index'])
+            ->name('najm-bahar.transactions.index');
 
         Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
         Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
