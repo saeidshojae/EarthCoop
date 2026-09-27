@@ -12,7 +12,6 @@ use App\Models\GroupUser;
 use App\Models\NotificationSetting;
 use App\Models\User;
 use App\Notifications\GenericNotification;
-use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ProjectCategory;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -132,7 +131,7 @@ class ElectionProjectNotificationContractTest extends TestCase
         ]);
     }
 
-    public function test_project_create_uses_explicit_canonical_target_independent_from_residence_and_allows_intermediate_stopping_point(): void
+    public function test_project_create_update_submit_use_explicit_canonical_target_independent_from_residence_and_allow_intermediate_stopping_point(): void
     {
         $user = $this->member('project');
         [$token, $deviceId] = $this->nativeSession($user);
@@ -162,9 +161,10 @@ class ElectionProjectNotificationContractTest extends TestCase
             'status' => true,
         ]);
 
+        $payload = $this->projectPayload($category->id, $targetCity->id);
         $response = $this->freshBearer($token, $deviceId)
-            ->withHeader('Idempotency-Key', 'project-'.bin2hex(random_bytes(8)))
-            ->postJson('/api/v1/projects', $this->projectPayload($category->id, $targetCity->id))
+            ->withHeader('Idempotency-Key', 'project-create-'.bin2hex(random_bytes(8)))
+            ->postJson('/api/v1/projects', $payload)
             ->assertCreated()
             ->assertJsonPath('data.target_location_id', $targetCity->id)
             ->assertJsonPath('data.governance_area_id', $targetArea->id)
@@ -185,6 +185,29 @@ class ElectionProjectNotificationContractTest extends TestCase
             ->assertJsonPath('data.id', $projectId)
             ->assertJsonPath('data.target_location_id', $targetCity->id);
 
+        $payload['title'] = 'API v1 updated scoped project';
+        $this->freshBearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'project-update-'.bin2hex(random_bytes(8)))
+            ->putJson('/api/v1/projects/'.$projectId, $payload)
+            ->assertOk()
+            ->assertJsonPath('data.title', 'API v1 updated scoped project')
+            ->assertJsonPath('data.target_location_id', $targetCity->id)
+            ->assertJsonPath('data.governance_area_id', $targetArea->id)
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->freshBearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'project-submit-'.bin2hex(random_bytes(8)))
+            ->postJson('/api/v1/projects/'.$projectId.'/submit')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending');
+
+        $this->assertDatabaseHas('najm_bahar_projects', [
+            'id' => $projectId,
+            'title' => 'API v1 updated scoped project',
+            'status' => 'pending',
+            'target_location_id' => $targetCity->id,
+            'governance_area_id' => $targetArea->id,
+        ]);
         $this->assertSame($residenceCity->id, app(ResidenceService::class)->currentPrimaryResidence($user)->location_id);
     }
 
