@@ -14,6 +14,8 @@ class DocsCenterLinkContractTest extends TestCase
         $this->assertSame('https://docs.earthcoop.ir/', $links['center']['href']);
         $this->assertSame('https://docs.earthcoop.ir/', $links['foundational_index']['href']);
         $this->assertSame('https://docs.earthcoop.ir/#/documents/publication-policy', $links['publication_policy']['href']);
+        $this->assertSame('https://github.com/saeidshojae/EarthCoop-docs', $links['github']['href']);
+        $this->assertArrayNotHasKey('main', $links);
 
         $expected = [
             'fc' => 'FC',
@@ -43,6 +45,7 @@ class DocsCenterLinkContractTest extends TestCase
         $this->assertStringNotContainsString('/fa/introduction', $serialized);
         $this->assertStringNotContainsString('/fa/foundational', $serialized);
         $this->assertStringNotContainsString('/00-overview', $serialized);
+        $this->assertStringNotContainsString('/fa/api/overview', $serialized);
         $this->assertStringNotContainsString('/governance/translation-policy', $serialized);
     }
 
@@ -51,27 +54,41 @@ class DocsCenterLinkContractTest extends TestCase
         $source = file_get_contents(resource_path('views/components/footer-docs-links.blade.php'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString("\$docsLinks['center']['href']", $source);
+        $this->assertSame(1, substr_count($source, "\$docsLinks['center']['href']"));
         $this->assertStringContainsString("\$docsLinks['publication_policy']['href']", $source);
+        $this->assertStringContainsString("\$docsLinks['github']['href']", $source);
         $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $source);
         $this->assertStringNotContainsString("@foreach(\$docsLinks['main'] as \$link)", $source);
     }
 
-    public function test_welcome_and_authenticated_navigation_consume_docs_config_while_internal_rules_stay_internal(): void
+    public function test_welcome_uses_the_canonical_center_and_foundational_collection(): void
     {
-        $welcome = file_get_contents(resource_path('views/partials/docs-section.blade.php'));
+        $source = file_get_contents(resource_path('views/partials/docs-section.blade.php'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("\$docsLinks['center']['href']", $source);
+        $this->assertStringContainsString("\$docsLinks['foundational']", $source);
+        $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $source);
+    }
+
+    public function test_legacy_center_anchors_in_large_navigation_templates_are_normalized_without_changing_internal_rules(): void
+    {
         $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
         $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
+        $runtime = file_get_contents(resource_path('js/docs-center-link-normalizer.js'));
+        $app = file_get_contents(resource_path('js/app.js'));
 
-        $this->assertIsString($welcome);
         $this->assertIsString($sidebar);
         $this->assertIsString($drawer);
+        $this->assertIsString($runtime);
+        $this->assertIsString($app);
 
-        $this->assertStringContainsString("\$docsLinks['center']['href']", $welcome);
-        $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $welcome);
+        $this->assertStringContainsString('docs-center-link-normalizer.js', $app);
+        $this->assertStringContainsString('https://docs.earthcoop.ir/fa/introduction', $runtime);
+        $this->assertStringContainsString('https://docs.earthcoop.ir/', $runtime);
+        $this->assertStringContainsString('querySelectorAll', $runtime);
 
         foreach ([$sidebar, $drawer] as $source) {
-            $this->assertStringContainsString("['center']['href']", $source);
             $this->assertStringContainsString("['foundational_index']['href']", $source);
             $this->assertStringContainsString("route('terms')", $source);
             $this->assertStringContainsString("route('najm-bahar.agreement')", $source);
