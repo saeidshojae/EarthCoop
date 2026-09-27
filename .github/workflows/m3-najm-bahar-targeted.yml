@@ -11,6 +11,7 @@ on:
       - 'routes/api-v1.php'
       - 'tests/Feature/Api/V1/NajmBahar*'
       - 'tests/Feature/NajmBahar/**'
+      - 'tests/Feature/TransactionServiceTest.php'
       - 'tests/Unit/NajmBahar/**'
       - 'tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php'
       - '.github/workflows/m3-najm-bahar-targeted.yml'
@@ -75,3 +76,5 @@ jobs:
           php artisan migrate:fresh --force
       - name: Run M3 account and balance contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharAccountContractTest.php tests/Feature/NajmBahar/AccountBalanceServiceTest.php tests/Feature/NajmBahar/AccountInvariantServiceTest.php
+      - name: Run M3 transaction history and ledger regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharTransactionContractTest.php tests/Feature/TransactionServiceTest.php
