@@ -71,29 +71,29 @@ class DocsCenterLinkContractTest extends TestCase
         $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $source);
     }
 
-    public function test_legacy_center_anchors_in_large_navigation_templates_are_normalized_without_changing_internal_rules(): void
+    public function test_authenticated_navigation_uses_canonical_docs_links_directly_without_runtime_normalizer(): void
     {
         $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
         $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
-        $runtime = file_get_contents(resource_path('js/docs-center-link-normalizer.js'));
         $app = file_get_contents(resource_path('js/app.js'));
 
         $this->assertIsString($sidebar);
         $this->assertIsString($drawer);
-        $this->assertIsString($runtime);
         $this->assertIsString($app);
 
-        $this->assertStringContainsString('docs-center-link-normalizer.js', $app);
-        $this->assertStringContainsString('https://docs.earthcoop.ir/fa/introduction', $runtime);
-        $this->assertStringContainsString('https://docs.earthcoop.ir/', $runtime);
-        $this->assertStringContainsString('querySelectorAll', $runtime);
+        $this->assertStringContainsString("\$docsLinks['center']['href']", $sidebar);
+        $this->assertStringContainsString("\$mobileDocsLinks['center']['href']", $drawer);
 
         foreach ([$sidebar, $drawer] as $source) {
+            $this->assertStringNotContainsString('/fa/introduction', $source);
             $this->assertStringContainsString("['foundational_index']['href']", $source);
             $this->assertStringContainsString("route('terms')", $source);
             $this->assertStringContainsString("route('najm-bahar.agreement')", $source);
             $this->assertStringContainsString("route('elections.guideline')", $source);
             $this->assertStringContainsString("route('participation.credit-regulation')", $source);
         }
+
+        $this->assertStringNotContainsString('docs-center-link-normalizer.js', $app);
+        $this->assertFileDoesNotExist(resource_path('js/docs-center-link-normalizer.js'));
     }
 }
