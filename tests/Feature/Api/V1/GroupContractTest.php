@@ -117,7 +117,10 @@ class GroupContractTest extends TestCase
             ->postJson('/api/v1/groups/'.$group->id.'/read', ['through_sequence' => 1])
             ->assertOk();
 
-        $this->assertSame($first->json(), $replayed->json());
+        $this->assertSame($first->json('data'), $replayed->json('data'));
+        $this->assertSame($first->json('status'), $replayed->json('status'));
+        $this->assertSame($first->json('meta'), $replayed->json('meta'));
+        $this->assertNotSame($first->json('request_id'), $replayed->json('request_id'));
         $this->assertSame('true', strtolower((string) $replayed->headers->get('Idempotency-Replayed')));
     }
 
