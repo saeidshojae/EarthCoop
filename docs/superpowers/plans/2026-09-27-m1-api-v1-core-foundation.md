@@ -488,26 +488,43 @@ git commit -m "test(api): close M1 core journey gate"
 **Interfaces:**
 - Produces stable M1 interfaces consumed by M2/M3: v1 envelope/request context, native bearer/device lifecycle, idempotency, query conventions and resource-policy boundary.
 
-- [ ] **Step 1: Verify M1-A, M1-B and M1-C on one fixed commit SHA**
+- [x] **Step 1: Verify M1-A, M1-B and M1-C on one fixed commit SHA**
 
-- [ ] **Step 2: Run Full Validation once as the checkpoint/final integration gate**
+Validated implementation SHA: `24f0e09c22c2caebee0affbe72b06037cd8533ac`.
 
-No push/commit churn to discover failures. If the gate exposes a failure, reproduce it locally/targeted, fix with TDD, then run the gate again only when justified.
+- [x] **Step 2: Run Full Validation once as the checkpoint/final integration gate**
 
-- [ ] **Step 3: Audit diff for scope leakage**
+The first checkpoint attempt, Integration Full Validation **#3316** / run `36336035178`, isolated one test-harness defect: `NativeSessionTest` dropped shared full-schema `users`/token tables during teardown, causing a MySQL foreign-key failure and then cross-test duplicate-email contamination. All specialized subsystem gates in that run were green. The fix changed only `tests/Feature/Api/V1/NativeSessionTest.php` plus a targeted MySQL full-schema isolation step in `.github/workflows/m1-api-v1-targeted.yml`; no production file was changed for this defect.
 
-Confirm no C14 retirement, Product/UX backlog, broad Marketplace/Company, reverse geocoder or M2/M3 business implementation entered M1.
+Targeted verification run `36338191012` then succeeded, including migrated-MySQL `NativeSessionTest.php` + `SystemIdentityIsolationTest.php` and all preceding M1 targeted gates.
 
-- [ ] **Step 4: Freeze the actual M1 interfaces and write detailed M2/M3 plans from those interfaces**
+Final Integration Full Validation **#3318** / run `36338441103` succeeded on the fixed candidate. Boot validation, Deployment Console, Group Chat, Group Admin/Identity, Najm Hoda+n8n, Governance, Location/Governance, Location/Governance JavaScript, Najm Bahar, Stock, Group Chat JavaScript, database reset, **Full Project PHPUnit**, diagnostics upload and the final enforcement gate all completed successfully.
 
-M4 is planned after M2/M3 identify the actor/ownership seams they consume. M5 is planned after device/auth/notification/feed interfaces are stable. This avoids speculative plans whose exact signatures would be invalidated by M1.
+- [x] **Step 3: Audit diff for scope leakage**
 
-- [ ] **Step 5: Commit only factual checkpoint documentation if needed**
+Final audit against `main@b0f6e6082e3f248187a0bed66fb899dd0d7701c2`: candidate is 50 commits ahead / 0 behind with 54 changed files. The file set is limited to M0/M1 design/plan, v1 transport/auth/device/idempotency/query infrastructure, profile/location/groups/elections/projects/notifications adapters and their shared seams/tests/migrations/workflow. No C14 retirement, frozen Product/UX backlog, broad Marketplace/Company implementation, reverse geocoder, M2 Najm Hoda mobile implementation or M3 Najm Bahar financial API implementation entered M1.
 
-```bash
-git add docs/superpowers/plans/2026-09-27-m1-api-v1-core-foundation.md docs/superpowers/plans/<date>-m2-najm-hoda-mobile-contract.md docs/superpowers/plans/<date>-m3-najm-bahar-mobile-contract.md
-git commit -m "docs(api): record M1 gate and downstream plans"
-```
+- [x] **Step 4: Freeze the actual M1 interfaces and write detailed M2/M3 plans from those interfaces**
+
+M1 implementation interfaces are frozen at `24f0e09c22c2caebee0affbe72b06037cd8533ac`. Detailed downstream plans:
+
+- `docs/superpowers/plans/2026-09-27-m2-najm-hoda-mobile-contract.md`
+- `docs/superpowers/plans/2026-09-27-m3-najm-bahar-mobile-contract.md`
+
+M4 remains intentionally deferred until M2/M3 expose the concrete actor/ownership seams they consume. M5 remains after stable device/auth/notification/feed/media consumer contracts.
+
+- [x] **Step 5: Commit only factual checkpoint documentation if needed**
+
+This Task 10 documentation layer changes planning/evidence files only; it does not alter the validated M1 implementation SHA or require another production-code Full Validation.
+
+## M1 Checkpoint Result
+
+- **M1-A Transport Contract:** satisfied on the fixed candidate by targeted v1 transport/query/idempotency gates and final Full Validation #3318.
+- **M1-B Auth & Device Security:** satisfied by native issue/revoke/rotate/device ownership/expiry tests plus the full-schema isolation regression.
+- **M1-C Core Journey:** satisfied by `CoreJourneyTest`, which completed bearer-only login → profile → canonical location/governance → groups/feed/unread → current election → canonical project → notifications → token rotation → logout without browser session cookie, CSRF token or Blade dependency.
+- **Validated implementation SHA:** `24f0e09c22c2caebee0affbe72b06037cd8533ac`.
+- **Main baseline during validation:** `b0f6e6082e3f248187a0bed66fb899dd0d7701c2`; no main drift was observed before the final gate.
+- **Validation PR:** #158 was used only as a temporary draft trigger for Full Validation and was closed without merge after #3318 succeeded.
 
 ## Dependency-ordered continuation after M1
 
