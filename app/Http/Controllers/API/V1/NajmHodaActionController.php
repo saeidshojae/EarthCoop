@@ -36,6 +36,14 @@ class NajmHodaActionController extends Controller
                 (array) $validated['input'],
                 isset($validated['conversation_id']) ? (int) $validated['conversation_id'] : null,
             );
+        } catch (AuthorizationException $exception) {
+            return ApiResponse::error(
+                'resource_not_accessible',
+                'The requested resource is not accessible.',
+                403,
+                null,
+                false,
+            );
         } catch (InvalidArgumentException $exception) {
             return ApiResponse::error(
                 'capability_rejected',
