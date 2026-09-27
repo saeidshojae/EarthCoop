@@ -76,5 +76,7 @@ jobs:
           php artisan migrate:fresh --force
       - name: Run M3 account and balance contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharAccountContractTest.php tests/Feature/NajmBahar/AccountBalanceServiceTest.php tests/Feature/NajmBahar/AccountInvariantServiceTest.php
-      - name: Run M3 transaction history and ledger regressions
+      - name: Run M3 transaction history and transfer contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharTransactionContractTest.php tests/Feature/TransactionServiceTest.php
+      - name: Run mature transfer safety regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php tests/Feature/NajmBahar/SafeTransactionBindingTest.php tests/Feature/NajmBahar/GenericSubAccountFallbackRetirementTest.php tests/Feature/NajmBahar/DimTransferRestrictionTest.php tests/Feature/NajmBahar/ActiveBaharReservationServiceTest.php tests/Feature/NajmBahar/TransactionReservationProtectionTest.php tests/Feature/NajmBahar/FinancialIdempotencyReplayServiceTest.php
