@@ -80,8 +80,8 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaCapabilityContractTest.php
       - name: Run M2 authority contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaAuthorityContractTest.php
-      - name: Run M2 durable action lifecycle contract
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaActionContractTest.php
+      - name: Run M2 durable action lifecycle and proposal authorization contracts
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaActionContractTest.php tests/Feature/Api/V1/NajmHodaProposalAuthorizationContractTest.php
       - name: Run M2 native mobile acceptance journey
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaMobileJourneyTest.php
       - name: Run mature Hoda execution capability resource and entry-policy regressions
