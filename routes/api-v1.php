@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\V1\Auth\NativeSessionController;
+use App\Http\Controllers\API\V1\GroupController;
+use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
 use App\Http\Controllers\API\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -30,5 +32,13 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::get('/location/proposals/{locationProposal}/children', [LocationGovernanceController::class, 'proposalChildren'])->name('location.proposals.children');
         Route::get('/location-governance/me', [LocationGovernanceController::class, 'me'])->name('location-governance.me');
         Route::put('/location-governance/residence', [LocationGovernanceController::class, 'updateResidence'])->name('location-governance.residence.update');
+
+        Route::get('/groups', [GroupController::class, 'index'])->name('groups.index');
+        Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
+        Route::get('/groups/{group}/feed/delta', [GroupFeedController::class, 'delta'])->name('groups.feed.delta');
+        Route::get('/groups/{group}/unread', [GroupFeedController::class, 'unread'])->name('groups.unread');
+        Route::post('/groups/{group}/read', [GroupFeedController::class, 'read'])
+            ->middleware('api.v1.idempotency')
+            ->name('groups.read');
     });
 });
