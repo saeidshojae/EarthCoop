@@ -76,5 +76,7 @@ jobs:
           php artisan migrate:fresh --force
       - name: Run M2 conversation boundary contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaConversationContractTest.php
-      - name: Run mature Hoda execution regressions
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/ExecutionBoundaryTest.php tests/Feature/NajmHoda/InteractionBoundaryTest.php
+      - name: Run M2 capability contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaCapabilityContractTest.php
+      - name: Run mature Hoda execution and capability regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/ExecutionBoundaryTest.php tests/Feature/NajmHoda/InteractionBoundaryTest.php tests/Feature/NajmHoda/CapabilityRegistryTest.php
