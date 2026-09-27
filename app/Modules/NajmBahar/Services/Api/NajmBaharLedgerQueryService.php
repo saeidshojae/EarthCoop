@@ -6,20 +6,18 @@ use App\Http\Support\Api\V1\CursorOptions;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\Cursor;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class NajmBaharLedgerQueryService
 {
     public function history(User $user, CursorOptions $page, array $filters): array
     {
-        $ownedAccountIds = Account::query()
-            ->where('user_id', (int) $user->id)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values();
+        $ownedAccountIds = $this->ownedAccountIds($user);
 
         $scopedAccountId = null;
         if (array_key_exists('account_id', $filters)) {
@@ -72,7 +70,7 @@ class NajmBaharLedgerQueryService
                 ->groupBy('transaction_id');
 
         $items = $transactions
-            ->map(fn (Transaction $transaction) => $this->project(
+            ->map(fn (Transaction $transaction) => $this->projectTransaction(
                 $transaction,
                 $ownedAccountIds->all(),
                 $ownedEntries->get($transaction->id, collect()),
@@ -89,7 +87,65 @@ class NajmBaharLedgerQueryService
         ];
     }
 
-    private function project(Transaction $transaction, array $ownedAccountIds, $entries): array
+    public function transactionFor(User $user, Transaction $transaction): array
+    {
+        $ownedAccountIds = $this->ownedAccountIds($user);
+        $ownedIds = $ownedAccountIds->all();
+
+        if (! $ownedAccountIds->contains((int) $transaction->from_account_id)
+            && ! $ownedAccountIds->contains((int) $transaction->to_account_id)) {
+            throw (new ModelNotFoundException())->setModel(Transaction::class);
+        }
+
+        $transaction->loadMissing([
+            'fromAccount:id,account_number,name,type,user_id',
+            'toAccount:id,account_number,name,type,user_id',
+        ]);
+
+        $entries = LedgerEntry::query()
+            ->where('transaction_id', (int) $transaction->id)
+            ->whereIn('account_id', $ownedIds)
+            ->orderBy('id')
+            ->get();
+
+        return $this->projectTransaction($transaction, $ownedIds, $entries);
+    }
+
+    public function ownedAccountIds(User $user): Collection
+    {
+        $mainIds = Account::query()
+            ->where('user_id', (int) $user->id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($mainIds->isEmpty()) {
+            return $mainIds;
+        }
+
+        $subAccountCodes = SubAccount::query()
+            ->whereIn('account_id', $mainIds->all())
+            ->pluck('sub_account_code')
+            ->filter()
+            ->values();
+
+        $mirrorIds = $subAccountCodes->isEmpty()
+            ? collect()
+            : Account::query()
+                ->where('type', 'subaccount')
+                ->whereIn('account_number', $subAccountCodes->all())
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
+
+        return $mainIds
+            ->merge($mirrorIds)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    private function projectTransaction(Transaction $transaction, array $ownedAccountIds, Collection $entries): array
     {
         $ownedIds = array_fill_keys(array_map('intval', $ownedAccountIds), true);
         $hasDebit = $entries->contains(fn (LedgerEntry $entry) => $entry->entry_type === 'debit');
@@ -112,7 +168,7 @@ class NajmBaharLedgerQueryService
             ? $entryMeta
             : (is_array($transaction->metadata) ? $transaction->metadata : []);
 
-        $rawBucket = (string) ($metadata['balance_type'] ?? 'balance');
+        $rawBucket = (string) ($metadata['balance_type'] ?? $metadata['money_state'] ?? 'balance');
         $balanceBucket = match ($rawBucket) {
             'active' => 'active',
             'faded' => 'dim',
