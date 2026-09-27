@@ -12,11 +12,17 @@ use Tests\TestCase;
 
 class NativeSessionTest extends TestCase
 {
+    private bool $createdUsersTable = false;
+    private bool $createdNativeDevicesTable = false;
+    private bool $createdPersonalAccessTokensTable = false;
+    private array $createdUserIds = [];
+
     protected function setUp(): void
     {
         parent::setUp();
 
         if (! Schema::hasTable('users')) {
+            $this->createdUsersTable = true;
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
                 $table->string('email')->unique()->nullable();
@@ -34,6 +40,7 @@ class NativeSessionTest extends TestCase
         }
 
         if (! Schema::hasTable('native_devices')) {
+            $this->createdNativeDevicesTable = true;
             Schema::create('native_devices', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('public_id')->unique();
@@ -50,6 +57,7 @@ class NativeSessionTest extends TestCase
         }
 
         if (! Schema::hasTable('personal_access_tokens')) {
+            $this->createdPersonalAccessTokensTable = true;
             Schema::create('personal_access_tokens', function (Blueprint $table) {
                 $table->id();
                 $table->morphs('tokenable');
@@ -70,10 +78,32 @@ class NativeSessionTest extends TestCase
 
     protected function tearDown(): void
     {
-        Schema::dropIfExists('personal_access_tokens');
-        Schema::dropIfExists('native_devices');
-        Schema::dropIfExists('users');
-        parent::tearDown();
+        try {
+            Auth::forgetGuards();
+
+            if ($this->createdPersonalAccessTokensTable) {
+                Schema::dropIfExists('personal_access_tokens');
+            } elseif ($this->createdUserIds !== [] && Schema::hasTable('personal_access_tokens')) {
+                DB::table('personal_access_tokens')
+                    ->where('tokenable_type', User::class)
+                    ->whereIn('tokenable_id', $this->createdUserIds)
+                    ->delete();
+            }
+
+            if ($this->createdNativeDevicesTable) {
+                Schema::dropIfExists('native_devices');
+            } elseif ($this->createdUserIds !== [] && Schema::hasTable('native_devices')) {
+                DB::table('native_devices')->whereIn('user_id', $this->createdUserIds)->delete();
+            }
+
+            if ($this->createdUsersTable) {
+                Schema::dropIfExists('users');
+            } elseif ($this->createdUserIds !== [] && Schema::hasTable('users')) {
+                DB::table('users')->whereIn('id', $this->createdUserIds)->delete();
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 
     public function test_valid_credentials_create_owned_device_and_finite_native_token(): void
@@ -93,7 +123,10 @@ class NativeSessionTest extends TestCase
         $deviceId = DB::table('native_devices')->where('user_id', $user->id)->value('id');
         $this->assertNotNull($deviceId);
 
-        $token = DB::table('personal_access_tokens')->where('tokenable_id', $user->id)->first();
+        $token = DB::table('personal_access_tokens')
+            ->where('tokenable_type', User::class)
+            ->where('tokenable_id', $user->id)
+            ->first();
         $this->assertNotNull($token);
         $this->assertSame($deviceId, (int) $token->native_device_id);
         $this->assertNotNull($token->expires_at);
@@ -102,14 +135,14 @@ class NativeSessionTest extends TestCase
 
     public function test_wrong_credentials_return_generic_invalid_credentials(): void
     {
-        $this->createUser('member@example.test', 'correct-password');
+        $user = $this->createUser('member@example.test', 'correct-password');
 
         $this->postJson('/api/v1/auth/session', $this->loginPayload('member@example.test', 'wrong-password'))
             ->assertStatus(401)
             ->assertJsonPath('error.code', 'invalid_credentials');
 
-        $this->assertSame(0, DB::table('native_devices')->count());
-        $this->assertSame(0, DB::table('personal_access_tokens')->count());
+        $this->assertSame(0, DB::table('native_devices')->where('user_id', $user->id)->count());
+        $this->assertSame(0, $this->tokenCountFor($user));
     }
 
     public function test_system_identity_cannot_obtain_interactive_native_session(): void
@@ -120,8 +153,8 @@ class NativeSessionTest extends TestCase
             ->assertStatus(401)
             ->assertJsonPath('error.code', 'invalid_credentials');
 
-        $this->assertSame(0, DB::table('native_devices')->count());
-        $this->assertSame(0, DB::table('personal_access_tokens')->count());
+        $this->assertSame(0, DB::table('native_devices')->where('user_id', $user->id)->count());
+        $this->assertSame(0, $this->tokenCountFor($user));
     }
 
     public function test_user_cannot_attach_device_owned_by_another_user(): void
@@ -141,8 +174,10 @@ class NativeSessionTest extends TestCase
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'device_not_owned');
 
-        $this->assertSame(1, DB::table('native_devices')->count());
-        $this->assertSame(1, DB::table('personal_access_tokens')->count());
+        $this->assertSame(1, DB::table('native_devices')->where('user_id', $owner->id)->count());
+        $this->assertSame(0, DB::table('native_devices')->where('user_id', $other->id)->count());
+        $this->assertSame(1, $this->tokenCountFor($owner));
+        $this->assertSame(0, $this->tokenCountFor($other));
     }
 
     public function test_token_for_device_a_cannot_claim_device_b(): void
@@ -225,8 +260,8 @@ class NativeSessionTest extends TestCase
         ]);
 
         $this->assertAuthenticatedAs($user);
-        $this->assertSame(0, DB::table('personal_access_tokens')->count());
-        $this->assertSame(0, DB::table('native_devices')->count());
+        $this->assertSame(0, $this->tokenCountFor($user));
+        $this->assertSame(0, DB::table('native_devices')->where('user_id', $user->id)->count());
     }
 
     private function withFreshToken(string $token): self
@@ -248,8 +283,17 @@ class NativeSessionTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $this->createdUserIds[] = (int) $id;
 
         return User::query()->findOrFail($id);
+    }
+
+    private function tokenCountFor(User $user): int
+    {
+        return DB::table('personal_access_tokens')
+            ->where('tokenable_type', User::class)
+            ->where('tokenable_id', $user->id)
+            ->count();
     }
 
     private function loginPayload(string $email, string $password): array
