@@ -11,7 +11,7 @@
     <h3 class="{{ $headingClass }}">{{ __('langWelcome.docs_footer_title') }}</h3>
 
     <div class="footer-docs-list font-vazirmatn">
-        <a href="{{ $docsLinks['base_url'] }}/fa/introduction" class="{{ $linkClass }} footer-docs-link">{{ __('langWelcome.docs_footer_center') }}</a>
+        <a href="{{ $docsLinks['center']['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __('langWelcome.docs_footer_center') }}</a>
 
         <div class="footer-docs-foundational">
             <div class="footer-docs-row">
@@ -44,9 +44,8 @@
             </div>
         </div>
 
-        @foreach($docsLinks['main'] as $link)
-            <a href="{{ $link['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __($link['label_key']) }}</a>
-        @endforeach
+        <a href="{{ $docsLinks['publication_policy']['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __($docsLinks['publication_policy']['label_key']) }}</a>
+        <a href="{{ $docsLinks['github']['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __($docsLinks['github']['label_key']) }}</a>
     </div>
 </div>
 

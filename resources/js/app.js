@@ -1,5 +1,6 @@
 import "./bootstrap";
 import "./site-navigation-history.js";
+import "./docs-center-link-normalizer.js";
 import "./location-selector.js";
 import "./location-geolocation.js";
 import "./registration-location-ux.js";

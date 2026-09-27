@@ -26,7 +26,7 @@
                         {{ __('langWelcome.docs_section_primary') }}
                         <i class="fas fa-arrow-left" aria-hidden="true"></i>
                     </a>
-                    <a href="{{ $docsLinks['base_url'] }}/fa/introduction" class="docs-secondary-action">
+                    <a href="{{ $docsLinks['center']['href'] }}" class="docs-secondary-action">
                         {{ __('langWelcome.docs_section_secondary') }}
                         <i class="fas fa-book-open" aria-hidden="true"></i>
                     </a>
