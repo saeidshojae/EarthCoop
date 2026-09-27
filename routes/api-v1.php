@@ -5,6 +5,9 @@ use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
+use App\Http\Controllers\API\V1\NajmHodaActionController;
+use App\Http\Controllers\API\V1\NajmHodaCapabilityController;
+use App\Http\Controllers\API\V1\NajmHodaConversationController;
 use App\Http\Controllers\API\V1\NotificationController;
 use App\Http\Controllers\API\V1\ProfileController;
 use App\Http\Controllers\API\V1\ProjectController;
@@ -53,5 +56,17 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->middleware('api.v1.idempotency')->name('notifications.read');
         Route::get('/notifications/preferences', [NotificationController::class, 'preferences'])->name('notifications.preferences');
         Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences'])->middleware('api.v1.idempotency')->name('notifications.preferences.update');
+
+        Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
+        Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
+        Route::get('/najm-hoda/conversations/{conversation}', [NajmHodaConversationController::class, 'show'])->name('najm-hoda.conversations.show');
+        Route::post('/najm-hoda/conversations/{conversation}/messages', [NajmHodaConversationController::class, 'message'])->name('najm-hoda.conversations.messages.store');
+        Route::get('/najm-hoda/capabilities', [NajmHodaCapabilityController::class, 'index'])->name('najm-hoda.capabilities.index');
+        Route::get('/najm-hoda/capabilities/{action}', [NajmHodaCapabilityController::class, 'show'])->name('najm-hoda.capabilities.show');
+
+        Route::post('/najm-hoda/actions/proposals', [NajmHodaActionController::class, 'propose'])->name('najm-hoda.actions.propose');
+        Route::post('/najm-hoda/actions/{action}/consent', [NajmHodaActionController::class, 'consent'])->middleware('api.v1.idempotency')->name('najm-hoda.actions.consent');
+        Route::post('/najm-hoda/actions/{action}/apply', [NajmHodaActionController::class, 'apply'])->middleware('api.v1.idempotency')->name('najm-hoda.actions.apply');
+        Route::get('/najm-hoda/actions/{action}/evidence', [NajmHodaActionController::class, 'evidence'])->name('najm-hoda.actions.evidence');
     });
 });
