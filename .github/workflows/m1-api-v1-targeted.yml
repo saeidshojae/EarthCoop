@@ -98,3 +98,9 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php
       - name: Run M1-C non-browser core journey acceptance
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/CoreJourneyTest.php
+      - name: Run native session full-schema isolation regression
+        run: |
+          DB_DATABASE=newearthcoop-test php artisan migrate:fresh --force
+          vendor/bin/phpunit -c phpunit.xml.dist \
+            tests/Feature/Api/V1/NativeSessionTest.php \
+            tests/Feature/SystemIdentityIsolationTest.php
