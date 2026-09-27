@@ -298,7 +298,7 @@
                             <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': openDocumentSection }" aria-hidden="true"></i>
                         </button>
                         <div x-show="openDocumentSection" x-transition class="navigation-section__links ms-3 border-s border-gray-200 ps-2">
-                            <a href="{{ $mobileDocsLinks['base_url'] }}/fa/introduction" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-book-open"></i><span>مرکز اسناد</span></a>
+                            <a href="{{ $mobileDocsLinks['center']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-book-open"></i><span>مرکز اسناد</span></a>
                             <a href="{{ $mobileDocsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-landmark"></i><span>اسناد بنیادین</span></a>
                             <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-scroll"></i><span>اساسنامه</span></a>
                             <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>توافقنامه مالی</span></a>
