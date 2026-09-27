@@ -112,8 +112,47 @@ class SafeTransactionService extends TransactionService
             && $to
             && $from->type === 'subaccount'
             && $to->type === 'subaccount') {
-            throw new \RuntimeException(
-                'Sub-account to sub-account transfers must use an explicit canonical executor.'
+            if (! in_array($balanceType, ['active', 'faded'], true)) {
+                throw new \RuntimeException(
+                    'Sub-account to sub-account transfers require an explicit Active or Dim money state.'
+                );
+            }
+
+            $sourceSubAccount = SubAccount::query()
+                ->where('sub_account_code', $from->account_number)
+                ->firstOrFail();
+            $destinationSubAccount = SubAccount::query()
+                ->where('sub_account_code', $to->account_number)
+                ->firstOrFail();
+
+            $metadata = array_merge($meta, [
+                'requested_transaction_type' => $transactionType,
+                'routed_by' => 'safe_transaction_service',
+            ]);
+
+            if ((int) $sourceSubAccount->account_id === (int) $destinationSubAccount->account_id) {
+                return app(InternalSubAccountTransferService::class)->transfer(
+                    $sourceSubAccount,
+                    $destinationSubAccount,
+                    $amount,
+                    $balanceType,
+                    $description,
+                    $idempotencyKey,
+                    $metadata,
+                );
+            }
+
+            if ($balanceType !== 'active') {
+                throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست. ابتدا باید از یک مسیر مجاز فعال شود.');
+            }
+
+            return app(CrossOwnerActiveSubAccountTransferService::class)->transfer(
+                $sourceSubAccount,
+                $destinationSubAccount,
+                $amount,
+                $description,
+                $idempotencyKey,
+                $metadata,
             );
         }
 
