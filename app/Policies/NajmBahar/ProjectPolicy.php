@@ -4,29 +4,28 @@ namespace App\Policies\NajmBahar;
 
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Project;
+use App\Services\Actors\ActorOperation;
+use App\Services\Actors\OwnerRepresentationService;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ProjectPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * مشاهده پروژه
-     */
+    public function __construct(
+        private readonly OwnerRepresentationService $owners,
+    ) {}
+
     public function view(User $user, Project $project): bool
     {
-        // صاحب پروژه می‌تواند ببیند
-        if ($project->owner_type === User::class && $project->owner_id === $user->id) {
+        if ($this->isRepresentedOwner($user, $project)) {
             return true;
         }
 
-        // پروژه‌های تایید شده با visibility عمومی قابل مشاهده هستند.
-        // project_type نوع فعالیت (production/service/...) است و public/private نیست.
         if ($project->status === 'approved' && $project->project_visibility === 'public') {
             return true;
         }
 
-        // ادمین‌ها می‌توانند همه را ببینند
         if ($user->hasRole('admin')) {
             return true;
         }
@@ -34,31 +33,29 @@ class ProjectPolicy
         return false;
     }
 
-    /**
-     * ویرایش پروژه
-     */
     public function update(User $user, Project $project): bool
     {
-        // فقط صاحب پروژه می‌تواند ویرایش کند
-        if ($project->owner_type === User::class && $project->owner_id === $user->id) {
-            // فقط پروژه‌های draft یا rejected قابل ویرایش هستند
-            return in_array($project->status, ['draft', 'rejected']);
-        }
-
-        return false;
+        return $this->isRepresentedOwner($user, $project)
+            && in_array($project->status, ['draft', 'rejected'], true);
     }
 
-    /**
-     * حذف پروژه
-     */
     public function delete(User $user, Project $project): bool
     {
-        // فقط صاحب پروژه می‌تواند حذف کند
-        if ($project->owner_type === User::class && $project->owner_id === $user->id) {
-            // فقط پروژه‌های draft قابل حذف هستند
-            return $project->status === 'draft';
+        return $this->isRepresentedOwner($user, $project)
+            && $project->status === 'draft';
+    }
+
+    private function isRepresentedOwner(User $user, Project $project): bool
+    {
+        if (! is_string($project->owner_type) || $project->owner_type === '' || $project->owner_id === null) {
+            return false;
         }
 
-        return false;
+        return $this->owners->allows(
+            $user,
+            $project->owner_type,
+            $project->owner_id,
+            ActorOperation::ProjectOwner,
+        );
     }
 }

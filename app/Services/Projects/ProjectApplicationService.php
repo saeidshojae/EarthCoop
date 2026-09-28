@@ -2,9 +2,15 @@
 
 namespace App\Services\Projects;
 
+use App\Models\Group;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Services\ProjectService;
+use App\Services\Actors\ActorOperation;
+use App\Services\Actors\ActorReference;
+use App\Services\Actors\ActorRepresentationAuthorizationService;
+use App\Services\Actors\ActorResolver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class ProjectApplicationService
@@ -12,18 +18,34 @@ class ProjectApplicationService
     public function __construct(
         private readonly ProjectService $projects,
         private readonly ProjectScopeApplicationService $scope,
+        private readonly ActorResolver $actors,
+        private readonly ActorRepresentationAuthorizationService $representation,
     ) {}
 
     public function createForUser(User $user, array $data): Project
     {
+        return $this->createForActor($user, $this->actors->referenceFor($user), $data);
+    }
+
+    public function createForActor(User $principal, ActorReference $owner, array $data): Project
+    {
+        $this->representation->authorize($principal, $owner, ActorOperation::ProjectOwner);
+        $ownerModel = $this->actors->resolveModel($owner);
         $data = $this->scope->normalize($data);
 
-        return DB::transaction(function () use ($user, $data): Project {
-            $project = $this->projects->createProject($user, $data);
-            $project->forceFill([
+        return DB::transaction(function () use ($ownerModel, $data): Project {
+            $project = $this->projects->createProject($ownerModel, $data);
+            $attributes = [
                 'target_location_id' => $data['target_location_id'] ?? null,
-                'governance_area_id' => $data['governance_area_id'] ?? null,
-            ])->save();
+            ];
+
+            if ($ownerModel instanceof User) {
+                $attributes['governance_area_id'] = $data['governance_area_id'] ?? null;
+            } elseif ($ownerModel instanceof Group) {
+                $attributes['governance_area_id'] = $ownerModel->governance_area_id ?? null;
+            }
+
+            $project->forceFill($attributes)->save();
 
             return $project->fresh();
         });
@@ -32,13 +54,29 @@ class ProjectApplicationService
     public function update(Project $project, array $data): Project
     {
         $data = $this->scope->normalize($data);
+        $isGroupOwned = $project->owner_type === Group::class;
+        $canonicalGroupGovernanceAreaId = $project->governance_area_id;
 
-        return DB::transaction(function () use ($project, $data): Project {
+        if ($isGroupOwned) {
+            $group = Group::query()->find($project->owner_id);
+            if ($group instanceof Group) {
+                $canonicalGroupGovernanceAreaId = $group->governance_area_id;
+            }
+
+            unset($data['governance_area_id']);
+        }
+
+        return DB::transaction(function () use ($project, $data, $isGroupOwned, $canonicalGroupGovernanceAreaId): Project {
             $updated = $this->projects->updateProject($project, $data);
-            $updated->forceFill([
+            $attributes = [
                 'target_location_id' => $data['target_location_id'] ?? null,
-                'governance_area_id' => $data['governance_area_id'] ?? null,
-            ])->save();
+            ];
+
+            $attributes['governance_area_id'] = $isGroupOwned
+                ? $canonicalGroupGovernanceAreaId
+                : ($data['governance_area_id'] ?? null);
+
+            $updated->forceFill($attributes)->save();
 
             return $updated->fresh();
         });
@@ -47,6 +85,24 @@ class ProjectApplicationService
     public function submit(Project $project): Project
     {
         return $this->projects->submitForReview($project);
+    }
+
+    public function ownerReference(Project $project): ActorReference
+    {
+        return $this->actors->fromLegacyOwner(
+            (string) $project->owner_type,
+            $project->owner_id,
+        );
+    }
+
+    public function ownedQueryFor(User $principal, ActorReference $owner): Builder
+    {
+        $this->representation->authorize($principal, $owner, ActorOperation::ProjectOwner);
+        $ownerModel = $this->actors->resolveModel($owner);
+
+        return Project::query()
+            ->where('owner_type', $ownerModel::class)
+            ->where('owner_id', $ownerModel->getKey());
     }
 
     public function serialize(Project $project): array
@@ -59,6 +115,7 @@ class ProjectApplicationService
             'project_visibility' => (string) $project->project_visibility,
             'project_stage' => (string) $project->project_stage,
             'investment_method' => (string) $project->investment_method,
+            'owner_actor' => $this->ownerReference($project)->toArray(),
             'category_level1_id' => $project->category_level1_id ? (int) $project->category_level1_id : null,
             'category_level2_id' => $project->category_level2_id ? (int) $project->category_level2_id : null,
             'category_level3_id' => $project->category_level3_id ? (int) $project->category_level3_id : null,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\V1\ActorController;
 use App\Http\Controllers\API\V1\Auth\NativeSessionController;
 use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
@@ -35,6 +36,7 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::delete('/auth/session', [NativeSessionController::class, 'destroy'])->name('auth.session.destroy');
 
         Route::get('/me', ProfileController::class)->name('me');
+        Route::get('/actors', [ActorController::class, 'index'])->name('actors.index');
         Route::get('/location/options/root', [LocationGovernanceController::class, 'root'])->name('location.options.root');
         Route::get('/location/options/{location}/children', [LocationGovernanceController::class, 'children'])->name('location.options.children');
         Route::get('/location/proposals/{locationProposal}/children', [LocationGovernanceController::class, 'proposalChildren'])->name('location.proposals.children');

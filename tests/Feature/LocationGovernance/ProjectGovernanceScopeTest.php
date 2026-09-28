@@ -9,6 +9,7 @@ use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ProjectCategory;
 use App\Modules\NajmBahar\Services\ProjectService;
 use App\Services\LocationGovernance\GovernanceResourceScopeResolver;
+use App\Services\Projects\ProjectApplicationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -68,6 +69,39 @@ class ProjectGovernanceScopeTest extends TestCase
         ]);
 
         $this->assertSame($area->id, $project->governance_area_id);
+    }
+
+    public function test_actor_aware_group_project_update_preserves_owner_canonical_governance_scope(): void
+    {
+        config()->set('location-governance.projects_enabled', false);
+
+        $ownerArea = GovernanceArea::factory()->official()->create();
+        $otherArea = GovernanceArea::factory()->official()->create();
+        $owner = Group::create([
+            'name' => 'Canonical update project group',
+            'group_type' => 0,
+            'governance_area_id' => $ownerArea->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+        ]);
+        $category = ProjectCategory::create([
+            'name' => 'Canonical update scope category',
+            'level' => 1,
+            'status' => true,
+        ]);
+
+        $project = app(ProjectService::class)->createProject($owner, [
+            'title' => 'Group-owned update canonical project',
+            'category_level1_id' => $category->id,
+            'summary' => 'Canonical update project contract',
+        ]);
+
+        $updated = app(ProjectApplicationService::class)->update($project, [
+            'governance_area_id' => $otherArea->id,
+        ]);
+
+        $this->assertSame($ownerArea->id, $updated->governance_area_id);
+        $this->assertSame($ownerArea->id, $project->fresh()->governance_area_id);
     }
 
     public function test_project_service_persists_explicit_canonical_scope_for_user_owner(): void

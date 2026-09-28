@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Services\Actors\ActorBoundaryException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Route;
@@ -103,6 +104,30 @@ class TransportContractTest extends TestCase
                 'error' => ['message', 'details'],
                 'request_id',
             ]);
+    }
+
+    public function test_v1_actor_boundary_exception_preserves_stable_actor_code_and_envelope(): void
+    {
+        $requestId = '22222222-2222-4222-8222-222222222222';
+
+        Route::get('api/v1/_contract/actor', function () {
+            throw ActorBoundaryException::invalidReference();
+        });
+
+        $this->withHeaders([
+            'X-Request-ID' => $requestId,
+            'Accept-Language' => 'en',
+        ])->getJson('/api/v1/_contract/actor')
+            ->assertStatus(422)
+            ->assertHeader('X-Request-ID', $requestId)
+            ->assertHeader('Content-Language', 'en')
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('data', null)
+            ->assertJsonPath('error.code', 'actor_reference_invalid')
+            ->assertJsonPath('error.retryable', false)
+            ->assertJsonPath('meta.api_version', 'v1')
+            ->assertJsonPath('meta.http_status', 422)
+            ->assertJsonPath('request_id', $requestId);
     }
 
     public function test_v1_authentication_not_found_and_server_exceptions_are_json_and_do_not_leak_details(): void
