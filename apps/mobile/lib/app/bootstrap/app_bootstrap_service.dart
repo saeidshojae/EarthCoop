@@ -60,8 +60,7 @@ class AppBootstrapService {
         BootstrapSnapshot(
           payload: payload,
           fetchedAt: _clock().toUtc(),
-          hadAuthenticatedSession:
-              previous?.hadAuthenticatedSession ?? false,
+          hadAuthenticatedSession: previous?.hadAuthenticatedSession ?? false,
         ),
       );
 
@@ -100,6 +99,5 @@ class AppBootstrapService {
         snapshot.hadAuthenticatedSession;
   }
 
-  bool _isTransient(Object error) =>
-      error is ApiFailure && error.retryable;
+  bool _isTransient(Object error) => error is ApiFailure && error.retryable;
 }

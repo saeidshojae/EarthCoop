@@ -36,7 +36,8 @@ class DriftBootstrapSnapshotStore implements BootstrapSnapshotStore {
   Future<void> write(BootstrapSnapshot snapshot) =>
       _database.writeBootstrapSnapshot(
         payloadJson: jsonEncode(snapshot.payload.toJson()),
-        fetchedAtMilliseconds: snapshot.fetchedAt.toUtc().millisecondsSinceEpoch,
+        fetchedAtMilliseconds:
+            snapshot.fetchedAt.toUtc().millisecondsSinceEpoch,
         hadAuthenticatedSession: snapshot.hadAuthenticatedSession,
       );
 
