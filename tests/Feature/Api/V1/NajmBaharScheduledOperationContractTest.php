@@ -94,7 +94,7 @@ class NajmBaharScheduledOperationContractTest extends TestCase
                 'amount_gol' => 100,
                 'execute_at' => now()->addDay()->toISOString(),
             ])
-            ->assertNotFound();
+            ->assertStatus(405);
 
         $this->bearer($token, $deviceId)
             ->withHeader('Idempotency-Key', 'm3-schedule-cancel-not-supported-0001')
