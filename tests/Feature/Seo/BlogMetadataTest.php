@@ -15,7 +15,7 @@ class BlogMetadataTest extends TestCase
 
     public function test_published_post_emits_metadata_and_valid_article_json_ld(): void
     {
-        $post = $this->post([
+        $post = $this->createPost([
             'meta_title' => 'عنوان متای مقاله',
             'meta_description' => 'توضیح متای مقاله',
             'featured_image' => null,
@@ -41,18 +41,18 @@ class BlogMetadataTest extends TestCase
             ['status' => 'archived'],
             ['status' => 'published', 'published_at' => now()->addDay()],
         ] as $attributes) {
-            $post = $this->post($attributes);
+            $post = $this->createPost($attributes);
             $this->get(route('blog.show', $post->slug))->assertNotFound();
         }
 
-        $deleted = $this->post();
+        $deleted = $this->createPost();
         $deleted->delete();
         $this->get(route('blog.show', $deleted->slug))->assertNotFound();
     }
 
     public function test_blog_index_category_and_tag_have_self_canonicals(): void
     {
-        $post = $this->post();
+        $post = $this->createPost();
         $tag = BlogTag::query()->create(['name' => 'همکاری', 'slug' => 'cooperation']);
         $post->tags()->attach($tag);
 
@@ -65,7 +65,7 @@ class BlogMetadataTest extends TestCase
 
     public function test_blog_search_is_noindex_and_drops_query_from_canonical(): void
     {
-        $this->post();
+        $this->createPost();
 
         $this->get(route('blog.search', ['q' => 'زمین']))
             ->assertOk()
@@ -74,7 +74,7 @@ class BlogMetadataTest extends TestCase
             ->assertDontSee('canonical" href="https://earthcoop.ir/blog/search?q=', false);
     }
 
-    private function post(array $attributes = []): Post
+    private function createPost(array $attributes = []): Post
     {
         $category = BlogCategory::query()->firstOrCreate(
             ['slug' => 'general'],
