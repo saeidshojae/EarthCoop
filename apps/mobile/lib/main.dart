@@ -1,0 +1,7 @@
+import 'package:earthcoop_mobile/app/app.dart';
+import 'package:flutter/widgets.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const EarthCoopApp());
+}
