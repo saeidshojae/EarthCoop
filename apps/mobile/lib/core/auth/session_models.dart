@@ -82,7 +82,9 @@ class NativeSession {
     final json = Map<String, Object?>.from(raw! as Map);
     final responseToken = json['token'] as String?;
     final token = responseToken ?? fallbackToken;
-    if (token == null || token.isEmpty || (requireToken && responseToken == null)) {
+    if (token == null ||
+        token.isEmpty ||
+        (requireToken && responseToken == null)) {
       throw const FormatException('Missing native session token.');
     }
     if (json['token_type'] != 'Bearer') {

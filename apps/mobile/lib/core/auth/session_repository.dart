@@ -93,7 +93,8 @@ class ApiSessionRepository implements SessionRepository {
       decodeData: (json) => NativeSession.fromJson(json, requireToken: true),
     );
     if (result.data.device.id != local.deviceId) {
-      throw const FormatException('Rotated session returned a different device.');
+      throw const FormatException(
+          'Rotated session returned a different device.');
     }
     await _secureStore.write(
       token: result.data.token,
@@ -117,7 +118,10 @@ class ApiSessionRepository implements SessionRepository {
   Future<_LocalBinding?> _readLocalBinding() async {
     final token = await _secureStore.readToken();
     final deviceId = await _secureStore.readDeviceId();
-    if (token == null || token.isEmpty || deviceId == null || deviceId.isEmpty) {
+    if (token == null ||
+        token.isEmpty ||
+        deviceId == null ||
+        deviceId.isEmpty) {
       return null;
     }
     return _LocalBinding(token: token, deviceId: deviceId);
