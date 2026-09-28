@@ -124,7 +124,11 @@ class ApiV1Idempotency
 
     private function fingerprint(Request $request): string
     {
-        $input = $request->except(['_token', 'idempotency_key']);
+        // Request::except() is based on Request::all(), which merges uploaded
+        // files into the payload. UploadedFile objects are not JSON serializable
+        // and are fingerprinted separately below using stable content metadata.
+        $input = $request->input();
+        unset($input['_token'], $input['idempotency_key']);
         $this->recursiveSort($input);
 
         $files = [];

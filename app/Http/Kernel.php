@@ -55,6 +55,7 @@ class Kernel extends HttpKernel
         'api.v1.envelope' => \App\Http\Middleware\ApiV1ResponseEnvelope::class,
         'api.v1.idempotency' => \App\Http\Middleware\ApiV1Idempotency::class,
         'api.v1.device' => \App\Http\Middleware\ApiV1DeviceSession::class,
+        'api.v1.project-owner-authority' => \App\Http\Middleware\ApiV1ProjectOwnerAuthority::class,
 
         'email.verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         'update.lastseen.logout' => \App\Http\Middleware\UpdateLastSeenOnLogout::class,

@@ -3,26 +3,24 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Support\Api\V1\ApiResponse;
 use App\Http\Support\Api\V1\Pagination;
 use App\Models\NotificationSetting;
+use App\Services\Notifications\NotificationCursor;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, NotificationCursor $cursor)
     {
-        $page = Pagination::page($request, 20, 50);
-        $query = $request->user()->notifications()->latest();
-
-        $status = $request->query('filter.status');
-        if ($status === 'unread') {
-            $query->whereNull('read_at');
-        } elseif ($status === 'read') {
-            $query->whereNotNull('read_at');
-        } elseif ($status !== null) {
-            abort(422, 'Unsupported notification status filter.');
+        $pageInput = $request->input('page', []);
+        if (is_array($pageInput) && (array_key_exists('cursor', $pageInput) || array_key_exists('limit', $pageInput))) {
+            return $this->cursorIndex($request, $cursor, $pageInput);
         }
+
+        $page = Pagination::page($request, 20, 50);
+        $query = $this->notificationQuery($request);
 
         $items = $query->forPage($page->number, $page->size)->get()
             ->map(fn (DatabaseNotification $notification) => $this->serialize($notification))
@@ -75,6 +73,54 @@ class NotificationController extends Controller
         return response()->json($this->settingsPayload($settings->fresh()));
     }
 
+    private function cursorIndex(Request $request, NotificationCursor $cursor, array $pageInput)
+    {
+        $limit = min(max((int) ($pageInput['limit'] ?? 20), 1), 50);
+        $query = $this->notificationQuery($request)
+            ->reorder()
+            ->orderByDesc('sync_sequence');
+
+        $rawCursor = trim((string) ($pageInput['cursor'] ?? ''));
+        if ($rawCursor !== '') {
+            $query->where('sync_sequence', '<', $cursor->decode($rawCursor));
+        }
+
+        $rows = $query->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        $visible = $rows->take($limit)->values();
+        $last = $visible->last();
+
+        return ApiResponse::success(
+            $visible->map(fn (DatabaseNotification $notification) => $this->serialize($notification))->all(),
+            200,
+            [
+                'pagination' => [
+                    'next_cursor' => $hasMore && $last
+                        ? $cursor->encode((int) $last->getAttribute('sync_sequence'))
+                        : null,
+                    'has_more' => $hasMore,
+                ],
+            ],
+        );
+    }
+
+    private function notificationQuery(Request $request)
+    {
+        $query = $request->user()->notifications()->latest();
+        $filter = $request->input('filter', []);
+        $status = is_array($filter) ? ($filter['status'] ?? null) : null;
+
+        if ($status === 'unread') {
+            $query->whereNull('read_at');
+        } elseif ($status === 'read') {
+            $query->whereNotNull('read_at');
+        } elseif ($status !== null) {
+            abort(422, 'Unsupported notification status filter.');
+        }
+
+        return $query;
+    }
+
     private function serialize(DatabaseNotification $notification): array
     {
         $data = is_array($notification->data) ? $notification->data : [];
@@ -85,6 +131,7 @@ class NotificationController extends Controller
             'title' => $data['title'] ?? null,
             'message' => $data['message'] ?? null,
             'url' => $data['url'] ?? null,
+            'link' => $data['link'] ?? null,
             'context' => $data['context'] ?? [],
             'read' => $notification->read_at !== null,
             'read_at' => $notification->read_at?->toISOString(),

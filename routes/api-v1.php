@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\API\V1\ActorController;
 use App\Http\Controllers\API\V1\Auth\NativeSessionController;
+use App\Http\Controllers\API\V1\BootstrapController;
+use App\Http\Controllers\API\V1\DevicePushController;
 use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
+use App\Http\Controllers\API\V1\MediaController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
 use App\Http\Controllers\API\V1\NajmBaharActivationController;
 use App\Http\Controllers\API\V1\NajmBaharMembershipFeeController;
@@ -27,6 +30,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         ]);
     })->name('health');
 
+    Route::get('/bootstrap', BootstrapController::class)->name('bootstrap');
+
     Route::post('/auth/session', [NativeSessionController::class, 'store'])
         ->name('auth.session.store');
 
@@ -34,6 +39,10 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::get('/auth/session', [NativeSessionController::class, 'show'])->name('auth.session.show');
         Route::post('/auth/session/rotate', [NativeSessionController::class, 'rotate'])->name('auth.session.rotate');
         Route::delete('/auth/session', [NativeSessionController::class, 'destroy'])->name('auth.session.destroy');
+
+        Route::put('/devices/{device}/push', [DevicePushController::class, 'update'])->name('devices.push.update');
+        Route::delete('/devices/{device}/push', [DevicePushController::class, 'destroy'])->name('devices.push.destroy');
+        Route::post('/media', [MediaController::class, 'store'])->middleware('api.v1.idempotency')->name('media.store');
 
         Route::get('/me', ProfileController::class)->name('me');
         Route::get('/actors', [ActorController::class, 'index'])->name('actors.index');
@@ -54,9 +63,15 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
 
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
-        Route::post('/projects', [ProjectController::class, 'store'])->middleware('api.v1.idempotency')->name('projects.store');
-        Route::put('/projects/{project}', [ProjectController::class, 'update'])->middleware('api.v1.idempotency')->name('projects.update');
-        Route::post('/projects/{project}/submit', [ProjectController::class, 'submit'])->middleware('api.v1.idempotency')->name('projects.submit');
+        Route::post('/projects', [ProjectController::class, 'store'])
+            ->middleware(['api.v1.project-owner-authority', 'api.v1.idempotency'])
+            ->name('projects.store');
+        Route::put('/projects/{project}', [ProjectController::class, 'update'])
+            ->middleware(['can:update,project', 'api.v1.idempotency'])
+            ->name('projects.update');
+        Route::post('/projects/{project}/submit', [ProjectController::class, 'submit'])
+            ->middleware(['can:update,project', 'api.v1.idempotency'])
+            ->name('projects.submit');
 
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/unread', [NotificationController::class, 'unread'])->name('notifications.unread');

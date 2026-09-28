@@ -1,0 +1,138 @@
+<?php
+
+namespace Tests\Feature\Api\V1;
+
+use App\Models\User;
+use App\Notifications\GenericNotification;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+class RealtimeRecoveryContractTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['queue.default' => 'sync', 'broadcasting.default' => 'null']);
+    }
+
+    public function test_notification_cursor_recovers_after_gap_without_duplication_when_new_rows_arrive(): void
+    {
+        $user = $this->member('cursor');
+        [$token, $deviceId] = $this->nativeSession($user);
+
+        $user->notifyNow(new GenericNotification('one', 'one'));
+        $user->notifyNow(new GenericNotification('two', 'two'));
+        $user->notifyNow(new GenericNotification('three', 'three'));
+
+        $originalIds = $user->notifications()->pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all();
+
+        $first = $this->freshBearer($token, $deviceId)
+            ->getJson('/api/v1/notifications?page[limit]=2')
+            ->assertOk()
+            ->assertJsonPath('meta.pagination.has_more', true);
+
+        $cursor = $first->json('meta.pagination.next_cursor');
+        $firstPageIds = collect($first->json('data'))->pluck('id')->all();
+        $this->assertCount(2, $firstPageIds);
+        $this->assertNotEmpty($cursor);
+
+        $user->notifyNow(new GenericNotification('four', 'four'));
+        $allIdsAfter = $user->notifications()->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $newIds = array_values(array_diff($allIdsAfter, $originalIds));
+        $this->assertCount(1, $newIds);
+        $newId = $newIds[0];
+
+        $second = $this->freshBearer($token, $deviceId)
+            ->getJson('/api/v1/notifications?page[limit]=2&page[cursor]='.urlencode((string) $cursor))
+            ->assertOk()
+            ->assertJsonPath('meta.pagination.has_more', false);
+
+        $secondPageIds = collect($second->json('data'))->pluck('id')->all();
+        $this->assertCount(1, $secondPageIds);
+        $this->assertSame([], array_values(array_intersect($firstPageIds, $secondPageIds)));
+        $this->assertNotContains($newId, $secondPageIds);
+
+        $recoveredOriginalIds = collect($firstPageIds)
+            ->merge($secondPageIds)
+            ->sort()
+            ->values()
+            ->all();
+        $this->assertSame($originalIds, $recoveredOriginalIds);
+    }
+
+    public function test_invalid_notification_cursor_returns_stable_422_error(): void
+    {
+        $user = $this->member('bad-cursor');
+        [$token, $deviceId] = $this->nativeSession($user);
+
+        $this->freshBearer($token, $deviceId)
+            ->getJson('/api/v1/notifications?page[cursor]=not-a-valid-cursor')
+            ->assertStatus(422);
+    }
+
+    public function test_broadcast_payload_has_stable_event_identity_and_committed_recovery_cursor(): void
+    {
+        $user = $this->member('broadcast');
+        $notification = new GenericNotification('Title', 'Body', '/home', 'info');
+        $user->notifyNow($notification, ['database']);
+
+        $this->assertNotEmpty($notification->id);
+        $payload = $notification->toBroadcast($user)->data;
+
+        $this->assertSame((string) $notification->id, $payload['event_id']);
+        $this->assertSame('notifications', $payload['stream']);
+        $this->assertSame('notification.created', $payload['event_type']);
+        $this->assertNotEmpty($payload['occurred_at']);
+        $this->assertNotEmpty($payload['cursor']);
+    }
+
+    public function test_broadcast_before_database_commit_remains_recoverable_without_inventing_cursor(): void
+    {
+        $user = $this->member('broadcast-before-commit');
+        $notification = new GenericNotification('Title', 'Body', '/home', 'info');
+        $notification->id = '11111111-1111-4111-8111-111111111111';
+
+        $payload = $notification->toBroadcast($user)->data;
+
+        $this->assertSame('11111111-1111-4111-8111-111111111111', $payload['event_id']);
+        $this->assertNull($payload['cursor']);
+        $this->assertSame('notifications', $payload['stream']);
+    }
+
+    private function member(string $suffix): User
+    {
+        return User::factory()->create([
+            'email' => 'm5-realtime-'.$suffix.'-'.bin2hex(random_bytes(4)).'@example.test',
+            'password' => Hash::make('secret-password'),
+            'is_system' => false,
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+    }
+
+    private function nativeSession(User $user): array
+    {
+        $response = $this->postJson('/api/v1/auth/session', [
+            'email' => $user->email,
+            'password' => 'secret-password',
+            'platform' => 'android',
+            'app_version' => '1.0.0',
+            'locale' => 'fa',
+            'timezone' => 'Asia/Tehran',
+            'push_capable' => true,
+        ])->assertCreated();
+
+        return [$response->json('data.token'), $response->json('data.device.id')];
+    }
+
+    private function freshBearer(string $token, string $deviceId): self
+    {
+        Auth::forgetGuards();
+
+        return $this->withToken($token)->withHeader('X-Device-ID', $deviceId);
+    }
+}
