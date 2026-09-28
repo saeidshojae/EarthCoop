@@ -71,7 +71,11 @@ class OfflineReplayContractTest extends TestCase
             'email_verified_at' => now(),
         ]);
         [$token, $deviceId] = $this->nativeSession($user);
-        $group = Group::factory()->create();
+        $group = Group::create([
+            'name' => 'M5 offline replay '.$suffix,
+            'group_type' => 0,
+            'is_open' => 1,
+        ]);
         $membership = GroupUser::create([
             'group_id' => $group->id,
             'user_id' => $user->id,
