@@ -50,8 +50,8 @@ class AppDatabase extends GeneratedDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (migrator) async {
-          await migrator.issueCustomQuery(_createBootstrapSnapshotTableSql);
+        onCreate: (_) async {
+          await customStatement(_createBootstrapSnapshotTableSql);
         },
       );
 
