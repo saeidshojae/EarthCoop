@@ -1,0 +1,62 @@
+name: M6 Flutter Task 5 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/lib/app/router/**'
+      - 'apps/mobile/lib/app/theme/**'
+      - 'apps/mobile/lib/app/localization/**'
+      - 'apps/mobile/lib/core/deep_links/**'
+      - 'apps/mobile/lib/features/home/**'
+      - 'apps/mobile/test/app/router/**'
+      - 'apps/mobile/test/app/theme/**'
+      - 'apps/mobile/test/core/deep_links/**'
+      - '.github/workflows/m6-flutter-task5.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  navigation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/core/deep_links test/app/router test/app/theme)
+          [ ! -d lib/core/deep_links ] || scopes+=(lib/core/deep_links)
+          [ ! -d lib/app/router ] || scopes+=(lib/app/router)
+          [ ! -d lib/app/theme ] || scopes+=(lib/app/theme)
+          [ ! -d lib/app/localization ] || scopes+=(lib/app/localization)
+          [ ! -d lib/features/home ] || scopes+=(lib/features/home)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
+      - name: Analyze navigation scope
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/core/deep_links test/app/router test/app/theme)
+          [ ! -d lib/core/deep_links ] || scopes+=(lib/core/deep_links)
+          [ ! -d lib/app/router ] || scopes+=(lib/app/router)
+          [ ! -d lib/app/theme ] || scopes+=(lib/app/theme)
+          [ ! -d lib/app/localization ] || scopes+=(lib/app/localization)
+          [ ! -d lib/features/home ] || scopes+=(lib/features/home)
+          flutter analyze "${scopes[@]}"
+      - name: Run Task 5 navigation contracts
+        working-directory: apps/mobile
+        run: flutter test test/core/deep_links test/app/router test/app/theme
