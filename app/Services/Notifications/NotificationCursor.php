@@ -2,39 +2,33 @@
 
 namespace App\Services\Notifications;
 
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\ValidationException;
 
 class NotificationCursor
 {
-    public function encode(Carbon|string $createdAt, string $id): string
+    public function encode(int $sequence): string
     {
-        $time = $createdAt instanceof Carbon ? $createdAt : Carbon::parse($createdAt);
+        if ($sequence < 1) {
+            throw new \InvalidArgumentException('Notification sync sequence must be positive.');
+        }
 
         return Crypt::encryptString(json_encode([
-            'created_at' => $time->utc()->format('Y-m-d H:i:s'),
-            'id' => $id,
+            'version' => 1,
+            'sequence' => $sequence,
         ], JSON_THROW_ON_ERROR));
     }
 
-    public function decode(string $cursor): array
+    public function decode(string $cursor): int
     {
         try {
             $decoded = json_decode(Crypt::decryptString($cursor), true, flags: JSON_THROW_ON_ERROR);
-            if (! is_array($decoded) || empty($decoded['created_at']) || empty($decoded['id'])) {
+            $sequence = is_array($decoded) ? ($decoded['sequence'] ?? null) : null;
+            if (($decoded['version'] ?? null) !== 1 || ! is_int($sequence) || $sequence < 1) {
                 throw new \UnexpectedValueException('Invalid cursor payload.');
             }
 
-            $createdAt = Carbon::createFromFormat('Y-m-d H:i:s', (string) $decoded['created_at'], 'UTC');
-            if (! $createdAt) {
-                throw new \UnexpectedValueException('Invalid cursor timestamp.');
-            }
-
-            return [
-                'created_at' => $createdAt->format('Y-m-d H:i:s'),
-                'id' => (string) $decoded['id'],
-            ];
+            return $sequence;
         } catch (\Throwable $e) {
             throw ValidationException::withMessages([
                 'page.cursor' => ['Invalid notification cursor.'],
