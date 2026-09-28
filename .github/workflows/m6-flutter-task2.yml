@@ -41,4 +41,4 @@ jobs:
       - name: Run Task 2 transport contracts
         working-directory: apps/mobile
         run: |
-          flutter test test/core/api/api_client_test.dart test/core/api/retry_policy_test.dart test/core/logging/diagnostics_test.dart
+          flutter test test/core/api/api_client_test.dart test/core/api/retry_policy_test.dart test/core/api/app_environment_test.dart test/core/logging/diagnostics_test.dart
