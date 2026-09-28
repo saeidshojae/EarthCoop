@@ -21,9 +21,16 @@ on:
       - 'tests/Feature/Actors/**'
       - 'tests/Feature/Admin/GroupRoleManagementTest.php'
       - 'tests/Feature/Api/V1/ActorContractTest.php'
+      - 'tests/Feature/Api/V1/ActorProjectMobileJourneyTest.php'
       - 'tests/Feature/Api/V1/IdempotencyContractTest.php'
       - 'tests/Feature/Api/V1/ProjectActorContractTest.php'
       - 'tests/Feature/Api/V1/TransportContractTest.php'
+      - 'tests/Feature/Api/V1/NajmHodaAuthorityContractTest.php'
+      - 'tests/Feature/NajmHoda/PageContextResolverTest.php'
+      - 'tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php'
+      - 'tests/Feature/Api/V1/NajmBaharAccountContractTest.php'
+      - 'tests/Feature/Api/V1/NajmBaharTransactionContractTest.php'
+      - 'tests/Feature/NajmBahar/InvestmentControllerTest.php'
       - 'tests/Feature/NajmBahar/ProjectOwnerNotificationTest.php'
       - 'tests/Feature/Secretariat/SecretariatS5AuthorizationTest.php'
       - 'tests/Feature/Secretariat/SecretariatS6RetrievalTest.php'
@@ -39,7 +46,7 @@ concurrency:
 jobs:
   actor-boundary:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       mysql:
         image: mysql:8.0
@@ -93,9 +100,15 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Actors/ActorRepresentationAuthorizationTest.php tests/Feature/Admin/GroupRoleManagementTest.php
       - name: Run Task 3 actor discovery contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ActorContractTest.php
-      - name: Run Tasks 4-5 actor-aware project contract and regressions
+      - name: Run Tasks 4-5 actor-aware project contract and core regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ProjectActorContractTest.php tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/Api/V1/CoreJourneyTest.php tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php tests/Feature/LocationGovernance/ProjectGovernanceScopeTest.php
       - name: Run Task 6 project owner notification routing and lifecycle regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/ProjectOwnerNotificationTest.php tests/Unit/NajmBahar/ProjectServiceTest.php
       - name: Run Task 7 Secretariat project-owner authority and retrieval regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Secretariat/SecretariatS5AuthorizationTest.php tests/Feature/Secretariat/SecretariatS6RetrievalTest.php
+      - name: Run Task 8 native actor-project acceptance journey
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ActorProjectMobileJourneyTest.php
+      - name: Run M2 Hoda authority regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaAuthorityContractTest.php tests/Feature/NajmHoda/PageContextResolverTest.php
+      - name: Run M3 personal Bahar and investment regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php tests/Feature/Api/V1/NajmBaharAccountContractTest.php tests/Feature/Api/V1/NajmBaharTransactionContractTest.php tests/Feature/NajmBahar/InvestmentControllerTest.php
