@@ -27,6 +27,12 @@ jobs:
       - name: Resolve locked dependencies
         working-directory: apps/mobile
         run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        run: dart format --output=none --set-exit-if-changed lib/core/api lib/core/logging test/core/api test/core/logging
+      - name: Analyze transport scope
+        working-directory: apps/mobile
+        run: flutter analyze lib/core/api lib/core/logging test/core/api test/core/logging
       - name: Run Task 2 transport contracts
         working-directory: apps/mobile
         run: |
