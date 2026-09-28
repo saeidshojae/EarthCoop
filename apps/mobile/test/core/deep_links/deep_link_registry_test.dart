@@ -22,7 +22,8 @@ void main() {
       expect(result.fallbackLocation, '/home');
     });
 
-    test('missing or invalid group id fails closed to safe in-app fallback', () {
+    test('missing or invalid group id fails closed to safe in-app fallback',
+        () {
       for (final params in [
         <String, Object?>{},
         <String, Object?>{'group_id': '42'},
@@ -65,7 +66,8 @@ void main() {
       expect(result.location, '/home');
     });
 
-    test('fallback_url remains data only and cannot replace native fallback', () {
+    test('fallback_url remains data only and cannot replace native fallback',
+        () {
       final link = SemanticLink.fromJson({
         'version': 1,
         'route': 'unknown.route',

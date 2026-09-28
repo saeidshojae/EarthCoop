@@ -21,8 +21,8 @@ void main() {
         TextDirection.rtl);
     expect(Theme.of(tester.element(find.byType(HomeScreen))).brightness,
         Brightness.light);
-    expect(Theme.of(tester.element(find.byType(HomeScreen))).useMaterial3,
-        isTrue);
+    expect(
+        Theme.of(tester.element(find.byType(HomeScreen))).useMaterial3, isTrue);
   });
 
   testWidgets('dark theme remains Material 3', (tester) async {

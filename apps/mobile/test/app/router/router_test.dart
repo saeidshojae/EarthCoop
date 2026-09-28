@@ -60,7 +60,8 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter.router));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('required-update-route-screen')), findsOneWidget);
+    expect(
+        find.byKey(const Key('required-update-route-screen')), findsOneWidget);
     expect(find.byKey(const Key('group-detail-route-screen')), findsNothing);
   });
 
