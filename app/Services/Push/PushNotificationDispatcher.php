@@ -34,7 +34,11 @@ class PushNotificationDispatcher
         );
 
         foreach ($this->eligibility->eligibleFor($user) as $device) {
-            $result = $this->gateway->send($device, $envelope);
+            try {
+                $result = $this->gateway->send($device, $envelope);
+            } catch (\Throwable) {
+                $result = PushDeliveryResult::temporaryFailure('provider_exception');
+            }
 
             if ($result->delivered()) {
                 $device->forceFill([
