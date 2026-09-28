@@ -35,6 +35,13 @@ class GenericNotification extends Notification implements ShouldQueue
         return $channels;
     }
 
+    public function viaConnections(): array
+    {
+        return [
+            'database' => 'sync',
+        ];
+    }
+
     public function toArray(object $notifiable): array
     {
         return $this->payload();
