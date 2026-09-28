@@ -29,7 +29,12 @@ jobs:
         run: flutter pub get
       - name: Check formatting
         working-directory: apps/mobile
-        run: dart format --output=none --set-exit-if-changed lib/core/api lib/core/logging test/core/api test/core/logging
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart format lib/core/api lib/core/logging test/core/api test/core/logging
+          git diff -- lib/core/api lib/core/logging test/core/api test/core/logging
+          git diff --exit-code -- lib/core/api lib/core/logging test/core/api test/core/logging
       - name: Analyze transport scope
         working-directory: apps/mobile
         run: flutter analyze lib/core/api lib/core/logging test/core/api test/core/logging
