@@ -2,6 +2,7 @@
 
 namespace App\Modules\NajmBahar\Services\Api;
 
+use App\Helpers\BaharMoney;
 use App\Models\User;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\Account;
@@ -181,9 +182,18 @@ class NajmBaharMembershipFeeApplicationService
     public function split(): array
     {
         return [
-            TreasuryService::OPERATIONS_SALARY => max(0, (int) $this->policy->parameter('membership_operations_gol', 0)),
-            TreasuryService::CENTRAL_INSURANCE => max(0, (int) $this->policy->parameter('membership_insurance_gol', 0)),
-            TreasuryService::MONEY_DESTRUCTION => max(0, (int) $this->policy->parameter('membership_burn_gol', 0)),
+            TreasuryService::OPERATIONS_SALARY => max(0, (int) $this->policy->parameter(
+                'membership_operations_gol',
+                BaharMoney::toGolFromBahar(6),
+            )),
+            TreasuryService::CENTRAL_INSURANCE => max(0, (int) $this->policy->parameter(
+                'membership_insurance_gol',
+                BaharMoney::toGolFromBahar(3),
+            )),
+            TreasuryService::MONEY_DESTRUCTION => max(0, (int) $this->policy->parameter(
+                'membership_burn_gol',
+                BaharMoney::toGolFromBahar(3),
+            )),
         ];
     }
 
