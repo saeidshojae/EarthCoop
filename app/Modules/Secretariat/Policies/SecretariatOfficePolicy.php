@@ -7,10 +7,17 @@ use App\Models\User;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Policies\Concerns\ResolvesGroupMembership;
+use App\Services\Actors\ActorOperation;
+use App\Services\Actors\OwnerRepresentationService;
 
 class SecretariatOfficePolicy
 {
     use ResolvesGroupMembership;
+
+    public function __construct(
+        private readonly OwnerRepresentationService $owners,
+    ) {
+    }
 
     public function view(User $user, SecretariatOffice $office): bool
     {
@@ -26,16 +33,9 @@ class SecretariatOfficePolicy
         if ($office->scope_type === 'najm_bahar_project') {
             $project = $this->projectScope($office);
 
-            // EarthCoop members are shareholders with an oversight right over
-            // project information that the source project domain exposes to them.
-            // Public/approved project visibility therefore carries read-only
-            // visibility into its Secretariat office, while management authority
-            // remains restricted to the project owner (or a global administrator).
             return $project !== null && $user->can('view', $project);
         }
 
-        // Central, legal-entity, committee and unknown scopes stay default-deny
-        // for non-admins until their source domains define explicit authority.
         return false;
     }
 
@@ -51,7 +51,7 @@ class SecretariatOfficePolicy
         }
 
         if ($office->scope_type === 'najm_bahar_project') {
-            return $this->isUserProjectOwner($user, $office);
+            return $this->isProjectOwner($user, $office);
         }
 
         return false;
@@ -69,7 +69,7 @@ class SecretariatOfficePolicy
         }
 
         if ($office->scope_type === 'najm_bahar_project') {
-            return $this->isUserProjectOwner($user, $office);
+            return $this->isProjectOwner($user, $office);
         }
 
         return false;
@@ -93,11 +93,18 @@ class SecretariatOfficePolicy
         return Project::query()->find($office->scope_id);
     }
 
-    private function isUserProjectOwner(User $user, SecretariatOffice $office): bool
+    private function isProjectOwner(User $user, SecretariatOffice $office): bool
     {
         $project = $this->projectScope($office);
-        return $project !== null
-            && $project->owner_type === User::class
-            && (int) $project->owner_id === (int) $user->id;
+        if ($project === null || ! is_string($project->owner_type) || $project->owner_type === '' || $project->owner_id === null) {
+            return false;
+        }
+
+        return $this->owners->allows(
+            $user,
+            $project->owner_type,
+            $project->owner_id,
+            ActorOperation::ProjectOwner,
+        );
     }
 }
