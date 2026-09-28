@@ -60,6 +60,12 @@ class ApiClient {
         decodeData: decodeData,
       );
 
+  Future<void> delete(
+    String path, {
+    RequestContext? context,
+  }) =>
+      _requestEmpty('DELETE', path, context: context);
+
   Future<ApiSuccess<T>> _request<T>(
     String method,
     String path, {
@@ -67,36 +73,17 @@ class ApiClient {
     RequestContext? context,
     required T Function(Object? json) decodeData,
   }) async {
-    final requestId = context?.requestId ?? _requestIdFactory();
-    final idempotencyKey = context?.idempotencyKey;
-    final bearer = await _bearerTokenProvider();
-    final headers = <String, Object?>{'X-Request-ID': requestId};
-    if (bearer != null && bearer.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $bearer';
-    }
-    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
-      headers['Idempotency-Key'] = idempotencyKey;
-    }
-
+    final request = await _requestMetadata(context);
     var attempt = 1;
     while (true) {
       try {
-        _diagnostics.record(
-          'api.request',
-          data: {
-            'method': method,
-            'path': path,
-            'request_id': requestId,
-            'attempt': attempt,
-            ...headers,
-          },
-        );
+        _recordRequest(method, path, request, attempt);
         final response = await _dio.request<Object?>(
           path,
           data: data,
           options: Options(
             method: method,
-            headers: headers,
+            headers: request.headers,
             validateStatus: (_) => true,
             responseType: ResponseType.json,
           ),
@@ -105,9 +92,7 @@ class ApiClient {
         final retryAfter =
             _parseRetryAfter(response.headers.value('retry-after'));
 
-        if (response.statusCode != null &&
-            response.statusCode! >= 200 &&
-            response.statusCode! < 300) {
+        if (_isSuccess(response.statusCode)) {
           return decodeSuccessEnvelope<T>(
             raw,
             decodeData: decodeData,
@@ -120,13 +105,12 @@ class ApiClient {
           httpStatus: response.statusCode,
           retryAfter: retryAfter,
         );
-        if (!_retryPolicy.shouldRetry(
+        if (!_shouldRetry(
           method: method,
           attempt: attempt,
           statusCode: response.statusCode,
           retryable: failure.retryable,
-          hasIdempotencyKey:
-              idempotencyKey != null && idempotencyKey.isNotEmpty,
+          idempotencyKey: request.idempotencyKey,
         )) {
           throw failure;
         }
@@ -135,21 +119,19 @@ class ApiClient {
       } on ApiFailure {
         rethrow;
       } on DioException catch (error) {
-        final statusCode = error.response?.statusCode;
-        if (!_retryPolicy.shouldRetry(
+        if (!_shouldRetry(
           method: method,
           attempt: attempt,
-          statusCode: statusCode,
+          statusCode: error.response?.statusCode,
           retryable: true,
-          hasIdempotencyKey:
-              idempotencyKey != null && idempotencyKey.isNotEmpty,
+          idempotencyKey: request.idempotencyKey,
         )) {
           throw ApiFailure(
             code: 'network_error',
             message: 'The request could not be completed.',
             retryable: true,
-            requestId: requestId,
-            httpStatus: statusCode,
+            requestId: request.requestId,
+            httpStatus: error.response?.statusCode,
           );
         }
         await _retryDelay(_defaultRetryDelay(attempt));
@@ -157,7 +139,141 @@ class ApiClient {
       }
     }
   }
+
+  Future<void> _requestEmpty(
+    String method,
+    String path, {
+    RequestContext? context,
+  }) async {
+    final request = await _requestMetadata(context);
+    var attempt = 1;
+    while (true) {
+      try {
+        _recordRequest(method, path, request, attempt);
+        final response = await _dio.request<Object?>(
+          path,
+          options: Options(
+            method: method,
+            headers: request.headers,
+            validateStatus: (_) => true,
+            responseType: ResponseType.json,
+          ),
+        );
+        final retryAfter =
+            _parseRetryAfter(response.headers.value('retry-after'));
+        if (_isSuccess(response.statusCode)) return;
+
+        final failure = decodeErrorEnvelope(
+          _normalizeBody(response.data),
+          httpStatus: response.statusCode,
+          retryAfter: retryAfter,
+        );
+        if (!_shouldRetry(
+          method: method,
+          attempt: attempt,
+          statusCode: response.statusCode,
+          retryable: failure.retryable,
+          idempotencyKey: request.idempotencyKey,
+        )) {
+          throw failure;
+        }
+        await _retryDelay(retryAfter ?? _defaultRetryDelay(attempt));
+        attempt += 1;
+      } on ApiFailure {
+        rethrow;
+      } on DioException catch (error) {
+        if (!_shouldRetry(
+          method: method,
+          attempt: attempt,
+          statusCode: error.response?.statusCode,
+          retryable: true,
+          idempotencyKey: request.idempotencyKey,
+        )) {
+          throw ApiFailure(
+            code: 'network_error',
+            message: 'The request could not be completed.',
+            retryable: true,
+            requestId: request.requestId,
+            httpStatus: error.response?.statusCode,
+          );
+        }
+        await _retryDelay(_defaultRetryDelay(attempt));
+        attempt += 1;
+      }
+    }
+  }
+
+  Future<_RequestMetadata> _requestMetadata(RequestContext? context) async {
+    final requestId = context?.requestId ?? _requestIdFactory();
+    final idempotencyKey = context?.idempotencyKey;
+    final bearer = await _bearerTokenProvider();
+    final headers = <String, Object?>{'X-Request-ID': requestId};
+    if (bearer != null && bearer.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $bearer';
+    }
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    final deviceId = context?.deviceId;
+    if (deviceId != null && deviceId.isNotEmpty) {
+      headers['X-Device-ID'] = deviceId;
+    }
+    return _RequestMetadata(
+      requestId: requestId,
+      idempotencyKey: idempotencyKey,
+      headers: headers,
+    );
+  }
+
+  void _recordRequest(
+    String method,
+    String path,
+    _RequestMetadata request,
+    int attempt,
+  ) {
+    _diagnostics.record(
+      'api.request',
+      data: {
+        'method': method,
+        'path': path,
+        'request_id': request.requestId,
+        'attempt': attempt,
+        ...request.headers,
+      },
+    );
+  }
+
+  bool _shouldRetry({
+    required String method,
+    required int attempt,
+    required int? statusCode,
+    required bool retryable,
+    required String? idempotencyKey,
+  }) =>
+      _retryPolicy.shouldRetry(
+        method: method,
+        attempt: attempt,
+        statusCode: statusCode,
+        retryable: retryable,
+        hasIdempotencyKey:
+            idempotencyKey != null && idempotencyKey.isNotEmpty,
+      );
 }
+
+class _RequestMetadata {
+  const _RequestMetadata({
+    required this.requestId,
+    required this.idempotencyKey,
+    required this.headers,
+  });
+
+  final String requestId;
+  final String? idempotencyKey;
+  final Map<String, Object?> headers;
+}
+
+bool _isSuccess(int? statusCode) =>
+    statusCode != null && statusCode >= 200 && statusCode < 300;
 
 Object? _normalizeBody(Object? raw) {
   if (raw is String) {
