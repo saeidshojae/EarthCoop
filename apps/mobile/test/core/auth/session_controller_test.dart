@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SessionController', () {
-    test('restore validates stored credentials before entering authenticated state', () async {
+    test(
+        'restore validates stored credentials before entering authenticated state',
+        () async {
       final repository = FakeSessionRepository(
         restored: sampleSession(token: 'restored-token'),
       );
@@ -19,7 +21,9 @@ void main() {
       expect(controller.state.session!.token, 'restored-token');
     });
 
-    test('revoked stored session clears local credentials and becomes unauthenticated', () async {
+    test(
+        'revoked stored session clears local credentials and becomes unauthenticated',
+        () async {
       final repository = FakeSessionRepository(restored: null);
       final controller = SessionController(repository: repository);
 
@@ -48,7 +52,8 @@ void main() {
       expect(repository.calls, ['login', 'rotate']);
     });
 
-    test('logout preserves cleanup ordering when server revoke succeeds', () async {
+    test('logout preserves cleanup ordering when server revoke succeeds',
+        () async {
       final events = <String>[];
       final repository = FakeSessionRepository(
         restored: sampleSession(),
@@ -73,7 +78,9 @@ void main() {
       expect(controller.state.phase, SessionPhase.unauthenticated);
     });
 
-    test('logout still clears sensitive local state when server revoke is unreachable', () async {
+    test(
+        'logout still clears sensitive local state when server revoke is unreachable',
+        () async {
       final events = <String>[];
       final repository = FakeSessionRepository(
         restored: sampleSession(),

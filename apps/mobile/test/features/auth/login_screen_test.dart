@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('login screen is Persian RTL and submits credentials', (tester) async {
+  testWidgets('login screen is Persian RTL and submits credentials',
+      (tester) async {
     String? submittedEmail;
     String? submittedPassword;
 
@@ -19,11 +20,14 @@ void main() {
     );
 
     expect(find.text('ورود به ارث‌کوپ'), findsOneWidget);
-    final directionality = tester.widget<Directionality>(find.byType(Directionality).last);
+    final directionality =
+        tester.widget<Directionality>(find.byType(Directionality).last);
     expect(directionality.textDirection, TextDirection.rtl);
 
-    await tester.enterText(find.byKey(const Key('login-email')), 'member@example.test');
-    await tester.enterText(find.byKey(const Key('login-password')), 'secret-password');
+    await tester.enterText(
+        find.byKey(const Key('login-email')), 'member@example.test');
+    await tester.enterText(
+        find.byKey(const Key('login-password')), 'secret-password');
     await tester.tap(find.byKey(const Key('login-submit')));
     await tester.pump();
 
@@ -31,7 +35,8 @@ void main() {
     expect(submittedPassword, 'secret-password');
   });
 
-  testWidgets('login failure is visible without exposing sensitive details', (tester) async {
+  testWidgets('login failure is visible without exposing sensitive details',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: LoginScreen(
@@ -42,8 +47,10 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byKey(const Key('login-email')), 'member@example.test');
-    await tester.enterText(find.byKey(const Key('login-password')), 'wrong-password');
+    await tester.enterText(
+        find.byKey(const Key('login-email')), 'member@example.test');
+    await tester.enterText(
+        find.byKey(const Key('login-password')), 'wrong-password');
     await tester.tap(find.byKey(const Key('login-submit')));
     await tester.pumpAndSettle();
 

@@ -13,13 +13,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ApiSessionRepository', () {
-    test('login binds device metadata and stores token only in secure store', () async {
+    test('login binds device metadata and stores token only in secure store',
+        () async {
       final adapter = RecordingAdapter([
         jsonResponse(201, successEnvelope(sessionJson(token: 'secret-token'))),
       ]);
       final secureStore = MemorySecureSessionStore();
       final client = buildClient(adapter, secureStore);
-      final repository = ApiSessionRepository(apiClient: client, secureStore: secureStore);
+      final repository =
+          ApiSessionRepository(apiClient: client, secureStore: secureStore);
 
       final session = await repository.login(
         email: 'member@example.test',
@@ -40,7 +42,8 @@ void main() {
       expect(adapter.requests.single.method, 'POST');
       expect(adapter.requests.single.data, containsPair('platform', 'android'));
       expect(adapter.requests.single.data, containsPair('push_capable', true));
-      expect(adapter.requests.single.data.toString(), contains('secret-password'));
+      expect(
+          adapter.requests.single.data.toString(), contains('secret-password'));
     });
 
     test('restore validates via GET with bearer and X-Device-ID', () async {
@@ -67,7 +70,8 @@ void main() {
       expect(request.headers['X-Device-ID'], 'device-1');
     });
 
-    test('revoked restore fails closed and clears stored credentials', () async {
+    test('revoked restore fails closed and clears stored credentials',
+        () async {
       final adapter = RecordingAdapter([
         jsonResponse(401, errorEnvelope('unauthenticated')),
       ]);
@@ -87,7 +91,8 @@ void main() {
       expect(await secureStore.readDeviceId(), isNull);
     });
 
-    test('rotate replaces token while retaining the same bound device', () async {
+    test('rotate replaces token while retaining the same bound device',
+        () async {
       final adapter = RecordingAdapter([
         jsonResponse(200, successEnvelope(sessionJson(token: 'new-token'))),
       ]);
@@ -170,7 +175,8 @@ Map<String, Object?> errorEnvelope(String code) => {
 Map<String, Object?> sessionJson({
   String token = 'token',
   bool includeToken = true,
-}) => {
+}) =>
+    {
       if (includeToken) 'token': token,
       'token_type': 'Bearer',
       'expires_at': '2026-10-01T00:00:00Z',
