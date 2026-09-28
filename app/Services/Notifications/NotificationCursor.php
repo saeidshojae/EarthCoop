@@ -2,7 +2,6 @@
 
 namespace App\Services\Notifications;
 
-use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\ValidationException;
@@ -31,11 +30,7 @@ class NotificationCursor
                 'created_at' => Carbon::parse((string) $decoded['created_at']),
                 'id' => (string) $decoded['id'],
             ];
-        } catch (DecryptException|\JsonException|\Throwable $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-
+        } catch (\Throwable $e) {
             throw ValidationException::withMessages([
                 'page.cursor' => ['Invalid notification cursor.'],
             ]);
