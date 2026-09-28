@@ -37,6 +37,7 @@ on:
       - 'tests/Feature/Api/V1/OfflineReplayContractTest.php'
       - 'tests/Feature/Api/V1/PushProviderFailureIsolationTest.php'
       - 'tests/Feature/Api/V1/RealtimeRecoveryContractTest.php'
+      - 'tests/Unit/Media/**'
       - 'tests/Unit/Push/**'
       - '.github/workflows/m5-native-delivery-targeted.yml'
 
@@ -102,8 +103,8 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/DevicePushContractTest.php tests/Feature/Api/V1/DevicePushReleaseTest.php tests/Unit/Push/PushDeliveryGatewayTest.php tests/Feature/Api/V1/PushProviderFailureIsolationTest.php
       - name: Run notification delivery and realtime recovery contracts
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NotificationDeliveryContractTest.php tests/Feature/Api/V1/RealtimeRecoveryContractTest.php
-      - name: Run media contract
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/MediaContractTest.php
+      - name: Run media contract and content policy
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/MediaContractTest.php tests/Unit/Media/MediaPolicyTest.php
       - name: Run offline replay and compatibility contracts
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/OfflineReplayContractTest.php tests/Feature/Api/V1/BootstrapCompatibilityTest.php
       - name: Run M5 acceptance journey
