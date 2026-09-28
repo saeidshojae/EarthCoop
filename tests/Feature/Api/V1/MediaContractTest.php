@@ -25,7 +25,7 @@ class MediaContractTest extends TestCase
     {
         $user = $this->member('upload');
         [$token, $deviceId] = $this->nativeSession($user);
-        $file = UploadedFile::fake()->createWithContent('photo.jpg', 'valid-image-content');
+        $file = UploadedFile::fake()->image('photo.jpg', 20, 20);
 
         $response = $this->freshBearer($token, $deviceId)
             ->withHeader('Idempotency-Key', 'media-'.bin2hex(random_bytes(8)))
