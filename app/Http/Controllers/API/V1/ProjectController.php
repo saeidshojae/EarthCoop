@@ -11,6 +11,7 @@ use App\Services\Actors\ActorResolver;
 use App\Services\Projects\ProjectApplicationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -49,16 +50,33 @@ class ProjectController extends Controller
         return response()->json($application->serialize($project));
     }
 
-    public function store(Request $request, ProjectApplicationService $application)
+    public function store(Request $request, ProjectApplicationService $application, ActorResolver $actors)
     {
         $validated = $request->validate($this->rules());
-        $project = $application->createForUser($request->user(), $validated);
+        $owner = $actors->referenceFor($request->user());
+
+        if ($request->exists('owner_actor')) {
+            $value = $request->input('owner_actor');
+            if (! is_string($value)) {
+                throw ActorBoundaryException::invalidReference();
+            }
+
+            $owner = ActorReference::parse($value);
+        }
+
+        $project = $application->createForActor($request->user(), $owner, $validated);
 
         return response()->json($application->serialize($project), 201);
     }
 
     public function update(Request $request, Project $project, ProjectApplicationService $application)
     {
+        if ($request->exists('owner_actor')) {
+            throw ValidationException::withMessages([
+                'owner_actor' => ['Project ownership cannot be changed after creation.'],
+            ]);
+        }
+
         $this->authorize('update', $project);
         $validated = $request->validate($this->rules());
         $project = $application->update($project, $validated);

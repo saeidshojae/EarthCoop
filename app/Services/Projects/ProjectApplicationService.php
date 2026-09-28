@@ -2,6 +2,7 @@
 
 namespace App\Services\Projects;
 
+use App\Models\Group;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Services\ProjectService;
@@ -23,14 +24,28 @@ class ProjectApplicationService
 
     public function createForUser(User $user, array $data): Project
     {
+        return $this->createForActor($user, $this->actors->referenceFor($user), $data);
+    }
+
+    public function createForActor(User $principal, ActorReference $owner, array $data): Project
+    {
+        $this->representation->authorize($principal, $owner, ActorOperation::ProjectOwner);
+        $ownerModel = $this->actors->resolveModel($owner);
         $data = $this->scope->normalize($data);
 
-        return DB::transaction(function () use ($user, $data): Project {
-            $project = $this->projects->createProject($user, $data);
-            $project->forceFill([
+        return DB::transaction(function () use ($ownerModel, $data): Project {
+            $project = $this->projects->createProject($ownerModel, $data);
+            $attributes = [
                 'target_location_id' => $data['target_location_id'] ?? null,
-                'governance_area_id' => $data['governance_area_id'] ?? null,
-            ])->save();
+            ];
+
+            if ($ownerModel instanceof User) {
+                $attributes['governance_area_id'] = $data['governance_area_id'] ?? null;
+            } elseif ($ownerModel instanceof Group) {
+                $attributes['governance_area_id'] = $ownerModel->governance_area_id ?? null;
+            }
+
+            $project->forceFill($attributes)->save();
 
             return $project->fresh();
         });
