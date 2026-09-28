@@ -6,20 +6,20 @@ class EarthCoopApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      key: const Key('earthcoop-app-root'),
+    return const MaterialApp(
+      key: Key('earthcoop-app-root'),
       debugShowCheckedModeBanner: false,
-      locale: const Locale('fa'),
-      supportedLocales: const [
+      locale: Locale('fa'),
+      supportedLocales: [
         Locale('fa'),
         Locale('en'),
       ],
-      localizationsDelegates: const [
+      localizationsDelegates: [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const Scaffold(
+      home: Scaffold(
         body: Center(child: Text('EarthCoop')),
       ),
     );
