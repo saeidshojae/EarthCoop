@@ -33,6 +33,16 @@ return [
         'icon' => 'fa-list-ul',
     ],
 
+    'references' => [
+        [
+            'id' => 'econ-ref-01-fa-0-1',
+            'code' => 'ECON-REF-01',
+            'title' => 'سند مرجع اقتصاد و معماری نجم‌بهار',
+            'href' => $documentUrl('econ-ref-01-fa-0-1'),
+            'icon' => 'fa-book-open',
+        ],
+    ],
+
     'foundational' => [
         [
             'id' => 'fc',
