@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use App\Http\Support\Api\V1\ApiRequestContext;
+use App\Services\Actors\ActorBoundaryException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,28 +17,36 @@ final class ApiV1ExceptionRenderer
 {
     public function render(Request $request, Throwable $exception)
     {
-        $status = match (true) {
-            $exception instanceof AuthenticationException => 401,
-            $exception instanceof AuthorizationException => 403,
-            $exception instanceof ModelNotFoundException => 404,
-            $exception instanceof ValidationException => 422,
-            $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
-            default => 500,
-        };
+        $status = $exception instanceof ActorBoundaryException
+            ? $exception->httpStatus()
+            : match (true) {
+                $exception instanceof AuthenticationException => 401,
+                $exception instanceof AuthorizationException => 403,
+                $exception instanceof ModelNotFoundException => 404,
+                $exception instanceof ValidationException => 422,
+                $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
+                default => 500,
+            };
 
-        $code = match ($status) {
-            400 => 'bad_request',
-            401 => 'unauthenticated',
-            403 => 'forbidden',
-            404 => 'not_found',
-            409 => 'conflict',
-            422 => 'validation_failed',
-            429 => 'rate_limited',
-            default => $status >= 500 ? 'server_error' : 'request_failed',
-        };
+        $code = $exception instanceof ActorBoundaryException
+            ? $exception->errorCode()
+            : match ($status) {
+                400 => 'bad_request',
+                401 => 'unauthenticated',
+                403 => 'forbidden',
+                404 => 'not_found',
+                409 => 'conflict',
+                422 => 'validation_failed',
+                429 => 'rate_limited',
+                default => $status >= 500 ? 'server_error' : 'request_failed',
+            };
 
         $retryable = $status === 429 || $status >= 500;
-        $details = $exception instanceof ValidationException ? $exception->errors() : null;
+        $details = match (true) {
+            $exception instanceof ActorBoundaryException => $exception->details(),
+            $exception instanceof ValidationException => $exception->errors(),
+            default => null,
+        };
         [$requestId, $locale] = $this->context($request);
         $headers = $exception instanceof HttpExceptionInterface ? $exception->getHeaders() : [];
 
@@ -96,6 +105,11 @@ final class ApiV1ExceptionRenderer
                 'rate_limited' => 'تعداد درخواست‌ها بیش از حد مجاز است.',
                 'server_error' => 'خطای داخلی رخ داد.',
                 'request_failed' => 'انجام درخواست ممکن نشد.',
+                'actor_reference_invalid' => 'شناسه بازیگر معتبر نیست.',
+                'actor_not_supported' => 'این نوع بازیگر هنوز پشتیبانی نمی‌شود.',
+                'actor_not_found' => 'بازیگر درخواستی پیدا نشد.',
+                'actor_representation_forbidden' => 'اجازه نمایندگی این بازیگر را ندارید.',
+                'actor_operation_not_supported' => 'این عملیات برای بازیگر انتخاب‌شده پشتیبانی نمی‌شود.',
             ],
             'en' => [
                 'bad_request' => 'The request is malformed.',
@@ -107,6 +121,11 @@ final class ApiV1ExceptionRenderer
                 'rate_limited' => 'Too many requests.',
                 'server_error' => 'An internal error occurred.',
                 'request_failed' => 'The request could not be completed.',
+                'actor_reference_invalid' => 'The actor reference is invalid.',
+                'actor_not_supported' => 'This actor type is not supported.',
+                'actor_not_found' => 'The requested actor was not found.',
+                'actor_representation_forbidden' => 'You may not represent this actor.',
+                'actor_operation_not_supported' => 'This operation is not supported for the selected actor.',
             ],
             'ar' => [
                 'bad_request' => 'الطلب غير صالح.',
@@ -118,6 +137,11 @@ final class ApiV1ExceptionRenderer
                 'rate_limited' => 'تم تجاوز حد الطلبات.',
                 'server_error' => 'حدث خطأ داخلي.',
                 'request_failed' => 'تعذر إكمال الطلب.',
+                'actor_reference_invalid' => 'مرجع الجهة الفاعلة غير صالح.',
+                'actor_not_supported' => 'هذا النوع من الجهات الفاعلة غير مدعوم.',
+                'actor_not_found' => 'لم يتم العثور على الجهة الفاعلة المطلوبة.',
+                'actor_representation_forbidden' => 'لا يُسمح لك بتمثيل هذه الجهة الفاعلة.',
+                'actor_operation_not_supported' => 'هذه العملية غير مدعومة للجهة الفاعلة المحددة.',
             ],
         ];
 
