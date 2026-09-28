@@ -1,0 +1,30 @@
+name: M6 Flutter Task 1 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/m6-flutter-task1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Show Flutter toolchain
+        run: flutter --version
+      - name: Resolve dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Run Task 1 smoke test
+        working-directory: apps/mobile
+        run: flutter test test/app_smoke_test.dart
