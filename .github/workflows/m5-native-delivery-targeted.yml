@@ -1,0 +1,116 @@
+name: M5 Native Delivery Targeted Gate
+
+on:
+  push:
+    branches:
+      - agent/m5-native-delivery-foundation-20260928
+    paths:
+      - 'app/Http/Controllers/API/V1/BootstrapController.php'
+      - 'app/Http/Controllers/API/V1/DevicePushController.php'
+      - 'app/Http/Controllers/API/V1/MediaController.php'
+      - 'app/Http/Controllers/API/V1/NotificationController.php'
+      - 'app/Http/Middleware/ApiV1ProjectOwnerAuthority.php'
+      - 'app/Http/Requests/API/V1/DevicePushRequest.php'
+      - 'app/Http/Requests/API/V1/StoreMediaRequest.php'
+      - 'app/Http/Resources/API/V1/MediaResource.php'
+      - 'app/Jobs/DeliverPushNotification.php'
+      - 'app/Models/Media.php'
+      - 'app/Models/NativeDevice.php'
+      - 'app/Notifications/GenericNotification.php'
+      - 'app/Providers/PushServiceProvider.php'
+      - 'app/Services/ClientCompatibility/**'
+      - 'app/Services/Media/**'
+      - 'app/Services/Notifications/**'
+      - 'app/Services/Push/**'
+      - 'app/Services/NotificationService.php'
+      - 'app/Support/Notifications/**'
+      - 'config/client-compatibility.php'
+      - 'database/migrations/2026_09_28_000001_add_push_delivery_state_to_native_devices.php'
+      - 'database/migrations/2026_09_28_000002_create_media_table.php'
+      - 'routes/api-v1.php'
+      - 'tests/Feature/Api/V1/BootstrapCompatibilityTest.php'
+      - 'tests/Feature/Api/V1/DevicePushContractTest.php'
+      - 'tests/Feature/Api/V1/DevicePushReleaseTest.php'
+      - 'tests/Feature/Api/V1/M5NativeDeliveryAcceptanceTest.php'
+      - 'tests/Feature/Api/V1/MediaContractTest.php'
+      - 'tests/Feature/Api/V1/NotificationDeliveryContractTest.php'
+      - 'tests/Feature/Api/V1/OfflineReplayContractTest.php'
+      - 'tests/Feature/Api/V1/PushProviderFailureIsolationTest.php'
+      - 'tests/Feature/Api/V1/RealtimeRecoveryContractTest.php'
+      - 'tests/Unit/Push/**'
+      - '.github/workflows/m5-native-delivery-targeted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m5-native-delivery-targeted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql, gd
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop-test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          php artisan migrate:fresh --force
+      - name: Run push device and gateway contracts
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/DevicePushContractTest.php tests/Feature/Api/V1/DevicePushReleaseTest.php tests/Unit/Push/PushDeliveryGatewayTest.php tests/Feature/Api/V1/PushProviderFailureIsolationTest.php
+      - name: Run notification delivery and realtime recovery contracts
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NotificationDeliveryContractTest.php tests/Feature/Api/V1/RealtimeRecoveryContractTest.php
+      - name: Run media contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/MediaContractTest.php
+      - name: Run offline replay and compatibility contracts
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/OfflineReplayContractTest.php tests/Feature/Api/V1/BootstrapCompatibilityTest.php
+      - name: Run M5 acceptance journey
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/M5NativeDeliveryAcceptanceTest.php
+      - name: Run M1 and M4 transport/actor regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NativeSessionTest.php tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/Api/V1/ProjectActorContractTest.php tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php
+      - name: Run M2 Hoda authority regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaAuthorityContractTest.php tests/Feature/NajmHoda/PageContextResolverTest.php
+      - name: Run M3 Bahar regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php tests/Feature/Api/V1/NajmBaharAccountContractTest.php tests/Feature/Api/V1/NajmBaharTransactionContractTest.php tests/Unit/NajmBahar/InvestmentServiceTest.php
