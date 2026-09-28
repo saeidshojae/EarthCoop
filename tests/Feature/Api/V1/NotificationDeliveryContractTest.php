@@ -2,8 +2,14 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\NativeDevice;
+use App\Models\NotificationSetting;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\Push\PushDeliveryGateway;
+use App\Services\Push\PushDeliveryResult;
+use App\Services\Push\PushEnvelope;
+use App\Services\Push\PushNotificationDispatcher;
 use App\Support\Notifications\NotificationLink;
 use App\Support\Notifications\NotificationLinkRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +87,99 @@ class NotificationDeliveryContractTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         $registry->validate(new NotificationLink(1, 'arbitrary.controller.action', [], null));
+    }
+
+    public function test_invalid_provider_token_disables_push_without_revoking_native_session_or_losing_canonical_notification(): void
+    {
+        $user = $this->member('invalid-push');
+        [$token, $deviceId] = $this->nativeSession($user);
+        $this->registerPush($token, $deviceId, 'invalid-provider-token');
+
+        $gateway = new class implements PushDeliveryGateway {
+            public int $calls = 0;
+
+            public function send(NativeDevice $device, PushEnvelope $envelope): PushDeliveryResult
+            {
+                $this->calls++;
+
+                return PushDeliveryResult::invalidToken('unregistered');
+            }
+        };
+        $this->app->instance(PushDeliveryGateway::class, $gateway);
+
+        app(NotificationService::class)->notifyUser(
+            $user,
+            'Native delivery',
+            'Canonical notification remains.',
+            '/home',
+            'info',
+        );
+
+        $this->assertSame(1, $gateway->calls);
+        $this->assertSame(1, $user->notifications()->count());
+
+        $device = NativeDevice::query()->where('public_id', $deviceId)->firstOrFail();
+        $this->assertNotNull($device->push_disabled_at);
+        $this->assertSame('unregistered', $device->last_push_failure_code);
+        $this->assertNull($device->revoked_at);
+
+        $this->freshBearer($token, $deviceId)
+            ->getJson('/api/v1/auth/session')
+            ->assertOk();
+    }
+
+    public function test_dispatch_rechecks_revocation_and_push_preference_at_delivery_time(): void
+    {
+        $user = $this->member('eligibility');
+        [$token, $deviceId] = $this->nativeSession($user);
+        $this->registerPush($token, $deviceId, 'eligible-token');
+
+        $gateway = new class implements PushDeliveryGateway {
+            public int $calls = 0;
+
+            public function send(NativeDevice $device, PushEnvelope $envelope): PushDeliveryResult
+            {
+                $this->calls++;
+
+                return PushDeliveryResult::success();
+            }
+        };
+        $this->app->instance(PushDeliveryGateway::class, $gateway);
+
+        $device = NativeDevice::query()->where('public_id', $deviceId)->firstOrFail();
+        $device->forceFill(['revoked_at' => now()])->save();
+
+        app(PushNotificationDispatcher::class)->dispatch($user, [
+            'title' => 'Should not deliver',
+            'message' => 'Revoked device',
+            'type' => 'info',
+            'url' => '/home',
+            'context' => [],
+        ]);
+        $this->assertSame(0, $gateway->calls);
+
+        $device->forceFill(['revoked_at' => null])->save();
+        $settings = NotificationSetting::forUser($user->id);
+        $settings->forceFill(['push_notifications' => false])->save();
+
+        app(PushNotificationDispatcher::class)->dispatch($user, [
+            'title' => 'Still should not deliver',
+            'message' => 'Push preference disabled',
+            'type' => 'info',
+            'url' => '/home',
+            'context' => [],
+        ]);
+        $this->assertSame(0, $gateway->calls);
+    }
+
+    private function registerPush(string $token, string $deviceId, string $pushToken): void
+    {
+        $this->freshBearer($token, $deviceId)
+            ->putJson('/api/v1/devices/'.$deviceId.'/push', [
+                'provider' => 'fcm',
+                'token' => $pushToken,
+            ])
+            ->assertOk();
     }
 
     private function member(string $suffix): User
