@@ -72,4 +72,5 @@ jobs:
           git add apps/mobile/android apps/mobile/ios apps/mobile/pubspec.yaml apps/mobile/pubspec.lock
           git diff --cached --quiet && { echo 'No scaffold changes to commit'; exit 1; }
           git commit -m 'feat(mobile): materialize Flutter platform scaffold'
+          git pull --rebase origin agent/flutter-native-client-foundation-20260929
           git push origin HEAD:agent/flutter-native-client-foundation-20260929
