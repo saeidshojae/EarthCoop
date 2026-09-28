@@ -2,6 +2,7 @@
     $docsLinks = config('docs-links');
     $foundationalIndex = $docsLinks['foundational_index'];
     $foundationalDocuments = $docsLinks['foundational'];
+    $referenceDocuments = $docsLinks['references'] ?? [];
 @endphp
 
 <section id="documents" class="py-16 md:py-24 bg-pure-white fade-in-section">
@@ -46,6 +47,25 @@
                     </a>
                 @endforeach
             </div>
+
+            @if(!empty($referenceDocuments))
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold font-vazirmatn text-gentle-black mb-4">اسناد مرجع</h3>
+                    <div class="docs-card-grid" aria-label="اسناد مرجع EarthCoop">
+                        @foreach($referenceDocuments as $document)
+                            <a href="{{ $document['href'] }}" class="docs-card">
+                                <span class="docs-card-icon">
+                                    <i class="fas {{ $document['icon'] }}" aria-hidden="true"></i>
+                                </span>
+                                <span class="docs-card-text">
+                                    <span class="docs-card-title">{{ $document['title'] }}</span>
+                                    <span class="docs-card-code">{{ $document['code'] }}</span>
+                                </span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </section>
