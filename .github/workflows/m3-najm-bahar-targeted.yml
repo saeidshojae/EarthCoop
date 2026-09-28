@@ -92,3 +92,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMembershipFeeContractTest.php tests/Feature/NajmBahar/MembershipFeePaymentTest.php tests/Feature/NajmBahar/MembershipFeePolicyIntegrityTest.php tests/Feature/NajmBahar/TreasuryServiceTest.php
       - name: Run M3 scheduled operation contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharScheduledOperationContractTest.php tests/Feature/NajmBahar/ScheduledSubAccountTransferExecutorTest.php tests/Feature/NajmBahar/NajmBaharSchedulerContractTest.php tests/Feature/ScheduledTransactionTest.php
+      - name: Run M3 native financial acceptance journey
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php
