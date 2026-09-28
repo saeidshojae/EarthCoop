@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\V1\ActorController;
 use App\Http\Controllers\API\V1\Auth\NativeSessionController;
+use App\Http\Controllers\API\V1\BootstrapController;
 use App\Http\Controllers\API\V1\DevicePushController;
 use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
@@ -28,6 +29,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
             'api_version' => 'v1',
         ]);
     })->name('health');
+
+    Route::get('/bootstrap', BootstrapController::class)->name('bootstrap');
 
     Route::post('/auth/session', [NativeSessionController::class, 'store'])
         ->name('auth.session.store');
