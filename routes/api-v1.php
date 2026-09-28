@@ -60,9 +60,15 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
 
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
-        Route::post('/projects', [ProjectController::class, 'store'])->middleware('api.v1.idempotency')->name('projects.store');
-        Route::put('/projects/{project}', [ProjectController::class, 'update'])->middleware('api.v1.idempotency')->name('projects.update');
-        Route::post('/projects/{project}/submit', [ProjectController::class, 'submit'])->middleware('api.v1.idempotency')->name('projects.submit');
+        Route::post('/projects', [ProjectController::class, 'store'])
+            ->middleware(['api.v1.project-owner-authority', 'api.v1.idempotency'])
+            ->name('projects.store');
+        Route::put('/projects/{project}', [ProjectController::class, 'update'])
+            ->middleware(['can:update,project', 'api.v1.idempotency'])
+            ->name('projects.update');
+        Route::post('/projects/{project}/submit', [ProjectController::class, 'submit'])
+            ->middleware(['can:update,project', 'api.v1.idempotency'])
+            ->name('projects.submit');
 
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/unread', [NotificationController::class, 'unread'])->name('notifications.unread');
