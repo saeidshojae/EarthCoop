@@ -13,7 +13,7 @@ class NotificationCursor
         $time = $createdAt instanceof Carbon ? $createdAt : Carbon::parse($createdAt);
 
         return Crypt::encryptString(json_encode([
-            'created_at' => $time->toISOString(),
+            'created_at' => $time->utc()->format('Y-m-d H:i:s'),
             'id' => $id,
         ], JSON_THROW_ON_ERROR));
     }
@@ -26,8 +26,13 @@ class NotificationCursor
                 throw new \UnexpectedValueException('Invalid cursor payload.');
             }
 
+            $createdAt = Carbon::createFromFormat('Y-m-d H:i:s', (string) $decoded['created_at'], 'UTC');
+            if (! $createdAt) {
+                throw new \UnexpectedValueException('Invalid cursor timestamp.');
+            }
+
             return [
-                'created_at' => Carbon::parse((string) $decoded['created_at']),
+                'created_at' => $createdAt->format('Y-m-d H:i:s'),
                 'id' => (string) $decoded['id'],
             ];
         } catch (\Throwable $e) {
