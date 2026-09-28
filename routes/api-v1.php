@@ -8,6 +8,7 @@ use App\Http\Controllers\API\V1\LocationGovernanceController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
 use App\Http\Controllers\API\V1\NajmBaharActivationController;
 use App\Http\Controllers\API\V1\NajmBaharMembershipFeeController;
+use App\Http\Controllers\API\V1\NajmBaharScheduledOperationController;
 use App\Http\Controllers\API\V1\NajmBaharTransactionController;
 use App\Http\Controllers\API\V1\NajmHodaActionController;
 use App\Http\Controllers\API\V1\NajmHodaCapabilityController;
@@ -80,6 +81,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::post('/najm-bahar/membership-fee/pay', [NajmBaharMembershipFeeController::class, 'pay'])
             ->middleware('api.v1.idempotency')
             ->name('najm-bahar.membership-fee.pay');
+        Route::get('/najm-bahar/scheduled-operations', [NajmBaharScheduledOperationController::class, 'index'])
+            ->name('najm-bahar.scheduled-operations.index');
 
         Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
         Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
