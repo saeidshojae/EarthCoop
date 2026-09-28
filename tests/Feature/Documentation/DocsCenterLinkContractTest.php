@@ -40,6 +40,12 @@ class DocsCenterLinkContractTest extends TestCase
             $this->assertSame("https://docs.earthcoop.ir/#/documents/{$id}", $document['href']);
         }
 
+        $this->assertCount(1, $links['references']);
+        $econReference = collect($links['references'])->firstWhere('id', 'econ-ref-01-fa-0-1');
+        $this->assertNotNull($econReference, 'Missing ECON-REF-01 reference document');
+        $this->assertSame('ECON-REF-01', $econReference['code']);
+        $this->assertSame('https://docs.earthcoop.ir/#/documents/econ-ref-01-fa-0-1', $econReference['href']);
+
         $serialized = json_encode($links, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $this->assertIsString($serialized);
         $this->assertStringNotContainsString('/fa/introduction', $serialized);
@@ -68,6 +74,8 @@ class DocsCenterLinkContractTest extends TestCase
         $this->assertIsString($source);
         $this->assertStringContainsString("\$docsLinks['center']['href']", $source);
         $this->assertStringContainsString("\$docsLinks['foundational']", $source);
+        $this->assertStringContainsString("\$docsLinks['references']", $source);
+        $this->assertStringContainsString('اسناد مرجع', $source);
         $this->assertStringNotContainsString("\$docsLinks['base_url'] }}/fa/introduction", $source);
     }
 
