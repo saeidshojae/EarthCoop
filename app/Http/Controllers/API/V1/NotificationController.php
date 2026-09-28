@@ -78,22 +78,11 @@ class NotificationController extends Controller
         $limit = min(max((int) ($pageInput['limit'] ?? 20), 1), 50);
         $query = $this->notificationQuery($request)
             ->reorder()
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
+            ->orderByDesc('sync_sequence');
 
         $rawCursor = trim((string) ($pageInput['cursor'] ?? ''));
         if ($rawCursor !== '') {
-            $decoded = $cursor->decode($rawCursor);
-            $createdAt = $decoded['created_at'];
-            $id = $decoded['id'];
-
-            $query->where(function ($nested) use ($createdAt, $id): void {
-                $nested->where('created_at', '<', $createdAt)
-                    ->orWhere(function ($sameTime) use ($createdAt, $id): void {
-                        $sameTime->where('created_at', '=', $createdAt)
-                            ->where('id', '<', $id);
-                    });
-            });
+            $query->where('sync_sequence', '<', $cursor->decode($rawCursor));
         }
 
         $rows = $query->limit($limit + 1)->get();
@@ -107,7 +96,7 @@ class NotificationController extends Controller
             [
                 'pagination' => [
                     'next_cursor' => $hasMore && $last
-                        ? $cursor->encode($last->created_at, (string) $last->id)
+                        ? $cursor->encode((int) $last->getAttribute('sync_sequence'))
                         : null,
                     'has_more' => $hasMore,
                 ],
