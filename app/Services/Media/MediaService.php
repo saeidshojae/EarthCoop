@@ -26,7 +26,7 @@ class MediaService
 
         Storage::disk($disk)->put($storageKey, $file->getContent());
         $path = Storage::disk($disk)->path($storageKey);
-        $mime = strtolower((string) $file->getClientMimeType());
+        $mime = strtolower((string) $file->getMimeType());
         [$width, $height] = $this->dimensions($path, $mime);
 
         return Media::query()->create([
