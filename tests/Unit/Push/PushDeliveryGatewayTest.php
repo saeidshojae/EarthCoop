@@ -30,7 +30,7 @@ class PushDeliveryGatewayTest extends TestCase
         $this->assertSame('project.detail', $envelope->toArray()['link']['route']);
     }
 
-    public function test_null_gateway_returns_delivered_result_without_provider_sdk_dependency(): void
+    public function test_null_gateway_fails_safe_when_no_real_provider_is_configured(): void
     {
         $device = new NativeDevice([
             'public_id' => '00000000-0000-4000-8000-000000000001',
@@ -42,8 +42,9 @@ class PushDeliveryGatewayTest extends TestCase
             new PushEnvelope('Title', 'Body', 'info', null, []),
         );
 
-        $this->assertTrue($result->delivered());
-        $this->assertSame(PushDeliveryResult::DELIVERED, $result->status);
+        $this->assertFalse($result->delivered());
+        $this->assertSame(PushDeliveryResult::TEMPORARY_FAILURE, $result->status);
+        $this->assertSame('provider_not_configured', $result->code);
     }
 
     public function test_delivery_result_has_stable_failure_taxonomy(): void
