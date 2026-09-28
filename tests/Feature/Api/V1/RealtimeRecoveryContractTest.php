@@ -74,18 +74,33 @@ class RealtimeRecoveryContractTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_broadcast_payload_has_stable_event_identity_and_recovery_metadata(): void
+    public function test_broadcast_payload_has_stable_event_identity_and_committed_recovery_cursor(): void
     {
+        $user = $this->member('broadcast');
         $notification = new GenericNotification('Title', 'Body', '/home', 'info');
-        $notification->id = '11111111-1111-4111-8111-111111111111';
+        $user->notifyNow($notification, ['database']);
 
-        $payload = $notification->toBroadcast($this->member('broadcast'))->data;
+        $this->assertNotEmpty($notification->id);
+        $payload = $notification->toBroadcast($user)->data;
 
-        $this->assertSame('11111111-1111-4111-8111-111111111111', $payload['event_id']);
+        $this->assertSame((string) $notification->id, $payload['event_id']);
         $this->assertSame('notifications', $payload['stream']);
         $this->assertSame('notification.created', $payload['event_type']);
         $this->assertNotEmpty($payload['occurred_at']);
         $this->assertNotEmpty($payload['cursor']);
+    }
+
+    public function test_broadcast_before_database_commit_remains_recoverable_without_inventing_cursor(): void
+    {
+        $user = $this->member('broadcast-before-commit');
+        $notification = new GenericNotification('Title', 'Body', '/home', 'info');
+        $notification->id = '11111111-1111-4111-8111-111111111111';
+
+        $payload = $notification->toBroadcast($user)->data;
+
+        $this->assertSame('11111111-1111-4111-8111-111111111111', $payload['event_id']);
+        $this->assertNull($payload['cursor']);
+        $this->assertSame('notifications', $payload['stream']);
     }
 
     private function member(string $suffix): User
