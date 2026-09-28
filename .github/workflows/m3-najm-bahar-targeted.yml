@@ -17,6 +17,7 @@ on:
       - 'tests/Feature/NajmBahar/**'
       - 'tests/Feature/Reputation/**'
       - 'tests/Feature/TransactionServiceTest.php'
+      - 'tests/Feature/ScheduledTransactionTest.php'
       - 'tests/Unit/NajmBahar/**'
       - 'tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php'
       - '.github/workflows/m3-najm-bahar-targeted.yml'
@@ -89,3 +90,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharActivationContractTest.php tests/Feature/NajmBahar/MonetaryServiceTest.php tests/Feature/Reputation/ParticipationConversionLedgerContractTest.php tests/Feature/Reputation/ParticipationConversionAtomicIdentityTest.php tests/Feature/Reputation/ParticipationSummaryBoundaryContractTest.php tests/Feature/Reputation/ParticipationConversionUiIdempotencyContractTest.php tests/Feature/Reputation/ParticipationConversionInfoTransparencyContractTest.php
       - name: Run M3 membership fee contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMembershipFeeContractTest.php tests/Feature/NajmBahar/MembershipFeePaymentTest.php tests/Feature/NajmBahar/MembershipFeePolicyIntegrityTest.php tests/Feature/NajmBahar/TreasuryServiceTest.php
+      - name: Run M3 scheduled operation contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharScheduledOperationContractTest.php tests/Feature/NajmBahar/ScheduledSubAccountTransferExecutorTest.php tests/Feature/NajmBahar/NajmBaharSchedulerContractTest.php tests/Feature/ScheduledTransactionTest.php
