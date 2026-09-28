@@ -18,6 +18,7 @@ on:
       - 'routes/api-v1.php'
       - 'tests/Unit/Actors/**'
       - 'tests/Unit/NajmBahar/ProjectServiceTest.php'
+      - 'tests/Unit/NajmBahar/InvestmentServiceTest.php'
       - 'tests/Feature/Actors/**'
       - 'tests/Feature/Admin/GroupRoleManagementTest.php'
       - 'tests/Feature/Api/V1/ActorContractTest.php'
@@ -30,7 +31,6 @@ on:
       - 'tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php'
       - 'tests/Feature/Api/V1/NajmBaharAccountContractTest.php'
       - 'tests/Feature/Api/V1/NajmBaharTransactionContractTest.php'
-      - 'tests/Feature/NajmBahar/InvestmentControllerTest.php'
       - 'tests/Feature/NajmBahar/ProjectOwnerNotificationTest.php'
       - 'tests/Feature/Secretariat/SecretariatS5AuthorizationTest.php'
       - 'tests/Feature/Secretariat/SecretariatS6RetrievalTest.php'
@@ -110,5 +110,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ActorProjectMobileJourneyTest.php
       - name: Run M2 Hoda authority regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmHodaAuthorityContractTest.php tests/Feature/NajmHoda/PageContextResolverTest.php
-      - name: Run M3 personal Bahar and investment regressions
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php tests/Feature/Api/V1/NajmBaharAccountContractTest.php tests/Feature/Api/V1/NajmBaharTransactionContractTest.php tests/Feature/NajmBahar/InvestmentControllerTest.php
+      - name: Run M3 personal Bahar and investment service regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php tests/Feature/Api/V1/NajmBaharAccountContractTest.php tests/Feature/Api/V1/NajmBaharTransactionContractTest.php tests/Unit/NajmBahar/InvestmentServiceTest.php
