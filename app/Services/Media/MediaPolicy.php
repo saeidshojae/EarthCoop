@@ -40,14 +40,19 @@ class MediaPolicy
             throw ValidationException::withMessages(['file' => ['Uploaded file is invalid.']]);
         }
 
-        $mime = strtolower((string) $file->getClientMimeType());
-        if (! in_array($mime, $policy['mimes'], true)) {
+        $detectedMime = strtolower((string) $file->getMimeType());
+        if (! in_array($detectedMime, $policy['mimes'], true)) {
             throw ValidationException::withMessages(['file' => ['Unsupported media MIME type.']]);
         }
 
+        $clientMime = strtolower((string) $file->getClientMimeType());
+        if ($clientMime !== '' && $clientMime !== 'application/octet-stream' && $clientMime !== $detectedMime) {
+            throw ValidationException::withMessages(['file' => ['Declared MIME type does not match file content.']]);
+        }
+
         $extension = strtolower((string) $file->getClientOriginalExtension());
-        if (! in_array($extension, self::EXTENSIONS[$mime] ?? [], true)) {
-            throw ValidationException::withMessages(['file' => ['File extension does not match its declared MIME type.']]);
+        if (! in_array($extension, self::EXTENSIONS[$detectedMime] ?? [], true)) {
+            throw ValidationException::withMessages(['file' => ['File extension does not match file content.']]);
         }
 
         if ((int) $file->getSize() > $policy['max_bytes']) {
