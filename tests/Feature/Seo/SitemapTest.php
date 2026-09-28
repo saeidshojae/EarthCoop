@@ -34,10 +34,10 @@ class SitemapTest extends TestCase
     {
         $publishedPage = $this->page('public-page', true);
         $this->page('private-page', false);
-        $publishedPost = $this->post('public-post');
-        $this->post('draft-post', ['status' => 'draft']);
-        $this->post('future-post', ['published_at' => now()->addDay()]);
-        $deletedPost = $this->post('deleted-post');
+        $publishedPost = $this->createPost('public-post');
+        $this->createPost('draft-post', ['status' => 'draft']);
+        $this->createPost('future-post', ['published_at' => now()->addDay()]);
+        $deletedPost = $this->createPost('deleted-post');
         $deletedPost->delete();
 
         $content = $this->get('/sitemap.xml')->assertOk()->getContent();
@@ -95,7 +95,7 @@ class SitemapTest extends TestCase
         ]);
     }
 
-    private function post(string $slug, array $attributes = []): Post
+    private function createPost(string $slug, array $attributes = []): Post
     {
         $category = BlogCategory::query()->firstOrCreate(
             ['slug' => 'sitemap'],
