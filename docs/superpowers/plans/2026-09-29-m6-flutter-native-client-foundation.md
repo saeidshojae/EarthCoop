@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-29-m6-flutter-native-client-foundation-design.md` plus normative clarifications in `docs/superpowers/specs/2026-09-29-m6-flutter-native-client-foundation-clarifications.md`.
 
+**Plan self-review supplement:** `docs/superpowers/plans/2026-09-29-m6-flutter-native-client-foundation-review-clarifications.md` is normative where it is more specific, including FCM auth, Huawei Push Kit V3 server delivery, base-URL/environment rules, and accessibility coverage.
+
 ## Global Constraints
 
 - Flutter is the official production Native client path; do not create NativePHP scaffolding or compatibility work.
@@ -73,6 +75,7 @@
 - `app/Services/Push/HmsPushDeliveryGateway.php` — Huawei Push Kit server adapter.
 - `app/Services/Push/FcmAccessTokenProvider.php` — short-lived OAuth2 access token source from deployment credentials.
 - `app/Services/Push/HmsAccessTokenProvider.php` — Huawei server-auth/JWT access boundary according to current official API contract.
+- `composer.json` / `composer.lock` — only if the self-review-required Google Auth backend dependency is added in Task 11.
 - `config/services.php` — provider endpoints/project IDs/credential-path references only; no secrets committed.
 - Existing push tests plus new provider-adapter tests.
 
@@ -145,11 +148,11 @@ Commit message: `feat(mobile): scaffold Flutter client foundation`
 - Consumes: Dio; M0 `/api/v1` envelope/request-id/idempotency semantics.
 - Produces: `ApiClient`, `ApiResult<T>`, `ApiFailure`, `RequestContext`, `RetryPolicy`, `DiagnosticsSink`.
 
-- [ ] **Step 1: Write failing transport tests** covering success/error envelope decoding, `X-Request-ID`, bearer attachment hook, same idempotency key on mutation retry, `Retry-After`, `retryable=false`, malformed envelope, and redaction of Authorization/push token/password fields.
+- [ ] **Step 1: Write failing transport tests** covering success/error envelope decoding, `X-Request-ID`, bearer attachment hook, same idempotency key on mutation retry, `Retry-After`, `retryable=false`, malformed envelope, environment/base-URL selection, localhost rejection for production configuration, and redaction of Authorization/push token/password fields.
 
 - [ ] **Step 2: Run only these tests and confirm expected RED due missing transport types.**
 
-- [ ] **Step 3: Implement `ApiClient` as the only feature-facing HTTP boundary.** Features receive typed request methods; no feature may access raw Dio directly.
+- [ ] **Step 3: Implement `ApiClient` as the only feature-facing HTTP boundary.** Features receive typed request methods; no feature may access raw Dio directly. Add typed `AppEnvironment`/base-URL configuration per the plan review supplement.
 
 - [ ] **Step 4: Implement bounded read retry with jitter and mutation replay rules that never synthesize a new idempotency key.**
 
@@ -246,7 +249,7 @@ Commit message: `feat(mobile): add secure native session lifecycle`
 - Consumes: M5 typed link `{version, route, params, fallback_url}`.
 - Produces: `SemanticLink`, `DeepLinkRegistry.resolve()`, authenticated `GoRouter`, Material 3 light/dark themes and Persian locale.
 
-- [ ] **Step 1: Write failing tests** for allowlisted `group.detail`, missing/invalid params, unknown route, arbitrary URL rejection, auth-required destination, safe fallback behavior, RTL directionality and theme switching.
+- [ ] **Step 1: Write failing tests** for allowlisted `group.detail`, missing/invalid params, unknown route, arbitrary URL rejection, auth-required destination, safe fallback behavior, RTL directionality, theme switching, large text scaling without clipping primary controls, and semantic labels for primary M6 interactions.
 
 - [ ] **Step 2: Verify RED.**
 
@@ -254,7 +257,7 @@ Commit message: `feat(mobile): add secure native session lifecycle`
 
 - [ ] **Step 4: Implement app router guards using bootstrap + session state; deep links must route only after normal authorization/read flow is possible.**
 
-- [ ] **Step 5: Implement Persian localization and Material 3 light/dark themes.**
+- [ ] **Step 5: Implement Persian localization and Material 3 light/dark themes with accessibility-safe primary controls.**
 
 - [ ] **Step 6: Run task tests and confirm GREEN.**
 
@@ -427,6 +430,7 @@ Commit message: `feat(push): support Huawei delivery registrations`
 - Create: `app/Services/Push/HmsAccessTokenProvider.php`
 - Modify: `app/Providers/PushServiceProvider.php`
 - Modify: `config/services.php`
+- Modify: `composer.json` and `composer.lock` only for the mature Google Auth dependency required by the review supplement.
 - Test: `tests/Unit/Services/Push/CompositePushDeliveryGatewayTest.php`
 - Test: `tests/Unit/Services/Push/FcmHttpV1PushDeliveryGatewayTest.php`
 - Test: `tests/Unit/Services/Push/HmsPushDeliveryGatewayTest.php`
@@ -442,9 +446,9 @@ Commit message: `feat(push): support Huawei delivery registrations`
 
 - [ ] **Step 3: Implement composite dispatcher.** Existing null/fake gateway remains available only for test/local non-provider environments; production binding selects configured real composite gateway.
 
-- [ ] **Step 4: Implement FCM HTTP v1 adapter.** Send to `https://fcm.googleapis.com/v1/projects/{project_id}/messages:send` using a short-lived OAuth2 bearer token with Firebase Messaging scope. Service account credentials are referenced via deployment secret/file path, never committed.
+- [ ] **Step 4: Add/use mature Google Auth infrastructure rather than handwritten JWT/OAuth, and implement FCM HTTP v1 adapter** for `POST https://fcm.googleapis.com/v1/projects/{project_id}/messages:send` using a short-lived token scoped for Firebase Messaging. Service-account credentials are referenced via deployment secret/file path, never committed.
 
-- [ ] **Step 5: Implement HMS server adapter against the current official Huawei Push Kit server API selected for ordinary app notifications, with authorization isolated in `HmsAccessTokenProvider`.** Pin endpoint/auth behavior in tests so future Huawei API changes are explicit maintenance work.
+- [ ] **Step 5: Implement HMS V3 server adapter** for `POST https://push-api.cloud.huawei.com/v3/{projectId}/messages:send` using the current Huawei service-account/JWT Bearer contract defined in the review supplement. Do not use legacy V1/V2 endpoints silently.
 
 - [ ] **Step 6: Normalize provider responses into existing `PushDeliveryResult`; invalid registration disables push only, not auth session.**
 
