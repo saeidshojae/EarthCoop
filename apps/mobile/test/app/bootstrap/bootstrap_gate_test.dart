@@ -23,7 +23,8 @@ void main() {
     );
 
     expect(find.byKey(const Key('ready-shell')), findsOneWidget);
-    expect(find.byKey(const Key('bootstrap-update-recommended')), findsOneWidget);
+    expect(
+        find.byKey(const Key('bootstrap-update-recommended')), findsOneWidget);
   });
 
   testWidgets('required update blocks the ready shell', (tester) async {
