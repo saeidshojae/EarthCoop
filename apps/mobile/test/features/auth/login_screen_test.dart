@@ -58,7 +58,8 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is Text && (widget.data?.contains('wrong-password') ?? false),
+            widget is Text &&
+            (widget.data?.contains('wrong-password') ?? false),
       ),
       findsNothing,
     );
