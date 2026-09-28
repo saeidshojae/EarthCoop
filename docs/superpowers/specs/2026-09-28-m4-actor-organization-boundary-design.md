@@ -3,165 +3,144 @@
 **Date:** 2026-09-28  
 **Baseline:** `main@c19e118d85bb04c106af0a2f91b0811f1aacef74`  
 **Scope:** Stable actor/ownership boundary for API v1 and shared application services.  
-**Status:** Design approved in conversation; pending written-spec review before implementation planning.
+**Status:** Written spec ready for user review before implementation planning.
 
 ## 1. Purpose
 
 M4 freezes the minimum actor and ownership contract needed before Native Mobile so future Organization, Company, Shop and Marketplace work can be added without breaking the mobile API or duplicating authority rules.
 
-M4 is **not** a Company implementation, Marketplace implementation, legal-entity registry, or Najm Bahar account-schema redesign. It creates a stable application boundary over concepts EarthCoop already partially supports: users, groups, group-owned projects/investments, legal-entity-style group accounts, Secretariat parties, and trusted system operations.
+M4 is not a Company implementation, Marketplace implementation, legal-entity registry, or Najm Bahar account-schema redesign. It creates a stable application boundary over concepts EarthCoop already partially supports: users, groups, group-owned projects/investments, legal-entity-style group accounts, Secretariat parties, and trusted system operations.
 
-The target rule is:
+Target flow:
 
 ```text
 Authenticated principal
-        │
-        ▼
+        ↓
 Requested/derived actor
-        │
-        ▼
+        ↓
 Actor resolution + representation authorization
-        │
-        ▼
+        ↓
 Resource policy + domain invariant
-        │
-        ▼
+        ↓
 Application command/query
 ```
 
-The client may identify the actor it wants to act for only on operations that support multi-actor ownership. The server always resolves and authorizes that actor. Client input never creates authority.
+A client may identify an actor only on operations that explicitly support multi-actor semantics. The server always resolves and authorizes that actor. Client input never creates authority.
 
-## 2. Why M4 is needed now
+## 2. Repository findings at baseline
 
-The repository already contains polymorphic ownership, but transport and policies are inconsistent.
-
-### 2.1 Project and investment models are already multi-owner
+### 2.1 Persistence already supports multi-owner Projects and Investments
 
 `NajmBahar\Models\Project` stores `owner_type` / `owner_id` and uses `morphTo()`.
 
 `NajmBahar\Models\Investment` stores `investor_type` / `investor_id` and uses `morphTo()`.
 
-`Group` exposes polymorphic project and investment relations.
+`Group` already exposes polymorphic Project and Investment relations. A canonical regression test already creates a Group-owned Project through `ProjectService`.
 
-This is a strong foundation and must be adapted rather than replaced.
+This foundation is retained.
 
 ### 2.2 API v1 still hard-codes user ownership
 
-The current Project API:
+Current Project API v1:
 
 - lists only `owner_type = User::class` + authenticated `user_id`;
 - creates only through `ProjectApplicationService::createForUser()`;
-- relies on `ProjectPolicy` rules that explicitly compare `owner_type` to `User::class`.
+- relies on `ProjectPolicy` checks that explicitly compare `owner_type` with `User::class`.
 
-This means the persistence model is more capable than the stable mobile contract.
+Therefore persistence is more capable than the stable mobile contract.
 
-### 2.3 Authorization repeats user-only ownership assumptions
+### 2.3 Ownership assumptions are repeated across domains
 
-Direct `User::class` ownership checks also exist in places such as:
+Direct user-only ownership checks also appear in Project/Investment policy and some Secretariat/Hoda/project paths.
 
-- `ProjectPolicy`;
-- `InvestmentPolicy`;
-- Secretariat project-office ownership checks;
-- some Najm Hoda project-context projections;
-- legacy/web Najm Bahar project/account paths.
+M4 centralizes only the actor identity and owner-representation semantics required for stable boundaries. It does not authorize a broad authorization rewrite.
 
-M4 must centralize only the ownership/representation predicate required for stable boundaries. It must not perform unrelated refactors.
+### 2.4 Najm Bahar already anticipates legal entities, but its account persistence is not ready to freeze
 
-### 2.4 Najm Bahar already has a legal-entity concept, but its persistence is not ready to be generalized
+`Account.type` already includes `legal_entity`, and `AccountService::ensureLegalEntityAccountForGroup()` provisions a Group account using account-number conventions and `meta.group_id`.
 
-`Account.type` already recognizes `legal_entity`, and `AccountService::ensureLegalEntityAccountForGroup()` provisions group economic accounts using `meta.group_id`. Existing financial services recognize `user`, `legal_entity`, and `system` account types.
+However, account persistence remains partly user-centric, while the economic reference document is still being finalized and may change future Company/Organization/account rules.
 
-However, the main account schema still has a user-centric `user_id`, while group legal-entity identity is carried through account number conventions and metadata. The economic reference document is still being reconciled and may change future Company/Organization/account rules.
+M4 therefore does not normalize or migrate Najm Bahar account ownership. Actor identity becomes an anti-corruption boundary so later account persistence can change without changing the public actor contract.
 
-Therefore M4 must **not** normalize or migrate Najm Bahar account ownership. It provides an actor adapter boundary so that a later economic reconciliation can change account persistence without breaking API actor identity.
+### 2.5 Secretariat already distinguishes documentary parties from authenticated users
 
-### 2.5 Secretariat already distinguishes parties from authenticated users
+Secretariat parties may represent users, groups or external organization snapshots, and Secretariat office types already anticipate `legal_entity`.
 
-Secretariat parties can represent users, groups, external organizations and snapshots. Secretariat office types already anticipate `legal_entity` and other future scopes.
+This confirms the need to keep three concepts separate:
 
-This reinforces the architectural need to distinguish:
-
-- who authenticated;
-- whom an action represents;
-- who owns or scopes a resource.
+- authenticated principal;
+- represented actor;
+- resource owner/scope.
 
 ## 3. Goals
 
 M4 must:
 
-1. define one public, model-independent actor reference contract;
-2. distinguish authenticated principal from represented actor;
-3. support user, group and trusted-system actors now;
-4. reserve an organization actor type without inventing a fake organization domain;
+1. define one model-independent ActorReference contract;
+2. distinguish principal from actor;
+3. support user and group actors publicly, and trusted system actor internally;
+4. reserve organization as a stable future actor type without inventing a fake Organization domain;
 5. enforce representation authority server-side and fail closed;
-6. prevent Laravel model class names from becoming public API identity;
-7. make Project the first stable API consumer of actor-aware ownership;
-8. provide reusable ownership predicates for Project/Investment/Secretariat integration where appropriate;
-9. preserve existing user-only behavior by default;
+6. keep Laravel model class names out of API identity;
+7. make Project the first stable actor-aware API consumer;
+8. provide one reusable owner-representation boundary for Project and semantically equivalent non-economic checks;
+9. preserve current personal behavior by default;
 10. keep M1–M3 contracts backward compatible;
-11. remain compatible with future economic-document changes by avoiding premature financial/schema commitments.
+11. avoid freezing economic rules that may change after the economic reference reconciliation.
 
-## 4. Explicit non-goals
+## 4. Non-goals
 
-M4 does **not**:
+M4 does not:
 
-- create a Company model or registration workflow;
-- create a Shop model or Marketplace subsystem;
-- define legal incorporation, beneficial ownership, licenses, tax identity, directors, employees or commercial roles;
-- define organization membership or organization governance;
+- create Company, Organization or Shop models;
+- create Marketplace/catalog/order/fulfillment flows;
+- define incorporation, directors, employees, commercial roles, tax identity or organization governance;
 - migrate `najm_accounts` ownership columns;
-- expose group/legal-entity Najm Bahar accounts through the M3 personal wallet API;
-- change monetary policy, activation, fees, investment economics, idle tax, loans, auction semantics or payment providers;
+- expose Group/Organization wallets through the M3 personal Najm Bahar API;
+- change monetary policy, activation, membership fees, investment economics, idle tax, loans, auction rules or payment providers;
 - change election eligibility, voting identity, delegation or responsibility rules;
 - make every API endpoint actor-selectable;
-- allow global administrators to impersonate groups merely because they are administrators;
+- let administrators impersonate Groups merely because they are administrators;
 - expose a public system-actor selector;
+- broaden Investment authorization before the economic reference reconciliation;
 - retire legacy polymorphic columns, legacy web controllers or rollback scaffolding.
 
 ## 5. Core terminology
 
 ### 5.1 Principal
 
-The **principal** is the real authenticated user/session that made the request.
+The principal is the real authenticated user/session that made the request.
 
-For Native API v1 this is the user resolved from the valid bearer token and device session established in M1.
+For Native API v1, the principal is resolved from the M1 bearer token + device session.
 
-Principal identity is never replaced by actor identity. Audit records must preserve the principal even when the principal acts for a group.
+Principal identity is never replaced by actor identity. Audit/evidence must preserve the principal even when the action is performed for a Group.
 
 ### 5.2 Actor
 
-The **actor** is the identity on whose behalf a multi-actor operation is performed.
+The actor is the identity on whose behalf an actor-aware operation is performed.
 
 Examples:
 
-- Saeed creates a personal project: principal = Saeed, actor = Saeed/user.
-- An elected group manager creates a group project: principal = that manager, actor = the group.
-- A trusted scheduler performs a system operation: actor = EarthCoop system; there is no client-granted system authority.
+- personal Project: principal = user, actor = same user;
+- Group Project: principal = elected/authorized Group Manager, actor = Group;
+- trusted scheduler/system action: actor = EarthCoop system through a trusted server path.
 
 ### 5.3 Resource owner
 
-The **resource owner** is the actor identity persisted or derived as owner of a resource.
+The resource owner is the actor identity persisted or derived as owner of a resource.
 
-Actor and resource owner are often equal during creation, but they are separate concepts. A principal may view/manage a resource owned by another actor only if resource authorization permits it.
+Actor and owner are often equal during creation, but authorization remains separate: a principal may act for an owner only if representation and resource policy both allow it.
 
 ### 5.4 Scope
 
-GovernanceArea, Location and similar topology objects are **scope**, not principals and not independently acting legal identities in M4.
+GovernanceArea, Location and similar topology objects are scope, not acting identities in M4.
 
-A group may carry governance scope context, but the group is the actor because authority and roles are attached to Group membership/election state.
+Group is the acting identity because representation roles and responsibility live on Group membership/election state. GovernanceArea may be projected as Group context but cannot grant authority.
 
 ## 6. Stable actor types
 
-M4 freezes these public type identifiers:
-
-```text
-user
- group
- organization
- system
-```
-
-Whitespace above is illustrative only; actual enum values are exactly:
+Public actor-type strings are exactly:
 
 - `user`
 - `group`
@@ -172,43 +151,34 @@ Whitespace above is illustrative only; actual enum values are exactly:
 
 Backed by `App\Models\User`.
 
-Public requests may resolve only the authenticated principal's own user actor. A client cannot act as another user by supplying another ID.
+For public requests, a principal may resolve/represent only their own user actor. Another user's ID never becomes authority.
 
-System identities stored in `users` are not converted into public user actors.
+`users.is_system` identities are not public user actors.
 
 ### 6.2 Group actor
 
 Backed by `App\Models\Group`.
 
-A Group may represent a public/governance group, professional/sector group, age/gender group, or other existing group domain. M4 does not create a separate `governance` actor type.
+M4 does not introduce a separate `governance` actor. Public, professional/sector, age/gender and other existing Group kinds share the same stable actor identity. Operation-specific domain policy may later restrict which Group kinds may perform a specific economic action without changing ActorReference.
 
-Where useful, actor projections may include non-authoritative context such as:
-
-- group name;
-- governance area ID;
-- dimension keys;
-- the principal's representation role.
-
-That context never grants authority by itself.
+A Group projection may include non-authoritative context such as name, governance area and dimension keys. Context never grants authority.
 
 ### 6.3 Organization actor
 
-`organization` is a **reserved stable contract type**.
+`organization` is a reserved stable type.
 
 At M4 launch there is no authoritative Organization source domain. Therefore:
 
-- public organization actor resolution fails closed;
-- organization actors are not returned from actor discovery;
-- no Organization row/table is created merely to satisfy M4;
-- no Company/Shop is modeled as a Group by convention.
+- public organization resolution returns `actor_not_supported`;
+- organization actors do not appear in actor discovery;
+- no placeholder Organization table/model is created;
+- Company/Shop is not modeled as Group merely for M4.
 
-A later Organization/Company subsystem may register a provider behind the same actor contract without changing API actor shape.
+A future Organization/Company subsystem may register a resolver/provider behind the same ActorReference shape.
 
 ### 6.4 System actor
 
-The system actor represents trusted EarthCoop application/system authority.
-
-Canonical internal/public reference identity is:
+Canonical system reference:
 
 ```json
 {
@@ -217,13 +187,11 @@ Canonical internal/public reference identity is:
 }
 ```
 
-Public clients cannot select or mint this actor. It is resolved only through trusted server paths explicitly marked as system operations.
+Public/native requests cannot select or mint this actor. It exists only for explicit trusted server operations.
 
-System actor support does not turn `users.is_system` rows into public authenticated actors.
+## 7. ActorReference contract
 
-## 7. Public ActorReference contract
-
-The minimum stable actor reference is:
+Minimum stable JSON shape:
 
 ```json
 {
@@ -234,14 +202,14 @@ The minimum stable actor reference is:
 
 Rules:
 
-- `type` is one of the stable actor-type strings;
+- `type` is one of the four stable strings;
 - `id` is always serialized as an opaque string;
-- clients must not infer database table, numeric type or Laravel class from `id`;
-- Laravel FQCNs such as `App\\Models\\User` and `App\\Models\\Group` never appear as actor identity in `/api/v1`;
-- unknown fields may be added additively inside v1;
-- actor equality is `(type, id)`, not display name.
+- actor equality is `(type, id)`;
+- clients must not infer table, numeric type or Laravel class from `id`;
+- Laravel FQCNs never appear as actor identity in `/api/v1`;
+- additive optional fields are allowed inside v1.
 
-A richer projection may be returned by discovery endpoints:
+Actor discovery may return a richer projection:
 
 ```json
 {
@@ -257,148 +225,136 @@ A richer projection may be returned by discovery endpoints:
 }
 ```
 
-`display_name`, `context`, and `permissions` are informative projections. Authorization is re-evaluated on every protected operation.
+These additional fields are informative only. Protected operations always reauthorize representation from current server state.
 
-## 8. Internal architecture
+## 8. Internal application boundary
 
-M4 introduces an application-layer actor package/boundary. Exact PHP filenames may be refined during implementation planning, but responsibilities are fixed.
+M4 introduces focused application-layer responsibilities. Exact PHP filenames are selected in the implementation plan, but these contracts are fixed.
 
 ### 8.1 ActorType
 
-A closed enum/value set for:
-
-- user;
-- group;
-- organization;
-- system.
+Closed enum/value set for user, group, organization and system.
 
 ### 8.2 ActorReference
 
-An immutable value object containing:
-
-- actor type;
-- opaque ID string.
-
-It contains no authorization by itself.
+Immutable value object containing actor type + opaque ID string. It contains no authorization.
 
 ### 8.3 ActorResolver
 
 Responsibilities:
 
-- convert supported existing domain models into `ActorReference`;
-- resolve an `ActorReference` to an internal supported actor target;
-- map legacy polymorphic model class + ID to public actor type + ID;
-- reject unsupported/unknown/disabled actor types fail-closed;
-- hide persistence class names from transport.
+- convert supported domain models to ActorReference;
+- resolve ActorReference to supported internal target;
+- map legacy polymorphic model class + ID to public actor identity;
+- fail closed on unsupported/unknown actor types;
+- prevent persistence class names from leaking into transport.
 
-M4 model mappings:
+M4 mappings:
 
 ```text
 User::class  <-> user:<id>
 Group::class <-> group:<id>
 trusted system marker <-> system:earthcoop
-organization:* -> unresolved until source domain exists
+organization:* -> unsupported until a real source domain exists
 ```
 
 ### 8.4 ActorRepresentationAuthorizationService
 
 Responsibilities:
 
-- answer whether a principal may represent a requested actor for a supported operation;
+- determine whether a principal may represent a requested actor for the requested actor-aware operation;
 - keep representation separate from resource policy;
-- preserve explicit denial reasons internally for audit/tests while returning stable safe API errors.
+- expose stable safe failure semantics while retaining useful internal denial evidence.
 
-It is not a replacement for Laravel Policies. It is an earlier boundary.
+It is not a replacement for Laravel Policies.
 
-Authorization flow:
+Authorization order:
 
 ```text
-principal authenticated
-  -> requested actor parses
-  -> actor exists/resolves
-  -> principal may represent actor
-  -> resource policy/domain rule
-  -> command
+principal authentication
+  -> ActorReference validation/resolution
+  -> representation authorization
+  -> resource policy/domain permission
+  -> business invariant
+  -> command/query
 ```
 
-## 9. Representation authorization rules
+## 9. Representation rules
 
 ### 9.1 User
 
-A principal may represent `user:<id>` only when `<id>` is that principal's own ID.
+A principal may represent `user:<id>` only when `<id>` is their own user ID.
 
-No administrator exception.
+There is no administrator exception.
 
 ### 9.2 Group
 
-At M4 launch, a principal may represent a Group for owner-level economic/project actions only when all of the following are true:
+For M4 launch owner-level Project representation, all conditions must hold:
 
-- an active non-expired group membership exists;
-- the effective group role is Manager (`3`);
-- the principal is a real non-system user;
-- the domain operation supports group actors.
+- active, non-expired Group membership exists;
+- canonical/effective current role is Manager (`3`);
+- principal is a real non-system user;
+- the requested operation supports Group actors.
 
-Inspector (`2`), Active (`1`), Observer (`0`), Guest (`4`) and Temporary Active (`5`) do not gain owner-level group representation authority merely from those roles.
+Inspector (`2`), Active (`1`), Observer (`0`), Guest (`4`) and Temporary Active (`5`) do not gain owner-level Group representation authority from those roles.
 
-Representation must use the canonical group-membership/effective-role source. It must not implement a second stale copy of role-expiry logic.
+The service must reuse the canonical current membership/effective-role source, including existing expiry/temporary-role reconciliation. It must not copy stale membership logic into a new subsystem.
 
-Global `is_admin` / `super-admin` authority is **not** representation authority. Administrative review powers remain separate. If an administrator must later perform an explicit audited proxy action, that requires a separate operator/proxy design, not silent group impersonation.
+Global `is_admin` / `super-admin` power is not representation authority. Administrative review remains separate from acting in the Group's name.
 
 ### 9.3 Organization
 
-Denied at M4 launch because no authoritative source-domain membership/representation policy exists.
+Denied at M4 launch because no authoritative organization representation domain exists.
 
 ### 9.4 System
 
-Denied for all public/native requests. Only trusted internal server code may construct/resolve system authority through an explicit trusted path.
+Denied on all public/native requests. Only trusted server code may construct/use system authority through an explicit trusted path.
 
 ## 10. Actor discovery API
 
-M4 adds an authenticated read-only API such as:
+M4 adds exactly:
 
 ```text
 GET /api/v1/actors
 ```
 
-The endpoint returns actor identities the current principal may currently represent for launch-scope actor-aware actions.
+It is authenticated by the existing M1 native/session boundary.
 
-Minimum result:
+It returns:
 
 - the principal's own user actor;
-- manager-authorized group actors.
+- Group actors the principal may currently represent under M4 rules.
 
-It must not return:
+It does not return:
 
 - system actor;
-- unresolved organization actors;
-- groups where the user is only inspector/active/observer/guest/temporary-active;
-- arbitrary actors discoverable by guessed IDs.
+- organization actors;
+- Groups where the principal lacks Manager representation authority;
+- unrelated actors by guessed ID.
 
-The endpoint is a convenience/discovery projection, not a capability token. Every later mutation reauthorizes representation.
+Discovery is not a capability token. Every actor-aware mutation/read rechecks current authorization. M4 does not persist a global selected actor in session/device state.
 
-No actor selection is persisted as global session state in M4.
+## 11. No global act-as header
 
-## 11. No global actor header
-
-M4 deliberately does **not** introduce a global `X-Actor-ID`, `X-Act-As`, or similar header applied to all API requests.
+M4 does not add `X-Actor-ID`, `X-Act-As` or equivalent global actor state.
 
 Reasons:
 
-1. many EarthCoop actions are constitutionally personal, including voting and personal wallet operations;
-2. a global actor header would make accidental privilege propagation more likely;
-3. it would force unrelated endpoints to reason about actors unnecessarily;
-4. operation-specific actor input is clearer and safer;
-5. future Company/Shop actions may require domain-specific representation constraints.
+- voting and other constitutional actions remain personal;
+- M3 personal wallet operations remain personal;
+- global actor context creates privilege-confusion risk;
+- future Company/Shop operations may have different representation rules;
+- operation-specific actor input is explicit and auditable.
 
-Actor input is accepted only by endpoints that explicitly support multi-actor semantics.
+Only endpoints that explicitly support multi-actor semantics accept actor input.
 
-## 12. Project as the first stable actor-aware API consumer
+## 12. Project: first stable actor-aware consumer
 
-Project is the correct first consumer because its persistence already supports User and Group polymorphic owners while API v1 currently supports only User ownership.
+Project is the first consumer because persistence already supports User/Group ownership while API v1 is currently user-only.
 
-### 12.1 Project serialization
+### 12.1 Response
 
-Project responses add an additive stable field:
+Every Project v1 serialization adds:
 
 ```json
 {
@@ -409,232 +365,218 @@ Project responses add an additive stable field:
 }
 ```
 
-Existing fields are not removed or renamed.
+Existing response fields remain. Raw `owner_type` class names are not exposed.
 
-The response must not expose `owner_type` Laravel class names.
+### 12.2 Create
 
-### 12.2 Project creation
+Existing create requests remain valid.
 
-Existing request bodies remain valid.
-
-If `owner_actor` is omitted:
-
-```text
-owner_actor = authenticated principal's user actor
-```
-
-This preserves the current M1 mobile journey without client changes.
+If `owner_actor` is omitted, owner actor is the authenticated principal's user actor.
 
 If `owner_actor` is supplied:
 
-1. validate ActorReference shape;
-2. resolve actor;
+1. validate ActorReference;
+2. resolve it;
 3. authorize principal representation;
-4. call a generalized Project application command/service;
-5. persist through the existing polymorphic owner relation.
+4. invoke generalized Project application creation;
+5. persist through existing polymorphic ownership.
 
-For M4 launch, supported public project owners are:
+Public M4 Project owners supported at launch:
 
-- authenticated user actor;
-- authorized group actor.
+- authenticated user's own actor;
+- authorized Group actor.
 
-Organization and system project creation through the public API are rejected.
+`organization` and `system` Project creation through the public API are rejected.
 
-### 12.3 Project application service
+### 12.3 Application service
 
-`createForUser()` must not remain the only stable application boundary.
+`createForUser()` must no longer be the only stable application creation boundary.
 
-Implementation should introduce a generalized actor-aware creation path while preserving `createForUser()` as a compatibility wrapper if existing web/tests benefit from it.
-
-Conceptually:
+The implementation introduces an actor-aware path conceptually equivalent to:
 
 ```text
 createForActor(principal, actorRef, data)
-createForUser(user, data) -> compatibility wrapper to user actor
 ```
 
-The application service must not trust raw actor IDs without resolver/representation authorization.
+`createForUser()` may remain as a compatibility wrapper that converts the User to ActorReference and delegates to the same semantic path.
 
-### 12.4 Project listing
+Raw client IDs must never reach Project creation as trusted ownership authority.
 
-Current behavior with no actor filter remains backward compatible: return the authenticated user's personal projects.
+### 12.4 List
 
-M4 adds an explicit whitelisted actor filter for actor-aware listing. The implementation plan should choose one canonical syntax consistent with M0 filtering conventions; recommended semantic shape:
+Current no-filter behavior is preserved: `GET /api/v1/projects` returns the principal's personal Projects.
+
+Actor-aware listing uses exactly:
 
 ```text
-filter[owner_actor]=group:123
+GET /api/v1/projects?filter[owner_actor]=group:123
 ```
 
-The server parses the reference, reauthorizes representation, then queries the mapped legacy polymorphic owner fields.
+`owner_actor` filter value grammar is exactly `<type>:<id>` where `<type>` is a stable actor type and `<id>` is the opaque actor ID without `:` at M4 launch.
 
-A client cannot list another user's private projects by supplying `user:<other-id>`.
+The server parses the reference, reauthorizes representation, then maps it to legacy polymorphic storage.
 
-### 12.5 Project view/update/submit
+`user:<other-user>` cannot be used to enumerate another user's private Projects.
 
-Resource authorization must become actor-aware without weakening current public-project visibility.
+### 12.5 View/update/submit/delete policy
 
-Owner-level update/submit/delete permissions should ask a centralized owner-representation predicate rather than hard-coding `User::class`.
+Public approved Project visibility remains unchanged.
 
-Status constraints remain unchanged:
+Owner-level update/submit/delete authorization asks the shared owner-representation boundary rather than assuming owner must be `User::class`.
 
-- edit only where existing lifecycle permits;
-- delete only where existing lifecycle permits;
-- submit only where existing lifecycle permits.
+Existing Project lifecycle constraints remain unchanged. M4 changes valid owner representation, not Project lifecycle/economics.
 
-M4 changes **who can validly represent an owner**, not project lifecycle or economics.
+## 13. Shared owner-representation predicate
 
-## 13. Shared ownership predicate
-
-M4 needs one reusable service/predicate for questions such as:
+M4 provides one reusable predicate/service for:
 
 ```text
-Does principal X have owner-level authority for resource owner actor Y?
+Does principal P currently have owner-level authority for ActorReference A?
 ```
 
-This should be used where direct user-only ownership assumptions block existing polymorphic semantics.
+Required launch consumers:
 
-Initial integration targets:
+- Project policy/application/query boundary;
+- Secretariat checks that are explicitly defined as Project-owner authority.
 
-- `ProjectPolicy`;
-- owner-side checks in `InvestmentPolicy`;
-- Secretariat project-office ownership check if it is semantically the same owner predicate;
-- Project API queries/application service.
+The predicate must not replace unrelated domain policies.
 
-The implementation must avoid a broad replacement of all authorization code. Domain-specific permissions remain domain-specific.
+M4 does not use this predicate to broaden Investment mutation authority. Investment behavior remains under existing rules until the economic reference reconciliation.
 
 ## 14. Investment boundary
 
-Investment already has polymorphic investor identity, but broad investment/mobile expansion is not an M4 goal.
+Investment is deliberately conservative in M4 because the economic reference document may change investment and legal-entity rules.
 
-M4 should:
+M4 may use ActorResolver to understand existing polymorphic identity for serialization/internal compatibility, but it does not:
 
-- make shared owner/investor identity conversion use ActorReference where needed;
-- remove only user-only authorization assumptions that conflict with already-supported Group investors/owners;
-- keep investment economics and payment flows unchanged;
-- not add a new public investment API solely for M4.
+- add a public investment API;
+- grant new Group-investor permissions;
+- change Investment payment/cancellation rules;
+- change account-number/account-owner conventions;
+- replace InvestmentPolicy with actor-aware mutation authority.
 
-If existing investment services distinguish User vs Group for account-number lookup, they remain compatibility adapters until the economic reconciliation decides the future account model.
+Existing Investment tests become regressions ensuring M4 does not accidentally alter economics.
+
+A future economic reconciliation may add actor-aware investment commands using the same ActorReference without changing the actor contract.
 
 ## 15. Secretariat boundary
 
-Secretariat must retain its richer party/snapshot model. M4 does not replace `SecretariatParty` with ActorReference.
+Secretariat keeps its richer party/snapshot model. `SecretariatParty` is not replaced by ActorReference.
 
-Instead:
+M4 may use the shared Project-owner predicate only where Secretariat permission is semantically defined as authority of the owner of that Project.
 
-- when a Secretariat permission is truly based on Project owner authority, it may consume the shared ownership predicate;
-- external organization snapshots remain snapshots and do not become live `organization` actors;
-- `legal_entity` office types do not create organization authority without a source domain;
-- current Secretariat confidentiality/ACL rules remain authoritative.
+External organization snapshots remain documentary snapshots; they do not become live `organization` actors. `legal_entity` office type alone never creates organization authority.
 
-This prevents M4 from collapsing documentary-party identity into application authority.
+Existing confidentiality, ACL and correspondence rules remain authoritative.
 
 ## 16. Group/Governance boundary
 
 Group is the M4 actor. GovernanceArea remains scope.
 
-Reasons:
+Rationale:
 
-- representation roles live in Group membership;
-- elections and Manager/Inspector responsibility are connected to Group;
+- representation roles live on Group membership;
+- election/responsibility state is connected to Group;
 - Group already owns Projects/Investments polymorphically;
 - Group already maps to a legal-entity-style Najm Bahar account;
-- introducing a separate GovernanceArea actor would duplicate authority resolution.
+- a parallel GovernanceArea actor would duplicate authority.
 
-Actor discovery may include governance context, but a `governance_area_id` cannot be presented by a client as proof of authority.
+Actor discovery may expose governance context, but `governance_area_id` is never authority.
 
 ## 17. Najm Bahar boundary
 
-M3 personal wallet endpoints remain principal/user scoped.
+M3 personal endpoints remain principal/user-scoped:
 
-M4 must **not** change these launch contracts merely because Group legal-entity accounts exist:
+- personal account/balance;
+- personal transaction history;
+- transfer source authority;
+- participation-point activation;
+- membership fee;
+- scheduled-operation evidence as already contracted.
 
-- `/api/v1/najm-bahar/account` remains the authenticated user's account;
-- personal transaction history remains owner scoped;
-- transfer source resolution remains server-owned;
-- activation remains personal/policy-backed;
-- membership fee remains personal under the existing M3 contract.
+M4 does not expose Group or Organization financial accounts through these routes.
 
-Group/Organization economic accounts may receive a future separate actor-aware API after the economic reference document defines their rules.
-
-The actor abstraction must make that future extension possible without changing the actor identity shape.
+Future economic work may add separate actor-aware financial APIs after the economic reference document defines account ownership and representation rules. ActorReference is designed so that extension is additive.
 
 ## 18. Najm Hoda boundary
 
-Najm Hoda already separates user intent, AI proposal and server authority. M4 must preserve that constitution.
+M4 preserves M2's authority constitution:
 
-If Hoda later proposes an action for a group actor:
+```text
+user intent != AI proposal != server authority
+```
 
-- the authenticated principal remains recorded;
-- proposed actor identity is untrusted until resolved;
+If Hoda later proposes a Group-actor action:
+
+- principal remains recorded;
+- proposed actor is untrusted input until resolved;
 - representation authorization runs server-side;
 - capability/resource authorization still runs;
-- consent requirements still apply;
-- model output cannot mint actor authority.
+- required consent still runs;
+- model output never mints actor authority.
 
-M4 should expose reusable ActorReference/resolver services to Hoda rather than teaching Hoda Laravel class-name ownership conventions.
+Hoda should consume ActorReference/ActorResolver instead of learning Laravel polymorphic class names.
 
-No new Hoda action is required merely to close M4.
+No new Hoda action is required to close M4.
 
 ## 19. Security requirements
 
-M4 must satisfy all of the following.
+### 19.1 Actor input is never authority
 
-### 19.1 No actor spoofing
-
-Client-supplied actor references are identifiers, never authority.
+Client ActorReference only identifies a requested actor.
 
 ### 19.2 No class-name transport
 
-Laravel FQCNs are persistence details and must not become public actor types.
+Laravel FQCNs are persistence details, never public actor types.
 
-### 19.3 No administrator impersonation shortcut
+### 19.3 No admin impersonation shortcut
 
-Admin review authority does not equal group representation authority.
+Admin review power does not equal Group representation.
 
-### 19.4 No system actor from client input
+### 19.4 No public system actor
 
-Public requests cannot select `system:earthcoop` to bypass policy.
+`system:earthcoop` cannot be selected through public input.
 
 ### 19.5 Organization fails closed
 
-Until a real Organization source domain and representation policy exist, organization actor resolution is denied.
+Until a real Organization domain exists, organization actor resolution is unsupported.
 
-### 19.6 Actor discovery is not authorization caching
+### 19.6 Authorization is live
 
-Every mutation and protected actor-scoped read rechecks current representation authority. A user who stops being Manager loses group representation without waiting for a token/session refresh.
+Actor discovery is not cached authority. If Manager status expires/changes, the next protected actor-aware request must reflect current server state without token rotation.
 
-### 19.7 Principal auditability
+### 19.7 Principal remains auditable
 
-Where an actor-aware mutation is persisted/audited, enough evidence must remain to distinguish:
+Actor-aware mutation evidence must distinguish at least:
 
 - authenticated principal;
 - represented actor;
 - affected resource;
 - request/idempotency identity where applicable.
 
-M4 does not require a universal new audit table if existing domain audit/event mechanisms can carry this evidence.
+A universal new audit table is not required if existing domain event/audit mechanisms can carry the evidence.
 
-### 19.8 Idempotency remains actor-sensitive
+### 19.8 Idempotency is actor-sensitive
 
-Existing M1 idempotency stays authoritative. An idempotency replay must not be reusable to change actor identity. Actor identity is part of the normalized request semantics/hash for actor-aware mutations.
+Existing M1 transport idempotency remains authoritative. Actor identity is part of normalized actor-aware mutation semantics/hash, so a replay key cannot be reused to switch actors.
 
 ## 20. Backward compatibility
 
 M4 is additive inside `/api/v1`.
 
-Existing personal Project clients continue to work because:
+Existing personal Project clients remain valid because:
 
-- `owner_actor` request field is optional;
-- omitted owner defaults to the authenticated user;
-- no existing required response field is removed;
-- current lifecycle, target scope and project economic fields remain unchanged;
-- existing idempotency behavior remains unchanged.
+- `owner_actor` is optional on create;
+- omitted actor defaults to current user;
+- existing response fields remain;
+- lifecycle, target scope and economic Project fields remain unchanged;
+- idempotency semantics remain unchanged.
 
-New clients should use actor references rather than relying on persistence owner classes.
+New clients should use ActorReference and must not rely on persistence owner classes.
 
 ## 21. Persistence strategy
 
-M4 requires **no actor table and no mandatory ownership migration**.
+M4 creates no Actor table and requires no ownership migration.
 
 Existing persistence remains:
 
@@ -645,163 +587,158 @@ Najm account compatibility conventions
 Secretariat party snapshots
 ```
 
-ActorResolver is the anti-corruption layer between stable public actor identity and current persistence identity.
+ActorResolver is the anti-corruption layer between stable public actor identity and current storage.
 
-A future Organization subsystem may later add a real organization table/model/provider. At that point the resolver can add:
+A future Organization provider may map its real model to:
 
 ```text
-OrganizationModel::class <-> organization:<opaque-id>
+organization:<opaque-id>
 ```
 
-without changing client actor shape.
+without changing clients.
 
-## 22. Economic-document compatibility rule
+## 22. Economic-reference compatibility rule
 
 The economic reference document is being completed in parallel and may change Najm Bahar, Group, Company, Shop, Marketplace or investment rules.
 
-M4 therefore freezes only **identity and authority boundaries**, not economic policy.
+M4 freezes identity/authority boundaries only, not economic policy.
 
-Future economic changes should fall into one of three classes:
+Future economic changes should normally be one of:
 
-1. **Policy/internal change** — update domain/application service; actor API unchanged.
-2. **Additive capability** — add a new actor-aware endpoint/field; existing actor API unchanged.
-3. **New source actor domain** — register Organization/Company provider behind ActorResolver; ActorReference shape unchanged.
+1. **policy/internal change** — update domain/application logic; ActorReference unchanged;
+2. **additive capability** — add actor-aware endpoint/field; existing actor contract unchanged;
+3. **new actor source domain** — register Organization/Company provider behind ActorResolver; ActorReference unchanged.
 
-Any future proposal that would require changing the meaning of existing actor types must trigger explicit architecture review rather than silent reuse.
+Any proposal that changes the meaning of existing actor types requires explicit architecture review.
 
-Before Native PoC, the planned architecture gate must include a reconciliation pass between the final economic reference document and M3/M4. The expected outcome is additive/domain adjustment, not rebuilding the actor/mobile foundation.
+Before Native PoC, Architecture Gate includes a reconciliation between the final economic reference document and M3/M4. Expected changes are domain/additive adjustments rather than rebuilding the mobile actor foundation.
 
-## 23. Error behavior
+## 23. Error semantics
 
-Actor failures use stable API error semantics through the existing v1 envelope.
+Actor errors use the existing API v1 envelope and these stable codes:
 
-Recommended stable error codes for implementation planning:
+- `actor_reference_invalid`
+- `actor_not_supported`
+- `actor_not_found`
+- `actor_representation_forbidden`
+- `actor_operation_not_supported`
 
-- `actor_reference_invalid` — malformed type/id;
-- `actor_not_supported` — known type not currently enabled, such as organization at M4 launch;
-- `actor_not_found` — safe to reveal only where enumeration policy permits;
-- `actor_representation_forbidden` — principal cannot represent actor;
-- `actor_operation_not_supported` — valid actor but operation is intentionally personal/user-only.
+Where resource-enumeration policy requires concealment, inaccessible/not-found resources may still collapse to `404` consistently with M0.
 
-Sensitive resources may collapse not-found/forbidden into `404` where existing enumeration policy requires concealment.
+## 24. Test strategy
 
-## 24. Testing strategy
+Implementation is TDD-first with targeted M4 validation, then one repository Full Validation on the fixed final candidate.
 
-Implementation must be test-first and use targeted M4 gates before one final repository Full Validation.
-
-### 24.1 ActorReference/resolver unit/contract tests
+### 24.1 ActorReference/Resolver
 
 Prove:
 
-- User model maps to `user:<id>`;
-- Group model maps to `group:<id>`;
-- system uses `system:earthcoop` internally;
-- Laravel class names never appear in serialized references;
-- unknown/organization-unbacked actor resolution fails closed.
+- User maps to `user:<id>`;
+- Group maps to `group:<id>`;
+- trusted system maps to `system:earthcoop` internally;
+- Laravel class names never appear in public ActorReference;
+- organization/unknown actor resolution fails closed.
 
-### 24.2 Representation authorization tests
+### 24.2 Representation
 
 Prove:
 
-- principal may represent self;
-- principal cannot represent another user;
-- active Manager role 3 may represent Group;
-- Inspector 2 cannot;
-- Active 1 cannot;
-- Observer 0 cannot;
-- Guest 4 cannot;
-- Temporary Active 5 cannot;
-- expired/inactive manager membership cannot;
-- global admin without qualifying group representation cannot silently impersonate Group;
+- principal can represent self;
+- cannot represent another user;
+- active Manager role 3 can represent Group;
+- Inspector 2, Active 1, Observer 0, Guest 4 and Temporary Active 5 cannot;
+- inactive/expired manager cannot;
+- admin without qualifying Group representation cannot impersonate Group;
 - public client cannot select system actor.
 
-### 24.3 Actor discovery tests
+### 24.3 Actor discovery
 
 Prove:
 
-- self actor is returned;
-- eligible managed groups are returned;
-- non-representable groups are excluded;
-- system/organization are excluded;
-- discovery cannot enumerate unrelated group authority.
+- self actor returned;
+- authorized managed Groups returned;
+- non-representable Groups excluded;
+- system/organization excluded;
+- unrelated authority cannot be enumerated.
 
-### 24.4 Project compatibility tests
+### 24.4 Project
 
 Prove:
 
-- legacy/current personal create request without `owner_actor` still creates User-owned project;
+- current create request without `owner_actor` still creates personal Project;
 - response includes `owner_actor=user:<self>`;
-- Manager can create a Group-owned project with `owner_actor=group:<id>`;
-- non-manager cannot create Group-owned project;
-- another user's actor cannot be used;
-- organization/system cannot be used through public Project creation;
-- personal list default remains personal;
-- actor-filtered group list requires current representation authority;
-- view/update/submit lifecycle constraints remain unchanged;
-- group-owned update/submit succeeds only through valid representation;
-- target Location/Governance scope remains independent of actor ownership;
-- idempotent replay cannot switch actor identity.
+- Manager can create Group-owned Project;
+- non-manager cannot;
+- another-user actor cannot be used;
+- organization/system cannot be used publicly;
+- default list remains personal;
+- `filter[owner_actor]=group:<id>` works only with current representation;
+- public view semantics remain;
+- update/submit/delete lifecycle constraints remain;
+- Group-owned update/submit requires current valid representation;
+- target Location/Governance scope remains independent of ownership;
+- idempotent replay cannot change actor.
 
-### 24.5 Regression tests
+### 24.5 Regressions
 
-Targeted M4 workflow should include at minimum:
+Targeted gate includes:
 
-- M1 API v1 core journey Project tests;
-- Group policy/membership regression coverage;
-- election regression showing Manager still votes personally;
-- M2 Najm Hoda authority regressions affected by owner context;
-- M3 Najm Bahar regressions proving personal wallet/account contracts remain unchanged;
-- Project/Investment/Secretariat tests touched by shared ownership predicate.
+- M1 Project/core API journey;
+- Group membership/policy regressions;
+- election regression proving Manager still votes personally;
+- M2 Hoda authority regressions where Project context is affected;
+- M3 personal Najm Bahar regressions unchanged;
+- existing Investment economics/authorization regressions unchanged;
+- Secretariat tests affected only by Project-owner predicate integration.
 
-Full Validation runs once on the fixed final M4 candidate before merge.
+Full Validation runs once on the exact final M4 candidate before merge.
 
-## 25. M4 checkpoint
+## 25. M4-A acceptance checkpoint
 
-M4 closes only when **M4-A Ownership Compatibility** is proven:
+M4 closes when:
 
 > Stable API/application ownership no longer assumes every actor-aware resource is permanently user-owned, while constitutionally personal operations remain personal and existing user clients remain backward compatible.
 
-Concrete acceptance criteria:
+Required acceptance:
 
-1. ActorReference contract is stable and class-name independent.
-2. Principal and actor are separate in code and tests.
-3. User, Group and internal System actor concepts exist; Organization is reserved/fail-closed.
-4. Group representation is server-authorized and manager-only at launch.
-5. `/api/v1/actors` safely discovers representable actors.
-6. Project API supports optional authorized group ownership without breaking personal behavior.
-7. Project ownership policies no longer hard-code User ownership as the only owner authority.
-8. Relevant Investment/Secretariat owner predicates use the shared boundary where semantically equivalent.
-9. Personal M3 Najm Bahar API behavior is unchanged.
-10. No Company/Shop/Marketplace or financial-schema migration is introduced.
-11. Targeted M4 regression gate is green on a fixed SHA.
-12. Repository Full Validation is green on that exact candidate before merge.
+1. ActorReference is stable and class-name independent.
+2. Principal and actor are separate in code/tests.
+3. User + Group public actor concepts and trusted internal System actor exist; Organization is reserved/fail-closed.
+4. Group representation is live, server-authorized and Manager-only for M4 owner-level Project actions.
+5. `GET /api/v1/actors` safely returns representable actors.
+6. Project API supports optional authorized Group ownership without breaking personal behavior.
+7. Project owner policy no longer hard-codes User as the only representable owner.
+8. Secretariat Project-owner checks use the shared predicate where semantically equivalent.
+9. Investment economic/authorization behavior is unchanged by M4.
+10. M3 personal Najm Bahar behavior is unchanged.
+11. No Company/Shop/Marketplace or financial-schema migration is introduced.
+12. Targeted M4 gate is green on fixed SHA.
+13. Full Validation is green on the same final candidate before merge.
 
-## 26. Deferred work after M4
+## 26. Deferred work
 
-Explicitly deferred:
+Deferred until later domain/economic work:
 
 - real Organization/Company source domain;
 - organization representatives/directors/employees;
-- Company formation/registration/KYC;
-- Shop/Marketplace catalog/order/fulfillment flows;
-- organization/group mobile wallet APIs;
+- Company formation/KYC;
+- Shop/Marketplace flows;
+- Group/Organization mobile wallet APIs;
 - Najm Bahar account ownership normalization;
-- broad investment/mobile investment API;
-- legal-entity Secretariat authority beyond a real source domain;
+- actor-aware Investment mutation/public API;
+- organization/legal-entity Secretariat authority backed by a real source domain;
 - operator proxy/impersonation workflow;
-- legacy owner column retirement.
+- legacy owner-column retirement.
 
-These are future domains built **on** the M4 actor contract, not prerequisites for M4.
+These future systems build on ActorReference rather than being prerequisites for M4.
 
 ## 27. Relationship to M5 and Native PoC
 
-M4 feeds M5 and the Native architecture gate.
+M5 may use ActorReference in typed notification/deep-link payloads where a destination belongs to an actor, but device identity remains separate from actor identity.
 
-M5 may use ActorReference in typed notification/deep-link payloads where a destination/resource belongs to an actor, but device identity remains separate from actor identity.
+Native clients must not need Laravel polymorphic class names, account metadata conventions, or future Company persistence.
 
-The Native client must not need to understand Laravel polymorphic class names, group-account metadata or future Company persistence. It should understand only stable actor references and capability/resource responses.
-
-The planned sequence remains:
+Sequence:
 
 ```text
 M3 Najm Bahar mobile contract — complete
@@ -817,6 +754,16 @@ Native PoC
 
 ## 28. Implementation planning boundary
 
-After this written spec is reviewed and approved, the implementation plan must be dependency-ordered and TDD-first. It should begin with ActorReference/resolver/representation tests, then actor discovery, then Project adaptation, then narrow policy integrations, then regression/acceptance gates.
+After this written spec is reviewed and approved, the implementation plan must be dependency-ordered and TDD-first:
 
-Implementation must happen on a feature branch derived from the then-current approved baseline; it must not modify `main` directly.
+1. ActorType/ActorReference/Resolver contracts;
+2. representation authorization;
+3. actor discovery API;
+4. Project serialization + actor-aware create/list;
+5. Project policy/owner predicate integration;
+6. narrow Secretariat integration;
+7. targeted cross-M1/M2/M3/economy regressions;
+8. fixed-SHA M4 acceptance;
+9. one Full Validation before merge.
+
+Implementation occurs on a feature branch derived from the then-current approved baseline and never directly on `main`.
