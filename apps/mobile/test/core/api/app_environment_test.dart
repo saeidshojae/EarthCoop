@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppEnvironment API base configuration', () {
-    test('selects environment explicitly and preserves a typed API v1 base URL', () {
+    test('selects environment explicitly and preserves a typed API v1 base URL',
+        () {
       final development = ApiConfiguration(
         environment: AppEnvironment.development,
         baseUrl: Uri.parse('http://10.0.2.2:8000/api/v1'),
@@ -23,7 +24,8 @@ void main() {
       expect(production.baseUrl.path, '/api/v1');
     });
 
-    test('production rejects localhost, emulator loopback and insecure HTTP', () {
+    test('production rejects localhost, emulator loopback and insecure HTTP',
+        () {
       for (final raw in [
         'http://localhost/api/v1',
         'https://127.0.0.1/api/v1',
