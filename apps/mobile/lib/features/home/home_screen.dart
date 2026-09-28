@@ -24,6 +24,7 @@ class HomeScreen extends StatelessWidget {
                 Semantics(
                   button: true,
                   label: 'گروه‌های من',
+                  excludeSemantics: true,
                   child: FilledButton.icon(
                     key: const Key('home-groups-action'),
                     onPressed: () {},
