@@ -9,6 +9,7 @@ on:
       - 'app/Http/Controllers/API/V1/DevicePushController.php'
       - 'app/Http/Controllers/API/V1/MediaController.php'
       - 'app/Http/Controllers/API/V1/NotificationController.php'
+      - 'app/Http/Middleware/ApiV1Idempotency.php'
       - 'app/Http/Middleware/ApiV1ProjectOwnerAuthority.php'
       - 'app/Http/Requests/API/V1/DevicePushRequest.php'
       - 'app/Http/Requests/API/V1/StoreMediaRequest.php'
