@@ -61,6 +61,9 @@ class PushRegistrationService
     {
         $device->forceFill([
             'push_capable' => false,
+            'push_provider' => null,
+            'push_token' => null,
+            'push_token_hash' => null,
             'push_disabled_at' => now(),
         ])->save();
 
