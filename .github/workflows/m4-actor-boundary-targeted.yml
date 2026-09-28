@@ -7,14 +7,18 @@ on:
     paths:
       - 'app/Services/Actors/**'
       - 'app/Services/Groups/**'
+      - 'app/Services/Projects/**'
       - 'app/Http/Controllers/API/V1/ActorController.php'
+      - 'app/Http/Controllers/API/V1/ProjectController.php'
       - 'app/Policies/Concerns/ResolvesGroupMembership.php'
+      - 'app/Policies/NajmBahar/ProjectPolicy.php'
       - 'app/Exceptions/ApiV1ExceptionRenderer.php'
       - 'routes/api-v1.php'
       - 'tests/Unit/Actors/**'
       - 'tests/Feature/Actors/**'
       - 'tests/Feature/Admin/GroupRoleManagementTest.php'
       - 'tests/Feature/Api/V1/ActorContractTest.php'
+      - 'tests/Feature/Api/V1/ProjectActorContractTest.php'
       - 'tests/Feature/Api/V1/TransportContractTest.php'
       - '.github/workflows/m4-actor-boundary-targeted.yml'
 
@@ -82,3 +86,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Actors/ActorRepresentationAuthorizationTest.php tests/Feature/Admin/GroupRoleManagementTest.php
       - name: Run Task 3 actor discovery contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ActorContractTest.php
+      - name: Run Task 4 actor-aware project reads and regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ProjectActorContractTest.php tests/Feature/Api/V1/CoreJourneyTest.php tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php tests/Feature/LocationGovernance/ProjectGovernanceScopeTest.php
