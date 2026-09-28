@@ -8,6 +8,6 @@ class NullPushDeliveryGateway implements PushDeliveryGateway
 {
     public function send(NativeDevice $device, PushEnvelope $envelope): PushDeliveryResult
     {
-        return PushDeliveryResult::success();
+        return PushDeliveryResult::temporaryFailure('provider_not_configured');
     }
 }
