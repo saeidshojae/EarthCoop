@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\V1\ActorController;
 use App\Http\Controllers\API\V1\Auth\NativeSessionController;
+use App\Http\Controllers\API\V1\DevicePushController;
 use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
@@ -34,6 +35,9 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::get('/auth/session', [NativeSessionController::class, 'show'])->name('auth.session.show');
         Route::post('/auth/session/rotate', [NativeSessionController::class, 'rotate'])->name('auth.session.rotate');
         Route::delete('/auth/session', [NativeSessionController::class, 'destroy'])->name('auth.session.destroy');
+
+        Route::put('/devices/{device}/push', [DevicePushController::class, 'update'])->name('devices.push.update');
+        Route::delete('/devices/{device}/push', [DevicePushController::class, 'destroy'])->name('devices.push.destroy');
 
         Route::get('/me', ProfileController::class)->name('me');
         Route::get('/actors', [ActorController::class, 'index'])->name('actors.index');
