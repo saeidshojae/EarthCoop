@@ -27,6 +27,7 @@ on:
       - 'config/client-compatibility.php'
       - 'database/migrations/2026_09_28_000001_add_push_delivery_state_to_native_devices.php'
       - 'database/migrations/2026_09_28_000002_create_media_table.php'
+      - 'database/migrations/2026_09_28_000003_add_sync_sequence_to_notifications_table.php'
       - 'routes/api-v1.php'
       - 'tests/Feature/Api/V1/BootstrapCompatibilityTest.php'
       - 'tests/Feature/Api/V1/DevicePushContractTest.php'
@@ -38,6 +39,7 @@ on:
       - 'tests/Feature/Api/V1/PushProviderFailureIsolationTest.php'
       - 'tests/Feature/Api/V1/RealtimeRecoveryContractTest.php'
       - 'tests/Unit/Media/**'
+      - 'tests/Unit/Notifications/**'
       - 'tests/Unit/Push/**'
       - '.github/workflows/m5-native-delivery-targeted.yml'
 
@@ -102,7 +104,7 @@ jobs:
       - name: Run push device and gateway contracts
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/DevicePushContractTest.php tests/Feature/Api/V1/DevicePushReleaseTest.php tests/Unit/Push/PushDeliveryGatewayTest.php tests/Feature/Api/V1/PushProviderFailureIsolationTest.php
       - name: Run notification delivery and realtime recovery contracts
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NotificationDeliveryContractTest.php tests/Feature/Api/V1/RealtimeRecoveryContractTest.php
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NotificationDeliveryContractTest.php tests/Feature/Api/V1/RealtimeRecoveryContractTest.php tests/Unit/Notifications/GenericNotificationDeliveryOrderTest.php
       - name: Run media contract and content policy
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/MediaContractTest.php tests/Unit/Media/MediaPolicyTest.php
       - name: Run offline replay and compatibility contracts
