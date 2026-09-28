@@ -29,9 +29,8 @@ class NoopDiagnosticsSink implements DiagnosticsSink {
 
 Map<String, Object?> _redactMap(Map<String, Object?> source) => {
       for (final entry in source.entries)
-        entry.key: _isSecretKey(entry.key)
-            ? '[REDACTED]'
-            : _redactValue(entry.value),
+        entry.key:
+            _isSecretKey(entry.key) ? '[REDACTED]' : _redactValue(entry.value),
     };
 
 Object? _redactValue(Object? value) {

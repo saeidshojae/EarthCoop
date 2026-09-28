@@ -66,7 +66,8 @@ void main() {
       }
     });
 
-    test('attaches bearer and request id but keeps idempotency mutation-scoped', () async {
+    test('attaches bearer and request id but keeps idempotency mutation-scoped',
+        () async {
       final adapter = SequenceHttpAdapter([
         jsonResponse(200, successData({'ok': true})),
         jsonResponse(200, successData({'ok': true})),
@@ -84,15 +85,18 @@ void main() {
         decodeData: (json) => json,
       );
 
-      expect(adapter.requests[0].headers['Authorization'], 'Bearer secret-bearer');
-      expect(adapter.requests[0].headers.containsKey('Idempotency-Key'), isFalse);
+      expect(
+          adapter.requests[0].headers['Authorization'], 'Bearer secret-bearer');
+      expect(
+          adapter.requests[0].headers.containsKey('Idempotency-Key'), isFalse);
       expect(adapter.requests[1].headers['X-Request-ID'], 'req-client-2');
       expect(adapter.requests[1].headers['Idempotency-Key'], 'idem-1');
     });
 
     test('mutation retry reuses the original idempotency key', () async {
       final adapter = SequenceHttpAdapter([
-        jsonResponse(503, errorData('temporarily_unavailable', retryable: true)),
+        jsonResponse(
+            503, errorData('temporarily_unavailable', retryable: true)),
         jsonResponse(200, successData({'ok': true})),
       ]);
       final client = buildClient(adapter);
@@ -131,7 +135,9 @@ void main() {
 
     test('malformed envelopes fail closed', () async {
       final adapter = SequenceHttpAdapter([
-        jsonResponse(200, {'data': {'ok': true}}),
+        jsonResponse(200, {
+          'data': {'ok': true}
+        }),
       ]);
       final client = buildClient(adapter);
 

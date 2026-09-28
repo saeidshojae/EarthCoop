@@ -102,7 +102,8 @@ class ApiClient {
           ),
         );
         final raw = _normalizeBody(response.data);
-        final retryAfter = _parseRetryAfter(response.headers.value('retry-after'));
+        final retryAfter =
+            _parseRetryAfter(response.headers.value('retry-after'));
 
         if (response.statusCode != null &&
             response.statusCode! >= 200 &&
@@ -124,7 +125,8 @@ class ApiClient {
           attempt: attempt,
           statusCode: response.statusCode,
           retryable: failure.retryable,
-          hasIdempotencyKey: idempotencyKey != null && idempotencyKey.isNotEmpty,
+          hasIdempotencyKey:
+              idempotencyKey != null && idempotencyKey.isNotEmpty,
         )) {
           throw failure;
         }
@@ -139,7 +141,8 @@ class ApiClient {
           attempt: attempt,
           statusCode: statusCode,
           retryable: true,
-          hasIdempotencyKey: idempotencyKey != null && idempotencyKey.isNotEmpty,
+          hasIdempotencyKey:
+              idempotencyKey != null && idempotencyKey.isNotEmpty,
         )) {
           throw ApiFailure(
             code: 'network_error',
@@ -174,4 +177,5 @@ Duration? _parseRetryAfter(String? raw) {
   return Duration(seconds: seconds);
 }
 
-Duration _defaultRetryDelay(int attempt) => Duration(milliseconds: 250 * attempt);
+Duration _defaultRetryDelay(int attempt) =>
+    Duration(milliseconds: 250 * attempt);
