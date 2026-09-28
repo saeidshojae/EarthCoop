@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\Notifications\NotificationLink;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -16,17 +17,18 @@ class GenericNotification extends Notification implements ShouldQueue
         public string $message,
         public ?string $url = null,
         public string $type = 'info',
-        public array $context = []
+        public array $context = [],
+        public ?NotificationLink $link = null,
     ) {
     }
 
     public function via(object $notifiable): array
     {
         $channels = ['database'];
-        // اگر برادکست فعال باشد، هم‌زمان روی کانال برادکست هم ارسال شود
         if (config('broadcasting.default') !== 'null') {
             $channels[] = 'broadcast';
         }
+
         return $channels;
     }
 
@@ -49,12 +51,18 @@ class GenericNotification extends Notification implements ShouldQueue
 
     protected function payload(): array
     {
-        return [
+        $payload = [
             'title' => $this->title,
             'message' => $this->message,
             'url' => $this->url,
             'type' => $this->type,
             'context' => $this->context,
         ];
+
+        if ($this->link !== null) {
+            $payload['link'] = $this->link->toArray();
+        }
+
+        return $payload;
     }
 }
