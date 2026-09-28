@@ -7,6 +7,7 @@ use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
+use App\Http\Controllers\API\V1\MediaController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
 use App\Http\Controllers\API\V1\NajmBaharActivationController;
 use App\Http\Controllers\API\V1\NajmBaharMembershipFeeController;
@@ -38,6 +39,7 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
 
         Route::put('/devices/{device}/push', [DevicePushController::class, 'update'])->name('devices.push.update');
         Route::delete('/devices/{device}/push', [DevicePushController::class, 'destroy'])->name('devices.push.destroy');
+        Route::post('/media', [MediaController::class, 'store'])->middleware('api.v1.idempotency')->name('media.store');
 
         Route::get('/me', ProfileController::class)->name('me');
         Route::get('/actors', [ActorController::class, 'index'])->name('actors.index');
