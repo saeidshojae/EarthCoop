@@ -41,7 +41,10 @@ class RealtimeRecoveryContractTest extends TestCase
         $this->assertNotEmpty($cursor);
 
         $user->notifyNow(new GenericNotification('four', 'four'));
-        $newId = (string) $user->notifications()->latest('created_at')->value('id');
+        $allIdsAfter = $user->notifications()->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $newIds = array_values(array_diff($allIdsAfter, $originalIds));
+        $this->assertCount(1, $newIds);
+        $newId = $newIds[0];
 
         $second = $this->freshBearer($token, $deviceId)
             ->getJson('/api/v1/notifications?page[limit]=2&page[cursor]='.urlencode((string) $cursor))
