@@ -9,6 +9,7 @@ on:
       - 'app/Services/Groups/**'
       - 'app/Services/Projects/**'
       - 'app/Modules/NajmBahar/Services/ProjectService.php'
+      - 'app/Modules/Secretariat/Policies/SecretariatOfficePolicy.php'
       - 'app/Http/Controllers/API/V1/ActorController.php'
       - 'app/Http/Controllers/API/V1/ProjectController.php'
       - 'app/Policies/Concerns/ResolvesGroupMembership.php'
@@ -24,6 +25,8 @@ on:
       - 'tests/Feature/Api/V1/ProjectActorContractTest.php'
       - 'tests/Feature/Api/V1/TransportContractTest.php'
       - 'tests/Feature/NajmBahar/ProjectOwnerNotificationTest.php'
+      - 'tests/Feature/Secretariat/SecretariatS5AuthorizationTest.php'
+      - 'tests/Feature/Secretariat/SecretariatS6RetrievalTest.php'
       - '.github/workflows/m4-actor-boundary-targeted.yml'
 
 permissions:
@@ -94,3 +97,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ProjectActorContractTest.php tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/Api/V1/CoreJourneyTest.php tests/Feature/Api/V1/ElectionProjectNotificationContractTest.php tests/Feature/LocationGovernance/ProjectGovernanceScopeTest.php
       - name: Run Task 6 project owner notification routing and lifecycle regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/ProjectOwnerNotificationTest.php tests/Unit/NajmBahar/ProjectServiceTest.php
+      - name: Run Task 7 Secretariat project-owner authority and retrieval regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Secretariat/SecretariatS5AuthorizationTest.php tests/Feature/Secretariat/SecretariatS6RetrievalTest.php

@@ -134,10 +134,88 @@ class SecretariatS5AuthorizationTest extends TestCase
         $this->assertTrue($other->can('view', $leadershipRecord));
         $this->assertFalse($other->can('view', $restrictedRecord));
 
-        // Project owners keep preparation/registration authority for their office.
         $this->assertTrue($owner->can('update', $leadershipRecord));
         $pending = $records->submitForApproval($leadershipRecord, $owner);
         $this->assertTrue($owner->can('register', $pending));
+    }
+
+    public function test_group_owned_project_office_uses_live_manager_representation_without_changing_group_office_roles(): void
+    {
+        $manager = User::factory()->create();
+        $active = User::factory()->create();
+        $inspector = User::factory()->create();
+        $outsider = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
+        $group = Group::query()->create(['name' => 'S5 project actor', 'group_type' => '0']);
+
+        $managerMembership = GroupUser::query()->create([
+            'group_id' => $group->id,
+            'user_id' => $manager->id,
+            'role' => 3,
+            'status' => 1,
+            'expired' => null,
+        ]);
+        foreach ([[$active, 1], [$inspector, 2]] as [$user, $role]) {
+            GroupUser::query()->create([
+                'group_id' => $group->id,
+                'user_id' => $user->id,
+                'role' => $role,
+                'status' => 1,
+                'expired' => null,
+            ]);
+        }
+
+        $groupOffice = app(SecretariatOfficeService::class)->create([
+            'code' => 'S5-GROUP-ACTOR',
+            'name' => 'S5 Group Actor Office',
+            'office_type' => 'group',
+            'scope_type' => 'group',
+            'scope_id' => $group->id,
+        ]);
+
+        $project = Project::query()->create([
+            'owner_type' => Group::class,
+            'owner_id' => $group->id,
+            'title' => 'S5 group-owned project',
+            'summary' => 'Actor boundary project office fixture.',
+            'project_type' => 'service',
+            'project_visibility' => 'private',
+            'project_stage' => 'idea',
+            'status' => 'draft',
+        ]);
+        $projectOffice = app(SecretariatOfficeService::class)->create([
+            'code' => 'S5-GROUP-PROJECT-' . $project->id,
+            'name' => 'S5 Group Project Office',
+            'office_type' => 'project',
+            'scope_type' => 'najm_bahar_project',
+            'scope_id' => $project->id,
+        ]);
+
+        $this->assertTrue($manager->can('view', $projectOffice));
+        $this->assertTrue($manager->can('manage', $projectOffice));
+        $this->assertTrue($manager->can('inspect', $projectOffice));
+
+        $this->assertTrue($active->can('view', $groupOffice));
+        $this->assertTrue($inspector->can('inspect', $groupOffice));
+        $this->assertFalse($active->can('manage', $projectOffice));
+        $this->assertFalse($active->can('inspect', $projectOffice));
+        $this->assertFalse($inspector->can('manage', $projectOffice));
+        $this->assertFalse($inspector->can('inspect', $projectOffice));
+
+        $this->assertTrue($admin->can('manage', $projectOffice));
+        $this->assertTrue($admin->can('inspect', $projectOffice));
+
+        $managerMembership->update(['role' => 1]);
+        $this->assertFalse($manager->can('manage', $projectOffice));
+        $this->assertFalse($manager->can('inspect', $projectOffice));
+
+        $project->update([
+            'status' => 'approved',
+            'project_visibility' => 'public',
+        ]);
+        $this->assertTrue($outsider->can('view', $projectOffice));
+        $this->assertFalse($outsider->can('manage', $projectOffice));
+        $this->assertFalse($outsider->can('inspect', $projectOffice));
     }
 
     private function groupOffice(): array
