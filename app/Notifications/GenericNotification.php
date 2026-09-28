@@ -2,11 +2,13 @@
 
 namespace App\Notifications;
 
+use App\Services\Notifications\NotificationCursor;
 use App\Support\Notifications\NotificationLink;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 class GenericNotification extends Notification implements ShouldQueue
 {
@@ -44,8 +46,16 @@ class GenericNotification extends Notification implements ShouldQueue
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
+        $occurredAt = now();
+        $eventId = (string) ($this->id ?: Str::uuid());
+
         return new BroadcastMessage(array_merge($this->payload(), [
-            'broadcasted_at' => now()->toIso8601String(),
+            'event_id' => $eventId,
+            'stream' => 'notifications',
+            'event_type' => 'notification.created',
+            'occurred_at' => $occurredAt->toIso8601String(),
+            'cursor' => app(NotificationCursor::class)->encode($occurredAt, $eventId),
+            'broadcasted_at' => $occurredAt->toIso8601String(),
         ]));
     }
 
