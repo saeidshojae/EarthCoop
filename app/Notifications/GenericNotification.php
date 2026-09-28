@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class GenericNotification extends Notification implements ShouldQueue
@@ -48,13 +49,18 @@ class GenericNotification extends Notification implements ShouldQueue
     {
         $occurredAt = now();
         $eventId = (string) ($this->id ?: Str::uuid());
+        $sequence = DB::table('notifications')
+            ->where('id', $eventId)
+            ->value('sync_sequence');
 
         return new BroadcastMessage(array_merge($this->payload(), [
             'event_id' => $eventId,
             'stream' => 'notifications',
             'event_type' => 'notification.created',
             'occurred_at' => $occurredAt->toIso8601String(),
-            'cursor' => app(NotificationCursor::class)->encode($occurredAt, $eventId),
+            'cursor' => $sequence !== null
+                ? app(NotificationCursor::class)->encode((int) $sequence)
+                : null,
             'broadcasted_at' => $occurredAt->toIso8601String(),
         ]));
     }
