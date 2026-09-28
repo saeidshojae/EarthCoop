@@ -72,11 +72,3 @@ class PushRegistrationService
         return in_array((string) $e->getCode(), ['23000', '23505'], true);
     }
 }
-
-class PushTokenInUseException extends \RuntimeException
-{
-    public function __construct(string $message = 'Push token is already active on another device.', ?\Throwable $previous = null)
-    {
-        parent::__construct($message, 0, $previous);
-    }
-}
