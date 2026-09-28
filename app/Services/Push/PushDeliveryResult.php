@@ -14,7 +14,7 @@ final readonly class PushDeliveryResult
     ) {
     }
 
-    public static function delivered(): self
+    public static function success(): self
     {
         return new self(self::DELIVERED);
     }
