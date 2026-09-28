@@ -31,12 +31,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dart format lib/app/bootstrap lib/core/local test/app/bootstrap
-          git diff -- lib/app/bootstrap lib/core/local test/app/bootstrap
-          git diff --exit-code -- lib/app/bootstrap lib/core/local test/app/bootstrap
+          scopes=(test/app/bootstrap)
+          [ ! -d lib/app/bootstrap ] || scopes+=(lib/app/bootstrap)
+          [ ! -d lib/core/local ] || scopes+=(lib/core/local)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
       - name: Analyze bootstrap scope
         working-directory: apps/mobile
-        run: flutter analyze lib/app/bootstrap lib/core/local test/app/bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/app/bootstrap)
+          [ ! -d lib/app/bootstrap ] || scopes+=(lib/app/bootstrap)
+          [ ! -d lib/core/local ] || scopes+=(lib/core/local)
+          flutter analyze "${scopes[@]}"
       - name: Run Task 3 bootstrap contracts
         working-directory: apps/mobile
         run: |
