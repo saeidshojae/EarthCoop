@@ -255,8 +255,7 @@ class ApiClient {
         attempt: attempt,
         statusCode: statusCode,
         retryable: retryable,
-        hasIdempotencyKey:
-            idempotencyKey != null && idempotencyKey.isNotEmpty,
+        hasIdempotencyKey: idempotencyKey != null && idempotencyKey.isNotEmpty,
       );
 }
 
