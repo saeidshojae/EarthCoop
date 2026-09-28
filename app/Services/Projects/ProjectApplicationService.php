@@ -54,13 +54,29 @@ class ProjectApplicationService
     public function update(Project $project, array $data): Project
     {
         $data = $this->scope->normalize($data);
+        $isGroupOwned = $project->owner_type === Group::class;
+        $canonicalGroupGovernanceAreaId = $project->governance_area_id;
 
-        return DB::transaction(function () use ($project, $data): Project {
+        if ($isGroupOwned) {
+            $group = Group::query()->find($project->owner_id);
+            if ($group instanceof Group) {
+                $canonicalGroupGovernanceAreaId = $group->governance_area_id;
+            }
+
+            unset($data['governance_area_id']);
+        }
+
+        return DB::transaction(function () use ($project, $data, $isGroupOwned, $canonicalGroupGovernanceAreaId): Project {
             $updated = $this->projects->updateProject($project, $data);
-            $updated->forceFill([
+            $attributes = [
                 'target_location_id' => $data['target_location_id'] ?? null,
-                'governance_area_id' => $data['governance_area_id'] ?? null,
-            ])->save();
+            ];
+
+            $attributes['governance_area_id'] = $isGroupOwned
+                ? $canonicalGroupGovernanceAreaId
+                : ($data['governance_area_id'] ?? null);
+
+            $updated->forceFill($attributes)->save();
 
             return $updated->fresh();
         });
