@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppBootstrapService', () {
-    test('maps fresh compatible, recommended and required server outcomes', () async {
+    test('maps fresh compatible, recommended and required server outcomes',
+        () async {
       for (final entry in <(BootstrapPayload, BootstrapDecision)>[
         (
           payload(updateRequired: false, updateRecommended: false),
@@ -41,7 +42,8 @@ void main() {
       }
     });
 
-    test('first-ever offline launch is unavailable and cannot enter product shell',
+    test(
+        'first-ever offline launch is unavailable and cannot enter product shell',
         () async {
       final service = AppBootstrapService(
         fetchRemote: transientFailure,
@@ -56,7 +58,8 @@ void main() {
       expect(state.canReplayQueuedMutations, isFalse);
     });
 
-    test('previous compatible bootstrap plus authenticated history may degrade offline',
+    test(
+        'previous compatible bootstrap plus authenticated history may degrade offline',
         () async {
       final store = MemoryBootstrapSnapshotStore(
         seed: snapshot(
@@ -79,7 +82,8 @@ void main() {
       expect(state.requiresFreshBootstrap, isTrue);
     });
 
-    test('offline snapshot without authenticated history is not enough to degrade',
+    test(
+        'offline snapshot without authenticated history is not enough to degrade',
         () async {
       final store = MemoryBootstrapSnapshotStore(
         seed: snapshot(
@@ -98,7 +102,8 @@ void main() {
       expect(state.decision, BootstrapDecision.unavailable);
     });
 
-    test('a previously required-update snapshot never authorizes degraded start',
+    test(
+        'a previously required-update snapshot never authorizes degraded start',
         () async {
       final store = MemoryBootstrapSnapshotStore(
         seed: snapshot(
@@ -118,7 +123,8 @@ void main() {
       expect(state.canReplayQueuedMutations, isFalse);
     });
 
-    test('malformed bootstrap fails closed instead of silently using stale cache',
+    test(
+        'malformed bootstrap fails closed instead of silently using stale cache',
         () async {
       final store = MemoryBootstrapSnapshotStore(
         seed: snapshot(
@@ -142,7 +148,8 @@ void main() {
       expect(state.requiresFreshBootstrap, isTrue);
     });
 
-    test('reconnect requires a fresh successful bootstrap before replay resumes',
+    test(
+        'reconnect requires a fresh successful bootstrap before replay resumes',
         () async {
       final store = MemoryBootstrapSnapshotStore(
         seed: snapshot(
@@ -171,7 +178,8 @@ void main() {
       expect(refreshed.canReplayQueuedMutations, isTrue);
     });
 
-    test('fresh update-required after reconnect keeps replay and protected network blocked',
+    test(
+        'fresh update-required after reconnect keeps replay and protected network blocked',
         () async {
       final store = MemoryBootstrapSnapshotStore(
         seed: snapshot(
