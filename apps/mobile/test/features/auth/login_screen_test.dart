@@ -55,6 +55,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ایمیل یا گذرواژه نادرست است.'), findsOneWidget);
-    expect(find.textContaining('wrong-password'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Text && (widget.data?.contains('wrong-password') ?? false),
+      ),
+      findsNothing,
+    );
   });
 }
