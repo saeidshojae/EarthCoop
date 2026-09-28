@@ -85,6 +85,7 @@ class NotificationController extends Controller
             'title' => $data['title'] ?? null,
             'message' => $data['message'] ?? null,
             'url' => $data['url'] ?? null,
+            'link' => $data['link'] ?? null,
             'context' => $data['context'] ?? [],
             'read' => $notification->read_at !== null,
             'read_at' => $notification->read_at?->toISOString(),
