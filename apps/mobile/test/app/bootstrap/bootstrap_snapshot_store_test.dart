@@ -6,8 +6,10 @@ import 'package:earthcoop_mobile/core/local/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Drift snapshot survives closing and reopening the SQLite file', () async {
-    final directory = await Directory.systemTemp.createTemp('earthcoop-bootstrap-');
+  test('Drift snapshot survives closing and reopening the SQLite file',
+      () async {
+    final directory =
+        await Directory.systemTemp.createTemp('earthcoop-bootstrap-');
     final file = File('${directory.path}/app.sqlite');
     addTearDown(() async {
       if (await directory.exists()) {
