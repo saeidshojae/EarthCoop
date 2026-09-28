@@ -23,6 +23,9 @@ class GenericNotification extends Notification implements ShouldQueue
         public array $context = [],
         public ?NotificationLink $link = null,
     ) {
+        // Pin one canonical identity before Laravel clones the notification per
+        // delivery channel. Database and broadcast must refer to the same row.
+        $this->id = (string) Str::uuid();
     }
 
     public function via(object $notifiable): array
