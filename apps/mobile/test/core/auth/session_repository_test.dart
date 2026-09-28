@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/core/api/api_client.dart';
 import 'package:earthcoop_mobile/core/auth/secure_session_store.dart';
-import 'package:earthcoop_mobile/core/auth/session_models.dart';
 import 'package:earthcoop_mobile/core/auth/session_repository.dart';
 import 'package:earthcoop_mobile/core/device/device_context.dart';
 import 'package:flutter_test/flutter_test.dart';
