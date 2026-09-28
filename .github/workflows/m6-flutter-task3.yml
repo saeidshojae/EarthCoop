@@ -48,5 +48,4 @@ jobs:
           flutter analyze "${scopes[@]}"
       - name: Run Task 3 bootstrap contracts
         working-directory: apps/mobile
-        run: |
-          flutter test test/app/bootstrap/app_bootstrap_service_test.dart test/app/bootstrap/bootstrap_gate_test.dart
+        run: flutter test test/app/bootstrap
