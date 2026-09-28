@@ -35,6 +35,26 @@ final class EffectiveGroupMembershipService
             ->values();
     }
 
+    public function currentManagers(Group $group): Collection
+    {
+        return GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('status', 1)
+            ->where(function ($query) {
+                $query->whereNull('expired')
+                    ->orWhere('expired', 0)
+                    ->orWhere('expired', '>', now());
+            })
+            ->with('user')
+            ->get()
+            ->map(fn (GroupUser $membership): ?GroupUser => $this->temporaryRoles->restoreIfExpired($membership))
+            ->filter(fn (?GroupUser $membership): bool => $membership !== null && (int) $membership->role === 3)
+            ->map(fn (GroupUser $membership): ?User => $membership->user)
+            ->filter(fn (?User $user): bool => $user !== null && ! (bool) ($user->is_system ?? false))
+            ->unique('id')
+            ->values();
+    }
+
     private function baseQuery(User $user)
     {
         return GroupUser::query()
