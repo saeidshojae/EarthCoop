@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Notifications\GenericNotification;
+use App\Services\Push\PushNotificationDispatcher;
 use App\Support\Notifications\NotificationLink;
 use App\Support\Notifications\NotificationLinkRegistry;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -14,6 +15,7 @@ class NotificationService
 {
     public function __construct(
         private readonly NotificationLinkRegistry $links,
+        private readonly PushNotificationDispatcher $push,
     ) {
     }
 
@@ -41,6 +43,7 @@ class NotificationService
         }
 
         $model->notify(new GenericNotification($title, $message, $url, $type, $context, $link));
+        $this->push->dispatch($model, $this->payload($title, $message, $url, $type, $context, $link));
     }
 
     public function notifyMany(
@@ -72,6 +75,10 @@ class NotificationService
         }
 
         NotificationFacade::send($enabledUsers, new GenericNotification($title, $message, $url, $type, $context, $link));
+        $payload = $this->payload($title, $message, $url, $type, $context, $link);
+        foreach ($enabledUsers as $user) {
+            $this->push->dispatch($user, $payload);
+        }
     }
 
     public function unreadCount(User $user): int
@@ -82,6 +89,22 @@ class NotificationService
     public function latest(User $user, int $limit = 10)
     {
         return $user->notifications()->latest()->take($limit)->get();
+    }
+
+    private function payload(
+        string $title,
+        string $message,
+        ?string $url,
+        string $type,
+        array $context,
+        ?NotificationLink $link,
+    ): array {
+        $payload = compact('title', 'message', 'url', 'type', 'context');
+        if ($link !== null) {
+            $payload['link'] = $link->toArray();
+        }
+
+        return $payload;
     }
 
     private function normalizeUsers(array|Collection|EloquentCollection $users): EloquentCollection
