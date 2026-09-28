@@ -65,12 +65,13 @@ class CrossOwnerActiveSubAccountTransferService
 
                 app(EffectiveOwnerTransferPolicyService::class)->assertAllowed($sourceMirror, $destinationMirror, $meta);
 
-                $available = (int) ($source->balance_active ?? 0);
-                if ($available < $amount) {
-                    throw new \RuntimeException('Insufficient active funds in sub-account');
+                $active = (int) ($source->balance_active ?? 0);
+                $available = app(ActiveBaharReservationService::class)->availableActive($sourceMirror);
+                if ($active < $amount || $available < $amount) {
+                    throw new \RuntimeException('Insufficient available active funds in sub-account');
                 }
 
-                $source->balance_active = $available - $amount;
+                $source->balance_active = $active - $amount;
                 $destination->balance_active = (int) ($destination->balance_active ?? 0) + $amount;
                 $source->balance = (int) ($source->balance_active ?? 0) + (int) ($source->balance_faded ?? 0);
                 $destination->balance = (int) ($destination->balance_active ?? 0) + (int) ($destination->balance_faded ?? 0);
@@ -97,6 +98,7 @@ class CrossOwnerActiveSubAccountTransferService
                 }
 
                 $transaction = NajmTransaction::create([
+                    'idempotency_key' => $idempotencyKey,
                     'from_account_id' => (int) $sourceCanonical['mirror_account_id'],
                     'to_account_id' => (int) $destinationCanonical['mirror_account_id'],
                     'amount' => $amount,

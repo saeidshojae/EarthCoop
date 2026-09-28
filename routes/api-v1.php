@@ -5,6 +5,11 @@ use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
+use App\Http\Controllers\API\V1\NajmBaharAccountController;
+use App\Http\Controllers\API\V1\NajmBaharActivationController;
+use App\Http\Controllers\API\V1\NajmBaharMembershipFeeController;
+use App\Http\Controllers\API\V1\NajmBaharScheduledOperationController;
+use App\Http\Controllers\API\V1\NajmBaharTransactionController;
 use App\Http\Controllers\API\V1\NajmHodaActionController;
 use App\Http\Controllers\API\V1\NajmHodaCapabilityController;
 use App\Http\Controllers\API\V1\NajmHodaConversationController;
@@ -56,6 +61,28 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->middleware('api.v1.idempotency')->name('notifications.read');
         Route::get('/notifications/preferences', [NotificationController::class, 'preferences'])->name('notifications.preferences');
         Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences'])->middleware('api.v1.idempotency')->name('notifications.preferences.update');
+
+        Route::get('/najm-bahar/account', [NajmBaharAccountController::class, 'show'])->name('najm-bahar.account.show');
+        Route::get('/najm-bahar/accounts/{account}/balance', [NajmBaharAccountController::class, 'balance'])
+            ->whereNumber('account')
+            ->name('najm-bahar.accounts.balance');
+        Route::get('/najm-bahar/transactions', [NajmBaharTransactionController::class, 'index'])
+            ->name('najm-bahar.transactions.index');
+        Route::post('/najm-bahar/transfers', [NajmBaharTransactionController::class, 'storeTransfer'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.transfers.store');
+        Route::get('/najm-bahar/activation/eligibility', [NajmBaharActivationController::class, 'eligibility'])
+            ->name('najm-bahar.activation.eligibility');
+        Route::post('/najm-bahar/activation', [NajmBaharActivationController::class, 'store'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.activation.store');
+        Route::get('/najm-bahar/membership-fee', [NajmBaharMembershipFeeController::class, 'show'])
+            ->name('najm-bahar.membership-fee.show');
+        Route::post('/najm-bahar/membership-fee/pay', [NajmBaharMembershipFeeController::class, 'pay'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.membership-fee.pay');
+        Route::get('/najm-bahar/scheduled-operations', [NajmBaharScheduledOperationController::class, 'index'])
+            ->name('najm-bahar.scheduled-operations.index');
 
         Route::get('/najm-hoda/conversations', [NajmHodaConversationController::class, 'index'])->name('najm-hoda.conversations.index');
         Route::post('/najm-hoda/conversations', [NajmHodaConversationController::class, 'store'])->name('najm-hoda.conversations.store');
