@@ -4,20 +4,32 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Support\Api\V1\Pagination;
-use App\Models\User;
 use App\Modules\NajmBahar\Models\Project;
+use App\Services\Actors\ActorBoundaryException;
+use App\Services\Actors\ActorReference;
+use App\Services\Actors\ActorResolver;
 use App\Services\Projects\ProjectApplicationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ProjectController extends Controller
 {
-    public function index(Request $request, ProjectApplicationService $application)
+    public function index(Request $request, ProjectApplicationService $application, ActorResolver $actors)
     {
         $page = Pagination::page($request, 20, 50);
-        $query = Project::query()
-            ->where('owner_type', User::class)
-            ->where('owner_id', $request->user()->id)
+        $ownerFilter = $request->input('filter.owner_actor');
+
+        if ($ownerFilter === null) {
+            $owner = $actors->referenceFor($request->user());
+        } else {
+            if (! is_string($ownerFilter)) {
+                throw ActorBoundaryException::invalidReference();
+            }
+
+            $owner = ActorReference::parse($ownerFilter);
+        }
+
+        $query = $application->ownedQueryFor($request->user(), $owner)
             ->orderByDesc('id');
 
         $total = (clone $query)->count();
