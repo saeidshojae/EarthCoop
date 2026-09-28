@@ -7,11 +7,14 @@ on:
     paths:
       - 'app/Services/Actors/**'
       - 'app/Services/Groups/**'
+      - 'app/Http/Controllers/API/V1/ActorController.php'
       - 'app/Policies/Concerns/ResolvesGroupMembership.php'
       - 'app/Exceptions/ApiV1ExceptionRenderer.php'
+      - 'routes/api-v1.php'
       - 'tests/Unit/Actors/**'
       - 'tests/Feature/Actors/**'
       - 'tests/Feature/Admin/GroupRoleManagementTest.php'
+      - 'tests/Feature/Api/V1/ActorContractTest.php'
       - 'tests/Feature/Api/V1/TransportContractTest.php'
       - '.github/workflows/m4-actor-boundary-targeted.yml'
 
@@ -77,3 +80,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Actors/ActorReferenceTest.php tests/Feature/Api/V1/TransportContractTest.php
       - name: Run Task 2 representation and group-role regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Actors/ActorRepresentationAuthorizationTest.php tests/Feature/Admin/GroupRoleManagementTest.php
+      - name: Run Task 3 actor discovery contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/ActorContractTest.php
