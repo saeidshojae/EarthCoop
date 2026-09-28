@@ -10,7 +10,15 @@
     <meta name="theme-color" content="#10b981">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
-    <title>@yield('title', 'New Earth Coop')</title>
+    <x-seo-meta
+        :title="$seoTitle ?? trim($__env->yieldContent('title')) ?: config('seo.default_title')"
+        :description="$seoDescription ?? trim($__env->yieldContent('meta_description')) ?: config('seo.default_description')"
+        :canonical="$seoCanonical ?? null"
+        :robots="$seoRobots ?? 'index,follow'"
+        :type="$seoType ?? 'website'"
+        :image="$seoImage ?? null"
+        :json-ld="$seoJsonLd ?? []"
+    />
 
     <!-- Tailwind & Bootstrap CSS via Vite -->
     @vite(['resources/js/app.js'])

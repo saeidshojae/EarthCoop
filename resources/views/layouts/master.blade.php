@@ -8,11 +8,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
-    <!-- Page Title -->
-    <title>@yield('title', config('app.name', 'New Earth Coop'))</title>
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="@yield('meta_description', 'New Earth Coop - A Cooperative Community Platform')">
-    <meta name="keywords" content="@yield('meta_keywords', 'cooperative, community, earth, sustainability')">
+    <x-seo-meta
+        :title="$seoTitle ?? trim($__env->yieldContent('title')) ?: config('seo.default_title')"
+        :description="$seoDescription ?? trim($__env->yieldContent('meta_description')) ?: config('seo.default_description')"
+        :canonical="$seoCanonical ?? null"
+        :robots="$seoRobots ?? 'index,follow'"
+        :type="$seoType ?? 'website'"
+        :image="$seoImage ?? null"
+        :json-ld="$seoJsonLd ?? []"
+    />
     <!-- ========== Core CSS Files ========== -->
     <!-- Bootstrap & Tailwind CSS via Vite -->
     @vite(['resources/js/app.js'])
