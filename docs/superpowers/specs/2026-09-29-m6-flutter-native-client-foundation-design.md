@@ -3,7 +3,7 @@
 **Date:** 2026-09-29  
 **Baseline:** `main@9a9906d4ac8a21e3fd77370c5674261542bc4e95`  
 **Parents:** M0 API Constitution + M1–M5 Mobile Readiness contracts  
-**Status:** Draft for user review after approved architecture decision  
+**Status:** Approved for implementation planning  
 **Decision:** Flutter is the official Native client technology for EarthCoop Android and iOS. NativePHP is not developed as a parallel production path.
 
 ---
@@ -697,41 +697,3 @@ M6 is complete only when the same final candidate proves:
 14. Flutter targeted gate is green;
 15. any touched backend M1–M5 regressions are green;
 16. final architecture review finds no mobile-only domain truth or cookie dependency.
-
----
-
-## 28. Post-M6 direction
-
-After M6, feature migration proceeds vertically, not by copying pages wholesale.
-
-Recommended broad order:
-
-1. Group feed/chat and participation flows;
-2. Location/Governance read + carefully scoped edit flows;
-3. Elections;
-4. Najm Hoda companion;
-5. Najm Bahar read experiences, then separately reviewed financial actions;
-6. Projects/marketplace/company/shop according to backend readiness;
-7. richer device capabilities as actual product needs justify them.
-
-Each later mobile feature consumes existing server authority and receives a focused design only where its risk/complexity requires it.
-
----
-
-## 29. Architecture gate conclusion
-
-The Post-M5 Architecture Gate is resolved as follows:
-
-- **Framework:** Flutter — accepted as official Native client technology.
-- **Backend authority:** Laravel `/api/v1` — unchanged.
-- **Repository model:** monorepo, Flutter at `apps/mobile`.
-- **State:** Riverpod stable.
-- **Network:** Dio shared transport.
-- **Navigation:** go_router + semantic typed-link registry.
-- **Local persistence:** Drift/SQLite for non-secret cache/offline queue.
-- **Secrets:** platform secure storage.
-- **Push:** provider abstraction with FCM + HMS; APNs-compatible iOS path retained.
-- **Offline:** explicit M5 idempotent replay, not local domain execution.
-- **Initial product slice:** bootstrap/login/groups/notifications/deep-link plus foundation behaviors.
-
-This architecture is intentionally conservative: it maximizes long-term maintainability and global device compatibility while preserving the strong server-authoritative boundaries created in M0–M5.
