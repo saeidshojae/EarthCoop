@@ -25,11 +25,10 @@ class RealtimeRecoveryContractTest extends TestCase
         [$token, $deviceId] = $this->nativeSession($user);
 
         $user->notifyNow(new GenericNotification('one', 'one'));
-        $firstId = (string) $user->notifications()->latest()->value('id');
-        usleep(1000);
         $user->notifyNow(new GenericNotification('two', 'two'));
-        usleep(1000);
         $user->notifyNow(new GenericNotification('three', 'three'));
+
+        $originalIds = $user->notifications()->pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all();
 
         $first = $this->freshBearer($token, $deviceId)
             ->getJson('/api/v1/notifications?page[limit]=2')
@@ -41,8 +40,8 @@ class RealtimeRecoveryContractTest extends TestCase
         $this->assertCount(2, $firstPageIds);
         $this->assertNotEmpty($cursor);
 
-        usleep(1000);
         $user->notifyNow(new GenericNotification('four', 'four'));
+        $newId = (string) $user->notifications()->latest('created_at')->value('id');
 
         $second = $this->freshBearer($token, $deviceId)
             ->getJson('/api/v1/notifications?page[limit]=2&page[cursor]='.urlencode((string) $cursor))
@@ -50,8 +49,16 @@ class RealtimeRecoveryContractTest extends TestCase
             ->assertJsonPath('meta.pagination.has_more', false);
 
         $secondPageIds = collect($second->json('data'))->pluck('id')->all();
-        $this->assertSame([$firstId], $secondPageIds);
+        $this->assertCount(1, $secondPageIds);
         $this->assertSame([], array_values(array_intersect($firstPageIds, $secondPageIds)));
+        $this->assertNotContains($newId, $secondPageIds);
+
+        $recoveredOriginalIds = collect($firstPageIds)
+            ->merge($secondPageIds)
+            ->sort()
+            ->values()
+            ->all();
+        $this->assertSame($originalIds, $recoveredOriginalIds);
     }
 
     public function test_invalid_notification_cursor_returns_stable_422_error(): void
