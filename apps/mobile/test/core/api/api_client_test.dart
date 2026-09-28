@@ -49,7 +49,7 @@ void main() {
             'request_id': 'req-error-1',
           },
           headers: {
-            Headers.retryAfterHeader: ['3'],
+            'retry-after': ['3'],
           },
         ),
       ]);
