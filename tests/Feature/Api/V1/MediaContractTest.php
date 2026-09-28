@@ -72,12 +72,16 @@ class MediaContractTest extends TestCase
     {
         $user = $this->member('ownership');
         [$token, $deviceId] = $this->nativeSession($user);
+        $pdf = UploadedFile::fake()->createWithContent(
+            'evidence.pdf',
+            "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<<>>\n%%EOF\n",
+        );
 
         $response = $this->freshBearer($token, $deviceId)
             ->withHeader('Idempotency-Key', 'media-owner-'.bin2hex(random_bytes(8)))
             ->post('/api/v1/media', [
                 'purpose' => 'project.attachment',
-                'file' => UploadedFile::fake()->create('evidence.pdf', 12, 'application/pdf'),
+                'file' => $pdf,
             ], ['Accept' => 'application/json'])
             ->assertCreated();
 
