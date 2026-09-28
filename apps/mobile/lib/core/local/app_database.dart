@@ -65,8 +65,7 @@ class AppDatabase extends GeneratedDatabase {
     return BootstrapSnapshotRecord(
       payloadJson: row.read<String>('payload_json'),
       fetchedAtMilliseconds: row.read<int>('fetched_at_ms'),
-      hadAuthenticatedSession:
-          row.read<int>('had_authenticated_session') == 1,
+      hadAuthenticatedSession: row.read<int>('had_authenticated_session') == 1,
     );
   }
 
