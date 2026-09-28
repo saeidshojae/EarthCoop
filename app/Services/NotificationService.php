@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Jobs\DeliverPushNotification;
 use App\Models\User;
 use App\Notifications\GenericNotification;
-use App\Services\Push\PushNotificationDispatcher;
 use App\Support\Notifications\NotificationLink;
 use App\Support\Notifications\NotificationLinkRegistry;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -15,7 +15,6 @@ class NotificationService
 {
     public function __construct(
         private readonly NotificationLinkRegistry $links,
-        private readonly PushNotificationDispatcher $push,
     ) {
     }
 
@@ -43,7 +42,10 @@ class NotificationService
         }
 
         $model->notify(new GenericNotification($title, $message, $url, $type, $context, $link));
-        $this->push->dispatch($model, $this->payload($title, $message, $url, $type, $context, $link));
+        DeliverPushNotification::dispatch(
+            (int) $model->id,
+            $this->payload($title, $message, $url, $type, $context, $link),
+        );
     }
 
     public function notifyMany(
@@ -77,7 +79,7 @@ class NotificationService
         NotificationFacade::send($enabledUsers, new GenericNotification($title, $message, $url, $type, $context, $link));
         $payload = $this->payload($title, $message, $url, $type, $context, $link);
         foreach ($enabledUsers as $user) {
-            $this->push->dispatch($user, $payload);
+            DeliverPushNotification::dispatch((int) $user->id, $payload);
         }
     }
 
