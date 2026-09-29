@@ -4,7 +4,7 @@ import '../api/api_client.dart';
 import '../logging/diagnostics.dart';
 import 'push_token_source.dart';
 
-const Object? _decodePushResponse(Object? json) => json;
+Object? _decodePushResponse(Object? json) => json;
 
 enum PushRegistrationStatus { registered, awaitingToken, unavailable, disabled }
 
