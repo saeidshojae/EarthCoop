@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scopes=(test/core/media)
+          scopes=(test/core/media integration_test/media_upload_test.dart)
           [ ! -d lib/core/media ] || scopes+=(lib/core/media)
           scopes+=(lib/core/api/api_client.dart)
           dart format "${scopes[@]}"
@@ -43,10 +43,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scopes=(test/core/media)
+          scopes=(test/core/media integration_test/media_upload_test.dart)
           [ ! -d lib/core/media ] || scopes+=(lib/core/media)
           scopes+=(lib/core/api/api_client.dart)
           flutter analyze "${scopes[@]}"
       - name: Run Task 9 media contracts
         working-directory: apps/mobile
-        run: flutter test test/core/media
+        run: |
+          flutter test test/core/media
+          flutter test integration_test/media_upload_test.dart
