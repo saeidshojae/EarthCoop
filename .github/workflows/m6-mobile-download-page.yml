@@ -7,13 +7,15 @@ on:
       - main
     paths:
       - 'tests/Feature/MobileDownloadPageTest.php'
-      - 'routes/web.php'
+      - 'app/Providers/RouteServiceProvider.php'
+      - 'routes/mobile-download.php'
       - 'resources/views/mobile/app-download.blade.php'
       - '.github/workflows/m6-mobile-download-page.yml'
   pull_request:
     paths:
       - 'tests/Feature/MobileDownloadPageTest.php'
-      - 'routes/web.php'
+      - 'app/Providers/RouteServiceProvider.php'
+      - 'routes/mobile-download.php'
       - 'resources/views/mobile/app-download.blade.php'
       - '.github/workflows/m6-mobile-download-page.yml'
   workflow_dispatch:
