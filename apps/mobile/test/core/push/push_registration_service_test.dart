@@ -59,7 +59,7 @@ void main() {
     await service.initialize();
     source.emit('push-secret-a');
     source.emit('push-secret-b');
-    await source.flush();
+    await adapter.waitForRequestCount(2);
 
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.last.data, {
@@ -182,6 +182,12 @@ class SequenceHttpAdapter implements HttpClientAdapter {
 
   final Queue<ResponseBody> _responses;
   final List<RequestOptions> requests = [];
+  final Map<int, Completer<void>> _requestCountWaiters = {};
+
+  Future<void> waitForRequestCount(int count) {
+    if (requests.length >= count) return Future<void>.value();
+    return (_requestCountWaiters[count] ??= Completer<void>()).future;
+  }
 
   @override
   Future<ResponseBody> fetch(
@@ -190,6 +196,12 @@ class SequenceHttpAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    final reachedCounts = _requestCountWaiters.keys
+        .where((count) => requests.length >= count)
+        .toList(growable: false);
+    for (final count in reachedCounts) {
+      _requestCountWaiters.remove(count)?.complete();
+    }
     if (_responses.isEmpty) throw StateError('No response queued');
     return _responses.removeFirst();
   }
