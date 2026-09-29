@@ -11,7 +11,9 @@ import 'package:earthcoop_mobile/core/media/media_resource.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('MediaResource accepts opaque public id and ignores internal-path fields', () {
+  test(
+      'MediaResource accepts opaque public id and ignores internal-path fields',
+      () {
     final resource = MediaResource.fromJson({
       'id': 'media-public-opaque',
       'purpose': 'chat_attachment',
@@ -34,7 +36,8 @@ void main() {
     expect(resource.mimeType, 'image/png');
   });
 
-  test('upload sends purpose, file body and original idempotency key', () async {
+  test('upload sends purpose, file body and original idempotency key',
+      () async {
     final adapter = RecordingAdapter([
       jsonResponse(201, successEnvelope(mediaJson())),
     ]);
@@ -96,7 +99,8 @@ void main() {
       adapter.requests.map((r) => r.headers['Idempotency-Key']).toSet(),
       {'idem-media-retry'},
     );
-    expect(identical(adapter.requests[0].data, adapter.requests[1].data), isFalse);
+    expect(
+        identical(adapter.requests[0].data, adapter.requests[1].data), isFalse);
   });
 
   test('upload forwards progress and cancellation handles', () async {
