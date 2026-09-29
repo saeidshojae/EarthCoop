@@ -12,7 +12,7 @@
         :title="$seoTitle ?? trim($__env->yieldContent('title')) ?: config('seo.default_title')"
         :description="$seoDescription ?? trim($__env->yieldContent('meta_description')) ?: config('seo.default_description')"
         :canonical="$seoCanonical ?? null"
-        :robots="$seoRobots ?? 'index,follow'"
+        :robots="$seoRobots ?? 'noindex,nofollow'"
         :type="$seoType ?? 'website'"
         :image="$seoImage ?? null"
         :json-ld="$seoJsonLd ?? []"

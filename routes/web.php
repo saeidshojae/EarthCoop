@@ -102,7 +102,7 @@ Route::get('/lang/current', [LocaleController::class, 'current'])->name('locale.
 */
 date_default_timezone_set("Asia/tehran");
 
-Route::view('/terms', 'terms')->name('terms');
+Route::view('/terms', 'terms', ['seoRobots' => 'index,follow'])->name('terms');
 Route::post('/terms', [TermController::class, 'store'])->name('terms.store');
 Route::get('/sitemap.xml', SitemapController::class)->name('seo.sitemap');
 
