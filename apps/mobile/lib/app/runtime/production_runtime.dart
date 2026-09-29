@@ -8,6 +8,7 @@ import '../../core/api/app_environment.dart';
 import '../../core/auth/secure_session_store.dart';
 import '../../core/auth/session_controller.dart';
 import '../../core/auth/session_repository.dart';
+import '../../core/deep_links/semantic_link.dart';
 import '../../core/device/device_context.dart';
 import '../../core/local/app_database.dart';
 import '../../features/auth/login_controller.dart';
@@ -218,7 +219,7 @@ class _NotificationsRuntimeView extends StatefulWidget {
   });
 
   final NotificationsController controller;
-  final ValueChanged<dynamic> onOpenLink;
+  final ValueChanged<SemanticLink> onOpenLink;
 
   @override
   State<_NotificationsRuntimeView> createState() =>
