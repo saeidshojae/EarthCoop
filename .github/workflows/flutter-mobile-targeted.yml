@@ -192,7 +192,17 @@ jobs:
         run: flutter pub get
       - name: Check formatting
         working-directory: apps/mobile
-        run: dart format --output=none --set-exit-if-changed lib test integration_test
+        shell: bash
+        run: |
+          set +e
+          dart format --output=none --set-exit-if-changed lib test integration_test
+          status=$?
+          if [[ $status -ne 0 ]]; then
+            echo '::group::Formatter diff'
+            git diff -- lib test integration_test
+            echo '::endgroup::'
+          fi
+          exit $status
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
