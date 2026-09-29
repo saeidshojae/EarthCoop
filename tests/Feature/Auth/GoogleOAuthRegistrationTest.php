@@ -28,7 +28,6 @@ class GoogleOAuthRegistrationTest extends TestCase
 
     public function test_google_registration_cannot_start_before_terms_are_accepted(): void
     {
-        $provider = Mockery::mock();
         Socialite::shouldReceive('driver')->never();
 
         $response = $this->get('/auth/google');
@@ -127,6 +126,12 @@ class GoogleOAuthRegistrationTest extends TestCase
             ])
             ->get('/auth/google/callback');
 
+        // Keep response assertions ahead of database lookups so a callback gate
+        // regression reports its real reason instead of surfacing as a secondary
+        // ModelNotFoundException.
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('register.step1'));
+
         $newUser = User::query()->where('email', 'new-member@example.com')->firstOrFail();
         $invitation->refresh();
 
@@ -137,7 +142,6 @@ class GoogleOAuthRegistrationTest extends TestCase
         $this->assertTrue($invitation->used);
         $this->assertSame($newUser->id, (int) $invitation->used_by);
         $this->assertNotNull($invitation->used_at);
-        $response->assertRedirect(route('register.step1'));
         $response->assertSessionMissing('registration_invitation_code');
         $response->assertSessionMissing('registration_terms_accepted');
     }
