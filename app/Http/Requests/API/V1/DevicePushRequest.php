@@ -15,7 +15,7 @@ class DevicePushRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'provider' => ['required', 'string', Rule::in(['fcm', 'apns'])],
+            'provider' => ['required', 'string', Rule::in(['fcm', 'apns', 'hms'])],
             'token' => ['required', 'string', 'max:4096'],
         ];
     }
