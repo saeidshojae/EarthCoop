@@ -88,6 +88,7 @@ jobs:
     outputs:
       mobile: ${{ steps.changed.outputs.mobile }}
       backend: ${{ steps.changed.outputs.backend }}
+      ios: ${{ steps.changed.outputs.ios }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,6 +105,7 @@ jobs:
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "mobile=true" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "ios=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -120,11 +122,18 @@ jobs:
           git diff --name-only "$base" "${{ github.sha }}" > /tmp/m6-changed-paths.txt
           mobile=false
           backend=false
+          ios=false
 
           while IFS= read -r path; do
             case "$path" in
               apps/mobile/*|.github/workflows/flutter-mobile-targeted.yml)
                 mobile=true
+                ;;
+            esac
+            case "$path" in
+              apps/mobile/ios/*|apps/mobile/pubspec.yaml|apps/mobile/pubspec.lock|\
+              apps/mobile/lib/core/push/*|.github/workflows/flutter-mobile-targeted.yml)
+                ios=true
                 ;;
             esac
             case "$path" in
@@ -161,9 +170,10 @@ jobs:
 
           echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
           echo "Changed paths:"
           cat /tmp/m6-changed-paths.txt
-          echo "mobile=$mobile backend=$backend"
+          echo "mobile=$mobile backend=$backend ios=$ios"
 
   mobile:
     needs: changes
@@ -262,9 +272,7 @@ jobs:
 
   ios-compile:
     needs: changes
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[m6-ios]'))
+    if: needs.changes.outputs.ios == 'true'
     runs-on: macos-latest
     timeout-minutes: 40
     steps:
