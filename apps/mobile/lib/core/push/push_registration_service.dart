@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../api/api_client.dart';
 import '../logging/diagnostics.dart';
+import 'push_provider_selector.dart';
 import 'push_token_source.dart';
 
 Object? _decodePushResponse(Object? json) => json;
