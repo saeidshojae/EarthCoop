@@ -7,6 +7,7 @@ import '../../core/deep_links/semantic_link.dart';
 import '../../features/home/home_screen.dart';
 import '../bootstrap/bootstrap_state.dart';
 
+typedef LoginRouteBuilder = Widget Function(BuildContext context);
 typedef GroupsRouteBuilder = Widget Function(
   BuildContext context,
   ValueChanged<int> openGroup,
@@ -26,6 +27,7 @@ class AppRouter {
     required SessionState session,
     SemanticLink? initialLink,
     DeepLinkRegistry registry = const DeepLinkRegistry(),
+    LoginRouteBuilder? loginBuilder,
     GroupsRouteBuilder? groupsBuilder,
     GroupDetailRouteBuilder? groupDetailBuilder,
     NotificationsRouteBuilder? notificationsBuilder,
@@ -46,10 +48,12 @@ class AppRouter {
             ),
             GoRoute(
               path: '/login',
-              builder: (context, state) => const _RouteMessageScreen(
-                key: Key('login-route-screen'),
-                message: 'ورود',
-              ),
+              builder: (context, state) => loginBuilder == null
+                  ? const _RouteMessageScreen(
+                      key: Key('login-route-screen'),
+                      message: 'ورود',
+                    )
+                  : loginBuilder(context),
             ),
             GoRoute(
               path: '/update-required',
@@ -126,6 +130,10 @@ class AppRouter {
       return bootstrap.decision == BootstrapDecision.requiredUpdate
           ? '/update-required'
           : '/unavailable';
+    }
+
+    if (session.phase != SessionPhase.authenticated) {
+      return '/login';
     }
 
     if (initialLink == null) return '/home';
