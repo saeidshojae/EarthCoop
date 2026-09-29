@@ -22,7 +22,7 @@ class HmsPushTokenSource implements PushTokenSource {
       initialTokenTimeout,
       onTimeout: () => '',
     );
-    await Push.getToken('');
+    Push.getToken('');
     final token = await tokenFuture;
     return token.isEmpty ? null : token;
   }
