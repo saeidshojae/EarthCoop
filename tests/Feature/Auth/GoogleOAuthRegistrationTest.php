@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\SettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
@@ -145,6 +146,48 @@ class GoogleOAuthRegistrationTest extends TestCase
         $this->assertNotNull($invitation->used_at);
         $response->assertSessionMissing('registration_invitation_code');
         $response->assertSessionMissing('registration_terms_accepted');
+    }
+
+    public function test_google_member_must_choose_password_in_step1_before_advancing_to_step2(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'google-step1@example.com',
+            'password' => null,
+            'email_verified_at' => now(),
+        ]);
+
+        $step1Data = [
+            'first_name' => 'سعید',
+            'last_name' => 'آزمایشی',
+            'birth_date' => ['1', '1', '1370'],
+            'gender' => 'male',
+            'nationality' => 'ایران',
+            'national_id' => '0013546880',
+            'country_code' => '+98',
+            'phone' => '9123456789',
+        ];
+
+        $missingPassword = $this
+            ->actingAs($user)
+            ->post(route('register.step1.process'), $step1Data);
+
+        $missingPassword->assertSessionHasErrors('password');
+        $this->assertNull($user->fresh()->password);
+
+        $chosenPassword = 'Google-Step1-Secret-123';
+        $completedStep1 = $this
+            ->actingAs($user->fresh())
+            ->post(route('register.step1.process'), $step1Data + [
+                'password' => $chosenPassword,
+                'password_confirmation' => $chosenPassword,
+            ]);
+
+        $completedStep1->assertSessionHasNoErrors();
+        $completedStep1->assertRedirect(route('register.step2'));
+
+        $user->refresh();
+        $this->assertNotNull($user->password);
+        $this->assertTrue(Hash::check($chosenPassword, $user->password));
     }
 
     public function test_google_callback_does_not_create_user_when_terms_acceptance_is_missing(): void
