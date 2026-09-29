@@ -20,6 +20,9 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get --enforce-lockfile
       - name: Print canonical Dart formatter diff
         working-directory: apps/mobile
         shell: bash
