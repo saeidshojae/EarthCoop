@@ -1,6 +1,7 @@
 name: M6 Flutter Task 12 TDD
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - agent/flutter-native-client-foundation-20260929
