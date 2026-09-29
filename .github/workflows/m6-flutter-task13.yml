@@ -11,6 +11,7 @@ on:
       - 'apps/mobile/lib/features/home/**'
       - 'apps/mobile/lib/features/groups/**'
       - 'apps/mobile/lib/features/notifications/**'
+      - 'apps/mobile/docs/DEVICE_ACCEPTANCE.md'
       - '.github/workflows/m6-flutter-task13.yml'
 
 permissions:
@@ -34,13 +35,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scopes=(integration_test/m6_vertical_slice_test.dart test/acceptance/m6_vertical_slice_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications)
+          scopes=(test/acceptance integration_test/m6_vertical_slice_test.dart integration_test/offline_reconnect_test.dart integration_test/deep_link_notification_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications)
           dart format "${scopes[@]}"
           git diff -- "${scopes[@]}"
           git diff --exit-code -- "${scopes[@]}"
-      - name: Analyze vertical slice scope
+      - name: Analyze acceptance scope
         working-directory: apps/mobile
-        run: flutter analyze integration_test/m6_vertical_slice_test.dart test/acceptance/m6_vertical_slice_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications
-      - name: Run deterministic M6 vertical slice contract
+        run: flutter analyze test/acceptance integration_test/m6_vertical_slice_test.dart integration_test/offline_reconnect_test.dart integration_test/deep_link_notification_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications
+      - name: Run deterministic M6 acceptance contracts
         working-directory: apps/mobile
-        run: flutter test test/acceptance/m6_vertical_slice_test.dart
+        run: flutter test test/acceptance
