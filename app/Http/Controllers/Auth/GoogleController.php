@@ -13,8 +13,6 @@ use App\Services\ProfileCompletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 use Throwable;
@@ -206,11 +204,6 @@ class GoogleController extends Controller
                 $newUser = User::create([
                     'email' => $email,
                     'name' => $googleUser->getName(),
-                    // Google-authenticated members do not choose a local password
-                    // here, but the current users schema requires one. Store an
-                    // unguessable value so password authentication is unavailable
-                    // unless the member explicitly resets/sets a password later.
-                    'password' => Hash::make(Str::random(64)),
                     'email_verified_at' => now(),
                     'fingerprint_id' => session('fingerprint_id'),
                     'terms_accepted_at' => now(),
