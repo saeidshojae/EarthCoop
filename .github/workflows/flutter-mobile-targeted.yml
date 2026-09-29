@@ -194,15 +194,13 @@ jobs:
         working-directory: apps/mobile
         shell: bash
         run: |
-          set +e
-          dart format --output=none --set-exit-if-changed lib test integration_test
-          status=$?
-          if [[ $status -ne 0 ]]; then
+          dart format lib test integration_test
+          if ! git diff --quiet -- lib test integration_test; then
             echo '::group::Formatter diff'
             git diff -- lib test integration_test
             echo '::endgroup::'
+            exit 1
           fi
-          exit $status
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
