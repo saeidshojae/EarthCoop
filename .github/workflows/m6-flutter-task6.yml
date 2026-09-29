@@ -1,0 +1,51 @@
+name: M6 Flutter Task 6 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/lib/features/groups/**'
+      - 'apps/mobile/lib/core/local/**'
+      - 'apps/mobile/test/features/groups/**'
+      - '.github/workflows/m6-flutter-task6.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  groups:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/features/groups)
+          [ ! -d lib/features/groups ] || scopes+=(lib/features/groups)
+          [ ! -d lib/core/local ] || scopes+=(lib/core/local)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
+      - name: Analyze groups scope
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/features/groups)
+          [ ! -d lib/features/groups ] || scopes+=(lib/features/groups)
+          [ ! -d lib/core/local ] || scopes+=(lib/core/local)
+          flutter analyze "${scopes[@]}"
+      - name: Run Task 6 groups contracts
+        working-directory: apps/mobile
+        run: flutter test test/features/groups
