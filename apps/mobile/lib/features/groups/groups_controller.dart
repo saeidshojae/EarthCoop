@@ -138,7 +138,9 @@ GroupViewFailure _mapFailure(ApiFailure failure) {
     return const GroupViewFailure.forbidden('دسترسی به این بخش مجاز نیست.');
   }
   if (failure.retryable) {
-    return const GroupViewFailure.retryable('ارتباط برقرار نشد. دوباره تلاش کنید.');
+    return const GroupViewFailure.retryable(
+        'ارتباط برقرار نشد. دوباره تلاش کنید.');
   }
-  return const GroupViewFailure.nonRetryable('امکان دریافت اطلاعات وجود ندارد.');
+  return const GroupViewFailure.nonRetryable(
+      'امکان دریافت اطلاعات وجود ندارد.');
 }
