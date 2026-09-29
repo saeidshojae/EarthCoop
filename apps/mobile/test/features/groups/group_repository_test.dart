@@ -14,7 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('GroupRepository', () {
-    test('list decodes canonical projection, ignores additive fields and caches it',
+    test(
+        'list decodes canonical projection, ignores additive fields and caches it',
         () async {
       final adapter = RecordingAdapter([
         jsonResponse(200, successEnvelope([groupJson(extra: true)])),
@@ -39,7 +40,8 @@ void main() {
       expect(adapter.requests.single.path, '/groups');
     });
 
-    test('detail always performs authoritative API read before using cache', () async {
+    test('detail always performs authoritative API read before using cache',
+        () async {
       final adapter = RecordingAdapter([
         jsonResponse(200, successEnvelope(groupJson(extra: true))),
       ]);
@@ -58,8 +60,14 @@ void main() {
 
     test('transient list failure may return stale cached projection', () async {
       final adapter = RecordingAdapter([
-        jsonResponse(503, errorEnvelope('temporarily_unavailable', retryable: true, status: 503)),
-        jsonResponse(503, errorEnvelope('temporarily_unavailable', retryable: true, status: 503)),
+        jsonResponse(
+            503,
+            errorEnvelope('temporarily_unavailable',
+                retryable: true, status: 503)),
+        jsonResponse(
+            503,
+            errorEnvelope('temporarily_unavailable',
+                retryable: true, status: 503)),
       ]);
       final cache = MemoryGroupCache(items: [cachedGroupJson()]);
       final repository = GroupRepository(
@@ -76,7 +84,8 @@ void main() {
 
     test('forbidden detail never falls back to cached projection', () async {
       final adapter = RecordingAdapter([
-        jsonResponse(403, errorEnvelope('forbidden', retryable: false, status: 403)),
+        jsonResponse(
+            403, errorEnvelope('forbidden', retryable: false, status: 403)),
       ]);
       final cache = MemoryGroupCache(items: [cachedGroupJson()]);
       final repository = GroupRepository(
@@ -91,7 +100,8 @@ void main() {
 
   test('Drift group projection cache survives close/reopen and remains bounded',
       () async {
-    final directory = await Directory.systemTemp.createTemp('earthcoop-groups-');
+    final directory =
+        await Directory.systemTemp.createTemp('earthcoop-groups-');
     final file = File('${directory.path}/app.sqlite');
     addTearDown(() async {
       if (await directory.exists()) await directory.delete(recursive: true);
@@ -133,7 +143,8 @@ Map<String, Object?> groupJson({
   int id = 42,
   String name = 'مجمع عمومی محله نمونه',
   bool extra = false,
-}) => {
+}) =>
+    {
       'id': id,
       'name': name,
       'identity': {
