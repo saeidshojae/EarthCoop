@@ -138,6 +138,7 @@ class GoogleOAuthRegistrationTest extends TestCase
         $this->assertAuthenticatedAs($newUser);
         $this->assertNotNull($newUser->email_verified_at);
         $this->assertNotNull($newUser->terms_accepted_at);
+        $this->assertNull($newUser->password, 'Google registration must leave password unset so Step1 requires the member to choose one.');
         $this->assertSame('fp-google-test', $newUser->fingerprint_id);
         $this->assertTrue($invitation->used);
         $this->assertSame($newUser->id, (int) $invitation->used_by);
