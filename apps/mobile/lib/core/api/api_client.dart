@@ -36,12 +36,14 @@ class ApiClient {
 
   Future<ApiSuccess<T>> get<T>(
     String path, {
+    Map<String, dynamic>? queryParameters,
     RequestContext? context,
     required T Function(Object? json) decodeData,
   }) =>
       _request<T>(
         'GET',
         path,
+        queryParameters: queryParameters,
         context: context,
         decodeData: decodeData,
       );
@@ -70,6 +72,7 @@ class ApiClient {
     String method,
     String path, {
     Object? data,
+    Map<String, dynamic>? queryParameters,
     RequestContext? context,
     required T Function(Object? json) decodeData,
   }) async {
@@ -81,6 +84,7 @@ class ApiClient {
         final response = await _dio.request<Object?>(
           path,
           data: data,
+          queryParameters: queryParameters,
           options: Options(
             method: method,
             headers: request.headers,

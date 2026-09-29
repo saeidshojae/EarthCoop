@@ -14,6 +14,19 @@ const _createBootstrapSnapshotTableSql =
     'CHECK (had_authenticated_session IN (0, 1))'
     ')';
 
+const _createNotificationProjectionTableSql =
+    'CREATE TABLE IF NOT EXISTS notification_projection_cache ('
+    'id TEXT NOT NULL PRIMARY KEY, '
+    'payload_json TEXT NOT NULL, '
+    'position INTEGER NOT NULL'
+    ')';
+
+const _createNotificationSyncStateTableSql =
+    'CREATE TABLE IF NOT EXISTS notification_sync_state ('
+    'singleton_id INTEGER NOT NULL PRIMARY KEY CHECK (singleton_id = 1), '
+    'next_cursor TEXT NULL'
+    ')';
+
 class BootstrapSnapshotRecord {
   const BootstrapSnapshotRecord({
     required this.payloadJson,
@@ -52,8 +65,14 @@ class AppDatabase extends GeneratedDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (_) async {
           await customStatement(_createBootstrapSnapshotTableSql);
+          await ensureNotificationProjectionSchema();
         },
       );
+
+  Future<void> ensureNotificationProjectionSchema() async {
+    await customStatement(_createNotificationProjectionTableSql);
+    await customStatement(_createNotificationSyncStateTableSql);
+  }
 
   Future<BootstrapSnapshotRecord?> readBootstrapSnapshot() async {
     final row = await customSelect(
