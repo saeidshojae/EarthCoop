@@ -1,0 +1,59 @@
+name: M6 Flutter Task 12 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/lib/core/push/**'
+      - 'apps/mobile/lib/core/api/api_client.dart'
+      - 'apps/mobile/test/core/push/**'
+      - 'apps/mobile/pubspec.yaml'
+      - 'apps/mobile/pubspec.lock'
+      - 'apps/mobile/android/**'
+      - '.github/workflows/m6-flutter-task12.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  push-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Guard Android API floor
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq 'minSdk[[:space:]]*=[[:space:]]*24' apps/mobile/android/app/build.gradle.kts
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/core/push)
+          [ ! -d lib/core/push ] || scopes+=(lib/core/push)
+          scopes+=(lib/core/api/api_client.dart)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
+      - name: Analyze push scope
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/core/push)
+          [ ! -d lib/core/push ] || scopes+=(lib/core/push)
+          scopes+=(lib/core/api/api_client.dart)
+          flutter analyze "${scopes[@]}"
+      - name: Run Task 12 push lifecycle contracts
+        working-directory: apps/mobile
+        run: flutter test test/core/push
