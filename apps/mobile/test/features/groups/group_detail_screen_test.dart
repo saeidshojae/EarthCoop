@@ -15,7 +15,8 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('detail renders server projection and stale warning', (tester) async {
+  testWidgets('detail renders server projection and stale warning',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: GroupDetailScreen(
