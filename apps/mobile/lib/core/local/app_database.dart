@@ -27,6 +27,20 @@ const _createNotificationSyncStateTableSql =
     'next_cursor TEXT NULL'
     ')';
 
+const _createOfflineOperationQueueTableSql =
+    'CREATE TABLE IF NOT EXISTS offline_operation_queue ('
+    'client_sequence INTEGER NOT NULL PRIMARY KEY, '
+    'idempotency_key TEXT NOT NULL, '
+    'created_at_ms INTEGER NOT NULL, '
+    'resource TEXT NOT NULL, '
+    'operation TEXT NOT NULL, '
+    'payload_json TEXT NOT NULL, '
+    'payload_hash TEXT NOT NULL, '
+    'state TEXT NOT NULL, '
+    'attempt_count INTEGER NOT NULL DEFAULT 0, '
+    'last_error_code TEXT NULL'
+    ')';
+
 class BootstrapSnapshotRecord {
   const BootstrapSnapshotRecord({
     required this.payloadJson,
@@ -66,12 +80,17 @@ class AppDatabase extends GeneratedDatabase {
         onCreate: (_) async {
           await customStatement(_createBootstrapSnapshotTableSql);
           await ensureNotificationProjectionSchema();
+          await ensureOfflineQueueSchema();
         },
       );
 
   Future<void> ensureNotificationProjectionSchema() async {
     await customStatement(_createNotificationProjectionTableSql);
     await customStatement(_createNotificationSyncStateTableSql);
+  }
+
+  Future<void> ensureOfflineQueueSchema() async {
+    await customStatement(_createOfflineOperationQueueTableSql);
   }
 
   Future<BootstrapSnapshotRecord?> readBootstrapSnapshot() async {
