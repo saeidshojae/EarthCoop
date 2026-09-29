@@ -36,9 +36,11 @@ class DriftGroupProjectionCache implements GroupProjectionCache {
   @override
   Future<List<Map<String, Object?>>> readAll() async {
     await _ensureTable();
-    final rows = await _database.customSelect(
-      'SELECT payload_json FROM group_projection_cache ORDER BY position ASC',
-    ).get();
+    final rows = await _database
+        .customSelect(
+          'SELECT payload_json FROM group_projection_cache ORDER BY position ASC',
+        )
+        .get();
 
     return rows
         .map((row) => _decodeMap(row.read<String>('payload_json')))
@@ -69,7 +71,8 @@ class DriftGroupProjectionCache implements GroupProjectionCache {
         final value = bounded[index];
         final id = value['id'];
         if (id is! int) {
-          throw const FormatException('Cached group projection requires integer id');
+          throw const FormatException(
+              'Cached group projection requires integer id');
         }
         await _database.customInsert(
           'INSERT INTO group_projection_cache (id, payload_json, position) '
