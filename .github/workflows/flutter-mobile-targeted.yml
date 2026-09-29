@@ -202,6 +202,15 @@ jobs:
       - name: Build Android debug APK
         working-directory: apps/mobile
         run: flutter build apk --debug
+      - name: Stage Android UAT APK
+        run: cp apps/mobile/build/app/outputs/flutter-apk/app-debug.apk earthcoop-android-uat.apk
+      - name: Upload Android UAT APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-${{ github.sha }}
+          path: earthcoop-android-uat.apk
+          if-no-files-found: error
+          retention-days: 14
 
   backend-regressions:
     needs: changes
