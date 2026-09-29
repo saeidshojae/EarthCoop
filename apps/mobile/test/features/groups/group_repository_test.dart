@@ -36,7 +36,7 @@ void main() {
       expect(result.value.single.membership.roleLabel, 'فعال');
       expect(result.value.single.identity.dimensionKey, 'public');
       expect(result.value.single.membersCount, 12);
-      expect(cache.items.single.id, 42);
+      expect(cache.items.single['id'], 42);
       expect(adapter.requests.single.path, '/groups');
     });
 
