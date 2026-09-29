@@ -6,6 +6,7 @@ on:
       - agent/flutter-native-client-foundation-20260929
     paths:
       - 'apps/mobile/integration_test/**'
+      - 'apps/mobile/test/acceptance/**'
       - 'apps/mobile/lib/app/router/**'
       - 'apps/mobile/lib/features/home/**'
       - 'apps/mobile/lib/features/groups/**'
@@ -33,13 +34,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scopes=(integration_test/m6_vertical_slice_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications)
+          scopes=(integration_test/m6_vertical_slice_test.dart test/acceptance/m6_vertical_slice_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications)
           dart format "${scopes[@]}"
           git diff -- "${scopes[@]}"
           git diff --exit-code -- "${scopes[@]}"
       - name: Analyze vertical slice scope
         working-directory: apps/mobile
-        run: flutter analyze integration_test/m6_vertical_slice_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications
-      - name: Run M6 vertical slice contract
+        run: flutter analyze integration_test/m6_vertical_slice_test.dart test/acceptance/m6_vertical_slice_test.dart lib/app/router lib/features/home lib/features/groups lib/features/notifications
+      - name: Run deterministic M6 vertical slice contract
         working-directory: apps/mobile
-        run: flutter test integration_test/m6_vertical_slice_test.dart
+        run: flutter test test/acceptance/m6_vertical_slice_test.dart
