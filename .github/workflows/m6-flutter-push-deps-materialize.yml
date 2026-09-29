@@ -30,7 +30,7 @@ jobs:
           flutter pub add 'firebase_core:^4.15.0' 'firebase_messaging:^16.7.0' 'huawei_push:^6.15.0+300'
           flutter pub get
           grep -Eq 'minSdk = +24' android/app/build.gradle.kts
-          grep -q "platform :ios, '15.0'" ios/Podfile
+          test "$(grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/Runner.xcodeproj/project.pbxproj)" -ge 3
           git diff -- pubspec.yaml pubspec.lock
           git diff --exit-code -- . ':!pubspec.yaml' ':!pubspec.lock'
       - name: Commit dependency lock
