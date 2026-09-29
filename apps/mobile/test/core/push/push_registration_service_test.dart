@@ -68,7 +68,8 @@ void main() {
     });
   });
 
-  test('disable removes server registration and stops token observation', () async {
+  test('disable removes server registration and stops token observation',
+      () async {
     final adapter = SequenceHttpAdapter([
       jsonResponse(200, successData(pushData(provider: 'hms'))),
       jsonResponse(200, successData(pushData(provider: null, enabled: false))),
@@ -204,7 +205,8 @@ class FakePushTokenSource implements PushTokenSource {
   @override
   final PushProvider provider;
   final String? initialToken;
-  final StreamController<String> _controller = StreamController<String>.broadcast();
+  final StreamController<String> _controller =
+      StreamController<String>.broadcast();
 
   int initializeCalls = 0;
   int disposeCalls = 0;
