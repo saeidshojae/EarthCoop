@@ -127,15 +127,15 @@ class _FakeSessionRepository implements SessionRepository {
 }
 
 NativeSession _session() => NativeSession(
-  token: 'test-token',
-  expiresAt: DateTime.utc(2026, 10, 1),
-  user: const SessionUser(id: 42, firstName: 'Test', lastName: 'Member'),
-  device: const SessionDevice(
-    id: 'device-1',
-    platform: 'android',
-    appVersion: '0.1.0',
-    locale: 'fa',
-    timezone: 'Asia/Tehran',
-    pushCapable: true,
-  ),
-);
+      token: 'test-token',
+      expiresAt: DateTime.utc(2026, 10, 1),
+      user: const SessionUser(id: 42, firstName: 'Test', lastName: 'Member'),
+      device: const SessionDevice(
+        id: 'device-1',
+        platform: 'android',
+        appVersion: '0.1.0',
+        locale: 'fa',
+        timezone: 'Asia/Tehran',
+        pushCapable: true,
+      ),
+    );
