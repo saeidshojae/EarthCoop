@@ -62,7 +62,7 @@ void main() {
     expect(request.headers['Idempotency-Key'], 'idem-media-1');
     expect(request.data, isA<FormData>());
     final form = request.data as FormData;
-    expect(form.fields, contains(const MapEntry('purpose', 'chat_attachment')));
+    expect(Map<String, String>.fromEntries(form.fields)['purpose'], 'chat_attachment');
     expect(form.files.single.key, 'file');
     expect(form.files.single.value.filename, 'photo.png');
   });
