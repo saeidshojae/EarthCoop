@@ -6,19 +6,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('notifications screen exposes loading and empty states', (tester) async {
+  testWidgets('notifications screen exposes loading and empty states',
+      (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(home: NotificationsScreen(state: NotificationsState.loading())),
+      const MaterialApp(
+          home: NotificationsScreen(state: NotificationsState.loading())),
     );
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pumpWidget(
-      const MaterialApp(home: NotificationsScreen(state: NotificationsState.empty())),
+      const MaterialApp(
+          home: NotificationsScreen(state: NotificationsState.empty())),
     );
     expect(find.text('اعلانی برای نمایش وجود ندارد.'), findsOneWidget);
   });
 
-  testWidgets('ready notifications render unread state and typed-link action', (tester) async {
+  testWidgets('ready notifications render unread state and typed-link action',
+      (tester) async {
     SemanticLink? opened;
     await tester.pumpWidget(
       MaterialApp(
@@ -38,7 +42,8 @@ void main() {
     expect(opened?.params['group_id'], 42);
   });
 
-  testWidgets('notification without typed link is not executable', (tester) async {
+  testWidgets('notification without typed link is not executable',
+      (tester) async {
     var opened = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -63,7 +68,8 @@ void main() {
     expect(opened, isFalse);
   });
 
-  testWidgets('retryable failure offers retry but forbidden does not', (tester) async {
+  testWidgets('retryable failure offers retry but forbidden does not',
+      (tester) async {
     var retried = false;
     await tester.pumpWidget(
       MaterialApp(
