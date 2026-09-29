@@ -22,6 +22,7 @@
 - Step1 must require `password` and `password_confirmation` for such users, hash the chosen password, and redirect to Step2.
 - Missing Google OAuth configuration must produce a Persian in-site error instead of redirecting to a provider error.
 - Keep the change limited to Google authentication, the minimal password-nullability schema alignment, and focused regression tests.
+- Rollback of password nullability must fail explicitly and safely while any user still has a null password; it must never silently rewrite user credentials.
 
 ## Review Focus
 
@@ -31,6 +32,7 @@
 - Google returns missing/malformed email: no user is created.
 - OAuth credentials are incomplete: provider redirect is never attempted and a Persian error is shown.
 - New Google member reaches Step1 with `password = null`; Step1 rejects missing password, accepts matching password confirmation, hashes the password, and redirects to Step2.
+- Migration rollback refuses to restore `NOT NULL` while unfinished Google registrations still have `password = null`.
 
 ---
 
@@ -71,12 +73,14 @@
 ### Task 3: Align password persistence with the established Step1 contract
 
 **Files:**
-- Add: `database/migrations/2026_09_29_141900_make_users_password_nullable_for_social_registration.php`
+- Add: `database/migrations/2026_09_29_142500_make_users_password_nullable.php`
 - Test: `tests/Feature/Auth/GoogleOAuthRegistrationTest.php`
 
 - [x] Make `users.password` nullable so a Google-created member can exist before choosing a local password.
 - [x] Do not generate a random placeholder password in the Google callback.
 - [x] Preserve current Step1 behavior: null password means `required|min:6|confirmed`; a submitted password is hashed before redirecting to Step2.
+- [x] Guard rollback so `NOT NULL` is not restored while null passwords still exist.
+- [x] Add a regression test proving the rollback guard rejects that unsafe state with a clear exception.
 
 ### Task 4: Final verification
 
@@ -84,6 +88,7 @@
 - Review controller, migration, regression test, and this plan.
 
 - [x] Full Validation #3549 passed on `b8fac471dd1ceaa5bee346d0debc9c90db520f78` after the production/schema fix and password-null assertion.
-- [ ] Verify the additional Step1 end-to-end regression on the latest head.
-- [ ] Review the final diff for accidental changes outside the requested scope.
-- [ ] Only after the latest checks are green, mark the PR ready for merge; do not merge automatically.
+- [x] Full Validation #3550 passed on `3df442613165b4b44be77759f088b12f8907a81d`, including the Step1 end-to-end regression.
+- [x] Review the final diff for accidental changes outside the requested scope.
+- [ ] Verify the final head after the rollback guard/test update.
+- [ ] Only after the latest checks are green, merge the PR into `main` with an expected-head SHA guard.
