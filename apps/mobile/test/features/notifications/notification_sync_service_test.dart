@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:earthcoop_mobile/core/api/api_error.dart';
-import 'package:earthcoop_mobile/core/deep_links/semantic_link.dart';
 import 'package:earthcoop_mobile/core/local/app_database.dart';
 import 'package:earthcoop_mobile/features/notifications/notification_dto.dart';
 import 'package:earthcoop_mobile/features/notifications/notification_repository.dart';

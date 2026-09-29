@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -118,7 +117,7 @@ class NotificationSyncService {
   Future<List<NotificationDto>> _runAuthoritativeSweep() async {
     var cursor = null as String?;
     var restartedAfterInvalidCursor = false;
-    final byId = LinkedHashMap<String, NotificationDto>();
+    final byId = <String, NotificationDto>{};
 
     await _store.writeNextCursor(null);
 
