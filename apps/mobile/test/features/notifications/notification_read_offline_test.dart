@@ -60,7 +60,8 @@ void main() {
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.method, 'POST');
     expect(adapter.requests.single.path, '/notifications/n-1/read');
-    expect(adapter.requests.single.headers['Idempotency-Key'], 'idem-preserved');
+    expect(
+        adapter.requests.single.headers['Idempotency-Key'], 'idem-preserved');
   });
 }
 

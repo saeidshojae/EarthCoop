@@ -73,7 +73,8 @@ void main() {
     expect(await queue.pending(), isEmpty);
   });
 
-  test('retryable failure remains queued and increments attempt count', () async {
+  test('retryable failure remains queued and increments attempt count',
+      () async {
     final queue = MemoryOfflineQueueRepository();
     await queue.enqueue(readOperation());
     final engine = OfflineReplayEngine(
@@ -155,7 +156,8 @@ void main() {
     expect(await queue.pending(), hasLength(1));
   });
 
-  test('required update blocks replay even with authenticated session', () async {
+  test('required update blocks replay even with authenticated session',
+      () async {
     final queue = MemoryOfflineQueueRepository();
     await queue.enqueue(readOperation());
     var calls = 0;
