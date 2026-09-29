@@ -62,6 +62,23 @@ class ApiClient {
         decodeData: decodeData,
       );
 
+  Future<ApiSuccess<T>> postMultipart<T>(
+    String path, {
+    required FormData data,
+    RequestContext? context,
+    ProgressCallback? onSendProgress,
+    CancelToken? cancelToken,
+    required T Function(Object? json) decodeData,
+  }) =>
+      _requestMultipart<T>(
+        path,
+        data: data,
+        context: context,
+        onSendProgress: onSendProgress,
+        cancelToken: cancelToken,
+        decodeData: decodeData,
+      );
+
   Future<void> delete(
     String path, {
     RequestContext? context,
@@ -141,6 +158,58 @@ class ApiClient {
         await _retryDelay(_defaultRetryDelay(attempt));
         attempt += 1;
       }
+    }
+  }
+
+  Future<ApiSuccess<T>> _requestMultipart<T>(
+    String path, {
+    required FormData data,
+    RequestContext? context,
+    ProgressCallback? onSendProgress,
+    CancelToken? cancelToken,
+    required T Function(Object? json) decodeData,
+  }) async {
+    final request = await _requestMetadata(context);
+    try {
+      _recordRequest('POST', path, request, 1);
+      final response = await _dio.request<Object?>(
+        path,
+        data: data,
+        options: Options(
+          method: 'POST',
+          headers: request.headers,
+          validateStatus: (_) => true,
+          responseType: ResponseType.json,
+        ),
+        onSendProgress: onSendProgress,
+        cancelToken: cancelToken,
+      );
+      final raw = _normalizeBody(response.data);
+      if (_isSuccess(response.statusCode)) {
+        return decodeSuccessEnvelope<T>(
+          raw,
+          decodeData: decodeData,
+          httpStatus: response.statusCode,
+        );
+      }
+      throw decodeErrorEnvelope(
+        raw,
+        httpStatus: response.statusCode,
+        retryAfter: _parseRetryAfter(response.headers.value('retry-after')),
+      );
+    } on ApiFailure {
+      rethrow;
+    } on DioException catch (error) {
+      final cancelled = error.type == DioExceptionType.cancel;
+      throw ApiFailure(
+        code: cancelled ? 'request_cancelled' : 'network_error',
+        message: cancelled
+            ? 'The request was cancelled.'
+            : 'The request could not be completed.',
+        retryable: !cancelled,
+        requestId: request.requestId,
+        httpStatus: error.response?.statusCode,
+      );
     }
   }
 
