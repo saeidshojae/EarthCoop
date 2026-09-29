@@ -126,7 +126,8 @@ void main() {
 
     await service.initialize();
 
-    final rendered = events.map((event) => '${event.name}:${event.data}').join('|');
+    final rendered =
+        events.map((event) => '${event.name}:${event.data}').join('|');
     expect(rendered, isNot(contains('push-secret-never-log')));
   });
 }
