@@ -3,6 +3,7 @@
 namespace Tests\Feature\Seo;
 
 use App\Models\Page;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('href="https://earthcoop.ir/"', $html);
         $this->assertStringContainsString('property="og:title"', $html);
         $this->assertStringContainsString('name="twitter:card"', $html);
+        $this->assertStringContainsString('content="index,follow"', $html);
 
         preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $matches);
         $this->assertCount(2, $matches[1]);
@@ -73,6 +75,24 @@ class PublicMetadataTest extends TestCase
         $this->assertSame(1, substr_count($html, '<meta name="description"'));
         $this->assertSame(1, substr_count($html, '<link rel="canonical"'));
         $this->assertStringContainsString('href="https://earthcoop.ir/terms"', $html);
+        $this->assertStringContainsString('content="index,follow"', $html);
+    }
+
+    public function test_auth_entry_points_are_not_indexable(): void
+    {
+        foreach (['/login', '/register', '/forgot-password'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertSee('content="noindex,nofollow"', false);
+        }
+    }
+
+    public function test_authenticated_application_pages_are_not_indexable(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get('/home')
+            ->assertOk()
+            ->assertSee('content="noindex,nofollow"', false);
     }
 
     private function page(array $attributes = []): Page
