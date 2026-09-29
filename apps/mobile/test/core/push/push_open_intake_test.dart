@@ -3,7 +3,8 @@ import 'package:earthcoop_mobile/core/push/push_open_intake.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('push open always triggers authoritative recovery before typed-link intake',
+  test(
+      'push open always triggers authoritative recovery before typed-link intake',
       () async {
     final events = <String>[];
     SemanticLink? opened;
@@ -27,7 +28,8 @@ void main() {
     expect(opened?.params['group_id'], 42);
   });
 
-  test('malformed or missing link never becomes arbitrary navigation', () async {
+  test('malformed or missing link never becomes arbitrary navigation',
+      () async {
     var recoveryCount = 0;
     var openCount = 0;
     final intake = PushOpenIntake(
