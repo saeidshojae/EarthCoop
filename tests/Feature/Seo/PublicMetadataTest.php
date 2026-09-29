@@ -80,11 +80,16 @@ class PublicMetadataTest extends TestCase
 
     public function test_auth_entry_points_are_not_indexable(): void
     {
-        foreach (['/login', '/register', '/forgot-password'] as $path) {
+        foreach (['/login', '/forgot-password'] as $path) {
             $this->get($path)
                 ->assertOk()
                 ->assertSee('content="noindex,nofollow"', false);
         }
+
+        $this->withSession(['registration_terms_accepted' => true])
+            ->get('/register')
+            ->assertOk()
+            ->assertSee('content="noindex,nofollow"', false);
     }
 
     public function test_authenticated_application_pages_are_not_indexable(): void
