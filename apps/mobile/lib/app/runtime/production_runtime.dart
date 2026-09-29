@@ -178,7 +178,8 @@ class _GroupDetailRuntimeView extends StatefulWidget {
   final int groupId;
 
   @override
-  State<_GroupDetailRuntimeView> createState() => _GroupDetailRuntimeViewState();
+  State<_GroupDetailRuntimeView> createState() =>
+      _GroupDetailRuntimeViewState();
 }
 
 class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
