@@ -12,7 +12,8 @@ on:
       - 'composer.lock'
       - 'tests/Unit/Services/Push/**'
       - 'tests/Unit/Push/PushDeliveryGatewayTest.php'
-      - 'tests/Feature/Api/V1/PushNotificationDeliveryTest.php'
+      - 'tests/Feature/Api/V1/NotificationDeliveryContractTest.php'
+      - 'tests/Feature/Api/V1/PushProviderFailureIsolationTest.php'
       - '.github/workflows/m6-push-providers-targeted.yml'
 
 permissions:
@@ -45,4 +46,5 @@ jobs:
             tests/Unit/Services/Push/FcmHttpV1PushDeliveryGatewayTest.php \
             tests/Unit/Services/Push/HmsPushDeliveryGatewayTest.php \
             tests/Unit/Push/PushDeliveryGatewayTest.php \
-            tests/Feature/Api/V1/PushNotificationDeliveryTest.php
+            tests/Feature/Api/V1/NotificationDeliveryContractTest.php \
+            tests/Feature/Api/V1/PushProviderFailureIsolationTest.php
