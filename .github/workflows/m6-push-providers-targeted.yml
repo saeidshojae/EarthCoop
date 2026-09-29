@@ -12,6 +12,7 @@ on:
       - 'composer.lock'
       - 'tests/Unit/Services/Push/**'
       - 'tests/Unit/Push/PushDeliveryGatewayTest.php'
+      - 'tests/Feature/Api/V1/PushNotificationDeliveryTest.php'
       - '.github/workflows/m6-push-providers-targeted.yml'
 
 permissions:
@@ -23,6 +24,10 @@ jobs:
     env:
       APP_ENV: testing
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -34,9 +39,10 @@ jobs:
         run: |
           mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
           composer install --no-interaction --prefer-dist
-      - name: Run Task 11 provider contracts
+      - name: Run Task 11 provider contracts and M5 regression
         run: |
           php artisan test tests/Unit/Services/Push/CompositePushDeliveryGatewayTest.php \
             tests/Unit/Services/Push/FcmHttpV1PushDeliveryGatewayTest.php \
             tests/Unit/Services/Push/HmsPushDeliveryGatewayTest.php \
-            tests/Unit/Push/PushDeliveryGatewayTest.php
+            tests/Unit/Push/PushDeliveryGatewayTest.php \
+            tests/Feature/Api/V1/PushNotificationDeliveryTest.php
