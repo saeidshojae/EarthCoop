@@ -7,6 +7,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('compatible unauthenticated startup opens injected login route',
+      (tester) async {
+    final appRouter = AppRouter(
+      bootstrap: const BootstrapState.compatible(),
+      session: const SessionState.unauthenticated(),
+      loginBuilder: (context) => const Scaffold(
+        key: Key('production-login-route-screen'),
+        body: Text('ورود واقعی'),
+      ),
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter.router));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('production-login-route-screen')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('home-route-screen')), findsNothing);
+  });
+
   testWidgets('protected semantic destination redirects unauthenticated user',
       (tester) async {
     final appRouter = AppRouter(
