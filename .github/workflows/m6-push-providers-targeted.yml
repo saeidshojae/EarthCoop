@@ -42,6 +42,7 @@ jobs:
           coverage: none
       - name: Prepare Laravel runtime
         run: |
+          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
           composer install --no-interaction --prefer-dist
           cp .env.example .env
           php artisan key:generate
