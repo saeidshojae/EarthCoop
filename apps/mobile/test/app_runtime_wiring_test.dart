@@ -10,76 +10,87 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('executable root routes unauthenticated user through real login',
-      (tester) async {
-    final repository = _FakeSessionRepository();
-    final session = SessionController(repository: repository);
-    session.state = const SessionState.unauthenticated();
-    final runtime = MobileAppRuntime(
-      bootstrap: const BootstrapState.compatible(),
-      sessionController: session,
-      loginController: LoginController(
+  testWidgets(
+    'executable root routes unauthenticated user through real login',
+    (tester) async {
+      final repository = _FakeSessionRepository();
+      final session = SessionController(repository: repository);
+      session.state = const SessionState.unauthenticated();
+      final runtime = MobileAppRuntime(
+        bootstrap: const BootstrapState.compatible(),
         sessionController: session,
-        deviceContext: () => const DeviceContext(
-          platform: 'android',
-          appVersion: '0.1.0',
-          locale: 'fa',
-          timezone: 'Asia/Tehran',
-          pushCapable: true,
+        loginController: LoginController(
+          sessionController: session,
+          deviceContext: () => const DeviceContext(
+            platform: 'android',
+            appVersion: '0.1.0',
+            locale: 'fa',
+            timezone: 'Asia/Tehran',
+            pushCapable: true,
+          ),
         ),
-      ),
-      groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
-      groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
-      notificationsBuilder: (context, openLink) =>
-          const _Marker('notifications-live'),
-    );
+        groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
+        groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
+        notificationsBuilder: (context, openLink) =>
+            const _Marker('notifications-live'),
+      );
 
-    await tester.pumpWidget(EarthCoopApp(runtimeFactory: () async => runtime));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        EarthCoopApp(runtimeFactory: () async => runtime),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('login-submit')), findsOneWidget);
-    expect(find.text('EarthCoop'), findsNothing);
+      expect(find.byKey(const Key('login-submit')), findsOneWidget);
+      expect(find.text('EarthCoop'), findsNothing);
 
-    await tester.enterText(find.byKey(const Key('login-email')), 'member@example.test');
-    await tester.enterText(find.byKey(const Key('login-password')), 'secret');
-    await tester.tap(find.byKey(const Key('login-submit')));
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('login-email')),
+        'member@example.test',
+      );
+      await tester.enterText(find.byKey(const Key('login-password')), 'secret');
+      await tester.tap(find.byKey(const Key('login-submit')));
+      await tester.pumpAndSettle();
 
-    expect(repository.loginCalls, 1);
-    expect(find.byKey(const Key('home-route-screen')), findsOneWidget);
-  });
+      expect(repository.loginCalls, 1);
+      expect(find.byKey(const Key('home-route-screen')), findsOneWidget);
+    },
+  );
 
-  testWidgets('executable root wires vertical-slice route builders',
-      (tester) async {
-    final repository = _FakeSessionRepository();
-    final session = SessionController(repository: repository)
-      ..state = SessionState.authenticated(_session());
-    final runtime = MobileAppRuntime(
-      bootstrap: const BootstrapState.compatible(),
-      sessionController: session,
-      loginController: LoginController(
+  testWidgets(
+    'executable root wires vertical-slice route builders',
+    (tester) async {
+      final repository = _FakeSessionRepository();
+      final session = SessionController(repository: repository)
+        ..state = SessionState.authenticated(_session());
+      final runtime = MobileAppRuntime(
+        bootstrap: const BootstrapState.compatible(),
         sessionController: session,
-        deviceContext: () => const DeviceContext(
-          platform: 'android',
-          appVersion: '0.1.0',
-          locale: 'fa',
-          timezone: 'Asia/Tehran',
-          pushCapable: true,
+        loginController: LoginController(
+          sessionController: session,
+          deviceContext: () => const DeviceContext(
+            platform: 'android',
+            appVersion: '0.1.0',
+            locale: 'fa',
+            timezone: 'Asia/Tehran',
+            pushCapable: true,
+          ),
         ),
-      ),
-      groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
-      groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
-      notificationsBuilder: (context, openLink) =>
-          const _Marker('notifications-live'),
-    );
+        groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
+        groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
+        notificationsBuilder: (context, openLink) =>
+            const _Marker('notifications-live'),
+      );
 
-    await tester.pumpWidget(EarthCoopApp(runtimeFactory: () async => runtime));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        EarthCoopApp(runtimeFactory: () async => runtime),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('home-groups-action')));
-    await tester.pumpAndSettle();
-    expect(find.text('groups-live'), findsOneWidget);
-  });
+      await tester.tap(find.byKey(const Key('home-groups-action')));
+      await tester.pumpAndSettle();
+      expect(find.text('groups-live'), findsOneWidget);
+    },
+  );
 }
 
 class _Marker extends StatelessWidget {
