@@ -65,18 +65,22 @@ void main() {
 
       await tester.tap(find.byKey(const Key('group-card-42')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('group-detail-route-screen')), findsOneWidget);
+      expect(
+          find.byKey(const Key('group-detail-route-screen')), findsOneWidget);
       expect(find.text('مجمع عمومی محله آزمایشی'), findsOneWidget);
 
       appRouter.router.go('/home');
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('home-notifications-action')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('notifications-route-screen')), findsOneWidget);
+      expect(
+          find.byKey(const Key('notifications-route-screen')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('notification-card-notification-1')));
+      await tester
+          .tap(find.byKey(const Key('notification-card-notification-1')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('group-detail-route-screen')), findsOneWidget);
+      expect(
+          find.byKey(const Key('group-detail-route-screen')), findsOneWidget);
       expect(find.text('مجمع عمومی محله آزمایشی'), findsOneWidget);
     },
   );
