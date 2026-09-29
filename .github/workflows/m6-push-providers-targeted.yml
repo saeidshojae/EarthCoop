@@ -1,0 +1,55 @@
+name: M6 Backend Task 11 Push Providers TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'app/Services/Push/**'
+      - 'app/Providers/PushServiceProvider.php'
+      - 'config/services.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'tests/Unit/Services/Push/**'
+      - 'tests/Unit/Push/PushDeliveryGatewayTest.php'
+      - '.github/workflows/m6-push-providers-targeted.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  push-providers:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: earthcoop_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, sqlite3
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+          printf '\nDB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=earthcoop_test\nDB_USERNAME=root\nDB_PASSWORD=root\n' >> .env
+          php artisan migrate --force
+      - name: Run Task 11 provider contracts
+        run: |
+          php artisan test tests/Unit/Services/Push/CompositePushDeliveryGatewayTest.php \
+            tests/Unit/Services/Push/FcmHttpV1PushDeliveryGatewayTest.php \
+            tests/Unit/Services/Push/HmsPushDeliveryGatewayTest.php \
+            tests/Unit/Push/PushDeliveryGatewayTest.php
