@@ -19,6 +19,7 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: const Key('notifications-route-screen'),
       body: SafeArea(child: _body(context)),
     );
   }

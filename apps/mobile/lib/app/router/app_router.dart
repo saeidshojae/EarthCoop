@@ -7,12 +7,28 @@ import '../../core/deep_links/semantic_link.dart';
 import '../../features/home/home_screen.dart';
 import '../bootstrap/bootstrap_state.dart';
 
+typedef GroupsRouteBuilder = Widget Function(
+  BuildContext context,
+  ValueChanged<int> openGroup,
+);
+typedef GroupDetailRouteBuilder = Widget Function(
+  BuildContext context,
+  int groupId,
+);
+typedef NotificationsRouteBuilder = Widget Function(
+  BuildContext context,
+  ValueChanged<SemanticLink> openLink,
+);
+
 class AppRouter {
   AppRouter({
     required BootstrapState bootstrap,
     required SessionState session,
     SemanticLink? initialLink,
     DeepLinkRegistry registry = const DeepLinkRegistry(),
+    GroupsRouteBuilder? groupsBuilder,
+    GroupDetailRouteBuilder? groupDetailBuilder,
+    NotificationsRouteBuilder? notificationsBuilder,
   }) : router = GoRouter(
           initialLocation: _initialLocation(
             bootstrap: bootstrap,
@@ -23,7 +39,10 @@ class AppRouter {
           routes: [
             GoRoute(
               path: '/home',
-              builder: (context, state) => const HomeScreen(),
+              builder: (context, state) => HomeScreen(
+                onOpenGroups: () => context.go('/groups'),
+                onOpenNotifications: () => context.go('/notifications'),
+              ),
             ),
             GoRoute(
               path: '/login',
@@ -47,10 +66,50 @@ class AppRouter {
               ),
             ),
             GoRoute(
+              path: '/groups',
+              builder: (context, state) => groupsBuilder == null
+                  ? const _RouteMessageScreen(
+                      key: Key('groups-unavailable-route-screen'),
+                      message: 'گروه‌ها در حال حاضر در دسترس نیستند.',
+                    )
+                  : groupsBuilder(
+                      context,
+                      (groupId) => context.go('/groups/$groupId'),
+                    ),
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) => notificationsBuilder == null
+                  ? const _RouteMessageScreen(
+                      key: Key('notifications-unavailable-route-screen'),
+                      message: 'اعلان‌ها در حال حاضر در دسترس نیستند.',
+                    )
+                  : notificationsBuilder(
+                      context,
+                      (link) => _openSemanticLink(
+                        context: context,
+                        link: link,
+                        bootstrap: bootstrap,
+                        session: session,
+                        registry: registry,
+                      ),
+                    ),
+            ),
+            GoRoute(
               path: '/groups/:groupId',
-              builder: (context, state) => _GroupDetailRouteScreen(
-                groupId: state.pathParameters['groupId']!,
-              ),
+              builder: (context, state) {
+                final rawId = state.pathParameters['groupId']!;
+                final groupId = int.tryParse(rawId);
+                if (groupId == null || groupId <= 0) {
+                  return const _RouteMessageScreen(
+                    key: Key('invalid-group-route-screen'),
+                    message: 'نشانی گروه معتبر نیست.',
+                  );
+                }
+                return groupDetailBuilder == null
+                    ? _GroupDetailRouteScreen(groupId: rawId)
+                    : groupDetailBuilder(context, groupId);
+              },
             ),
           ],
         );
@@ -70,7 +129,21 @@ class AppRouter {
     }
 
     if (initialLink == null) return '/home';
-    final resolution = registry.resolve(initialLink);
+    return _resolveSemanticLocation(
+      bootstrap: bootstrap,
+      session: session,
+      link: initialLink,
+      registry: registry,
+    );
+  }
+
+  static String _resolveSemanticLocation({
+    required BootstrapState bootstrap,
+    required SessionState session,
+    required SemanticLink link,
+    required DeepLinkRegistry registry,
+  }) {
+    final resolution = registry.resolve(link);
     if (!resolution.isAllowed) return resolution.fallbackLocation;
 
     if (resolution.requiresAuthentication &&
@@ -84,6 +157,23 @@ class AppRouter {
     }
 
     return resolution.location;
+  }
+
+  static void _openSemanticLink({
+    required BuildContext context,
+    required SemanticLink link,
+    required BootstrapState bootstrap,
+    required SessionState session,
+    required DeepLinkRegistry registry,
+  }) {
+    context.go(
+      _resolveSemanticLocation(
+        bootstrap: bootstrap,
+        session: session,
+        link: link,
+        registry: registry,
+      ),
+    );
   }
 }
 

@@ -2,7 +2,6 @@ import 'package:earthcoop_mobile/app/bootstrap/bootstrap_state.dart';
 import 'package:earthcoop_mobile/app/router/app_router.dart';
 import 'package:earthcoop_mobile/core/auth/session_controller.dart';
 import 'package:earthcoop_mobile/core/auth/session_models.dart';
-import 'package:earthcoop_mobile/core/deep_links/semantic_link.dart';
 import 'package:earthcoop_mobile/features/groups/group_detail_screen.dart';
 import 'package:earthcoop_mobile/features/groups/group_dto.dart';
 import 'package:earthcoop_mobile/features/groups/groups_controller.dart';
