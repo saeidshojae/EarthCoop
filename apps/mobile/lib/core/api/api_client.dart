@@ -9,6 +9,7 @@ import 'request_context.dart';
 import 'retry_policy.dart';
 
 typedef BearerTokenProvider = Future<String?> Function();
+typedef DeviceIdProvider = Future<String?> Function();
 typedef RequestIdFactory = String Function();
 typedef RetryDelay = Future<void> Function(Duration delay);
 
@@ -16,12 +17,14 @@ class ApiClient {
   ApiClient({
     required Dio dio,
     required BearerTokenProvider bearerTokenProvider,
+    DeviceIdProvider? deviceIdProvider,
     required RequestIdFactory requestIdFactory,
     required RetryDelay retryDelay,
     RetryPolicy retryPolicy = const RetryPolicy(),
     DiagnosticsSink diagnostics = const NoopDiagnosticsSink(),
   })  : _dio = dio,
         _bearerTokenProvider = bearerTokenProvider,
+        _deviceIdProvider = deviceIdProvider,
         _requestIdFactory = requestIdFactory,
         _retryDelay = retryDelay,
         _retryPolicy = retryPolicy,
@@ -29,6 +32,7 @@ class ApiClient {
 
   final Dio _dio;
   final BearerTokenProvider _bearerTokenProvider;
+  final DeviceIdProvider? _deviceIdProvider;
   final RequestIdFactory _requestIdFactory;
   final RetryDelay _retryDelay;
   final RetryPolicy _retryPolicy;
@@ -287,7 +291,10 @@ class ApiClient {
     if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
       headers['Idempotency-Key'] = idempotencyKey;
     }
-    final deviceId = context?.deviceId;
+    final defaultDeviceId = bearer != null && bearer.isNotEmpty
+        ? await _deviceIdProvider?.call()
+        : null;
+    final deviceId = context?.deviceId ?? defaultDeviceId;
     if (deviceId != null && deviceId.isNotEmpty) {
       headers['X-Device-ID'] = deviceId;
     }
