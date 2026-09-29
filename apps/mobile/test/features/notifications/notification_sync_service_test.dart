@@ -10,8 +10,10 @@ import 'package:earthcoop_mobile/features/notifications/notification_sync_servic
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('notification DTO keeps typed semantic link and ignores additive fields', () {
-    final notification = NotificationDto.fromJson(notificationJson('n-1', extra: true));
+  test('notification DTO keeps typed semantic link and ignores additive fields',
+      () {
+    final notification =
+        NotificationDto.fromJson(notificationJson('n-1', extra: true));
 
     expect(notification.id, 'n-1');
     expect(notification.title, 'عنوان اعلان');
@@ -37,7 +39,9 @@ void main() {
     expect(source.requestedCursors, [null]);
   });
 
-  test('multi-page sweep persists continuation cursor then clears on completion', () async {
+  test(
+      'multi-page sweep persists continuation cursor then clears on completion',
+      () async {
     final gate = Completer<void>();
     final store = MemoryNotificationProjectionStore();
     final source = BlockingNotificationPageSource(gate);
@@ -55,7 +59,9 @@ void main() {
     expect(source.requestedCursors, [null, 'cursor-2']);
   });
 
-  test('duplicate and out-of-order resume hints coalesce into one authoritative sweep', () async {
+  test(
+      'duplicate and out-of-order resume hints coalesce into one authoritative sweep',
+      () async {
     final gate = Completer<void>();
     final source = SingleBlockingSource(gate);
     final store = MemoryNotificationProjectionStore();
@@ -72,7 +78,9 @@ void main() {
     expect(results.every((items) => items.single.id == 'n-1'), isTrue);
   });
 
-  test('invalid continuation cursor restarts once from authoritative first page', () async {
+  test(
+      'invalid continuation cursor restarts once from authoritative first page',
+      () async {
     final store = MemoryNotificationProjectionStore();
     final source = FakeNotificationPageSource([
       page(['n-old'], nextCursor: 'invalid-cursor', hasMore: true),
@@ -112,8 +120,10 @@ void main() {
     expect(store.items.single.read, isTrue);
   });
 
-  test('Drift notification projection and cursor survive close/reopen', () async {
-    final directory = await Directory.systemTemp.createTemp('earthcoop-notifications-');
+  test('Drift notification projection and cursor survive close/reopen',
+      () async {
+    final directory =
+        await Directory.systemTemp.createTemp('earthcoop-notifications-');
     final file = File('${directory.path}/app.sqlite');
     addTearDown(() async {
       if (await directory.exists()) await directory.delete(recursive: true);
@@ -145,7 +155,8 @@ NotificationPage page(
 }) =>
     NotificationPage(
       items: ids
-          .map((id) => NotificationDto.fromJson(notificationJson(id, read: read)))
+          .map((id) =>
+              NotificationDto.fromJson(notificationJson(id, read: read)))
           .toList(growable: false),
       nextCursor: nextCursor,
       hasMore: hasMore,
