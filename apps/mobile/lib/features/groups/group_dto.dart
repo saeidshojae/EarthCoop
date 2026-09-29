@@ -75,7 +75,8 @@ class GroupDto {
     DateTime? lastActivityAt;
     if (lastActivityRaw != null) {
       if (lastActivityRaw is! String) {
-        throw const FormatException('last_activity_at must be a string or null');
+        throw const FormatException(
+            'last_activity_at must be a string or null');
       }
       final parsed = DateTime.tryParse(lastActivityRaw);
       if (parsed == null) {
