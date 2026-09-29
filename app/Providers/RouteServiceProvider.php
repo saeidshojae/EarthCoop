@@ -56,6 +56,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Public mobile UAT download page is isolated from the legacy web route file
+            // so binary delivery can evolve independently from authenticated web flows.
+            Route::middleware('web')
+                ->group(base_path('routes/mobile-download.php'));
+
             // Canonical profile runtime shadows only the profile read route. The
             // adapter delegates to the legacy controller when runtime is disabled,
             // preserving rollback without requiring a legacy Address when enabled.
