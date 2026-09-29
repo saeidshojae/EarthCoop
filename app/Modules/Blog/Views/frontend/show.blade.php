@@ -3,9 +3,6 @@
 @section('title', ($post->meta_title ?? $post->title) . ' - ' . config('app.name', 'EarthCoop'))
 
 @push('styles')
-<meta name="description" content="{{ $post->meta_description ?? $post->excerpt }}">
-<meta name="keywords" content="{{ $post->meta_keywords }}">
-
 <style>
     :root {
         --color-earth-green: #10b981;
