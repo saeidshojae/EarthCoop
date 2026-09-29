@@ -30,7 +30,8 @@ void main() {
           ),
         ),
         groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
-        groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
+        groupDetailBuilder: (context, groupId) =>
+            _Marker('group-$groupId-live'),
         notificationsBuilder: (context, openLink) =>
             const _Marker('notifications-live'),
       );
@@ -56,41 +57,38 @@ void main() {
     },
   );
 
-  testWidgets(
-    'executable root wires vertical-slice route builders',
-    (tester) async {
-      final repository = _FakeSessionRepository();
-      final session = SessionController(repository: repository)
-        ..state = SessionState.authenticated(_session());
-      final runtime = MobileAppRuntime(
-        bootstrap: const BootstrapState.compatible(),
+  testWidgets('executable root wires vertical-slice route builders', (
+    tester,
+  ) async {
+    final repository = _FakeSessionRepository();
+    final session = SessionController(repository: repository)
+      ..state = SessionState.authenticated(_session());
+    final runtime = MobileAppRuntime(
+      bootstrap: const BootstrapState.compatible(),
+      sessionController: session,
+      loginController: LoginController(
         sessionController: session,
-        loginController: LoginController(
-          sessionController: session,
-          deviceContext: () => const DeviceContext(
-            platform: 'android',
-            appVersion: '0.1.0',
-            locale: 'fa',
-            timezone: 'Asia/Tehran',
-            pushCapable: true,
-          ),
+        deviceContext: () => const DeviceContext(
+          platform: 'android',
+          appVersion: '0.1.0',
+          locale: 'fa',
+          timezone: 'Asia/Tehran',
+          pushCapable: true,
         ),
-        groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
-        groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
-        notificationsBuilder: (context, openLink) =>
-            const _Marker('notifications-live'),
-      );
+      ),
+      groupsBuilder: (context, openGroup) => const _Marker('groups-live'),
+      groupDetailBuilder: (context, groupId) => _Marker('group-$groupId-live'),
+      notificationsBuilder: (context, openLink) =>
+          const _Marker('notifications-live'),
+    );
 
-      await tester.pumpWidget(
-        EarthCoopApp(runtimeFactory: () async => runtime),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(EarthCoopApp(runtimeFactory: () async => runtime));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('home-groups-action')));
-      await tester.pumpAndSettle();
-      expect(find.text('groups-live'), findsOneWidget);
-    },
-  );
+    await tester.tap(find.byKey(const Key('home-groups-action')));
+    await tester.pumpAndSettle();
+    expect(find.text('groups-live'), findsOneWidget);
+  });
 }
 
 class _Marker extends StatelessWidget {
