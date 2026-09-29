@@ -25,8 +25,6 @@ jobs:
     env:
       APP_ENV: testing
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-      DB_CONNECTION: sqlite
-      DB_DATABASE: ':memory:'
       CACHE_STORE: array
       QUEUE_CONNECTION: sync
     steps:
@@ -34,17 +32,70 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, sqlite3
+          extensions: mbstring
           coverage: none
       - name: Prepare Laravel runtime
         run: |
           mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
           composer install --no-interaction --prefer-dist
-      - name: Run Task 11 provider contracts and M5 regression
+      - name: Run Task 11 provider contracts
         run: |
           php artisan test tests/Unit/Services/Push/CompositePushDeliveryGatewayTest.php \
             tests/Unit/Services/Push/FcmHttpV1PushDeliveryGatewayTest.php \
             tests/Unit/Services/Push/HmsPushDeliveryGatewayTest.php \
-            tests/Unit/Push/PushDeliveryGatewayTest.php \
+            tests/Unit/Push/PushDeliveryGatewayTest.php
+
+  m5-push-regression:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql, gd
+          coverage: none
+      - name: Prepare MySQL regression runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop-test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          php artisan migrate:fresh --force
+      - name: Run M5 push regressions
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist \
             tests/Feature/Api/V1/NotificationDeliveryContractTest.php \
             tests/Feature/Api/V1/PushProviderFailureIsolationTest.php
