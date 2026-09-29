@@ -135,6 +135,26 @@ class DevicePushContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.provider', 'apns');
 
+        $hms = $this->withFreshToken($token)
+            ->withHeader('X-Device-ID', $device)
+            ->putJson("/api/v1/devices/{$device}/push", [
+                'provider' => 'hms',
+                'token' => 'huawei-push-token-three',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.provider', 'hms')
+            ->assertJsonMissing(['token' => 'huawei-push-token-three']);
+
+        $this->assertNull(data_get($hms->json(), 'data.token'));
+
+        $this->withFreshToken($token)
+            ->withHeader('X-Device-ID', $device)
+            ->putJson("/api/v1/devices/{$device}/push", [
+                'provider' => 'unknown-provider',
+                'token' => 'must-never-register',
+            ])
+            ->assertStatus(422);
+
         $this->withFreshToken($token)
             ->withHeader('X-Device-ID', $device)
             ->deleteJson("/api/v1/devices/{$device}/push")
