@@ -59,8 +59,9 @@ class OfflineOperation {
         resource: resource,
         operation: operation,
         payload: payload,
-        payloadHash:
-            payloadHash.isEmpty ? deterministicPayloadHash(payload) : payloadHash,
+        payloadHash: payloadHash.isEmpty
+            ? deterministicPayloadHash(payload)
+            : payloadHash,
         clientSequence: clientSequence ?? this.clientSequence,
         state: state ?? this.state,
         attemptCount: attemptCount ?? this.attemptCount,

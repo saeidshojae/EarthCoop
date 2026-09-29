@@ -129,10 +129,12 @@ class DriftOfflineQueueRepository implements OfflineQueueRepository {
       ).getSingleOrNull();
       if (duplicate != null) return _fromRow(duplicate);
 
-      final maxRow = await _database.customSelect(
-        'SELECT COALESCE(MAX(client_sequence), 0) AS max_sequence '
-        'FROM offline_operation_queue',
-      ).getSingle();
+      final maxRow = await _database
+          .customSelect(
+            'SELECT COALESCE(MAX(client_sequence), 0) AS max_sequence '
+            'FROM offline_operation_queue',
+          )
+          .getSingle();
       final nextSequence = normalized.clientSequence > 0
           ? normalized.clientSequence
           : maxRow.read<int>('max_sequence') + 1;
@@ -145,19 +147,23 @@ class DriftOfflineQueueRepository implements OfflineQueueRepository {
   @override
   Future<List<OfflineOperation>> pending() async {
     await _database.ensureOfflineQueueSchema();
-    final rows = await _database.customSelect(
-      "SELECT * FROM offline_operation_queue WHERE state = 'pending' "
-      'ORDER BY client_sequence',
-    ).get();
+    final rows = await _database
+        .customSelect(
+          "SELECT * FROM offline_operation_queue WHERE state = 'pending' "
+          'ORDER BY client_sequence',
+        )
+        .get();
     return rows.map(_fromRow).toList(growable: false);
   }
 
   @override
   Future<List<OfflineOperation>> all() async {
     await _database.ensureOfflineQueueSchema();
-    final rows = await _database.customSelect(
-      'SELECT * FROM offline_operation_queue ORDER BY client_sequence',
-    ).get();
+    final rows = await _database
+        .customSelect(
+          'SELECT * FROM offline_operation_queue ORDER BY client_sequence',
+        )
+        .get();
     return rows.map(_fromRow).toList(growable: false);
   }
 
