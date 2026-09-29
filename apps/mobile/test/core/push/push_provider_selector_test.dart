@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('PushProviderSelector', () {
     test('selects FCM when Google Mobile Services are available', () async {
-      final selector = PushProviderSelector(
-        capabilities: const FakePushRuntimeCapabilities(
+      const selector = PushProviderSelector(
+        capabilities: FakePushRuntimeCapabilities(
           gmsAvailable: true,
           hmsAvailable: true,
         ),
@@ -15,8 +15,8 @@ void main() {
     });
 
     test('selects HMS on non-GMS Huawei runtime', () async {
-      final selector = PushProviderSelector(
-        capabilities: const FakePushRuntimeCapabilities(
+      const selector = PushProviderSelector(
+        capabilities: FakePushRuntimeCapabilities(
           gmsAvailable: false,
           hmsAvailable: true,
         ),
@@ -26,8 +26,8 @@ void main() {
     });
 
     test('returns unavailable when neither supported runtime exists', () async {
-      final selector = PushProviderSelector(
-        capabilities: const FakePushRuntimeCapabilities(
+      const selector = PushProviderSelector(
+        capabilities: FakePushRuntimeCapabilities(
           gmsAvailable: false,
           hmsAvailable: false,
         ),
