@@ -1,0 +1,85 @@
+name: Publish Mobile UAT APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-uat-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-uat-publish-production
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      - name: Build Android UAT APK
+        working-directory: apps/mobile
+        run: flutter build apk --debug
+
+      - name: Stage deployable APK and metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile-uat-dist
+          cp apps/mobile/build/app/outputs/flutter-apk/app-debug.apk mobile-uat-dist/earthcoop-android-uat.apk
+          cat > mobile-uat-dist/build.json <<EOF
+          {
+            "channel": "uat",
+            "platform": "android",
+            "version": "0.1.0+1",
+            "git_sha": "${GITHUB_SHA}",
+            "built_at_utc": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+
+      - name: Retain published APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-${{ github.sha }}
+          path: |
+            mobile-uat-dist/earthcoop-android-uat.apk
+            mobile-uat-dist/build.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Validate FTP secrets
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          test -n "$FTP_USERNAME" || { echo "FTP_USERNAME is not configured"; exit 1; }
+          test -n "$FTP_PASSWORD" || { echo "FTP_PASSWORD is not configured"; exit 1; }
+
+      - name: Publish UAT APK to EarthCoop host
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: cp59.mihanvps.com
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./mobile-uat-dist/
+          server-dir: ./public/downloads/mobile/
+          state-name: .ftp-deploy-sync-state-mobile-uat.json
+          dangerous-clean-slate: false
