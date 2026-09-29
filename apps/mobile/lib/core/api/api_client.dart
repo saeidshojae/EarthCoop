@@ -66,6 +66,20 @@ class ApiClient {
         decodeData: decodeData,
       );
 
+  Future<ApiSuccess<T>> put<T>(
+    String path, {
+    Object? data,
+    RequestContext? context,
+    required T Function(Object? json) decodeData,
+  }) =>
+      _request<T>(
+        'PUT',
+        path,
+        data: data,
+        context: context,
+        decodeData: decodeData,
+      );
+
   Future<ApiSuccess<T>> postMultipart<T>(
     String path, {
     required FormData data,

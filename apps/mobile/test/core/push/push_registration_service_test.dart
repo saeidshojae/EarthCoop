@@ -126,7 +126,8 @@ void main() {
 
     await service.initialize();
 
-    expect(jsonEncode(events), isNot(contains('push-secret-never-log')));
+    final rendered = events.map((event) => '${event.name}:${event.data}').join('|');
+    expect(rendered, isNot(contains('push-secret-never-log')));
   });
 }
 
