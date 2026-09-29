@@ -29,7 +29,8 @@ class GroupRepository {
         '/groups',
         decodeData: _decodeList,
       );
-      await _bestEffortWrite(response.data.map((group) => group.toJson()).toList());
+      await _bestEffortWrite(
+          response.data.map((group) => group.toJson()).toList());
       return GroupProjection(value: response.data, isStale: false);
     } on ApiFailure catch (failure) {
       if (!failure.retryable) rethrow;
