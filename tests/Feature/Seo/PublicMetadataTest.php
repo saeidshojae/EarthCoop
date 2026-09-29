@@ -90,7 +90,7 @@ class PublicMetadataTest extends TestCase
     public function test_authenticated_application_pages_are_not_indexable(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get('/home')
+            ->get('/notifications')
             ->assertOk()
             ->assertSee('content="noindex,nofollow"', false);
     }
