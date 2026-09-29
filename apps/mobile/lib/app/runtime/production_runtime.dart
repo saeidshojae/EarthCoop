@@ -48,9 +48,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
-      headers: const <String, Object>{
-        'Accept': 'application/json',
-      },
+      headers: const <String, Object>{'Accept': 'application/json'},
     ),
   );
   final apiClient = ApiClient(
