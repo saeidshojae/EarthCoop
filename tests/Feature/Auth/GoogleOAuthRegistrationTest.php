@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class GoogleOAuthRegistrationTest extends TestCase
@@ -264,6 +265,21 @@ class GoogleOAuthRegistrationTest extends TestCase
 
         $response->assertForbidden();
         $this->assertGuest();
+    }
+
+    public function test_password_nullable_migration_refuses_unsafe_rollback_while_google_member_has_no_password(): void
+    {
+        User::factory()->create([
+            'email' => 'google-pending-password@example.com',
+            'password' => null,
+        ]);
+
+        $migration = include database_path('migrations/2026_09_29_142500_make_users_password_nullable.php');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cannot make users.password NOT NULL while users with a null password still exist.');
+
+        $migration->down();
     }
 
     public function test_incomplete_google_oauth_configuration_returns_persian_site_error_without_contacting_provider(): void
