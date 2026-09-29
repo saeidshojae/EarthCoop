@@ -60,6 +60,7 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, '/media');
     expect(request.headers['Idempotency-Key'], 'idem-media-1');
+    expect(request.headers['X-Device-ID'], 'device-1');
     expect(request.data, isA<FormData>());
     final form = request.data as FormData;
     expect(Map<String, String>.fromEntries(form.fields)['purpose'],
@@ -145,6 +146,7 @@ ApiClient buildClient(RecordingAdapter adapter, {int maxAttempts = 1}) {
   return ApiClient(
     dio: dio,
     bearerTokenProvider: () async => 'token',
+    deviceIdProvider: () async => 'device-1',
     requestIdFactory: () => 'req-media',
     retryDelay: (_) async {},
     retryPolicy: RetryPolicy(maxAttempts: maxAttempts),
