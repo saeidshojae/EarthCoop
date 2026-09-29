@@ -89,6 +89,7 @@ class BlogController extends Controller
 
         $canonical = $this->canonicalUrl->to('/blog/'.$post->slug);
         $description = Str::limit(strip_tags((string) ($post->meta_description ?: $post->excerpt)), 160);
+        $authorName = trim((string) ($post->author?->fullName() ?? ''));
         $article = array_filter([
             '@context' => 'https://schema.org',
             '@type' => 'Article',
@@ -97,9 +98,9 @@ class BlogController extends Controller
             'datePublished' => $post->published_at?->toAtomString(),
             'dateModified' => $post->updated_at?->toAtomString(),
             'mainEntityOfPage' => $canonical,
-            'author' => $post->author?->name ? [
+            'author' => $authorName !== '' ? [
                 '@type' => 'Person',
-                'name' => $post->author->name,
+                'name' => $authorName,
             ] : null,
             'image' => $post->featured_image
                 ? $this->canonicalUrl->to('/images/blog/posts/'.ltrim($post->featured_image, '/'))

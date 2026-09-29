@@ -29,7 +29,7 @@ class BlogMetadataTest extends TestCase
         preg_match('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $match);
         $payload = json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
         $this->assertSame('Article', $payload['@type']);
-        $this->assertSame($post->author->name, $payload['author']['name']);
+        $this->assertSame($post->author->fullName(), $payload['author']['name']);
         $this->assertSame($post->published_at->toAtomString(), $payload['datePublished']);
         $this->assertArrayNotHasKey('image', $payload);
     }
