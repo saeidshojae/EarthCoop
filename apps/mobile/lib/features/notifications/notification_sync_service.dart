@@ -24,7 +24,8 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
 
   final AppDatabase _database;
 
-  Future<void> _ensureSchema() => _database.ensureNotificationProjectionSchema();
+  Future<void> _ensureSchema() =>
+      _database.ensureNotificationProjectionSchema();
 
   @override
   Future<List<NotificationDto>> readAll() async {
@@ -46,7 +47,8 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
   Future<void> replaceAll(List<NotificationDto> values) async {
     await _ensureSchema();
     await _database.transaction(() async {
-      await _database.customStatement('DELETE FROM notification_projection_cache');
+      await _database
+          .customStatement('DELETE FROM notification_projection_cache');
       for (var index = 0; index < values.length; index += 1) {
         final value = values[index];
         await _database.customInsert(
@@ -65,10 +67,12 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
   @override
   Future<String?> readNextCursor() async {
     await _ensureSchema();
-    final row = await _database.customSelect(
-      'SELECT next_cursor FROM notification_sync_state '
-      'WHERE singleton_id = 1 LIMIT 1',
-    ).getSingleOrNull();
+    final row = await _database
+        .customSelect(
+          'SELECT next_cursor FROM notification_sync_state '
+          'WHERE singleton_id = 1 LIMIT 1',
+        )
+        .getSingleOrNull();
     return row?.readNullable<String>('next_cursor');
   }
 
@@ -148,7 +152,8 @@ class NotificationSyncService {
 
       final nextCursor = page.nextCursor;
       if (nextCursor == null || nextCursor.isEmpty) {
-        throw const FormatException('notification continuation cursor is missing');
+        throw const FormatException(
+            'notification continuation cursor is missing');
       }
       cursor = nextCursor;
       await _store.writeNextCursor(cursor);

@@ -79,9 +79,8 @@ class _NotificationCard extends StatelessWidget {
     return Card(
       key: Key('notification-card-${notification.id}'),
       child: InkWell(
-        onTap: link == null || onOpenLink == null
-            ? null
-            : () => onOpenLink!(link),
+        onTap:
+            link == null || onOpenLink == null ? null : () => onOpenLink!(link),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

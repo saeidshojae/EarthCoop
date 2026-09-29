@@ -18,7 +18,8 @@ abstract interface class NotificationPageSource {
 }
 
 class NotificationRepository implements NotificationPageSource {
-  NotificationRepository({required ApiClient apiClient}) : _apiClient = apiClient;
+  NotificationRepository({required ApiClient apiClient})
+      : _apiClient = apiClient;
 
   final ApiClient _apiClient;
 
@@ -39,16 +40,19 @@ class NotificationRepository implements NotificationPageSource {
 
     final paginationRaw = response.meta['pagination'];
     if (paginationRaw is! Map) {
-      throw const FormatException('notification pagination metadata is missing');
+      throw const FormatException(
+          'notification pagination metadata is missing');
     }
     final pagination = Map<String, Object?>.from(paginationRaw);
     final hasMore = pagination['has_more'];
     final nextCursor = pagination['next_cursor'];
     if (hasMore is! bool || (nextCursor != null && nextCursor is! String)) {
-      throw const FormatException('notification pagination metadata is invalid');
+      throw const FormatException(
+          'notification pagination metadata is invalid');
     }
     if (hasMore && (nextCursor is! String || nextCursor.isEmpty)) {
-      throw const FormatException('notification continuation cursor is missing');
+      throw const FormatException(
+          'notification continuation cursor is missing');
     }
 
     return NotificationPage(
