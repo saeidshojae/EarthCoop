@@ -55,7 +55,7 @@ class CommunicationRuleEngine
                 $rule->template->key,
                 ['type' => 'event', 'id' => $eventKey],
                 $recipients,
-                $payload,
+                [],
                 [
                     'locale' => (string) ($payload['locale'] ?? 'fa'),
                     'priority' => (int) $rule->priority,
