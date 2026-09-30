@@ -173,7 +173,7 @@ class EventServiceProvider extends ServiceProvider
         Ticket::observe(TicketObserver::class);
         TicketComment::observe(TicketCommentObserver::class);
         NajmBaharTransaction::observe(NajmBaharTransactionObserver::class);
-        NajmBaharScheduledTransaction::observe(NajmHodaScheduledTransactionObserver::class);
+        NajmBaharScheduledTransaction::observe(NajmBaharScheduledTransactionObserver::class);
         NajmBaharInvestment::observe(NajmBaharInvestmentObserver::class);
         NajmBaharAccount::observe(NajmBaharGenericModelObserver::class);
         NajmBaharSubAccount::observe(NajmBaharGenericModelObserver::class);
