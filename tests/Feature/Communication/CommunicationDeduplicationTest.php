@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Communication\CommunicationDispatcher;
 use App\Services\Communication\CommunicationTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class CommunicationDeduplicationTest extends TestCase
@@ -20,6 +21,7 @@ class CommunicationDeduplicationTest extends TestCase
 
     public function test_two_equivalent_dispatches_converge_on_one_logical_communication(): void
     {
+        Queue::fake();
         [$user] = $this->seedTemplateAndUser(CommunicationClassification::Operational);
         $dispatcher = app(CommunicationDispatcher::class);
         $options = [
@@ -45,11 +47,12 @@ class CommunicationDeduplicationTest extends TestCase
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, Communication::query()->count());
         $this->assertSame(1, CommunicationRecipient::query()->count());
-        $this->assertSame('pending', CommunicationRecipient::query()->firstOrFail()->status->value);
+        $this->assertSame('queued', CommunicationRecipient::query()->firstOrFail()->status->value);
     }
 
     public function test_dispatch_records_suppressed_and_invalid_recipients_for_audit(): void
     {
+        Queue::fake();
         [$allowed] = $this->seedTemplateAndUser(CommunicationClassification::Operational);
         $suppressed = User::factory()->create();
         $missingEmail = User::factory()->create(['email' => null]);
@@ -75,7 +78,7 @@ class CommunicationDeduplicationTest extends TestCase
             fn ($status) => $status instanceof \BackedEnum ? $status->value : (string) $status
         )->all();
 
-        $this->assertSame(['pending', 'suppressed', 'invalid'], $statuses);
+        $this->assertSame(['queued', 'suppressed', 'invalid'], $statuses);
         $this->assertSame(3, $communication->recipients()->count());
         $this->assertSame('user_off', $communication->recipients()->where('user_id', $suppressed->id)->firstOrFail()->preference_decision['reason']);
     }
