@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\Communication\AutomationController;
+use App\Http\Controllers\Admin\Communication\CampaignController;
 use App\Http\Controllers\Admin\Communication\DashboardController;
 use App\Http\Controllers\Admin\Communication\DeliveryHistoryController;
 use App\Http\Controllers\Admin\Communication\FailureController;
@@ -18,6 +19,9 @@ Route::middleware('permission:communications.view')->group(function (): void {
 
     Route::get('/senders', [SenderIdentityController::class, 'index'])->name('senders.index');
     Route::get('/automations', [AutomationController::class, 'index'])->name('automations.index');
+
+    Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
+    Route::get('/campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('campaigns.preview');
 });
 
 Route::middleware('permission:communications.templates.manage')->group(function (): void {
@@ -36,4 +40,15 @@ Route::middleware('permission:communications.senders.manage')->group(function ()
 Route::middleware('permission:communications.rules.manage')->group(function (): void {
     Route::get('/automations/create', [AutomationController::class, 'create'])->name('automations.create');
     Route::post('/automations', [AutomationController::class, 'store'])->name('automations.store');
+});
+
+Route::middleware('permission:communications.campaigns.create')->group(function (): void {
+    Route::get('/campaigns/create', [CampaignController::class, 'create'])->name('campaigns.create');
+    Route::post('/campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
+});
+
+Route::middleware('permission:communications.campaigns.approve')->group(function (): void {
+    Route::post('/campaigns/{campaign}/confirm', [CampaignController::class, 'confirm'])->name('campaigns.confirm');
+    Route::post('/campaigns/{campaign}/pause', [CampaignController::class, 'pause'])->name('campaigns.pause');
+    Route::post('/campaigns/{campaign}/cancel', [CampaignController::class, 'cancel'])->name('campaigns.cancel');
 });
