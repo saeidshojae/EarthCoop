@@ -182,7 +182,7 @@ final class WelcomeEmailEndToEndTest extends TestCase
         $communication = Communication::query()->sole();
         $this->assertSame('registration.completed', $communication->source_id);
         $this->assertSame('سارا نمونه', $communication->context_snapshot['display_name'] ?? null);
-        $this->assertSame($user->email, $communication->recipients()->sole()->destination);
+        $this->assertSame($user->email, $communication->recipients()->sole()->email);
     }
 
     private function installWelcomeRule(): void
@@ -204,7 +204,11 @@ final class WelcomeEmailEndToEndTest extends TestCase
             'fa',
             'به ارث‌کوپ خوش آمدید {{display_name}}',
             '<p>{{display_name}} عزیز، عضویت شما کامل شد.</p>',
-            ['display_name' => ['type' => 'string', 'required' => true]],
+            [
+                'display_name' => ['type' => 'string', 'required' => true],
+                'email' => ['type' => 'string', 'required' => true],
+                'profile_url' => ['type' => 'string', 'required' => true],
+            ],
             $sender,
         );
 
