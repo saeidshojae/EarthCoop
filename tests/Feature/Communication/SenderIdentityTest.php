@@ -22,16 +22,6 @@ class SenderIdentityTest extends TestCase
             'mail.mailers.smtp.password' => 'secret-password',
         ]);
 
-        CommunicationSenderIdentity::query()->create([
-            'key' => 'support',
-            'email' => 'support@earthcoop.ir',
-            'display_name' => 'تیم پشتیبانی EarthCoop',
-            'reply_to' => 'support@earthcoop.ir',
-            'purpose' => 'support',
-            'system_identity_key' => 'support',
-            'is_active' => true,
-        ]);
-
         $resolved = app(SenderIdentityResolver::class)->resolve('support');
 
         $this->assertInstanceOf(CommunicationSenderIdentity::class, $resolved);
@@ -64,6 +54,17 @@ class SenderIdentityTest extends TestCase
 
     public function test_legacy_system_emails_and_templates_can_be_imported_without_deleting_or_mutating_source_rows(): void
     {
+        $seededSender = CommunicationSenderIdentity::query()->where('key', 'support')->firstOrFail();
+        $seededSenderSnapshot = $seededSender->only([
+            'email',
+            'display_name',
+            'reply_to',
+            'purpose',
+            'system_identity_key',
+            'is_active',
+            'is_default',
+        ]);
+
         $systemEmail = SystemEmail::query()->create([
             'name' => 'Support',
             'email' => 'support@earthcoop.ir',
@@ -84,14 +85,14 @@ class SenderIdentityTest extends TestCase
 
         $result = app(LegacyEmailCommunicationImporter::class)->import();
 
-        $this->assertSame(1, $result['senders_imported']);
+        // The fresh-install migration already owns the canonical support identity.
+        // Import must reuse it rather than overwrite it with legacy presentation data.
+        $this->assertSame(0, $result['senders_imported']);
         $this->assertSame(1, $result['templates_imported']);
-        $this->assertDatabaseHas('communication_sender_identities', [
-            'email' => 'support@earthcoop.ir',
-            'display_name' => 'EarthCoop Support',
-            'is_active' => true,
-            'is_default' => true,
-        ]);
+        $this->assertSame(
+            $seededSenderSnapshot,
+            CommunicationSenderIdentity::query()->whereKey($seededSender->id)->firstOrFail()->only(array_keys($seededSenderSnapshot)),
+        );
 
         $canonicalTemplate = \App\Models\CommunicationTemplate::query()
             ->where('key', 'legacy.email-template.'.$legacyTemplate->id)
