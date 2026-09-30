@@ -116,6 +116,7 @@ final class SupportEmailThreadingMigrationTest extends TestCase
         $captured = [];
         Mail::shouldReceive('html')->once()->andReturnUsing(function ($body, $callback) use (&$captured): void {
             $email = new Email();
+            $email->html((string) $body);
             $message = new Message($email);
             $callback($message);
 
