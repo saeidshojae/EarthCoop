@@ -53,6 +53,8 @@ class ScheduledRuleTest extends TestCase
         app(CommunicationScheduleService::class)->processDue($now);
         $run = CommunicationRun::query()->where('communication_rule_id', $rule->id)->firstOrFail();
 
+        // Isolate child-chunk assertions from the one root resolver job queued by processDue().
+        Queue::fake();
         $job = new ResolveCommunicationRunAudience($run->id, 2);
         $job->handle(app(\App\Services\Communication\CommunicationAudienceRegistry::class));
 
