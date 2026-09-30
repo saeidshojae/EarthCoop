@@ -19,25 +19,27 @@ class CommunicationDeduplicationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const TEMPLATE_KEY = 'test.onboarding.welcome';
+
     public function test_two_equivalent_dispatches_converge_on_one_logical_communication(): void
     {
         Queue::fake();
         [$user] = $this->seedTemplateAndUser(CommunicationClassification::Operational);
         $dispatcher = app(CommunicationDispatcher::class);
         $options = [
-            'deduplication_key' => 'onboarding.welcome:user_'.$user->id.':registration_completion_1',
+            'deduplication_key' => self::TEMPLATE_KEY.':user_'.$user->id.':registration_completion_1',
             'locale' => 'fa',
         ];
 
         $first = $dispatcher->dispatch(
-            'onboarding.welcome',
+            self::TEMPLATE_KEY,
             ['type' => 'registration', 'id' => 'completion-1'],
             [$user],
             ['first_name' => $user->first_name],
             $options,
         );
         $second = $dispatcher->dispatch(
-            'onboarding.welcome',
+            self::TEMPLATE_KEY,
             ['type' => 'registration', 'id' => 'completion-1'],
             [$user],
             ['first_name' => $user->first_name],
@@ -58,18 +60,18 @@ class CommunicationDeduplicationTest extends TestCase
         $missingEmail = User::factory()->create(['email' => null]);
         CommunicationPreference::query()->create([
             'user_id' => $suppressed->id,
-            'topic_key' => 'onboarding.welcome',
+            'topic_key' => self::TEMPLATE_KEY,
             'channel' => 'email',
             'preference' => 'off',
         ]);
 
         $communication = app(CommunicationDispatcher::class)->dispatch(
-            'onboarding.welcome',
+            self::TEMPLATE_KEY,
             ['type' => 'manual-test', 'id' => 'audit-case'],
             [$allowed, $suppressed, $missingEmail],
             ['first_name' => 'کاربر'],
             [
-                'deduplication_key' => 'onboarding.welcome:audit-case',
+                'deduplication_key' => self::TEMPLATE_KEY.':audit-case',
                 'locale' => 'fa',
             ],
         );
@@ -94,8 +96,8 @@ class CommunicationDeduplicationTest extends TestCase
             'is_default' => true,
         ]);
         $template = CommunicationTemplate::query()->create([
-            'key' => 'onboarding.welcome',
-            'name' => 'Welcome',
+            'key' => self::TEMPLATE_KEY,
+            'name' => 'Welcome test fixture',
             'classification' => $classification,
             'is_active' => true,
         ]);
