@@ -11,9 +11,8 @@ use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Services\TicketTriageService;
 use App\Services\TicketSlaService;
 use App\Traits\LogsTicketActivity;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -307,24 +306,34 @@ class EmailTicketIntegrationService
                 return false;
             }
 
-            $sender = $this->systemIdentities->mailSender('support');
             $subject = 'تیکت جدید شما: ' . $ticket->tracking_code . ' - ' . $ticket->subject;
             $body = view('emails.ticket-created', ['ticket' => $ticket])->render();
 
-            Mail::html($body, function ($message) use ($ticket, $subject, $sender) {
-                $message->from($sender['address'], $sender['name'])
-                    ->to($ticket->email, $ticket->name)
-                    ->subject($subject)
-                    ->replyTo($sender['reply_to'] ?: $sender['address'], $sender['name']);
-            });
+            $communication = $this->communications->dispatchExternal(
+                'support.ticket_created',
+                ['type' => 'support.ticket_created', 'id' => (string) $ticket->id],
+                [['email' => $ticket->email, 'locale' => 'fa']],
+                [
+                    'subject' => $subject,
+                    'rendered_html' => $body,
+                ],
+                [
+                    'priority' => 1,
+                    'deduplication_key' => 'support.ticket_created:'.$ticket->id,
+                ],
+            );
+
+            $communication->loadMissing('templateVersion.senderIdentity');
+            $sender = $communication->templateVersion?->senderIdentity;
 
             $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.succeeded', array_merge($context, [
-                'sender_identity' => 'support',
+                'sender_identity' => $sender?->key ?? 'support',
+                'communication_id' => (int) $communication->id,
             ]));
             return true;
 
         } catch (\Exception $e) {
-            Log::error('خطا در ارسال ایمیل ایجاد تیکت: ' . $e->getMessage(), [
+            Log::error('خطا در صف‌بندی ایمیل ایجاد تیکت: ' . $e->getMessage(), [
                 'ticket_id' => $ticket->id,
             ]);
             $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.failed', array_merge($context, [
