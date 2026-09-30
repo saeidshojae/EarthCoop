@@ -56,7 +56,7 @@ class EvaluateDelayedCommunicationCondition implements ShouldQueue
             $rule->template->key,
             ['type' => 'rule', 'id' => (string) $rule->id],
             $recipients,
-            $this->payload,
+            [],
             [
                 'locale' => (string) ($this->payload['locale'] ?? 'fa'),
                 'priority' => (int) $rule->priority,
