@@ -157,7 +157,7 @@ class CommunicationDispatcher
         array $options,
     ): void {
         $queue = $this->queueName($classification, $options);
-        $queuedAny = false;
+        $queuedRecipientIds = [];
 
         foreach ($communication->recipients()->where('status', DeliveryStatus::Pending->value)->get() as $recipient) {
             $claimed = $communication->recipients()
@@ -169,16 +169,20 @@ class CommunicationDispatcher
                     'updated_at' => now(),
                 ]);
 
-            if ($claimed !== 1) {
-                continue;
+            if ($claimed === 1) {
+                $queuedRecipientIds[] = $recipient->id;
             }
-
-            DeliverCommunicationRecipient::dispatch($recipient->id)->onQueue($queue);
-            $queuedAny = true;
         }
 
-        if ($queuedAny) {
-            $communication->update(['status' => CommunicationStatus::Queued]);
+        if ($queuedRecipientIds === []) {
+            return;
+        }
+
+        // Persist aggregate state before dispatch. This remains correct even with a sync queue driver.
+        $communication->update(['status' => CommunicationStatus::Queued]);
+
+        foreach ($queuedRecipientIds as $recipientId) {
+            DeliverCommunicationRecipient::dispatch($recipientId)->onQueue($queue);
         }
     }
 
