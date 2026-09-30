@@ -14,6 +14,12 @@ final class CommunicationAdminObservabilityTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_non_admin_cannot_open_communication_center(): void
     {
         $user = User::factory()->create(['is_admin' => false]);
