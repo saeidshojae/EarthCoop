@@ -2,16 +2,11 @@
 
 namespace Tests\Feature\Communication;
 
-use App\Enums\Communication\CommunicationClassification;
 use App\Events\RegistrationCompleted;
 use App\Models\Communication;
-use App\Models\CommunicationRule;
-use App\Models\CommunicationSenderIdentity;
-use App\Models\CommunicationTemplate;
 use App\Models\LocationExternalId;
 use App\Models\ReferenceSettlement;
 use App\Models\User;
-use App\Services\Communication\CommunicationTemplateService;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\LocationStructureClaimService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -172,7 +167,6 @@ final class WelcomeEmailEndToEndTest extends TestCase
             'last_name' => 'نمونه',
             'email' => 'welcome-user@example.test',
         ]);
-        $this->installWelcomeRule();
         $event = new RegistrationCompleted($user->id, '2026-09-30T10:00:00+03:30', 'fa');
 
         event($event);
@@ -183,46 +177,5 @@ final class WelcomeEmailEndToEndTest extends TestCase
         $this->assertSame('registration.completed', $communication->source_id);
         $this->assertSame('سارا نمونه', $communication->context_snapshot['display_name'] ?? null);
         $this->assertSame($user->email, $communication->recipients()->sole()->email);
-    }
-
-    private function installWelcomeRule(): void
-    {
-        $sender = CommunicationSenderIdentity::query()->create([
-            'key' => 'onboarding',
-            'email' => 'welcome@earthcoop.ir',
-            'display_name' => 'EarthCoop',
-            'is_active' => true,
-        ]);
-        $template = CommunicationTemplate::query()->create([
-            'key' => 'onboarding.welcome',
-            'name' => 'Welcome',
-            'classification' => CommunicationClassification::Operational,
-            'is_active' => true,
-        ]);
-        app(CommunicationTemplateService::class)->publish(
-            $template,
-            'fa',
-            'به ارث‌کوپ خوش آمدید {{display_name}}',
-            '<p>{{display_name}} عزیز، عضویت شما کامل شد.</p>',
-            [
-                'display_name' => ['type' => 'string', 'required' => true],
-                'email' => ['type' => 'string', 'required' => true],
-                'profile_url' => ['type' => 'string', 'required' => true],
-            ],
-            $sender,
-        );
-
-        CommunicationRule::query()->create([
-            'key' => 'onboarding.welcome.rule',
-            'name' => 'Welcome after registration',
-            'trigger_type' => 'event',
-            'event_key' => 'registration.completed',
-            'audience_definition' => ['key' => 'event.user'],
-            'communication_template_id' => $template->id,
-            'communication_sender_identity_id' => $sender->id,
-            'classification' => CommunicationClassification::Operational,
-            'priority' => 2,
-            'is_active' => true,
-        ]);
     }
 }
