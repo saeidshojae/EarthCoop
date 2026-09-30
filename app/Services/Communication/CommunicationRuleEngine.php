@@ -16,8 +16,8 @@ class CommunicationRuleEngine
     ) {
     }
 
-    /** @param array<string,mixed> $payload */
-    public function handleEvent(string $eventKey, array $payload): int
+    /** @param array<string,mixed> $payload @param array<string,mixed> $context */
+    public function handleEvent(string $eventKey, array $payload, array $context = []): int
     {
         $event = $this->events->get($eventKey);
         $this->validatePayload($event, $payload);
@@ -55,7 +55,7 @@ class CommunicationRuleEngine
                 $rule->template->key,
                 ['type' => 'event', 'id' => $eventKey],
                 $recipients,
-                [],
+                $context,
                 [
                     'locale' => (string) ($payload['locale'] ?? 'fa'),
                     'priority' => (int) $rule->priority,
