@@ -13,6 +13,12 @@ final class UnsubscribeSafetyTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_valid_signed_unsubscribe_turns_off_optional_topic_only(): void
     {
         $user = User::factory()->create();
