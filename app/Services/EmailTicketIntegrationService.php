@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
+use App\Services\Communication\CommunicationDispatcher;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Services\TicketTriageService;
@@ -29,15 +30,18 @@ class EmailTicketIntegrationService
     protected TicketTriageService $triage;
     protected TicketSlaService $sla;
     protected SystemIdentityService $systemIdentities;
+    protected CommunicationDispatcher $communications;
 
     public function __construct(
         TicketTriageService $triage,
         TicketSlaService $sla,
-        SystemIdentityService $systemIdentities
+        SystemIdentityService $systemIdentities,
+        CommunicationDispatcher $communications,
     ) {
         $this->triage = $triage;
         $this->sla = $sla;
         $this->systemIdentities = $systemIdentities;
+        $this->communications = $communications;
     }
 
     /**
@@ -212,9 +216,7 @@ class EmailTicketIntegrationService
 
             $user = $ticket->user;
             $commenter = $comment->user;
-            $sender = $this->systemIdentities->mailSender('support');
             $subject = $ticket->tracking_code . ' - ' . $ticket->subject;
-
             $body = view('emails.ticket-reply', [
                 'ticket' => $ticket,
                 'comment' => $comment,
@@ -222,40 +224,58 @@ class EmailTicketIntegrationService
                 'commenter' => $commenter,
             ])->render();
 
-            $messageId = null;
-            Mail::html($body, function ($message) use ($ticket, $subject, $sender, &$messageId) {
-                $message->from($sender['address'], $sender['name'])
-                    ->to($ticket->email, $ticket->name)
-                    ->subject($subject)
-                    ->replyTo($sender['reply_to'] ?: $sender['address'], $sender['name']);
+            $host = parse_url(config('app.url'), PHP_URL_HOST) ?: 'earthcoop.org';
+            $messageId = '<ticket-' . $ticket->id . '-comment-' . $comment->id . '@' . $host . '>';
+            $threadId = '<ticket-' . $ticket->id . '@' . $host . '>';
 
-                $host = parse_url(config('app.url'), PHP_URL_HOST) ?? 'earthcoop.org';
-                $messageId = '<ticket-' . $ticket->id . '-comment-' . time() . '@' . $host . '>';
-                $message->getHeaders()->addTextHeader('Message-ID', $messageId);
-                $message->getHeaders()->addTextHeader('In-Reply-To', '<ticket-' . $ticket->id . '@' . $host . '>');
-                $message->getHeaders()->addTextHeader('References', '<ticket-' . $ticket->id . '@' . $host . '>');
-            });
+            $communication = $this->communications->dispatchExternal(
+                'support.ticket_reply',
+                ['type' => 'support.ticket_reply', 'id' => (string) $comment->id],
+                [['email' => $ticket->email, 'locale' => 'fa']],
+                [
+                    'subject' => $subject,
+                    'rendered_html' => $body,
+                    '_delivery_headers' => [
+                        'Message-ID' => $messageId,
+                        'In-Reply-To' => $threadId,
+                        'References' => $threadId,
+                    ],
+                ],
+                [
+                    'priority' => 1,
+                    'deduplication_key' => 'support.ticket_reply:'.$comment->id,
+                ],
+            );
 
-            if ($messageId) {
-                $comment->update([
-                    'metadata' => array_merge($comment->metadata ?? [], [
-                        'email_sent' => true,
-                        'email_sent_at' => now()->toIso8601String(),
-                        'message_id' => $messageId,
-                        'sender_identity' => 'support',
-                        'sender_address' => $sender['address'],
-                        'sender_name' => $sender['name'],
-                    ]),
-                ]);
+            $communication->loadMissing('templateVersion.senderIdentity');
+            $sender = $communication->templateVersion?->senderIdentity;
+            if (! $sender) {
+                throw new \RuntimeException('support_sender_identity_not_available');
             }
 
+            // Preserve legacy metadata fields for inbound threading and old admin views.
+            // Canonical recipient/attempt records remain the source of delivery truth.
+            $comment->update([
+                'metadata' => array_merge($comment->metadata ?? [], [
+                    'email_sent' => true,
+                    'email_sent_at' => now()->toIso8601String(),
+                    'email_queued_at' => now()->toIso8601String(),
+                    'message_id' => $messageId,
+                    'sender_identity' => $sender->key,
+                    'sender_address' => $sender->email,
+                    'sender_name' => $sender->display_name,
+                    'communication_id' => $communication->id,
+                ]),
+            ]);
+
             $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.succeeded', array_merge($context, [
-                'sender_identity' => 'support',
+                'sender_identity' => $sender->key,
+                'communication_id' => (int) $communication->id,
             ]));
             return true;
 
         } catch (\Exception $e) {
-            Log::error('خطا در ارسال پاسخ تیکت به ایمیل: ' . $e->getMessage(), [
+            Log::error('خطا در صف‌بندی پاسخ تیکت برای ایمیل: ' . $e->getMessage(), [
                 'ticket_id' => $ticket->id,
                 'comment_id' => $comment->id,
                 'trace' => $e->getTraceAsString(),
