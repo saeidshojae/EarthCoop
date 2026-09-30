@@ -18,6 +18,15 @@ class CommunicationRuleMatchingTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        CommunicationRule::query()
+            ->where('key', 'onboarding.welcome.rule')
+            ->update(['is_active' => false]);
+    }
+
     public function test_registered_event_dispatches_active_event_user_rule_once_with_deterministic_dedupe(): void
     {
         Queue::fake();
@@ -83,8 +92,8 @@ class CommunicationRuleMatchingTest extends TestCase
             ['email' => 'system@earthcoop.ir', 'display_name' => 'EarthCoop', 'is_active' => true],
         );
         $template = CommunicationTemplate::query()->firstOrCreate(
-            ['key' => 'onboarding.welcome'],
-            ['name' => 'Welcome', 'classification' => CommunicationClassification::Operational, 'is_active' => true],
+            ['key' => 'test.rule-matching.welcome'],
+            ['name' => 'Rule matching welcome', 'classification' => CommunicationClassification::Operational, 'is_active' => true],
         );
         if ($template->versions()->count() === 0) {
             app(CommunicationTemplateService::class)->publish(
