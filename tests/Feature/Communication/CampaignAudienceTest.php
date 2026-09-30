@@ -87,6 +87,24 @@ final class CampaignAudienceTest extends TestCase
         $this->assertContains($confirmed->status, ['confirmed', 'scheduled', 'running']);
     }
 
+    public function test_future_campaign_stays_scheduled_until_due_then_can_start(): void
+    {
+        config()->set('communications.campaigns.elevated_confirmation_threshold', 100);
+        [$campaign] = $this->campaignWithUsers();
+        $actor = User::factory()->create();
+        $campaign->update(['scheduled_at' => now()->addHour()]);
+
+        $service = app(CommunicationCampaignService::class);
+        $confirmed = $service->confirm($campaign->fresh(), $actor, false);
+
+        $this->assertSame('scheduled', $confirmed->status);
+        $this->assertFalse($service->startIfDue($confirmed->fresh()));
+
+        $confirmed->update(['scheduled_at' => now()->subMinute()]);
+        $this->assertTrue($service->startIfDue($confirmed->fresh()));
+        $this->assertSame('running', $confirmed->fresh()->status);
+    }
+
     /** @return array{0:CommunicationCampaign,1:array<int,User>} */
     private function campaignWithUsers(): array
     {
