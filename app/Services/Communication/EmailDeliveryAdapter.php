@@ -8,6 +8,12 @@ use RuntimeException;
 
 class EmailDeliveryAdapter
 {
+    private const ALLOWED_DELIVERY_HEADERS = [
+        'Message-ID',
+        'In-Reply-To',
+        'References',
+    ];
+
     public function __construct(
         private readonly CommunicationTemplateRenderer $renderer,
     ) {
@@ -33,12 +39,11 @@ class EmailDeliveryAdapter
             throw new RuntimeException('communication_sender_not_available');
         }
 
-        $rendered = $this->renderer->render(
-            $version,
-            $communication->context_snapshot ?? [],
-        );
+        $context = (array) ($communication->context_snapshot ?? []);
+        $rendered = $this->renderer->render($version, $context);
+        $headers = $this->safeDeliveryHeaders((array) ($context['_delivery_headers'] ?? []));
 
-        Mail::html($rendered['body'], function ($message) use ($recipient, $rendered, $sender): void {
+        Mail::html($rendered['body'], function ($message) use ($recipient, $rendered, $sender, $headers): void {
             $message->to($recipient->email)
                 ->subject($rendered['subject'])
                 ->from($sender->email, $sender->display_name);
@@ -46,11 +51,36 @@ class EmailDeliveryAdapter
             if ($sender->reply_to) {
                 $message->replyTo($sender->reply_to);
             }
+
+            foreach ($headers as $name => $value) {
+                $message->getHeaders()->addTextHeader($name, $value);
+            }
         });
 
         return [
             'provider' => 'laravel-mail',
-            'provider_message_id' => null,
+            'provider_message_id' => $headers['Message-ID'] ?? null,
         ];
+    }
+
+    /** @param array<string,mixed> $headers @return array<string,string> */
+    private function safeDeliveryHeaders(array $headers): array
+    {
+        $safe = [];
+
+        foreach (self::ALLOWED_DELIVERY_HEADERS as $name) {
+            if (! array_key_exists($name, $headers)) {
+                continue;
+            }
+
+            $value = trim((string) $headers[$name]);
+            if ($value === '' || str_contains($value, "\r") || str_contains($value, "\n")) {
+                throw new RuntimeException('invalid_communication_delivery_header');
+            }
+
+            $safe[$name] = $value;
+        }
+
+        return $safe;
     }
 }
