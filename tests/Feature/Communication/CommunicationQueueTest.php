@@ -43,14 +43,14 @@ class CommunicationQueueTest extends TestCase
     {
         Queue::fake();
         $user = User::factory()->create();
-        $this->seedTemplate('reports.member.weekly', CommunicationClassification::Operational);
+        $this->seedTemplate('test.queue.operational', CommunicationClassification::Operational);
 
         app(CommunicationDispatcher::class)->dispatch(
-            'reports.member.weekly',
+            'test.queue.operational',
             ['type' => 'report', 'id' => 'week-1'],
             [$user],
             ['first_name' => $user->first_name],
-            ['deduplication_key' => 'reports.member.weekly:user_'.$user->id.':week-1'],
+            ['deduplication_key' => 'test.queue.operational:user_'.$user->id.':week-1'],
         );
 
         Queue::assertPushedOn('communications-normal', DeliverCommunicationRecipient::class);
