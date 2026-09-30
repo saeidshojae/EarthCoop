@@ -68,6 +68,9 @@ class EventServiceProvider extends ServiceProvider
         AuthFailed::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
         AuthLogout::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
         AuthPasswordReset::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
+        \App\Events\RegistrationCompleted::class => [
+            \App\Listeners\DispatchRegistrationCompletedCommunication::class,
+        ],
         \App\Events\MessageCreated::class => [
             \App\Listeners\SendGroupMessageNotifications::class,
             \App\Listeners\HandleNajmHodaGroupMessage::class,
@@ -170,7 +173,7 @@ class EventServiceProvider extends ServiceProvider
         Ticket::observe(TicketObserver::class);
         TicketComment::observe(TicketCommentObserver::class);
         NajmBaharTransaction::observe(NajmBaharTransactionObserver::class);
-        NajmBaharScheduledTransaction::observe(NajmBaharScheduledTransactionObserver::class);
+        NajmBaharScheduledTransaction::observe(NajmHodaScheduledTransactionObserver::class);
         NajmBaharInvestment::observe(NajmBaharInvestmentObserver::class);
         NajmBaharAccount::observe(NajmBaharGenericModelObserver::class);
         NajmBaharSubAccount::observe(NajmBaharGenericModelObserver::class);
