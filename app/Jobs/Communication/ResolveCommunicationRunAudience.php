@@ -146,21 +146,28 @@ class ResolveCommunicationRunAudience implements ShouldQueue
             ->where('is_system', false);
 
         if ($audienceKey === 'role.member') {
-            return $query;
+            return $query->whereNotIn('id', $this->currentResponsibilityUserIdsQuery());
         }
 
         $role = $audienceKey === 'role.manager' ? 3 : 2;
 
-        return $query->whereIn('id', GroupUser::query()
+        return $query->whereIn('id', $this->currentResponsibilityUserIdsQuery($role));
+    }
+
+    private function currentResponsibilityUserIdsQuery(?int $role = null)
+    {
+        $query = GroupUser::query()
             ->select('user_id')
             ->where('status', 1)
-            ->where('role', $role)
+            ->whereIn('role', $role === null ? [2, 3] : [$role])
             ->where(function ($membershipQuery): void {
                 $membershipQuery->whereNull('expired')
                     ->orWhere('expired', 0)
                     ->orWhere('expired', '>', now());
             })
-            ->distinct());
+            ->distinct();
+
+        return $query;
     }
 
     /** @return array<string,mixed>|null */
