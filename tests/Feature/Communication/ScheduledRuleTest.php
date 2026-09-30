@@ -61,6 +61,24 @@ class ScheduledRuleTest extends TestCase
         Queue::assertPushed(ResolveCommunicationRunAudience::class, 3);
     }
 
+    public function test_due_rule_console_command_processes_due_schedules(): void
+    {
+        Queue::fake();
+        $now = CarbonImmutable::parse('2026-09-30 09:00:00', 'Asia/Tehran');
+        CarbonImmutable::setTestNow($now);
+        $users = User::factory()->count(2)->create();
+        [$rule] = $this->scheduledRule($users->pluck('id')->all(), $now);
+
+        try {
+            $this->artisan('communications:process-due')->assertSuccessful();
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+
+        $this->assertSame(1, CommunicationRun::query()->where('communication_rule_id', $rule->id)->count());
+        Queue::assertPushed(ResolveCommunicationRunAudience::class, 1);
+    }
+
     /** @param array<int,int> $userIds */
     private function scheduledRule(array $userIds, CarbonImmutable $now): array
     {
