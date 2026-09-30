@@ -69,33 +69,40 @@ final class FaqEmailMigrationTest extends TestCase
 
     private function canonicalFaqTemplate(): void
     {
-        $sender = CommunicationSenderIdentity::query()->create([
-            'key' => 'faq',
-            'email' => 'faq@earthcoop.ir',
-            'display_name' => 'EarthCoop FAQ',
-            'reply_to' => 'support@earthcoop.ir',
-            'is_active' => true,
-            'is_default' => false,
-        ]);
-
-        $template = CommunicationTemplate::query()->create([
-            'key' => 'faq.answer',
-            'name' => 'پاسخ پرسش متداول',
-            'category' => 'faq',
-            'classification' => CommunicationClassification::Operational,
-            'is_active' => true,
-        ]);
-
-        app(CommunicationTemplateService::class)->publish(
-            $template,
-            'fa',
-            'پاسخ به پرسش: {{title}}',
-            '<p>{{answer}}</p>',
+        $sender = CommunicationSenderIdentity::query()->firstOrCreate(
+            ['key' => 'support'],
             [
-                'title' => ['type' => 'string', 'required' => true],
-                'answer' => ['type' => 'string', 'required' => true],
+                'email' => 'support@earthcoop.ir',
+                'display_name' => 'تیم پشتیبانی EarthCoop',
+                'reply_to' => 'support@earthcoop.ir',
+                'system_identity_key' => 'support',
+                'is_active' => true,
+                'is_default' => false,
             ],
-            $sender,
         );
+
+        $template = CommunicationTemplate::query()->firstOrCreate(
+            ['key' => 'faq.answer'],
+            [
+                'name' => 'پاسخ پرسش متداول',
+                'category' => 'faq',
+                'classification' => CommunicationClassification::Operational,
+                'is_active' => true,
+            ],
+        );
+
+        if (! $template->versions()->where('locale', 'fa')->whereNotNull('published_at')->exists()) {
+            app(CommunicationTemplateService::class)->publish(
+                $template,
+                'fa',
+                'پاسخ به پرسش: {{title}}',
+                '<p>{{answer}}</p>',
+                [
+                    'title' => ['type' => 'string', 'required' => true],
+                    'answer' => ['type' => 'string', 'required' => true],
+                ],
+                $sender,
+            );
+        }
     }
 }
