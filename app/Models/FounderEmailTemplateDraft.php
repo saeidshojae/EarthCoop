@@ -19,4 +19,9 @@ class FounderEmailTemplateDraft extends Model
     {
         return $this->belongsTo(EmailTemplate::class, 'template_id');
     }
+
+    public function communicationTemplate()
+    {
+        return $this->belongsTo(CommunicationTemplate::class, 'communication_template_id');
+    }
 }
