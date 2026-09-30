@@ -19,6 +19,8 @@ class TemplateVersioningTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const TEMPLATE_KEY = 'test.onboarding.welcome';
+
     public function test_publishing_creates_immutable_incrementing_versions_per_locale(): void
     {
         $sender = CommunicationSenderIdentity::query()->create([
@@ -27,8 +29,8 @@ class TemplateVersioningTest extends TestCase
             'display_name' => 'EarthCoop',
         ]);
         $template = CommunicationTemplate::query()->create([
-            'key' => 'onboarding.welcome',
-            'name' => 'Welcome',
+            'key' => self::TEMPLATE_KEY,
+            'name' => 'Welcome test fixture',
             'classification' => CommunicationClassification::Operational,
             'is_active' => true,
         ]);
@@ -62,8 +64,8 @@ class TemplateVersioningTest extends TestCase
             'display_name' => 'EarthCoop',
         ]);
         $template = CommunicationTemplate::query()->create([
-            'key' => 'onboarding.welcome',
-            'name' => 'Welcome',
+            'key' => self::TEMPLATE_KEY,
+            'name' => 'Welcome test fixture',
             'classification' => CommunicationClassification::Operational,
             'is_active' => true,
         ]);
@@ -112,8 +114,8 @@ class TemplateVersioningTest extends TestCase
             'display_name' => 'EarthCoop',
         ]);
         $template = CommunicationTemplate::query()->create([
-            'key' => 'onboarding.welcome',
-            'name' => 'Welcome',
+            'key' => self::TEMPLATE_KEY,
+            'name' => 'Welcome test fixture',
             'classification' => CommunicationClassification::Operational,
         ]);
 
