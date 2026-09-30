@@ -5,8 +5,11 @@ namespace Tests\Feature\Communication;
 use App\Enums\Communication\CommunicationClassification;
 use App\Models\CommunicationSenderIdentity;
 use App\Models\CommunicationTemplate;
+use App\Models\EmailTemplate;
 use App\Services\Communication\CommunicationTemplateRenderer;
 use App\Services\Communication\CommunicationTemplateService;
+use App\Services\Communication\LegacyEmailCommunicationImporter;
+use App\Services\Email\EmailTemplateManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use LogicException;
@@ -123,5 +126,34 @@ class TemplateVersioningTest extends TestCase
             ['first_name' => ['required' => true]],
             $sender,
         );
+    }
+
+    public function test_legacy_managed_template_edit_publishes_a_new_canonical_version(): void
+    {
+        $legacy = EmailTemplate::query()->create([
+            'name' => 'Founder Managed Welcome',
+            'subject' => 'نسخه اول {{name}}',
+            'body' => '<p>نسخه اول {{name}}</p>',
+            'variables' => ['name'],
+            'category' => 'onboarding',
+            'is_active' => true,
+        ]);
+
+        app(LegacyEmailCommunicationImporter::class)->import();
+        $canonical = CommunicationTemplate::query()
+            ->where('key', 'legacy.email-template.'.$legacy->id)
+            ->firstOrFail();
+        $this->assertSame(1, $canonical->versions()->count());
+
+        app(EmailTemplateManagementService::class)->update($legacy, [
+            'subject' => 'نسخه دوم {{name}}',
+            'body' => '<p>نسخه دوم {{name}}</p>',
+        ]);
+
+        $versions = $canonical->fresh()->versions()->where('locale', 'fa')->orderBy('version')->get();
+        $this->assertCount(2, $versions);
+        $this->assertSame('نسخه اول {{name}}', $versions[0]->subject);
+        $this->assertSame('نسخه دوم {{name}}', $versions[1]->subject);
+        $this->assertSame('نسخه دوم {{name}}', $legacy->fresh()->subject);
     }
 }
