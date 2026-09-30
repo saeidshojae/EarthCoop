@@ -20,8 +20,16 @@ class Ticket extends Model
         'assignee_id',
         'name',
         'email',
-        'phone'
+        'phone',
+        'metadata',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'metadata' => 'array',
+        ];
+    }
 
     public function user(): BelongsTo
     {
