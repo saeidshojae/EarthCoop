@@ -33,12 +33,20 @@ class CommunicationTemplateRenderer
         $subject = (string) $version->subject;
         $body = (string) $version->body;
         foreach ($context as $key => $value) {
+            $pattern = '/\{\{\s*'.preg_quote((string) $key, '/').'\s*\}\}/';
+            $isInterpolated = preg_match($pattern, $subject.' '.$body) === 1;
+
             if (! is_scalar($value) && $value !== null) {
-                throw new InvalidArgumentException("Template variable {$key} must be scalar or null.");
+                if ($isInterpolated) {
+                    throw new InvalidArgumentException("Template variable {$key} must be scalar or null when interpolated.");
+                }
+
+                // Structured values may be retained in the immutable context snapshot
+                // for audit/report metadata, but are never stringified into email HTML.
+                continue;
             }
 
             $replacement = $value === null ? '' : (string) $value;
-            $pattern = '/\{\{\s*'.preg_quote((string) $key, '/').'\s*\}\}/';
             $subject = preg_replace($pattern, $replacement, $subject) ?? $subject;
             $body = preg_replace($pattern, $replacement, $body) ?? $body;
         }
