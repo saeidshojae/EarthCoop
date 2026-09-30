@@ -18,6 +18,23 @@ on:
       - 'tests/Unit/Communication/**'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
+  pull_request:
+    branches:
+      - agent/communication-center-spec-20260930
+    paths:
+      - 'app/Enums/Communication/**'
+      - 'app/Models/Communication*.php'
+      - 'app/Services/Communication/**'
+      - 'app/Jobs/Communication/**'
+      - 'app/Events/RegistrationCompleted.php'
+      - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
+      - 'app/Http/Controllers/Admin/Communication/**'
+      - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
+      - 'database/migrations/2026_09_30_18*.php'
+      - 'tests/Feature/Communication/**'
+      - 'tests/Unit/Communication/**'
+      - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
+      - '.github/workflows/communication-center-targeted.yml'
   workflow_dispatch:
 
 permissions:
