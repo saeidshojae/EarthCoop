@@ -19,6 +19,15 @@ class ConditionalRuleTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        CommunicationRule::query()
+            ->where('key', 'onboarding.welcome.rule')
+            ->update(['is_active' => false]);
+    }
+
     public function test_delayed_registered_condition_dispatches_only_when_true(): void
     {
         Queue::fake();
