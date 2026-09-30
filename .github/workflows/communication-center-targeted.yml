@@ -8,6 +8,9 @@ on:
       - 'app/Enums/Communication/**'
       - 'app/Models/Communication*.php'
       - 'app/Services/Communication/**'
+      - 'app/Services/Email/EmailTemplateManagementService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailTemplateDecisionService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailDraftService.php'
       - 'app/Jobs/Communication/**'
       - 'app/Events/RegistrationCompleted.php'
       - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
@@ -16,6 +19,7 @@ on:
       - 'database/migrations/2026_09_30_18*.php'
       - 'tests/Feature/Communication/**'
       - 'tests/Unit/Communication/**'
+      - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
   pull_request:
@@ -25,6 +29,9 @@ on:
       - 'app/Enums/Communication/**'
       - 'app/Models/Communication*.php'
       - 'app/Services/Communication/**'
+      - 'app/Services/Email/EmailTemplateManagementService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailTemplateDecisionService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailDraftService.php'
       - 'app/Jobs/Communication/**'
       - 'app/Events/RegistrationCompleted.php'
       - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
@@ -33,6 +40,7 @@ on:
       - 'database/migrations/2026_09_30_18*.php'
       - 'tests/Feature/Communication/**'
       - 'tests/Unit/Communication/**'
+      - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
   workflow_dispatch:
@@ -102,6 +110,9 @@ jobs:
           fi
           if [ -d tests/Unit/Communication ]; then
             vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Communication
+          fi
+          if [ -f tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php
           fi
           if [ -f tests/Architecture/CommunicationDeliveryBoundaryTest.php ]; then
             vendor/bin/phpunit -c phpunit.xml.dist tests/Architecture/CommunicationDeliveryBoundaryTest.php
