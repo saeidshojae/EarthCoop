@@ -73,8 +73,13 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
                 'گزارش هفتگی {{display_name}}',
                 '<p>{{display_name}} — {{groups_count}}</p>',
                 [
+                    'period_start' => ['type' => 'string', 'required' => true],
+                    'period_end' => ['type' => 'string', 'required' => true],
                     'display_name' => ['type' => 'string', 'required' => true],
                     'groups_count' => ['type' => 'integer', 'required' => true],
+                    'open_elections_count' => ['type' => 'integer', 'required' => true],
+                    'open_polls_count' => ['type' => 'integer', 'required' => true],
+                    'unread_notifications_count' => ['type' => 'integer', 'required' => true],
                 ],
                 $sender,
             );
