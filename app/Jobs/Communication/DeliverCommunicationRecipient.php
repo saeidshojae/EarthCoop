@@ -7,6 +7,7 @@ use App\Enums\Communication\DeliveryStatus;
 use App\Models\CommunicationRecipient;
 use App\Services\Communication\DeliveryFailureClassifier;
 use App\Services\Communication\EmailDeliveryAdapter;
+use BackedEnum;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -64,25 +65,6 @@ class DeliverCommunicationRecipient implements ShouldQueue
 
         try {
             $result = $adapter->send($recipient);
-
-            DB::transaction(function () use ($recipient, $attemptNumber, $startedAt, $result): void {
-                $recipient->attempts()->create([
-                    'attempt_number' => $attemptNumber,
-                    'provider' => $result['provider'] ?? 'laravel-mail',
-                    'provider_message_id' => $result['provider_message_id'] ?? null,
-                    'status' => DeliveryStatus::Sent,
-                    'started_at' => $startedAt,
-                    'finished_at' => now(),
-                ]);
-
-                $recipient->update([
-                    'status' => DeliveryStatus::Sent,
-                    'sent_at' => now(),
-                    'failed_at' => null,
-                ]);
-            });
-
-            $this->refreshCommunicationStatus($recipient);
         } catch (Throwable $exception) {
             $failureClass = $classifier->classify($exception);
 
@@ -115,7 +97,28 @@ class DeliverCommunicationRecipient implements ShouldQueue
             if ($failureClass === DeliveryFailureClassifier::TRANSIENT) {
                 throw $exception;
             }
+
+            return;
         }
+
+        DB::transaction(function () use ($recipient, $attemptNumber, $startedAt, $result): void {
+            $recipient->attempts()->create([
+                'attempt_number' => $attemptNumber,
+                'provider' => $result['provider'] ?? 'laravel-mail',
+                'provider_message_id' => $result['provider_message_id'] ?? null,
+                'status' => DeliveryStatus::Sent,
+                'started_at' => $startedAt,
+                'finished_at' => now(),
+            ]);
+
+            $recipient->update([
+                'status' => DeliveryStatus::Sent,
+                'sent_at' => now(),
+                'failed_at' => null,
+            ]);
+        });
+
+        $this->refreshCommunicationStatus($recipient);
     }
 
     public function failed(?Throwable $exception): void
@@ -141,7 +144,15 @@ class DeliverCommunicationRecipient implements ShouldQueue
             return;
         }
 
-        $statuses = $communication->recipients()->pluck('status')->all();
+        $statuses = $communication->recipients()
+            ->get(['status'])
+            ->map(static function (CommunicationRecipient $item): string {
+                return $item->status instanceof BackedEnum
+                    ? (string) $item->status->value
+                    : (string) $item->status;
+            })
+            ->all();
+
         $active = ['pending', 'queued', 'sending', 'retrying'];
         $hasActive = count(array_intersect($statuses, $active)) > 0;
         $hasFailure = in_array('failed', $statuses, true);
