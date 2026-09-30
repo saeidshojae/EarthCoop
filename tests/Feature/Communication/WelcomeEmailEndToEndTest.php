@@ -2,10 +2,16 @@
 
 namespace Tests\Feature\Communication;
 
+use App\Enums\Communication\CommunicationClassification;
 use App\Events\RegistrationCompleted;
+use App\Models\Communication;
+use App\Models\CommunicationRule;
+use App\Models\CommunicationSenderIdentity;
+use App\Models\CommunicationTemplate;
 use App\Models\LocationExternalId;
 use App\Models\ReferenceSettlement;
 use App\Models\User;
+use App\Services\Communication\CommunicationTemplateService;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\LocationStructureClaimService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -124,5 +130,95 @@ final class WelcomeEmailEndToEndTest extends TestCase
             'user_id' => $user->id,
         ]);
         Event::assertDispatched(RegistrationCompleted::class, fn ($event): bool => $event->userId === $user->id);
+    }
+
+    public function test_repeated_successful_submit_emits_completion_event_only_once(): void
+    {
+        Event::fake([RegistrationCompleted::class]);
+        $schema = LocationFixture::iranSchema();
+        $location = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood',
+        ])->last();
+        $user = User::factory()->create();
+        $payload = ['location_id' => $location->id];
+
+        $this->actingAs($user)->post(route('register.step3.process'), $payload)->assertRedirect(route('home'));
+        $this->actingAs($user)->post(route('register.step3.process'), $payload)->assertRedirect(route('home'));
+
+        Event::assertDispatchedTimes(RegistrationCompleted::class, 1);
+    }
+
+    public function test_welcome_context_builder_exposes_only_canonical_member_fields(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'مریم',
+            'last_name' => 'کاربر',
+            'email' => 'context-user@example.test',
+        ]);
+
+        $context = app(\App\Services\Communication\Context\WelcomeCommunicationContextBuilder::class)
+            ->build($user);
+
+        $this->assertSame(['display_name', 'email', 'profile_url'], array_keys($context));
+        $this->assertSame('مریم کاربر', $context['display_name']);
+        $this->assertSame($user->email, $context['email']);
+        $this->assertSame(route('profile.show'), $context['profile_url']);
+    }
+
+    public function test_registration_completed_listener_creates_one_personalized_welcome_communication(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'سارا',
+            'last_name' => 'نمونه',
+            'email' => 'welcome-user@example.test',
+        ]);
+        $this->installWelcomeRule();
+        $event = new RegistrationCompleted($user->id, '2026-09-30T10:00:00+03:30', 'fa');
+
+        event($event);
+        event($event);
+
+        $this->assertDatabaseCount('communications', 1);
+        $communication = Communication::query()->sole();
+        $this->assertSame('registration.completed', $communication->source_id);
+        $this->assertSame('سارا نمونه', $communication->context_snapshot['display_name'] ?? null);
+        $this->assertSame($user->email, $communication->recipients()->sole()->destination);
+    }
+
+    private function installWelcomeRule(): void
+    {
+        $sender = CommunicationSenderIdentity::query()->create([
+            'key' => 'onboarding',
+            'email' => 'welcome@earthcoop.ir',
+            'display_name' => 'EarthCoop',
+            'is_active' => true,
+        ]);
+        $template = CommunicationTemplate::query()->create([
+            'key' => 'onboarding.welcome',
+            'name' => 'Welcome',
+            'classification' => CommunicationClassification::Operational,
+            'is_active' => true,
+        ]);
+        app(CommunicationTemplateService::class)->publish(
+            $template,
+            'fa',
+            'به ارث‌کوپ خوش آمدید {{display_name}}',
+            '<p>{{display_name}} عزیز، عضویت شما کامل شد.</p>',
+            ['display_name'],
+            $sender,
+        );
+
+        CommunicationRule::query()->create([
+            'key' => 'onboarding.welcome.rule',
+            'name' => 'Welcome after registration',
+            'trigger_type' => 'event',
+            'event_key' => 'registration.completed',
+            'audience_definition' => ['key' => 'event.user'],
+            'communication_template_id' => $template->id,
+            'communication_sender_identity_id' => $sender->id,
+            'classification' => CommunicationClassification::Operational,
+            'priority' => 2,
+            'is_active' => true,
+        ]);
     }
 }
