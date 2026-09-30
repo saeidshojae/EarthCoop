@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EmailTemplate;
 use App\Models\User;
-use App\Services\Email\EmailDeliveryService;
+use App\Services\Communication\CommunicationDispatcher;
+use App\Services\Communication\LegacyEmailCommunicationImporter;
 use App\Services\Email\EmailTemplateManagementService;
 use Illuminate\Http\Request;
 
@@ -102,10 +103,13 @@ class EmailController extends Controller
     }
 
     /**
-     * Send email using a template
+     * Queue email using a legacy template through the canonical communication engine.
      */
-    public function sendTemplate(Request $request, EmailDeliveryService $delivery)
-    {
+    public function sendTemplate(
+        Request $request,
+        CommunicationDispatcher $communications,
+        LegacyEmailCommunicationImporter $legacyImporter,
+    ) {
         $validated = $request->validate([
             'template_id' => 'required|exists:email_templates,id',
             'recipients' => 'required|array|min:1',
@@ -118,22 +122,33 @@ class EmailController extends Controller
             return back()->withErrors(['template_id' => 'این قالب غیرفعال است.']);
         }
 
-        $rendered = $template->render($validated['variables'] ?? []);
-        $recipients = $delivery->parseRecipients($validated['recipients']);
+        $recipients = $this->parseRecipients($validated['recipients']);
         if ($recipients === []) {
             return back()->withErrors(['recipients' => 'لطفاً حداقل یک ایمیل معتبر وارد کنید.']);
         }
 
-        $delivery->sendHtml($recipients, $rendered['subject'], $rendered['body']);
+        // Non-destructively mirror legacy sender/template records before dispatch.
+        $legacyImporter->import();
+
+        $communications->dispatchExternal(
+            'legacy.email-template.'.(int) $template->id,
+            ['type' => 'admin.manual_template', 'id' => (string) $template->id],
+            array_map(
+                static fn (string $email): array => ['email' => $email, 'locale' => 'fa'],
+                $recipients,
+            ),
+            (array) ($validated['variables'] ?? []),
+            ['priority' => 2],
+        );
 
         return redirect()->route('admin.emails.send')
-            ->with('success', 'ایمیل‌ها با موفقیت ارسال شدند.');
+            ->with('success', count($recipients).' ایمیل برای ارسال در صف قرار گرفت.');
     }
 
     /**
-     * Send a custom email (without template)
+     * Queue a custom email through the canonical communication engine.
      */
-    public function sendCustom(Request $request, EmailDeliveryService $delivery)
+    public function sendCustom(Request $request, CommunicationDispatcher $communications)
     {
         $validated = $request->validate([
             'recipients' => 'required|array|min:1',
@@ -142,15 +157,27 @@ class EmailController extends Controller
             'body' => 'required|string',
         ]);
 
-        $recipients = $delivery->parseRecipients($validated['recipients']);
+        $recipients = $this->parseRecipients($validated['recipients']);
         if ($recipients === []) {
             return back()->withErrors(['recipients' => 'لطفاً حداقل یک ایمیل معتبر وارد کنید.']);
         }
 
-        $delivery->sendHtml($recipients, $validated['subject'], $validated['body']);
+        $communications->dispatchExternal(
+            'admin.manual_custom',
+            ['type' => 'admin.manual_custom', 'id' => (string) ($request->user()?->id ?? 'admin')],
+            array_map(
+                static fn (string $email): array => ['email' => $email, 'locale' => 'fa'],
+                $recipients,
+            ),
+            [
+                'subject' => (string) $validated['subject'],
+                'rendered_html' => (string) $validated['body'],
+            ],
+            ['priority' => 2],
+        );
 
         return redirect()->route('admin.emails.send')
-            ->with('success', 'ایمیل‌های سفارشی با موفقیت ارسال شدند.');
+            ->with('success', count($recipients).' ایمیل سفارشی برای ارسال در صف قرار گرفت.');
     }
 
     /**
@@ -165,5 +192,21 @@ class EmailController extends Controller
             'subject' => $rendered['subject'],
             'body' => $rendered['body'],
         ]);
+    }
+
+    /** @param array<int,string> $raw @return array<int,string> */
+    private function parseRecipients(array $raw): array
+    {
+        $emails = [];
+        foreach ($raw as $value) {
+            foreach (preg_split('/[,\n]/', (string) $value) ?: [] as $email) {
+                $email = trim($email);
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $emails[] = $email;
+                }
+            }
+        }
+
+        return array_values(array_unique($emails));
     }
 }
