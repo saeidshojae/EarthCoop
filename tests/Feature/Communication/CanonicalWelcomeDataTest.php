@@ -38,10 +38,9 @@ final class CanonicalWelcomeDataTest extends TestCase
 
         $this->assertSame(1, (int) $version->version);
         $this->assertSame($sender->id, $version->communication_sender_identity_id);
-        $this->assertSame(
-            ['display_name', 'email', 'profile_url'],
-            array_keys($version->variables_schema ?? [])
-        );
+        $variableKeys = array_keys($version->variables_schema ?? []);
+        sort($variableKeys);
+        $this->assertSame(['display_name', 'email', 'profile_url'], $variableKeys);
 
         $rule = CommunicationRule::query()
             ->where('key', 'onboarding.welcome.rule')
