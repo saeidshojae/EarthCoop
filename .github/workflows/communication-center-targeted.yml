@@ -14,11 +14,14 @@ on:
       - 'app/Jobs/Communication/**'
       - 'app/Events/RegistrationCompleted.php'
       - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
+      - 'app/Providers/EventServiceProvider.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
       - 'app/Http/Controllers/Admin/Communication/**'
       - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
       - 'database/migrations/2026_09_30_18*.php'
       - 'tests/Feature/Communication/**'
       - 'tests/Unit/Communication/**'
+      - 'tests/Feature/LocationGovernance/*Registration*.php'
       - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
@@ -35,11 +38,14 @@ on:
       - 'app/Jobs/Communication/**'
       - 'app/Events/RegistrationCompleted.php'
       - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
+      - 'app/Providers/EventServiceProvider.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
       - 'app/Http/Controllers/Admin/Communication/**'
       - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
       - 'database/migrations/2026_09_30_18*.php'
       - 'tests/Feature/Communication/**'
       - 'tests/Unit/Communication/**'
+      - 'tests/Feature/LocationGovernance/*Registration*.php'
       - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
@@ -117,3 +123,14 @@ jobs:
           if [ -f tests/Architecture/CommunicationDeliveryBoundaryTest.php ]; then
             vendor/bin/phpunit -c phpunit.xml.dist tests/Architecture/CommunicationDeliveryBoundaryTest.php
           fi
+      - name: Run registration regression tests
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist \
+            tests/Feature/LocationGovernance/LegacyRegistrationLocationContractTest.php \
+            tests/Feature/LocationGovernance/PendingRegistrationGroupContractTest.php \
+            tests/Feature/LocationGovernance/RegistrationPendingResidenceTest.php \
+            tests/Feature/LocationGovernance/RegistrationPrimaryResidenceTest.php \
+            tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php \
+            tests/Feature/LocationGovernance/RegistrationStep3CanonicalUxRegressionTest.php \
+            tests/Feature/LocationGovernance/RegistrationStep3OriginalUxContractTest.php \
+            tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php
