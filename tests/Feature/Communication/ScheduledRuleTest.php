@@ -1,0 +1,102 @@
+<?php
+
+namespace Tests\Feature\Communication;
+
+use App\Enums\Communication\CommunicationClassification;
+use App\Jobs\Communication\ResolveCommunicationRunAudience;
+use App\Models\CommunicationRule;
+use App\Models\CommunicationRuleSchedule;
+use App\Models\CommunicationRun;
+use App\Models\CommunicationSenderIdentity;
+use App\Models\CommunicationTemplate;
+use App\Models\User;
+use App\Services\Communication\CommunicationScheduleService;
+use App\Services\Communication\CommunicationTemplateService;
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
+
+class ScheduledRuleTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_due_schedule_creates_one_run_and_scheduler_reentry_does_not_duplicate_it(): void
+    {
+        Queue::fake();
+        $now = CarbonImmutable::parse('2026-09-30 09:00:00', 'Asia/Tehran');
+        $users = User::factory()->count(3)->create();
+        [$rule, $schedule] = $this->scheduledRule($users->pluck('id')->all(), $now);
+
+        $service = app(CommunicationScheduleService::class);
+        $this->assertSame(1, $service->processDue($now));
+        $this->assertSame(0, $service->processDue($now));
+
+        $this->assertSame(1, CommunicationRun::query()->where('communication_rule_id', $rule->id)->count());
+        $run = CommunicationRun::query()->where('communication_rule_id', $rule->id)->firstOrFail();
+        $this->assertSame('pending', $run->status);
+        $this->assertSame('schedule:'.$rule->id.':'.$now->utc()->format('YmdHis'), $run->run_key);
+
+        $schedule->refresh();
+        $this->assertNotNull($schedule->last_run_at);
+        $this->assertTrue($schedule->next_run_at->greaterThan($now));
+        Queue::assertPushed(ResolveCommunicationRunAudience::class, 1);
+    }
+
+    public function test_audience_resolution_is_chunked_for_large_specific_user_sets(): void
+    {
+        Queue::fake();
+        $now = CarbonImmutable::parse('2026-09-30 09:00:00', 'Asia/Tehran');
+        $users = User::factory()->count(5)->create();
+        [$rule] = $this->scheduledRule($users->pluck('id')->all(), $now);
+
+        app(CommunicationScheduleService::class)->processDue($now);
+        $run = CommunicationRun::query()->where('communication_rule_id', $rule->id)->firstOrFail();
+
+        $job = new ResolveCommunicationRunAudience($run->id, 2);
+        $job->handle(app(\App\Services\Communication\CommunicationAudienceRegistry::class));
+
+        Queue::assertPushed(ResolveCommunicationRunAudience::class, 3);
+    }
+
+    /** @param array<int,int> $userIds */
+    private function scheduledRule(array $userIds, CarbonImmutable $now): array
+    {
+        $sender = CommunicationSenderIdentity::query()->create([
+            'key' => 'reports',
+            'email' => 'reports@earthcoop.ir',
+            'display_name' => 'EarthCoop Reports',
+            'is_active' => true,
+        ]);
+        $template = CommunicationTemplate::query()->create([
+            'key' => 'reports.member.weekly',
+            'name' => 'Weekly member report',
+            'classification' => CommunicationClassification::Operational,
+            'is_active' => true,
+        ]);
+        app(CommunicationTemplateService::class)->publish(
+            $template, 'fa', 'گزارش هفتگی', '<p>گزارش هفتگی ارث‌کوپ</p>', [], $sender,
+        );
+        $rule = CommunicationRule::query()->create([
+            'key' => 'reports.member.weekly.rule',
+            'name' => 'Weekly member report',
+            'trigger_type' => 'scheduled',
+            'audience_definition' => ['key' => 'specific.user', 'user_ids' => $userIds],
+            'communication_template_id' => $template->id,
+            'communication_sender_identity_id' => $sender->id,
+            'classification' => CommunicationClassification::Operational,
+            'priority' => 2,
+            'is_active' => true,
+        ]);
+        $schedule = CommunicationRuleSchedule::query()->create([
+            'communication_rule_id' => $rule->id,
+            'frequency' => 'weekly',
+            'schedule_definition' => ['interval' => 1],
+            'timezone' => 'Asia/Tehran',
+            'timezone_mode' => 'system',
+            'next_run_at' => $now,
+        ]);
+
+        return [$rule, $schedule];
+    }
+}
