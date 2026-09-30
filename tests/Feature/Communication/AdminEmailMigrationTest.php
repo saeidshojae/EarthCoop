@@ -105,24 +105,28 @@ final class AdminEmailMigrationTest extends TestCase
 
     private function canonicalCustomTemplate(CommunicationSenderIdentity $sender): void
     {
-        $template = CommunicationTemplate::query()->create([
-            'key' => 'admin.manual_custom',
-            'name' => 'ارسال دستی سفارشی',
-            'category' => 'admin',
-            'classification' => CommunicationClassification::Operational,
-            'is_active' => true,
-        ]);
-
-        app(CommunicationTemplateService::class)->publish(
-            $template,
-            'fa',
-            '{{subject}}',
-            '{{rendered_html}}',
+        $template = CommunicationTemplate::query()->firstOrCreate(
+            ['key' => 'admin.manual_custom'],
             [
-                'subject' => ['type' => 'string', 'required' => true],
-                'rendered_html' => ['type' => 'string', 'required' => true],
+                'name' => 'ارسال دستی سفارشی',
+                'category' => 'admin',
+                'classification' => CommunicationClassification::Operational,
+                'is_active' => true,
             ],
-            $sender,
         );
+
+        if (! $template->versions()->where('locale', 'fa')->whereNotNull('published_at')->exists()) {
+            app(CommunicationTemplateService::class)->publish(
+                $template,
+                'fa',
+                '{{subject}}',
+                '{{rendered_html}}',
+                [
+                    'subject' => ['type' => 'string', 'required' => true],
+                    'rendered_html' => ['type' => 'string', 'required' => true],
+                ],
+                $sender,
+            );
+        }
     }
 }
