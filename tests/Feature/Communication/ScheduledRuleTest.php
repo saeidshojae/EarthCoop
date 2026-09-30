@@ -83,14 +83,14 @@ class ScheduledRuleTest extends TestCase
     private function scheduledRule(array $userIds, CarbonImmutable $now): array
     {
         $sender = CommunicationSenderIdentity::query()->create([
-            'key' => 'reports',
-            'email' => 'reports@earthcoop.ir',
-            'display_name' => 'EarthCoop Reports',
+            'key' => 'scheduled-test',
+            'email' => 'scheduled-test@earthcoop.ir',
+            'display_name' => 'EarthCoop Scheduled Test',
             'is_active' => true,
         ]);
         $template = CommunicationTemplate::query()->create([
-            'key' => 'reports.member.weekly',
-            'name' => 'Weekly member report',
+            'key' => 'test.scheduled.weekly',
+            'name' => 'Scheduled test fixture',
             'classification' => CommunicationClassification::Operational,
             'is_active' => true,
         ]);
@@ -98,8 +98,8 @@ class ScheduledRuleTest extends TestCase
             $template, 'fa', 'گزارش هفتگی', '<p>گزارش هفتگی ارث‌کوپ</p>', [], $sender,
         );
         $rule = CommunicationRule::query()->create([
-            'key' => 'reports.member.weekly.rule',
-            'name' => 'Weekly member report',
+            'key' => 'test.scheduled.weekly.rule',
+            'name' => 'Scheduled test fixture',
             'trigger_type' => 'scheduled',
             'audience_definition' => ['key' => 'specific.user', 'user_ids' => $userIds],
             'communication_template_id' => $template->id,
