@@ -71,6 +71,14 @@ class Step3Controller extends Controller
             return redirect()->route('login')->withErrors('ابتدا وارد حساب خود شوید.');
         }
 
+        $registrationWasComplete = (bool) config('location-governance.registration_enabled')
+            ? $user->locationRelationships()
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->exists()
+            : Address::query()->where('user_id', $user->id)->exists();
+        $request->attributes->set('registration_was_complete', $registrationWasComplete);
+
         if ((bool) config('location-governance.registration_enabled')) {
             $validated = $request->validate([
                 'location_id' => ['nullable', 'integer', 'exists:locations,id'],
@@ -425,11 +433,13 @@ class Step3Controller extends Controller
 
     private function completeRegistration(User $user, string $message): RedirectResponse
     {
-        RegistrationCompleted::dispatch(
-            (int) $user->id,
-            now()->toIso8601String(),
-            app()->getLocale(),
-        );
+        if (! request()->attributes->getBoolean('registration_was_complete')) {
+            RegistrationCompleted::dispatch(
+                (int) $user->id,
+                now()->toIso8601String(),
+                app()->getLocale(),
+            );
+        }
 
         return redirect()->route('home')->with('success', $message);
     }
