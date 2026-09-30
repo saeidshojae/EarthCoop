@@ -15,7 +15,7 @@ class SenderIdentityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_sender_resolver_returns_only_presentation_identity_and_never_provider_secrets(): void
+    public function test_sender_resolver_returns_canonical_presentation_identity_without_provider_secrets(): void
     {
         config([
             'mail.mailers.smtp.username' => 'secret-user',
@@ -34,12 +34,13 @@ class SenderIdentityTest extends TestCase
 
         $resolved = app(SenderIdentityResolver::class)->resolve('support');
 
-        $this->assertSame('support@earthcoop.ir', $resolved['address']);
-        $this->assertSame('تیم پشتیبانی EarthCoop', $resolved['name']);
-        $this->assertSame('support@earthcoop.ir', $resolved['reply_to']);
-        $this->assertArrayNotHasKey('username', $resolved);
-        $this->assertArrayNotHasKey('password', $resolved);
-        $this->assertStringNotContainsString('secret', json_encode($resolved, JSON_THROW_ON_ERROR));
+        $this->assertInstanceOf(CommunicationSenderIdentity::class, $resolved);
+        $this->assertSame('support@earthcoop.ir', $resolved->email);
+        $this->assertSame('تیم پشتیبانی EarthCoop', $resolved->display_name);
+        $this->assertSame('support@earthcoop.ir', $resolved->reply_to);
+        $this->assertArrayNotHasKey('username', $resolved->getAttributes());
+        $this->assertArrayNotHasKey('password', $resolved->getAttributes());
+        $this->assertStringNotContainsString('secret', json_encode($resolved->getAttributes(), JSON_THROW_ON_ERROR));
     }
 
     public function test_sender_resolver_rejects_inactive_or_unknown_sender(): void
