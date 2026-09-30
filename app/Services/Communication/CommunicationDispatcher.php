@@ -2,8 +2,10 @@
 
 namespace App\Services\Communication;
 
+use App\Enums\Communication\CommunicationClassification;
 use App\Enums\Communication\CommunicationStatus;
 use App\Enums\Communication\DeliveryStatus;
+use App\Jobs\Communication\DeliverCommunicationRecipient;
 use App\Models\Communication;
 use App\Models\CommunicationTemplate;
 use App\Models\CommunicationTemplateVersion;
@@ -74,7 +76,7 @@ class CommunicationDispatcher
         $this->renderer->render($version, $context);
 
         try {
-            return DB::transaction(function () use (
+            $communication = DB::transaction(function () use (
                 $purposeKey,
                 $source,
                 $recipients,
@@ -142,5 +144,57 @@ class CommunicationDispatcher
 
             throw $exception;
         }
+
+        $this->queueEligibleRecipients($communication, $template->classification, $options);
+
+        return $communication->refresh();
+    }
+
+    /** @param array<string,mixed> $options */
+    private function queueEligibleRecipients(
+        Communication $communication,
+        CommunicationClassification $classification,
+        array $options,
+    ): void {
+        $queue = $this->queueName($classification, $options);
+        $queuedAny = false;
+
+        foreach ($communication->recipients()->where('status', DeliveryStatus::Pending->value)->get() as $recipient) {
+            $claimed = $communication->recipients()
+                ->whereKey($recipient->id)
+                ->where('status', DeliveryStatus::Pending->value)
+                ->update([
+                    'status' => DeliveryStatus::Queued->value,
+                    'queued_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($claimed !== 1) {
+                continue;
+            }
+
+            DeliverCommunicationRecipient::dispatch($recipient->id)->onQueue($queue);
+            $queuedAny = true;
+        }
+
+        if ($queuedAny) {
+            $communication->update(['status' => CommunicationStatus::Queued]);
+        }
+    }
+
+    /** @param array<string,mixed> $options */
+    private function queueName(
+        CommunicationClassification $classification,
+        array $options,
+    ): string {
+        if ($classification === CommunicationClassification::Required) {
+            return 'communications-critical';
+        }
+
+        if (($options['delivery_class'] ?? null) === 'bulk') {
+            return 'communications-bulk';
+        }
+
+        return 'communications-normal';
     }
 }
