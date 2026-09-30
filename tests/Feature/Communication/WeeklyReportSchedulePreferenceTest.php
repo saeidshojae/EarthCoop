@@ -22,6 +22,8 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const TEMPLATE_KEY = 'test.reports.member.weekly';
+
     public function test_role_member_run_builds_context_per_recipient_and_honors_operational_preference(): void
     {
         Queue::fake();
@@ -49,7 +51,7 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
 
             CommunicationPreference::query()->create([
                 'user_id' => $suppressed->id,
-                'topic_key' => 'reports.member.weekly',
+                'topic_key' => self::TEMPLATE_KEY,
                 'channel' => 'email',
                 'preference' => 'off',
                 'frequency' => 'weekly',
@@ -62,8 +64,8 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
                 'is_active' => true,
             ]);
             $template = CommunicationTemplate::query()->create([
-                'key' => 'reports.member.weekly',
-                'name' => 'Weekly member report',
+                'key' => self::TEMPLATE_KEY,
+                'name' => 'Weekly member report test fixture',
                 'classification' => CommunicationClassification::Operational,
                 'is_active' => true,
             ]);
@@ -85,7 +87,7 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
             );
 
             $rule = CommunicationRule::query()->create([
-                'key' => 'reports.member.weekly.test-rule',
+                'key' => self::TEMPLATE_KEY.'.test-rule',
                 'name' => 'Weekly member report test',
                 'trigger_type' => 'scheduled',
                 'audience_definition' => ['key' => 'role.member'],
