@@ -53,7 +53,7 @@ class EmailDeliveryAdapter
             }
 
             foreach ($headers as $name => $value) {
-                $message->getHeaders()->addTextHeader($name, $value);
+                $message->getHeaders()->addIdHeader($name, trim($value, '<>'));
             }
         });
 
