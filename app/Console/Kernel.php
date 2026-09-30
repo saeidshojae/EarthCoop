@@ -46,11 +46,13 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
+        \App\Console\Commands\CommunicationProcessDueRules::class,
     ];
 
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('auctions:close')->everyMinute();
+        $schedule->command('communications:process-due')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:activate-sessions')->everyMinute()->withoutOverlapping();
         $schedule->call(function (): void {
