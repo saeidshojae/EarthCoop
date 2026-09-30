@@ -16,30 +16,30 @@ return new class extends Migration
             $table->string('event_key')->nullable();
             $table->json('condition_definition')->nullable();
             $table->json('audience_definition');
-            $table->foreignId('communication_template_id')
-                ->constrained('communication_templates')
-                ->restrictOnDelete();
-            $table->foreignId('communication_sender_identity_id')
-                ->nullable()
-                ->constrained('communication_sender_identities')
-                ->restrictOnDelete();
+            $table->foreignId('communication_template_id');
+            $table->foreignId('communication_sender_identity_id')->nullable();
             $table->string('classification');
             $table->unsignedSmallInteger('priority')->default(2);
             $table->unsignedBigInteger('delay_seconds')->default(0);
             $table->boolean('is_active')->default(false);
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('created_by')->nullable();
+            $table->foreignId('approved_by')->nullable();
             $table->timestamps();
 
-            $table->index(['trigger_type', 'event_key', 'is_active']);
+            $table->foreign('communication_template_id', 'cc_rule_template_fk')
+                ->references('id')->on('communication_templates')->restrictOnDelete();
+            $table->foreign('communication_sender_identity_id', 'cc_rule_sender_fk')
+                ->references('id')->on('communication_sender_identities')->restrictOnDelete();
+            $table->foreign('created_by', 'cc_rule_created_by_fk')
+                ->references('id')->on('users')->nullOnDelete();
+            $table->foreign('approved_by', 'cc_rule_approved_by_fk')
+                ->references('id')->on('users')->nullOnDelete();
+            $table->index(['trigger_type', 'event_key', 'is_active'], 'cc_rule_trigger_event_active_idx');
         });
 
         Schema::create('communication_rule_schedules', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('communication_rule_id')
-                ->unique()
-                ->constrained('communication_rules')
-                ->cascadeOnDelete();
+            $table->foreignId('communication_rule_id')->unique();
             $table->string('frequency');
             $table->json('schedule_definition');
             $table->string('timezone')->default('Asia/Tehran');
@@ -48,7 +48,9 @@ return new class extends Migration
             $table->timestamp('last_run_at')->nullable();
             $table->timestamps();
 
-            $table->index('next_run_at');
+            $table->foreign('communication_rule_id', 'cc_schedule_rule_fk')
+                ->references('id')->on('communication_rules')->cascadeOnDelete();
+            $table->index('next_run_at', 'cc_schedule_next_run_idx');
         });
 
         Schema::create('communication_campaigns', function (Blueprint $table): void {
@@ -56,36 +58,33 @@ return new class extends Migration
             $table->string('name');
             $table->string('status')->default('draft');
             $table->json('audience_definition');
-            $table->foreignId('communication_template_id')
-                ->constrained('communication_templates')
-                ->restrictOnDelete();
-            $table->foreignId('communication_sender_identity_id')
-                ->nullable()
-                ->constrained('communication_sender_identities')
-                ->restrictOnDelete();
+            $table->foreignId('communication_template_id');
+            $table->foreignId('communication_sender_identity_id')->nullable();
             $table->string('classification');
             $table->unsignedSmallInteger('priority')->default(4);
             $table->timestamp('scheduled_at')->nullable();
             $table->timestamp('confirmed_at')->nullable();
             $table->timestamp('paused_at')->nullable();
             $table->timestamp('cancelled_at')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('created_by')->nullable();
+            $table->foreignId('approved_by')->nullable();
             $table->timestamps();
 
-            $table->index(['status', 'scheduled_at']);
+            $table->foreign('communication_template_id', 'cc_campaign_template_fk')
+                ->references('id')->on('communication_templates')->restrictOnDelete();
+            $table->foreign('communication_sender_identity_id', 'cc_campaign_sender_fk')
+                ->references('id')->on('communication_sender_identities')->restrictOnDelete();
+            $table->foreign('created_by', 'cc_campaign_created_by_fk')
+                ->references('id')->on('users')->nullOnDelete();
+            $table->foreign('approved_by', 'cc_campaign_approved_by_fk')
+                ->references('id')->on('users')->nullOnDelete();
+            $table->index(['status', 'scheduled_at'], 'cc_campaign_status_schedule_idx');
         });
 
         Schema::create('communication_runs', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('communication_rule_id')
-                ->nullable()
-                ->constrained('communication_rules')
-                ->nullOnDelete();
-            $table->foreignId('communication_campaign_id')
-                ->nullable()
-                ->constrained('communication_campaigns')
-                ->nullOnDelete();
+            $table->foreignId('communication_rule_id')->nullable();
+            $table->foreignId('communication_campaign_id')->nullable();
             $table->string('run_key')->nullable()->unique();
             $table->string('status')->default('pending');
             $table->unsignedBigInteger('matched_count')->default(0);
@@ -99,7 +98,11 @@ return new class extends Migration
             $table->timestamp('finished_at')->nullable();
             $table->timestamps();
 
-            $table->index(['status', 'started_at']);
+            $table->foreign('communication_rule_id', 'cc_run_rule_fk')
+                ->references('id')->on('communication_rules')->nullOnDelete();
+            $table->foreign('communication_campaign_id', 'cc_run_campaign_fk')
+                ->references('id')->on('communication_campaigns')->nullOnDelete();
+            $table->index(['status', 'started_at'], 'cc_run_status_started_idx');
         });
     }
 
