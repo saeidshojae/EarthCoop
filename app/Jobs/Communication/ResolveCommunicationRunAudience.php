@@ -20,7 +20,7 @@ class ResolveCommunicationRunAudience implements ShouldQueue
     public function __construct(
         public readonly int $runId,
         public readonly int $chunkSize = 500,
-        public readonly int $offset = 0,
+        public readonly ?int $offset = null,
     ) {
     }
 
@@ -46,10 +46,12 @@ class ResolveCommunicationRunAudience implements ShouldQueue
         ));
         $chunkSize = max(1, $this->chunkSize);
 
-        if ($this->offset === 0) {
-            for ($nextOffset = $chunkSize; $nextOffset < count($ids); $nextOffset += $chunkSize) {
-                self::dispatch($run->id, $chunkSize, $nextOffset)->onQueue('communications-bulk');
+        if ($this->offset === null) {
+            for ($offset = 0; $offset < count($ids); $offset += $chunkSize) {
+                self::dispatch($run->id, $chunkSize, $offset)->onQueue('communications-bulk');
             }
+
+            return;
         }
 
         $chunkIds = array_slice($ids, $this->offset, $chunkSize);
@@ -74,10 +76,15 @@ class ResolveCommunicationRunAudience implements ShouldQueue
             ],
         );
 
+        $alreadyAttached = (int) ($communication->communication_run_id ?? 0) === (int) $run->id;
         $communication->update([
             'communication_rule_id' => $rule->id,
             'communication_run_id' => $run->id,
         ]);
+
+        if ($alreadyAttached) {
+            return;
+        }
 
         $counts = $communication->recipients()
             ->selectRaw('status, COUNT(*) as aggregate')
