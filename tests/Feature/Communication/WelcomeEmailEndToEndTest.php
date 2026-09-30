@@ -204,7 +204,7 @@ final class WelcomeEmailEndToEndTest extends TestCase
             'fa',
             'به ارث‌کوپ خوش آمدید {{display_name}}',
             '<p>{{display_name}} عزیز، عضویت شما کامل شد.</p>',
-            ['display_name'],
+            ['display_name' => ['type' => 'string', 'required' => true]],
             $sender,
         );
 
