@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 class TemporalContextResolverTest extends TestCase
 {
-    private function resolver(?callable $activeLocaleResolver = null): TemporalContextResolver
+    private function resolver(?callable $activeLocaleResolver = null, ?callable $activeUserResolver = null): TemporalContextResolver
     {
         return new TemporalContextResolver(
             ['fa' => 'jalali', 'en' => 'gregorian', 'ar' => 'gregorian'],
@@ -16,6 +16,7 @@ class TemporalContextResolverTest extends TestCase
             'UTC',
             'fa',
             $activeLocaleResolver ? \Closure::fromCallable($activeLocaleResolver) : null,
+            $activeUserResolver ? \Closure::fromCallable($activeUserResolver) : null,
         );
     }
 
@@ -100,5 +101,22 @@ class TemporalContextResolverTest extends TestCase
 
         $this->assertSame('en', $context->locale());
         $this->assertSame('gregorian', $context->calendar());
+        $this->assertSame('UTC', $context->timezone());
+    }
+
+    public function test_default_context_uses_active_user_timezone_without_overriding_runtime_locale(): void
+    {
+        $user = new User();
+        $user->locale = 'fa';
+        $user->timezone = 'Pacific/Honolulu';
+
+        $context = $this->resolver(
+            static fn (): string => 'en',
+            static fn (): User => $user,
+        )->defaultContext();
+
+        $this->assertSame('en', $context->locale());
+        $this->assertSame('gregorian', $context->calendar());
+        $this->assertSame('Pacific/Honolulu', $context->timezone());
     }
 }
