@@ -33,14 +33,21 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
           coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
       - name: Prepare Laravel directories
         run: |
           mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
           chmod -R 775 bootstrap/cache storage/framework storage/logs
-      - name: Install dependencies
+      - name: Install dependencies and build frontend
         run: |
           rm -rf vendor
           composer install --prefer-dist --no-interaction --no-progress
+          npm ci --no-audit --no-fund
+          npm run build
+          test -f public/build/manifest.json
       - name: Create test environment
         run: |
           cat > .env <<'EOF'
