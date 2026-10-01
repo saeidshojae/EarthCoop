@@ -44,6 +44,7 @@ class AdminUserTemporalBoundaryTest extends TestCase
 
         $this->assertStringContainsString('public function index(', $source);
         $this->assertStringContainsString('public function transactions(', $source);
+        $this->assertStringContainsString('applyLocalizedDateRange(', $source);
         $this->assertStringContainsString('startOfDay(', $source);
         $this->assertStringContainsString('endOfDay(', $source);
         $this->assertStringNotContainsString('whereDate(', $source);
