@@ -24,8 +24,9 @@ class NajmBaharAnalyticsTemporalContractTest extends TestCase
 
         $this->assertStringContainsString("path === '/admin/najm-bahar/analytics'", $app);
         $this->assertStringContainsString('markLegacyAdminDateInputs', $runtime);
+        $this->assertStringContainsString('adminDateFilterNamesForPath', $runtime);
         $this->assertStringContainsString("'/admin/najm-bahar/analytics'", $runtime);
-        $this->assertStringContainsString("input[name=\"date_from\"], input[name=\"date_to\"]", $runtime);
-        $this->assertStringContainsString("input.dataset.calendar = calendar", $runtime);
+        $this->assertStringContainsString("['date_from', 'date_to']", $runtime);
+        $this->assertStringContainsString('input.dataset.calendar = calendar', $runtime);
     }
 }
