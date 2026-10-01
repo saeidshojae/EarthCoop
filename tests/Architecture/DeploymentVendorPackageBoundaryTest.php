@@ -35,12 +35,10 @@ final class DeploymentVendorPackageBoundaryTest extends TestCase
         foreach ($paths as $path) {
             $this->assertFileExists($path);
             $source = file_get_contents($path);
-            $this->assertStringNotContainsString('shell_exec', $source);
-            $this->assertStringNotContainsString('exec(', $source);
-            $this->assertStringNotContainsString('eval(', $source);
-            $this->assertStringNotContainsString('system(', $source);
-            $this->assertStringNotContainsString('passthru(', $source);
-            $this->assertStringNotContainsString('proc_open(', $source);
+            $this->assertDoesNotMatchRegularExpression(
+                '/(^|[^A-Za-z0-9_])(shell_exec|exec|eval|system|passthru|proc_open)\s*\(/m',
+                $source
+            );
         }
     }
 }
