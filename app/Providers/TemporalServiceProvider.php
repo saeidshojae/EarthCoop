@@ -6,6 +6,7 @@ use App\Temporal\Calendars\GregorianCalendarAdapter;
 use App\Temporal\Calendars\JalaliCalendarAdapter;
 use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Formatting\DigitFormatter;
 use App\Temporal\Formatting\DigitNormalizer;
 use App\Temporal\TemporalManager;
 use Illuminate\Support\ServiceProvider;
@@ -15,6 +16,7 @@ final class TemporalServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(DigitNormalizer::class);
+        $this->app->singleton(DigitFormatter::class);
         $this->app->singleton(GregorianCalendarAdapter::class);
         $this->app->singleton(JalaliCalendarAdapter::class);
 
