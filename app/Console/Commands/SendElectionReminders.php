@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
 use App\Models\GroupUser;
+use App\Models\User;
 use App\Models\Vote;
 use App\Services\NotificationService;
 use App\Temporal\Context\TemporalContextResolver;
@@ -92,29 +93,43 @@ class SendElectionReminders extends Command
                 $timeRemaining = 'کمتر از یک ساعت';
             }
 
-            $endsAtFormatted = $this->temporal->dateTime(
-                $election->ends_at,
-                $this->temporalContexts->defaultContext(),
-                'short',
-            );
             $title = 'یادآوری: انتخابات گروه ' . ($group->name ?? '');
-            $preview = "انتخابات گروه {$group->name} در حال برگزاری است. {$timeRemaining} تا پایان انتخابات باقی مانده است. (تا {$endsAtFormatted})";
             $url = route('groups.chat', $group->id);
-            $context = [
+            $notificationContext = [
                 'group_id' => $group->id,
                 'election_id' => $election->id,
                 'cycle_number' => (int) ($election->cycle_number ?? 1),
                 'ends_at' => $election->ends_at->toIso8601String(),
             ];
 
-            $this->notifications->notifyMany(
-                $nonVotedUserIds,
-                $title,
-                $preview,
-                $url,
-                'group.election.reminder',
-                $context
-            );
+            $recipients = User::query()->whereIn('id', $nonVotedUserIds)->get();
+            $recipientGroups = $recipients->groupBy(function (User $recipient): string {
+                $context = $this->temporalContexts->forRecipient($recipient);
+
+                return implode('|', [
+                    $context->locale(),
+                    $context->calendar(),
+                    $context->timezone(),
+                    $context->numberingSystem(),
+                ]);
+            });
+
+            foreach ($recipientGroups as $members) {
+                /** @var \App\Models\User $representative */
+                $representative = $members->first();
+                $temporalContext = $this->temporalContexts->forRecipient($representative);
+                $endsAtFormatted = $this->temporal->dateTime($election->ends_at, $temporalContext, 'short');
+                $preview = "انتخابات گروه {$group->name} در حال برگزاری است. {$timeRemaining} تا پایان انتخابات باقی مانده است. (تا {$endsAtFormatted})";
+
+                $this->notifications->notifyMany(
+                    $members->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                    $title,
+                    $preview,
+                    $url,
+                    'group.election.reminder',
+                    $notificationContext
+                );
+            }
 
             $count = count($nonVotedUserIds);
             $totalSent += $count;
