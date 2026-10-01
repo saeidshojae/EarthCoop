@@ -15,7 +15,7 @@ class User extends Authenticatable
     use Notifiable;
     
     protected $fillable = [
-        'email', 'phone', 'password', 'fingerprint_id', 'terms_accepted_at', 'status', 'is_system',
+        'email', 'locale', 'timezone', 'phone', 'password', 'fingerprint_id', 'terms_accepted_at', 'status', 'is_system',
         'first_name', 'last_name', 'birth_date', 'gender', 'nationality', 'national_id', 'show_national_id', 'show_gender', 'avatar', 'show_birthdate', 'show_phone', 'show_email', 'show_name', 'biografie', 'social_networks', 'show_biografie', 'show_social_networks', 'show_documents', 'documents', 'experience_status', 'occupational_status', 'last_seen', 'show_groups', 'show_created_at', 'email_verified_at', 'edited', 'last_login_ip', 'last_login_at'
     ];
 
@@ -180,127 +180,29 @@ class User extends Authenticatable
         if (!$this->last_seen || !auth()->check() || auth()->id() !== $this->id) {
             return false;
         }
-        return $this->last_seen->diffInMinutes(now()) < 5;
+        return $this->last_seen->gt(now()->subMinutes(5));
     }
 
-    /**
-     * روابط با Role ها
-     */
-    public function roles()
+    public function avatarUrl(): string
     {
-        return $this->belongsToMany(Role::class, 'user_role');
+        if ($this->avatar) {
+            return asset('/images/users/avatars/' . $this->avatar);
+        }
+
+        return asset('images/default-avatar.png');
     }
 
-    /**
-     * بررسی اینکه آیا کاربر دارای نقش خاصی است
-     */
-    public function hasRole($role)
+    public function getNameAttribute(): string
     {
-        if (is_string($role)) {
-            return $this->roles()->where('slug', $role)->exists();
-        }
-        return $this->roles->contains($role);
+        $name = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        return $name !== '' ? $name : ($this->email ?? 'کاربر');
     }
 
-    /**
-     * بررسی دسترسی کاربر
-     */
-    public function hasPermission($permission)
+    protected function nationalId(): Attribute
     {
-        if ($this->is_admin || $this->hasRole('super-admin')) {
-            return true;
-        }
-
-        foreach ($this->roles as $role) {
-            if ($role->hasPermission($permission)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public function hasAnyPermission(array $permissions)
-    {
-        foreach ($permissions as $permission) {
-            if ($this->hasPermission($permission)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    public function hasAllPermissions(array $permissions)
-    {
-        foreach ($permissions as $permission) {
-            if (!$this->hasPermission($permission)) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-
-    public function assignRole($role)
-    {
-        if (is_string($role)) {
-            $role = Role::where('slug', $role)->first();
-        }
-        
-        if ($role && !$this->hasRole($role)) {
-            $this->roles()->attach($role);
-        }
-        
-        return $this;
-    }
-
-    public function removeRole($role)
-    {
-        if (is_string($role)) {
-            $role = Role::where('slug', $role)->first();
-        }
-        
-        if ($role) {
-            $this->roles()->detach($role);
-        }
-        
-        return $this;
-    }
-
-    public function syncRoles(array $roles)
-    {
-        $roleIds = [];
-        foreach ($roles as $role) {
-            if (is_string($role)) {
-                $r = Role::where('slug', $role)->first();
-                if ($r) {
-                    $roleIds[] = $r->id;
-                }
-            } else {
-                $roleIds[] = $role;
-            }
-        }
-        $this->roles()->sync($roleIds);
-        return $this;
-    }
-
-    public function getAllPermissions()
-    {
-        $permissions = collect();
-        foreach ($this->roles as $role) {
-            $permissions = $permissions->merge($role->permissions);
-        }
-        return $permissions->unique('id');
-    }
-
-    public function najmBaharProjects()
-    {
-        return $this->morphMany(\App\Modules\NajmBahar\Models\Project::class, 'owner');
-    }
-
-    public function najmBaharInvestments()
-    {
-        return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');
+        return Attribute::make(
+            get: fn ($value) => $value,
+            set: fn ($value) => $value === null ? null : preg_replace('/\D+/', '', (string) $value),
+        );
     }
 }
