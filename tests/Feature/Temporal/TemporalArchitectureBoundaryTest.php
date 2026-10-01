@@ -49,9 +49,12 @@ class TemporalArchitectureBoundaryTest extends TestCase
         ];
     }
 
-    public function test_migrated_surfaces_never_call_legacy_calendar_apis_directly(): void
+    /**
+     * @return array<int,string>
+     */
+    private function forbiddenLegacyNeedles(): array
     {
-        $forbidden = [
+        return [
             'Morilog\\Jalali',
             'Jalalian::',
             'CalendarUtils::',
@@ -59,11 +62,15 @@ class TemporalArchitectureBoundaryTest extends TestCase
             "toLocaleDateString('fa-IR'",
             'toLocaleDateString("fa-IR"',
         ];
+    }
+
+    public function test_migrated_surfaces_never_call_legacy_calendar_apis_directly(): void
+    {
         $offenders = [];
 
         foreach ($this->migratedPaths() as $path) {
             $contents = file_get_contents(base_path($path));
-            foreach ($forbidden as $needle) {
+            foreach ($this->forbiddenLegacyNeedles() as $needle) {
                 if (str_contains($contents, $needle)) {
                     $offenders[] = "{$path}: {$needle}";
                 }
@@ -74,6 +81,50 @@ class TemporalArchitectureBoundaryTest extends TestCase
             [],
             $offenders,
             "Migrated temporal surfaces may not regain direct legacy calendar dependencies:\n" . implode("\n", $offenders),
+        );
+    }
+
+    public function test_active_repository_surfaces_reveal_all_remaining_legacy_calendar_debt(): void
+    {
+        $roots = [
+            app_path(),
+            resource_path('views'),
+            resource_path('js'),
+            base_path('routes'),
+        ];
+        $offenders = [];
+
+        foreach ($roots as $root) {
+            if (! is_dir($root)) {
+                continue;
+            }
+
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+            foreach ($iterator as $file) {
+                if (! $file->isFile()) {
+                    continue;
+                }
+
+                $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                if ($relative === 'app/Temporal/Calendars/JalaliCalendarAdapter.php') {
+                    continue;
+                }
+
+                $contents = file_get_contents($file->getPathname());
+                foreach ($this->forbiddenLegacyNeedles() as $needle) {
+                    if (str_contains($contents, $needle)) {
+                        $offenders[] = "{$relative}: {$needle}";
+                    }
+                }
+            }
+        }
+
+        sort($offenders);
+
+        $this->assertSame(
+            [],
+            $offenders,
+            "Active repository surfaces still contain legacy calendar debt:\n" . implode("\n", $offenders),
         );
     }
 
