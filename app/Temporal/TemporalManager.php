@@ -47,6 +47,19 @@ final class TemporalManager implements TemporalService
         return $this->shapeDigits($formatted, $context);
     }
 
+    public function time(DateTimeInterface|string $value, ?TemporalContext $context = null, string $style = 'short'): string
+    {
+        $context ??= $this->contexts->defaultContext();
+        $instant = $this->toInstant($value)->setTimezone(new DateTimeZone($context->timezone()));
+        $formatted = match ($style) {
+            'short' => $instant->format('H:i'),
+            'long' => $instant->format('H:i:s'),
+            default => throw new InvalidArgumentException("Unsupported time style: {$style}"),
+        };
+
+        return $this->shapeDigits($formatted, $context);
+    }
+
     public function relative(DateTimeInterface|string $value, ?TemporalContext $context = null): string
     {
         $context ??= $this->contexts->defaultContext();
