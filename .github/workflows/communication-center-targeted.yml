@@ -9,20 +9,28 @@ on:
       - 'app/Models/Communication*.php'
       - 'app/Services/Communication/**'
       - 'app/Services/Email/EmailTemplateManagementService.php'
+      - 'app/Services/Invitation/InvitationManagementService.php'
       - 'app/Services/NajmHoda/FounderOps/FounderEmailTemplateDecisionService.php'
       - 'app/Services/NajmHoda/FounderOps/FounderEmailDraftService.php'
       - 'app/Jobs/Communication/**'
       - 'app/Events/RegistrationCompleted.php'
       - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
       - 'app/Providers/EventServiceProvider.php'
+      - 'app/Http/Controllers/Auth/EmailVerificationController.php'
+      - 'app/Http/Controllers/Auth/LoginController.php'
       - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Http/Controllers/Admin/InvitationCodeController.php'
       - 'app/Http/Controllers/Admin/Communication/**'
+      - 'app/Http/Controllers/Profile/ProfileController.php'
       - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
       - 'database/migrations/2026_09_30_18*.php'
+      - 'database/migrations/2026_10_01_*.php'
       - 'tests/Feature/Communication/**'
       - 'tests/Unit/Communication/**'
       - 'tests/Feature/LocationGovernance/*Registration*.php'
       - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
+      - 'tests/Feature/NajmHoda/InvitationManagementServiceTest.php'
+      - 'tests/Feature/Auth/**'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
   pull_request:
@@ -33,20 +41,28 @@ on:
       - 'app/Models/Communication*.php'
       - 'app/Services/Communication/**'
       - 'app/Services/Email/EmailTemplateManagementService.php'
+      - 'app/Services/Invitation/InvitationManagementService.php'
       - 'app/Services/NajmHoda/FounderOps/FounderEmailTemplateDecisionService.php'
       - 'app/Services/NajmHoda/FounderOps/FounderEmailDraftService.php'
       - 'app/Jobs/Communication/**'
       - 'app/Events/RegistrationCompleted.php'
       - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
       - 'app/Providers/EventServiceProvider.php'
+      - 'app/Http/Controllers/Auth/EmailVerificationController.php'
+      - 'app/Http/Controllers/Auth/LoginController.php'
       - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Http/Controllers/Admin/InvitationCodeController.php'
       - 'app/Http/Controllers/Admin/Communication/**'
+      - 'app/Http/Controllers/Profile/ProfileController.php'
       - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
       - 'database/migrations/2026_09_30_18*.php'
+      - 'database/migrations/2026_10_01_*.php'
       - 'tests/Feature/Communication/**'
       - 'tests/Unit/Communication/**'
       - 'tests/Feature/LocationGovernance/*Registration*.php'
       - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
+      - 'tests/Feature/NajmHoda/InvitationManagementServiceTest.php'
+      - 'tests/Feature/Auth/**'
       - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
       - '.github/workflows/communication-center-targeted.yml'
   workflow_dispatch:
@@ -122,6 +138,12 @@ jobs:
           fi
           if [ -f tests/Architecture/CommunicationDeliveryBoundaryTest.php ]; then
             vendor/bin/phpunit -c phpunit.xml.dist tests/Architecture/CommunicationDeliveryBoundaryTest.php
+          fi
+      - name: Run authentication-sensitive email regressions
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/InvitationManagementServiceTest.php
+          if [ -d tests/Feature/Auth ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Auth
           fi
       - name: Run registration regression tests
         run: |
