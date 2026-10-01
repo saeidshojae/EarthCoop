@@ -25,6 +25,7 @@ on:
   pull_request:
     branches:
       - main
+      - agent/temporal-system-20261001
     paths:
       - 'app/Temporal/**'
       - 'app/Chronicle/**'
