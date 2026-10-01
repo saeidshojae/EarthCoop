@@ -15,4 +15,6 @@ interface TemporalService
     public function relative(DateTimeInterface|string $value, ?TemporalContext $context = null): string;
 
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate;
+
+    public function parseDateParts(int $day, int $month, int $year, ?TemporalContext $context = null): LocalDate;
 }
