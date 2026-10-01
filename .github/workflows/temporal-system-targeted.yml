@@ -6,12 +6,19 @@ on:
       - agent/temporal-system-20261001
     paths:
       - 'app/Temporal/**'
+      - 'app/Chronicle/**'
+      - 'app/Http/Controllers/ChronicleController.php'
+      - 'app/Providers/ChronicleServiceProvider.php'
       - 'app/View/Components/Temporal/**'
       - 'config/temporal.php'
+      - 'lang/*/chronicle.php'
       - 'resources/js/temporal-input.js'
+      - 'resources/views/chronicle/**'
       - 'resources/views/components/temporal/**'
       - 'tests/Unit/Temporal/**'
+      - 'tests/Unit/Chronicle/**'
       - 'tests/Feature/Temporal/**'
+      - 'tests/Feature/Chronicle/**'
       - 'tests/js/temporal/**'
       - 'package.json'
       - '.github/workflows/temporal-system-targeted.yml'
@@ -48,14 +55,22 @@ jobs:
           npm ci --no-audit --no-fund
           php artisan key:generate
 
-      - name: Run Temporal unit tests
-        run: php artisan test tests/Unit/Temporal
+      - name: Run Temporal and Chronicle unit tests
+        shell: bash
+        run: |
+          php artisan test tests/Unit/Temporal
+          if [ -d tests/Unit/Chronicle ]; then
+            php artisan test tests/Unit/Chronicle
+          fi
 
-      - name: Run Temporal feature tests when present
+      - name: Run Temporal and Chronicle feature tests when present
         shell: bash
         run: |
           if [ -d tests/Feature/Temporal ]; then
             php artisan test tests/Feature/Temporal
+          fi
+          if [ -d tests/Feature/Chronicle ]; then
+            php artisan test tests/Feature/Chronicle
           fi
 
       - name: Run Temporal frontend tests
