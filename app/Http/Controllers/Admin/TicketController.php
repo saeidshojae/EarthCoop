@@ -6,17 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Support\TicketManagementService;
+use App\Temporal\Context\TemporalContext;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
-    public function __construct(protected TicketManagementService $tickets)
-    {
+    public function __construct(
+        protected TicketManagementService $tickets,
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
+    ) {
         $this->middleware('permission:tickets.manage');
     }
 
     public function index(Request $request)
     {
+        $context = $this->temporalContexts->forUser($request->user());
         $query = Ticket::query()->with(['assignee', 'user']);
 
         if ($request->filled('status')) {
@@ -31,20 +39,16 @@ class TicketController extends Controller
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
         }
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->input('from'));
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->input('to'));
-        }
+        $this->applyDateFilters($query, $request, $context);
+
         if ($request->filled('q')) {
             $q = $request->input('q');
-            $query->where(function($s) use ($q) {
+            $query->where(function ($s) use ($q) {
                 $s->where('tracking_code', 'like', "%{$q}%")
-                  ->orWhere('subject', 'like', "%{$q}%")
-                  ->orWhere('message', 'like', "%{$q}%")
-                  ->orWhere('name', 'like', "%{$q}%")
-                  ->orWhere('email', 'like', "%{$q}%");
+                    ->orWhere('subject', 'like', "%{$q}%")
+                    ->orWhere('message', 'like', "%{$q}%")
+                    ->orWhere('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%");
             });
         }
 
@@ -58,22 +62,24 @@ class TicketController extends Controller
             'high_priority' => Ticket::where('priority', 'high')->whereIn('status', ['open', 'in-progress'])->count(),
         ];
 
-        $assignees = User::whereHas('roles', function($q){
+        $assignees = User::whereHas('roles', function ($q) {
             $q->where('slug', 'like', '%support%');
         })->get();
 
         $chartData = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
+            $monthStart = $date->copy()->startOfMonth();
+            $monthEnd = $date->copy()->endOfMonth();
             $chartData[] = [
-                'month' => \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m'),
+                'month' => $this->temporal->date($monthStart, $context, 'short')
+                    . ' – '
+                    . $this->temporal->date($monthEnd, $context, 'short'),
                 'open' => Ticket::where('status', 'open')
-                    ->whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
+                    ->whereBetween('created_at', [$monthStart, $monthEnd])
                     ->count(),
                 'closed' => Ticket::where('status', 'closed')
-                    ->whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
+                    ->whereBetween('created_at', [$monthStart, $monthEnd])
                     ->count(),
             ];
         }
@@ -84,7 +90,7 @@ class TicketController extends Controller
     public function show(Ticket $ticket)
     {
         $ticket->load(['assignee', 'user', 'comments.user']);
-        $operators = User::whereHas('roles', function($q){
+        $operators = User::whereHas('roles', function ($q) {
             $q->where('slug', 'like', '%support%');
         })->get();
 
@@ -94,7 +100,7 @@ class TicketController extends Controller
     public function assign(Request $request, Ticket $ticket)
     {
         $data = $request->validate([
-            'assignee_id' => 'nullable|exists:users,id'
+            'assignee_id' => 'nullable|exists:users,id',
         ]);
 
         $this->tickets->assign($ticket, $data['assignee_id'] ?? null);
@@ -104,7 +110,7 @@ class TicketController extends Controller
     public function reply(Request $request, Ticket $ticket)
     {
         $data = $request->validate([
-            'message' => 'required|string'
+            'message' => 'required|string',
         ]);
 
         $this->tickets->reply($ticket, (int) $request->user()->id, $data['message'], true);
@@ -177,6 +183,7 @@ class TicketController extends Controller
 
     public function export(Request $request)
     {
+        $context = $this->temporalContexts->forUser($request->user());
         $query = Ticket::query()->with(['assignee', 'user']);
 
         if ($request->filled('status')) {
@@ -191,12 +198,7 @@ class TicketController extends Controller
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
         }
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->input('from'));
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->input('to'));
-        }
+        $this->applyDateFilters($query, $request, $context);
 
         $tickets = $query->orderBy('created_at', 'desc')->get();
 
@@ -209,11 +211,11 @@ class TicketController extends Controller
                 'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             ];
 
-            $callback = function() use ($tickets) {
+            $callback = function () use ($tickets, $context) {
                 $file = fopen('php://output', 'w');
-                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
                 fputcsv($file, [
-                    'شناسه','کد پیگیری','موضوع','وضعیت','اولویت','کاربر','ایمیل','مسئول','تاریخ ایجاد',
+                    'شناسه', 'کد پیگیری', 'موضوع', 'وضعیت', 'اولویت', 'کاربر', 'ایمیل', 'مسئول', 'تاریخ ایجاد',
                 ]);
 
                 foreach ($tickets as $ticket) {
@@ -226,7 +228,7 @@ class TicketController extends Controller
                         $ticket->user ? $ticket->user->fullName() : ($ticket->name ?? '-'),
                         $ticket->email ?? '-',
                         $ticket->assignee ? $ticket->assignee->fullName() : '-',
-                        \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('Y/m/d H:i'),
+                        $this->temporal->dateTime($ticket->created_at, $context, 'short'),
                     ]);
                 }
 
@@ -237,5 +239,26 @@ class TicketController extends Controller
         }
 
         return back()->with('error', 'فرمت خروجی معتبر نیست.');
+    }
+
+    private function applyDateFilters(Builder $query, Request $request, TemporalContext $context): void
+    {
+        if ($request->filled('from')) {
+            try {
+                $from = $this->temporal->parseDate((string) $request->input('from'), $context);
+                $query->where('created_at', '>=', $this->temporal->startOfDay($from, $context));
+            } catch (\Throwable) {
+                // Preserve legacy behavior: an invalid optional filter is ignored.
+            }
+        }
+
+        if ($request->filled('to')) {
+            try {
+                $to = $this->temporal->parseDate((string) $request->input('to'), $context);
+                $query->where('created_at', '<=', $this->temporal->endOfDay($to, $context));
+            } catch (\Throwable) {
+                // Preserve legacy behavior: an invalid optional filter is ignored.
+            }
+        }
     }
 }
