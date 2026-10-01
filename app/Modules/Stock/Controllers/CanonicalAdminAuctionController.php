@@ -7,6 +7,7 @@ use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\EarthCoopPrimaryOfferingPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
+use App\Temporal\Context\TemporalContext;
 use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
@@ -108,8 +109,11 @@ final class CanonicalAdminAuctionController extends Controller
             }
 
             try {
+                $raw = trim((string) $value);
+                $parseContext = $this->dateTimeParseContext($raw, $context);
+
                 $normalized[$field] = $this->temporal
-                    ->parseDateTime((string) $value, $context)
+                    ->parseDateTime($raw, $parseContext)
                     ->format('Y-m-d H:i:s');
             } catch (InvalidArgumentException|\ValueError) {
                 throw ValidationException::withMessages([
@@ -121,6 +125,15 @@ final class CanonicalAdminAuctionController extends Controller
         if ($normalized !== []) {
             $request->merge($normalized);
         }
+    }
+
+    private function dateTimeParseContext(string $value, TemporalContext $context): TemporalContext
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?$/', $value) === 1) {
+            return $this->temporalContexts->forLocale('en', $context->timezone());
+        }
+
+        return $context;
     }
 
     private function assertOfferingPolicy(Auction $auction): void
