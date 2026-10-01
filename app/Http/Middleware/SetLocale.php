@@ -22,7 +22,7 @@ class SetLocale
     public function handle(Request $request, Closure $next)
     {
         $availableLocales = ['fa', 'en', 'ar'];
-        $user = $request->user();
+        $user = $request->user() ?? auth()->user();
         $sessionLocale = Session::get('locale');
 
         if ($sessionLocale && ! is_string($sessionLocale)) {
