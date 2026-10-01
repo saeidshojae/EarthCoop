@@ -86,12 +86,12 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json
           coverage: none
-      - name: Build production dependency tree
+      - name: Build and audit production dependency tree
         run: |
           rm -rf vendor
           composer validate --no-check-publish
-          composer audit --no-dev --abandoned=report
           composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+          composer audit --no-dev --abandoned=report
       - name: Build and verify vendor package exactly like production workflow
         shell: bash
         env:
