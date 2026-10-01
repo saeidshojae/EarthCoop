@@ -41,13 +41,24 @@ final class DateInput extends Component
             return '';
         }
 
-        if ($this->calendar() === 'gregorian') {
-            if ($this->value instanceof LocalDate) {
-                return $this->value->toCanonical();
+        if ($this->value instanceof LocalDate) {
+            return $this->calendar() === 'gregorian'
+                ? $this->value->toCanonical()
+                : $this->temporal->date($this->value, $this->context, 'short');
+        }
+
+        if (is_string($this->value)) {
+            $value = trim($this->value);
+
+            if ($this->calendar() === 'gregorian' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+                return $value;
             }
 
-            if (is_string($this->value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->value) === 1) {
-                return $this->value;
+            if (
+                $this->calendar() === 'jalali'
+                && preg_match('/^[۰-۹٠-٩0-9]{4}\/[۰-۹٠-٩0-9]{2}\/[۰-۹٠-٩0-9]{2}$/u', $value) === 1
+            ) {
+                return $value;
             }
         }
 
