@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\InvitationCode;
 use App\Models\InvitationCodeLog;
-use App\Mail\InvitationMail;
 use App\Mail\InvitationRejectedMail;
+use App\Services\Invitation\InvitationManagementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
@@ -363,61 +363,25 @@ class InvitationCodeController extends Controller
         return back()->withInput()->with('success', "بی‌اعتبارسازی خودکار روی {$affected} کد اعمال شد.");
     }
 
-    public function approveInvitation(Request $request, \App\Models\Invitation $invitation)
-    {
-        if ($invitation->status !== 0) { // فقط pending
+    public function approveInvitation(
+        Request $request,
+        Invitation $invitation,
+        InvitationManagementService $invitations,
+    ) {
+        $result = $invitations->issue($invitation, (int) auth()->id());
+
+        if (($result['status'] ?? null) === 'already_reviewed') {
             return back()->with('success', 'این درخواست قبلاً بررسی شده است.');
         }
-        // generate unique code
-        $length = 6;
-        do { $codeStr = strtoupper(substr(bin2hex(random_bytes(8)), 0, $length)); }
-        while (InvitationCode::where('code', $codeStr)->exists());
 
-        $code = InvitationCode::create([
-            'code' => $codeStr,
-            'user_id' => 171,
-            'expire_at' => Carbon::now()->addHours(\App\Models\Setting::find(1)->expire_invation_time)
-        ]);
-
-        $invitation->status = 1; // issued
-        $invitation->reviewed_by = auth()->id();
-        $invitation->reviewed_at = now();
-        $invitation->save();
-
-        // log
-        $this->log($code->id, 'issue', ['invitation_id' => $invitation->id, 'email' => $invitation->email, 'by' => auth()->id()]);
-
-        // Send email with the code
-        try {
-            \Log::info('Attempting to send invitation email', [
-                'email' => $invitation->email,
-                'code' => $code->code,
-                'mail_driver' => config('mail.default'),
-                'mail_host' => config('mail.mailers.smtp.host'),
-                'from_address' => config('mail.from.address'),
-            ]);
-            
-            Mail::to($invitation->email)->send(new InvitationMail($code->code, $code->expire_at));
-            
-            \Log::info('Invitation email sent successfully', [
-                'email' => $invitation->email,
-                'code' => $code->code,
-            ]);
-            
-            return back()->with('success', 'کد دعوت صادر شد و به ایمیل کاربر ارسال شد.');
-        } catch (\Exception $e) {
-            \Log::error('Failed to send invitation email', [
-                'email' => $invitation->email,
-                'code' => $code->code,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return back()->with('warning', 'کد دعوت صادر شد اما ارسال ایمیل با خطا مواجه شد. لطفاً لاگ‌ها را بررسی کنید.');
+        if ((bool) ($result['mail_queued'] ?? $result['mail_sent'] ?? false)) {
+            return back()->with('success', 'کد دعوت صادر شد و ارسال ایمیل در صف قرار گرفت.');
         }
+
+        return back()->with('warning', 'کد دعوت صادر شد اما ثبت ایمیل در صف ارتباطات با خطا مواجه شد. لطفاً لاگ‌ها را بررسی کنید.');
     }
 
-    public function rejectInvitation(Request $request, \App\Models\Invitation $invitation)
+    public function rejectInvitation(Request $request, Invitation $invitation)
     {
         $validated = $request->validate(['admin_note' => 'nullable|string|max:500']);
         $invitation->status = 2; // rejected
@@ -435,13 +399,13 @@ class InvitationCodeController extends Controller
                 'email' => $invitation->email,
                 'mail_driver' => config('mail.default'),
             ]);
-            
+
             Mail::to($invitation->email)->send(new InvitationRejectedMail($invitation->admin_note));
-            
+
             \Log::info('Rejection email sent successfully', [
                 'email' => $invitation->email,
             ]);
-            
+
             return back()->with('success', 'درخواست رد شد و به ایمیل کاربر اطلاع داده شد.');
         } catch (\Exception $e) {
             \Log::error('Failed to send rejection email', [
@@ -449,12 +413,12 @@ class InvitationCodeController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return back()->with('warning', 'درخواست رد شد اما ارسال ایمیل با خطا مواجه شد. لطفاً لاگ‌ها را بررسی کنید.');
         }
     }
 
-    public function bulkRequests(Request $request)
+    public function bulkRequests(Request $request, InvitationManagementService $invitations)
     {
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
@@ -464,20 +428,20 @@ class InvitationCodeController extends Controller
 
         $count = 0;
         if ($validated['action'] === 'approve') {
-            foreach (\App\Models\Invitation::whereIn('id', $validated['ids'])->get() as $inv) {
-                if ($inv->status !== 0) continue;
-                $this->approveInvitation($request, $inv);
+            foreach (Invitation::whereIn('id', $validated['ids'])->get() as $inv) {
+                if ((int) $inv->status !== 0) continue;
+                $invitations->issue($inv, (int) auth()->id());
                 $count++;
             }
         } elseif ($validated['action'] === 'reject') {
-            foreach (\App\Models\Invitation::whereIn('id', $validated['ids'])->get() as $inv) {
-                if ($inv->status === 2) continue;
+            foreach (Invitation::whereIn('id', $validated['ids'])->get() as $inv) {
+                if ((int) $inv->status === 2) continue;
                 $inv->status = 2; // rejected
                 $inv->reviewed_by = auth()->id();
                 $inv->reviewed_at = now();
                 $inv->save();
                 $this->log(0, 'reject', ['invitation_id' => $inv->id, 'email' => $inv->email]);
-                
+
                 // Send rejection email
                 try {
                     \Log::info('Attempting to send bulk rejection email', ['email' => $inv->email]);
@@ -490,11 +454,11 @@ class InvitationCodeController extends Controller
                         'trace' => $e->getTraceAsString()
                     ]);
                 }
-                
+
                 $count++;
             }
         } else { // delete
-            $count = \App\Models\Invitation::whereIn('id', $validated['ids'])->delete();
+            $count = Invitation::whereIn('id', $validated['ids'])->delete();
         }
 
         return back()->with('success', "عملیات روی {$count} درخواست انجام شد.");
