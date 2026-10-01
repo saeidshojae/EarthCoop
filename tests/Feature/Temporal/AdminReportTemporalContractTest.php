@@ -47,7 +47,7 @@ class AdminReportTemporalContractTest extends TestCase
 
         $this->assertStringContainsString("'status' => 'required|in:pending,reviewed,resolved,rejected,archived'", $source);
         $this->assertStringContainsString("'action' => 'required|in:approve,reject,archive,delete'", $source);
-        $this->assertStringContainsString("$report->reviewed_at = now();", $source);
-        $this->assertStringContainsString("$report->delete();", $source);
+        $this->assertStringContainsString('$report->reviewed_at = now();', $source);
+        $this->assertStringContainsString('$report->delete();', $source);
     }
 }
