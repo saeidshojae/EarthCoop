@@ -15,10 +15,14 @@
         'completed'=>'تکمیل‌شده','canceled'=>'لغوشده','cancelled'=>'لغوشده',
     ];
     $typeLabels = ['single_winner'=>'تک‌برنده','uniform_price'=>'قیمت یکسان','pay_as_bid'=>'پرداخت به قیمت پیشنهادی'];
+    $temporal = app(\App\Temporal\Contracts\TemporalService::class);
+    $temporalContext = app(\App\Temporal\Context\TemporalContextResolver::class)->defaultContext();
+    $usesJalali = $temporalContext->calendar() === 'jalali';
+    $dateFromValue = request('date_from', $dateFrom ? $temporal->date($dateFrom, $temporalContext, 'short') : '');
+    $dateToValue = request('date_to', $dateTo ? $temporal->date($dateTo, $temporalContext, 'short') : '');
 @endphp
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('vendor/persian-datepicker/persian-datepicker.min.css') }}">
 <style>
 .report-card{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);padding:2rem;margin-bottom:2rem}.report-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}.report-filter{background:#f8fafc;border-radius:12px;padding:1.5rem;margin-bottom:2rem}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}.stat{border-radius:12px;padding:1.25rem;color:#fff;background:linear-gradient(135deg,#667eea,#6d28d9)}.stat.success{background:linear-gradient(135deg,#10b981,#047857)}.stat.warning{background:linear-gradient(135deg,#f59e0b,#d97706)}.stat-label{font-size:.78rem;opacity:.9}.stat-value{font-size:1.35rem;font-weight:900;margin-top:.4rem}.stat-sub{font-size:.75rem;opacity:.85;margin-top:.2rem}.report-table{width:100%;border-collapse:collapse}.report-table th,.report-table td{padding:.85rem;text-align:right;border-bottom:1px solid #e5e7eb;white-space:nowrap}.report-table th{background:#f8fafc;color:#1e293b}.money-sub{display:block;font-size:.72rem;color:#64748b;margin-top:.2rem}.status-chip{display:inline-flex;padding:.3rem .55rem;border-radius:999px;background:#f1f5f9;font-weight:700;font-size:.75rem}.status-chip.running{background:#dcfce7;color:#166534}.empty{padding:3rem 1rem;text-align:center;background:#f8fafc;border:2px dashed #e5e7eb;border-radius:12px;color:#64748b}.dark .report-card{background:#1e293b}.dark .report-filter,.dark .report-table th{background:#334155}.dark .report-table th,.dark .report-table td{color:#cbd5e1;border-color:#475569}@media(max-width:700px){.report-card{padding:1rem}}
 </style>
@@ -34,8 +38,8 @@
 
         <div class="report-filter">
             <form method="GET" class="grid gap-4 md:grid-cols-3 items-end">
-                <div><label class="block text-sm font-semibold mb-2">از تاریخ</label><input type="text" name="date_from" value="{{ request('date_from', $dateFrom ? \Morilog\Jalali\Jalalian::fromCarbon($dateFrom)->format('Y/m/d') : '') }}" class="jalali-date w-full px-3 py-2 border rounded-lg" placeholder="1404/01/01"></div>
-                <div><label class="block text-sm font-semibold mb-2">تا تاریخ</label><input type="text" name="date_to" value="{{ request('date_to', $dateTo ? \Morilog\Jalali\Jalalian::fromCarbon($dateTo)->format('Y/m/d') : '') }}" class="jalali-date w-full px-3 py-2 border rounded-lg" placeholder="1404/12/29"></div>
+                <div><label class="block text-sm font-semibold mb-2">از تاریخ</label><input type="{{ $usesJalali ? 'text' : 'date' }}" data-temporal-date name="date_from" value="{{ $dateFromValue }}" class="w-full px-3 py-2 border rounded-lg" placeholder="{{ $usesJalali ? '1405/01/01' : '2026-03-21' }}"></div>
+                <div><label class="block text-sm font-semibold mb-2">تا تاریخ</label><input type="{{ $usesJalali ? 'text' : 'date' }}" data-temporal-date name="date_to" value="{{ $dateToValue }}" class="w-full px-3 py-2 border rounded-lg" placeholder="{{ $usesJalali ? '1405/12/29' : '2027-03-20' }}"></div>
                 <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold"><i class="fas fa-filter ml-2"></i>اعمال فیلتر</button>
             </form>
         </div>
@@ -73,8 +77,8 @@
                             <td>{{ $fa($bids->count()) }}</td>
                             <td>{{ $highestBidGol > 0 ? $fa($highestBidGol) . ' گل' : '—' }}</td>
                             <td>{{ $avgPriceGol > 0 ? $fa($avgPriceGol, 2) . ' گل' : '—' }}</td>
-                            <td>{{ $auction->start_time ? \Morilog\Jalali\Jalalian::fromCarbon($auction->start_time)->format('Y/m/d H:i') : '—' }}</td>
-                            <td>{{ $auction->ends_at ? \Morilog\Jalali\Jalalian::fromCarbon($auction->ends_at)->format('Y/m/d H:i') : '—' }}</td>
+                            <td>{{ $auction->start_time ? $temporal->dateTime($auction->start_time, $temporalContext, 'short') : '—' }}</td>
+                            <td>{{ $auction->ends_at ? $temporal->dateTime($auction->ends_at, $temporalContext, 'short') : '—' }}</td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -86,9 +90,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script src="{{ asset('vendor/persian-date/persian-date.min.js') }}"></script>
-<script src="{{ asset('vendor/persian-datepicker/persian-datepicker.min.js') }}"></script>
-<script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.jQuery!=='undefined'&&typeof $.fn.persianDatepicker!=='undefined'){$('.jalali-date').each(function(){$(this).persianDatepicker({format:'YYYY/MM/DD',initialValue:!!$(this).val(),calendar:{persian:{locale:'fa'}},autoClose:true});});}});</script>
-@endpush
