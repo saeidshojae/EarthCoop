@@ -8,13 +8,14 @@ use PHPUnit\Framework\TestCase;
 
 class TemporalContextResolverTest extends TestCase
 {
-    private function resolver(): TemporalContextResolver
+    private function resolver(?callable $activeLocaleResolver = null): TemporalContextResolver
     {
         return new TemporalContextResolver(
             ['fa' => 'jalali', 'en' => 'gregorian', 'ar' => 'gregorian'],
             'gregorian',
             'UTC',
             'fa',
+            $activeLocaleResolver ? \Closure::fromCallable($activeLocaleResolver) : null,
         );
     }
 
@@ -46,26 +47,56 @@ class TemporalContextResolverTest extends TestCase
         $this->assertSame('UTC', $this->resolver()->forLocale('en', 'Not/A_Timezone')->timezone());
     }
 
-    public function test_recipient_override_is_explicit_and_not_process_locale_dependent(): void
+    public function test_user_persisted_locale_and_timezone_override_runtime_context(): void
     {
-        $context = $this->resolver()->forRecipient(new User(), 'en', 'Europe/London');
+        $user = new User();
+        $user->locale = 'en';
+        $user->timezone = 'Europe/London';
+
+        $context = $this->resolver(static fn (): string => 'fa')->forUser($user);
 
         $this->assertSame('en', $context->locale());
         $this->assertSame('gregorian', $context->calendar());
         $this->assertSame('Europe/London', $context->timezone());
     }
 
+    public function test_recipient_with_preferences_is_independent_of_worker_locale(): void
+    {
+        $recipient = new User();
+        $recipient->locale = 'ar';
+        $recipient->timezone = 'Asia/Riyadh';
+
+        $context = $this->resolver(static fn (): string => 'en')->forRecipient($recipient);
+
+        $this->assertSame('ar', $context->locale());
+        $this->assertSame('gregorian', $context->calendar());
+        $this->assertSame('Asia/Riyadh', $context->timezone());
+    }
+
+    public function test_recipient_without_preferences_uses_system_fallback_not_worker_locale(): void
+    {
+        $context = $this->resolver(static fn (): string => 'en')->forRecipient(new User());
+
+        $this->assertSame('fa', $context->locale());
+        $this->assertSame('jalali', $context->calendar());
+        $this->assertSame('UTC', $context->timezone());
+    }
+
+    public function test_explicit_recipient_override_wins_over_persisted_preferences(): void
+    {
+        $recipient = new User();
+        $recipient->locale = 'fa';
+        $recipient->timezone = 'Asia/Tehran';
+
+        $context = $this->resolver()->forRecipient($recipient, 'en', 'Europe/London');
+
+        $this->assertSame('en', $context->locale());
+        $this->assertSame('Europe/London', $context->timezone());
+    }
+
     public function test_default_context_tracks_active_runtime_locale(): void
     {
-        $resolver = new TemporalContextResolver(
-            ['fa' => 'jalali', 'en' => 'gregorian', 'ar' => 'gregorian'],
-            'gregorian',
-            'UTC',
-            'fa',
-            static fn (): string => 'en',
-        );
-
-        $context = $resolver->defaultContext();
+        $context = $this->resolver(static fn (): string => 'en')->defaultContext();
 
         $this->assertSame('en', $context->locale());
         $this->assertSame('gregorian', $context->calendar());
