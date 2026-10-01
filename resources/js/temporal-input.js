@@ -95,23 +95,39 @@ export const enhanceLegacyBirthDate = (root = document, locale = resolvedLocale(
     return true;
 };
 
-export const markLegacyAnalyticsDateInputs = (root = document, locale = resolvedLocale()) => {
-    if (calendarForLocale(locale) !== 'jalali') return false;
-    if (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') !== '/admin/najm-bahar/analytics') {
-        return false;
-    }
+const LEGACY_ADMIN_DATE_FILTER_PATHS = new Set([
+    '/admin/najm-bahar/analytics',
+    '/admin/reports',
+]);
+
+export const markLegacyAdminDateInputs = (root = document, locale = resolvedLocale()) => {
+    const path = typeof window !== 'undefined'
+        ? window.location.pathname.replace(/\/+$/, '') || '/'
+        : '';
+    if (!LEGACY_ADMIN_DATE_FILTER_PATHS.has(path)) return false;
 
     const inputs = [...root.querySelectorAll('input[name="date_from"], input[name="date_to"]')];
     if (inputs.length === 0) return false;
 
+    const calendar = calendarForLocale(locale);
     inputs.forEach((input) => {
         const rawValue = input.getAttribute('value') || input.value || '';
-        input.type = 'text';
+        input.classList.remove('jalali-date');
         input.dataset.temporalDateInput = '';
-        input.dataset.calendar = 'jalali';
-        input.inputMode = 'numeric';
+        input.dataset.calendar = calendar;
         input.autocomplete = 'off';
-        input.placeholder = '۱۴۰۵/۰۷/۰۹';
+
+        if (calendar === 'jalali') {
+            input.type = 'text';
+            input.inputMode = 'numeric';
+            input.placeholder = '۱۴۰۵/۰۷/۰۹';
+        } else {
+            input.type = 'date';
+            input.removeAttribute('inputmode');
+            input.removeAttribute('placeholder');
+            input.dir = 'ltr';
+        }
+
         input.value = rawValue;
     });
 
@@ -166,7 +182,7 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 export const enhanceTemporalInputs = async (root = document) => {
     const locale = resolvedLocale();
     enhanceLegacyBirthDate(root, locale);
-    markLegacyAnalyticsDateInputs(root, locale);
+    markLegacyAdminDateInputs(root, locale);
 
     if (calendarForLocale(locale) === 'jalali') {
         await enhanceJalaliDateInputs(root);
