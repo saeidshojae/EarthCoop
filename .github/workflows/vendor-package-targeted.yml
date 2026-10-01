@@ -30,6 +30,7 @@ jobs:
           composer install --prefer-dist --no-interaction --no-progress
       - name: Create test environment
         run: |
+          touch database/testing.sqlite
           cat > .env <<'EOF'
           APP_NAME=EarthCoop
           APP_ENV=testing
@@ -38,7 +39,7 @@ jobs:
           APP_URL=http://localhost
           LOG_CHANNEL=stack
           DB_CONNECTION=sqlite
-          DB_DATABASE=:memory:
+          DB_DATABASE=database/testing.sqlite
           CACHE_DRIVER=array
           SESSION_DRIVER=array
           QUEUE_CONNECTION=sync
@@ -46,6 +47,13 @@ jobs:
           FILESYSTEM_DISK=local
           EOF
           php artisan key:generate --force
-      - name: Vendor package RED GREEN gate
+          php artisan migrate --force
+      - name: Vendor package targeted gate
         run: |
-          php artisan test tests/Unit/Deployment/VendorPackageInstallerTest.php tests/Architecture/DeploymentVendorPackageBoundaryTest.php
+          php artisan test \
+            tests/Unit/Deployment/VendorPackageInstallerTest.php \
+            tests/Architecture/DeploymentVendorPackageBoundaryTest.php \
+            tests/Unit/Deployment/DeploymentConsoleServiceTest.php \
+            tests/Feature/Admin/DeploymentConsoleSourceContractTest.php \
+            tests/Feature/Admin/DeploymentConsoleSecurityTest.php \
+            tests/Feature/Admin/DeploymentConsoleExecutionTest.php
