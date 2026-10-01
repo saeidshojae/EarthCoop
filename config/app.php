@@ -49,7 +49,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | This URL is used by the console to properly generate URLs when using the
-    | Artisan command line tool. You should set this to a sensible default for you out of the box.
+    | Artisan command line tool. You should set this to the root of your
+    | application so that it is used when running Artisan tasks.
     |
     */
 
@@ -76,8 +77,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | The application locale determines the default locale that will be used
-    | by the translation service provider. You are free to set this value
-    | to any of the locales which will be supported by the application.
+    | by the translation service provider. You are free to set this value to
+    | any of the locales which will be supported by the application.
     |
     */
 
@@ -115,8 +116,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | This key is utilized by Laravel's encryption services and should be set
-    | to a random 32 character string so that these encrypted values remain
-    | secure. This key must be set before the application is deployed.
+    | to a random, 32 character string to ensure that all encrypted values are
+    | secure. You should do this prior to deploying the application.
     |
     */
 
@@ -148,7 +149,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | The service providers listed here will be automatically loaded on the
-    | request to your application. Feel free to register as many as you wish.
+    | request to your application. Feel free to add your own services to
+    | this array to grant expanded functionality to your applications.
     |
     */
 
@@ -172,6 +174,7 @@ return [
         Illuminate\Notifications\NotificationServiceProvider::class,
         Illuminate\Pagination\PaginationServiceProvider::class,
         Illuminate\Pipeline\PipelineServiceProvider::class,
+        Illuminate\Queue\QueueServiceProvider::class,
         Illuminate\Redis\RedisServiceProvider::class,
         Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
         Illuminate\Session\SessionServiceProvider::class,
