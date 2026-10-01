@@ -3,17 +3,23 @@
 namespace App\Temporal\Context;
 
 use App\Models\User;
+use Closure;
 use DateTimeZone;
 use Throwable;
 
 final class TemporalContextResolver
 {
+    private readonly Closure $activeLocaleResolver;
+
     public function __construct(
         private readonly array $localeCalendars,
         private readonly string $defaultCalendar = 'gregorian',
         private readonly string $defaultTimezone = 'UTC',
         private readonly string $defaultLocale = 'fa',
+        ?Closure $activeLocaleResolver = null,
     ) {
+        $this->activeLocaleResolver = $activeLocaleResolver
+            ?? static fn (): string => $defaultLocale;
     }
 
     public function forLocale(
@@ -40,7 +46,7 @@ final class TemporalContextResolver
         ?string $timezoneOverride = null,
     ): TemporalContext {
         return $this->forLocale(
-            $localeOverride ?? $this->defaultLocale,
+            $localeOverride ?? $this->activeLocale(),
             $timezoneOverride,
         );
     }
@@ -55,7 +61,14 @@ final class TemporalContextResolver
 
     public function defaultContext(): TemporalContext
     {
-        return $this->forLocale($this->defaultLocale, $this->defaultTimezone);
+        return $this->forLocale($this->activeLocale(), $this->defaultTimezone);
+    }
+
+    private function activeLocale(): string
+    {
+        $locale = ($this->activeLocaleResolver)();
+
+        return is_string($locale) && $locale !== '' ? $locale : $this->defaultLocale;
     }
 
     private function resolveTimezone(?string $timezone): string
