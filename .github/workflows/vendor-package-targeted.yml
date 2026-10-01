@@ -68,6 +68,7 @@ jobs:
         run: |
           php artisan test \
             tests/Unit/Deployment/VendorPackageInstallerTest.php \
+            tests/Unit/Deployment/VendorPackageInstallerRollbackTest.php \
             tests/Architecture/DeploymentVendorPackageBoundaryTest.php \
             tests/Unit/Deployment/DeploymentConsoleServiceTest.php \
             tests/Feature/Admin/DeploymentConsoleSourceContractTest.php \
