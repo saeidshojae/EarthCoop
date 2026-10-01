@@ -7,14 +7,20 @@ use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\EarthCoopPrimaryOfferingPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use RuntimeException;
 
 final class CanonicalAdminAuctionController extends Controller
 {
-    public function __construct(private readonly EarthCoopPrimaryOfferingPolicy $offeringPolicy)
-    {
+    public function __construct(
+        private readonly EarthCoopPrimaryOfferingPolicy $offeringPolicy,
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
+    ) {
     }
 
     public function create()
@@ -72,6 +78,8 @@ final class CanonicalAdminAuctionController extends Controller
     /** @return array<string,mixed> */
     private function validatedCanonicalPayload(Request $request, bool $creating): array
     {
+        $this->normalizeLocalizedDateTimes($request);
+
         return $request->validate([
             'stock_id' => ['required', 'integer', 'exists:stocks,id'],
             'shares_count' => ['required', 'integer', 'min:1'],
@@ -86,6 +94,33 @@ final class CanonicalAdminAuctionController extends Controller
             'channel_id' => ['nullable', 'exists:groups,id'],
             'info' => ['nullable', 'string'],
         ]);
+    }
+
+    private function normalizeLocalizedDateTimes(Request $request): void
+    {
+        $context = $this->temporalContexts->defaultContext();
+        $normalized = [];
+
+        foreach (['start_time', 'end_time', 'ends_at'] as $field) {
+            $value = $request->input($field);
+            if ($value === null || trim((string) $value) === '') {
+                continue;
+            }
+
+            try {
+                $normalized[$field] = $this->temporal
+                    ->parseDateTime((string) $value, $context)
+                    ->format('Y-m-d H:i:s');
+            } catch (InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages([
+                    $field => __('validation.date', ['attribute' => $field]),
+                ]);
+            }
+        }
+
+        if ($normalized !== []) {
+            $request->merge($normalized);
+        }
     }
 
     private function assertOfferingPolicy(Auction $auction): void
