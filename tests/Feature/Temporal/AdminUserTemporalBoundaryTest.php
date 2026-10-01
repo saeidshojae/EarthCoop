@@ -37,4 +37,15 @@ class AdminUserTemporalBoundaryTest extends TestCase
         $this->assertSame('2026-10-01', $fa->toCanonical());
         $this->assertSame($fa->toCanonical(), $en->toCanonical());
     }
+
+    public function test_admin_user_read_filters_use_local_day_boundaries_not_where_date(): void
+    {
+        $source = file_get_contents(app_path('Http/Controllers/Admin/TemporalSafeUserController.php'));
+
+        $this->assertStringContainsString('public function index(', $source);
+        $this->assertStringContainsString('public function transactions(', $source);
+        $this->assertStringContainsString('startOfDay(', $source);
+        $this->assertStringContainsString('endOfDay(', $source);
+        $this->assertStringNotContainsString('whereDate(', $source);
+    }
 }
