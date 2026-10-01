@@ -95,18 +95,23 @@ export const enhanceLegacyBirthDate = (root = document, locale = resolvedLocale(
     return true;
 };
 
-const LEGACY_ADMIN_DATE_FILTER_PATHS = new Set([
-    '/admin/najm-bahar/analytics',
-    '/admin/reports',
+const LEGACY_ADMIN_DATE_FILTERS = new Map([
+    ['/admin/najm-bahar/analytics', ['date_from', 'date_to']],
+    ['/admin/reports', ['date_from', 'date_to']],
+    ['/admin/users', ['created_from', 'created_to']],
 ]);
 
-export const markLegacyAdminDateInputs = (root = document, locale = resolvedLocale()) => {
-    const path = typeof window !== 'undefined'
-        ? window.location.pathname.replace(/\/+$/, '') || '/'
-        : '';
-    if (!LEGACY_ADMIN_DATE_FILTER_PATHS.has(path)) return false;
+export const adminDateFilterNamesForPath = (path = '') => LEGACY_ADMIN_DATE_FILTERS.get(
+    String(path || '').replace(/\/+$/, '') || '/',
+) || [];
 
-    const inputs = [...root.querySelectorAll('input[name="date_from"], input[name="date_to"]')];
+export const markLegacyAdminDateInputs = (root = document, locale = resolvedLocale()) => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const names = adminDateFilterNamesForPath(path);
+    if (names.length === 0) return false;
+
+    const selector = names.map((name) => `input[name="${name}"]`).join(', ');
+    const inputs = [...root.querySelectorAll(selector)];
     if (inputs.length === 0) return false;
 
     const calendar = calendarForLocale(locale);
