@@ -30,6 +30,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Rules/JalaliMinimumAge.php',
             'app/Services/Communication/Context/WeeklyMemberReportContextBuilder.php',
             'app/Services/TicketSlaService.php',
+            'resources/views/admin/user/transactions.blade.php',
             'resources/views/elections/responsibility-offer-confirm.blade.php',
             'resources/views/groups/partials/poll.blade.php',
             'app/Modules/Stock/Views/admin_reports/financial.blade.php',
