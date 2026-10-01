@@ -24,6 +24,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Http/Controllers/Admin/TicketController.php',
             'app/Http/Controllers/Auth/Register/Step1Controller.php',
             'app/Listeners/SendElectionStartedNotifications.php',
+            'app/Modules/Stock/Controllers/StockReportController.php',
             'app/Services/Communication/Context/WeeklyMemberReportContextBuilder.php',
             'app/Services/TicketSlaService.php',
             'resources/views/elections/responsibility-offer-confirm.blade.php',
