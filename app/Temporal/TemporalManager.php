@@ -75,16 +75,20 @@ final class TemporalManager implements TemporalService
 
         if ($absolute < 60) {
             $amount = max(1, $absolute);
-            $unit = $isPersian ? 'ثانیه' : 'seconds';
+            $unit = $isPersian ? 'ثانیه' : 'second';
         } elseif ($absolute < 3600) {
             $amount = intdiv($absolute, 60);
-            $unit = $isPersian ? 'دقیقه' : 'minutes';
+            $unit = $isPersian ? 'دقیقه' : 'minute';
         } elseif ($absolute < 86400) {
             $amount = intdiv($absolute, 3600);
-            $unit = $isPersian ? 'ساعت' : 'hours';
+            $unit = $isPersian ? 'ساعت' : 'hour';
         } else {
             $amount = intdiv($absolute, 86400);
-            $unit = $isPersian ? 'روز' : 'days';
+            $unit = $isPersian ? 'روز' : 'day';
+        }
+
+        if (! $isPersian && $amount !== 1) {
+            $unit .= 's';
         }
 
         $formatted = $isPersian
