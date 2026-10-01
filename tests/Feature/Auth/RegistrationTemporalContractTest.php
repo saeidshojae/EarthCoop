@@ -38,4 +38,19 @@ class RegistrationTemporalContractTest extends TestCase
         $this->assertStringNotContainsString('Morilog\\Jalali', $source);
         $this->assertStringNotContainsString('Jalalian', $source);
     }
+
+    public function test_temporal_refactor_preserves_identity_and_google_oauth_password_rules(): void
+    {
+        $source = file_get_contents(app_path('Http/Controllers/Auth/Register/Step1Controller.php'));
+
+        $this->assertStringContainsString("'first_name' => 'required|string|max:50|regex:", $source);
+        $this->assertStringContainsString("'last_name' => 'required|string|max:50|regex:", $source);
+        $this->assertStringContainsString("'national_id' => 'required|string|regex:/^\\d{10}$/|unique:users,national_id'", $source);
+        $this->assertStringContainsString("'phone' => 'required|regex:/^(0)?9\\d{9}$/'", $source);
+        $this->assertStringContainsString("? 'nullable|min:6|confirmed'", $source);
+        $this->assertStringContainsString(": 'required|min:6|confirmed'", $source);
+        $this->assertStringContainsString("User::where('phone', \$phone)", $source);
+        $this->assertStringContainsString("'status' => 1", $source);
+        $this->assertStringContainsString("redirect()->route('register.step2')", $source);
+    }
 }
