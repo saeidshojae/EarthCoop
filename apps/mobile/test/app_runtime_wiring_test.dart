@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:earthcoop_mobile/app/app.dart';
 import 'package:earthcoop_mobile/app/bootstrap/bootstrap_state.dart';
 import 'package:earthcoop_mobile/app/runtime/mobile_app_runtime.dart';
@@ -10,6 +12,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('production runtime derives version from installed package metadata', () {
+    final source = File(
+      'lib/app/runtime/production_runtime.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('PackageInfo.fromPlatform()'));
+    expect(source, isNot(contains('EARTHCOOP_APP_VERSION')));
+  });
+
   testWidgets(
     'executable root routes unauthenticated user through real login',
     (tester) async {
