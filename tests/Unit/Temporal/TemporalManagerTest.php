@@ -9,6 +9,7 @@ use App\Temporal\Formatting\DigitNormalizer;
 use App\Temporal\TemporalManager;
 use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
+use DateTimeZone;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
@@ -106,5 +107,15 @@ class TemporalManagerTest extends TestCase
 
         $this->assertSame('2026-10-02', $manager->date($instant, $resolver->forLocale('en', 'Pacific/Kiritimati'), 'short'));
         $this->assertSame('2026-10-01', $manager->date($instant, $resolver->forLocale('en', 'America/Los_Angeles'), 'short'));
+    }
+
+    public function test_english_relative_time_uses_singular_and_plural_units_correctly(): void
+    {
+        [$manager, $resolver] = $this->manager();
+        $context = $resolver->forLocale('en', 'UTC');
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+        $this->assertSame('in 1 hour', $manager->relative($now->modify('+61 minutes'), $context));
+        $this->assertSame('2 hours ago', $manager->relative($now->modify('-121 minutes'), $context));
     }
 }
