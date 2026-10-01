@@ -9,6 +9,7 @@ use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\CalendarAdapter;
 use App\Temporal\Contracts\TemporalService;
 use App\Temporal\Formatting\DigitFormatter;
+use App\Temporal\Formatting\DigitNormalizer;
 use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -18,14 +19,17 @@ use InvalidArgumentException;
 final class TemporalManager implements TemporalService
 {
     private readonly DigitFormatter $digitFormatter;
+    private readonly DigitNormalizer $digitNormalizer;
 
     public function __construct(
         private readonly GregorianCalendarAdapter $gregorian,
         private readonly JalaliCalendarAdapter $jalali,
         private readonly TemporalContextResolver $contexts,
         ?DigitFormatter $digitFormatter = null,
+        ?DigitNormalizer $digitNormalizer = null,
     ) {
         $this->digitFormatter = $digitFormatter ?? new DigitFormatter();
+        $this->digitNormalizer = $digitNormalizer ?? new DigitNormalizer();
     }
 
     public function date(DateTimeInterface|LocalDate|string $value, ?TemporalContext $context = null, string $style = 'medium'): string
@@ -95,6 +99,32 @@ final class TemporalManager implements TemporalService
         $context ??= $this->contexts->defaultContext();
 
         return $this->adapter($context)->parseDate($value);
+    }
+
+    public function parseDateTime(string $value, ?TemporalContext $context = null): DateTimeImmutable
+    {
+        $context ??= $this->contexts->defaultContext();
+        $normalized = trim($this->digitNormalizer->toLatin($value));
+
+        if (! preg_match('/^(.+?)[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/', $normalized, $matches)) {
+            throw new InvalidArgumentException('Localized datetime must contain a date and HH:MM time.');
+        }
+
+        $date = $this->adapter($context)->parseDate(trim($matches[1]));
+        $hour = (int) $matches[2];
+        $minute = (int) $matches[3];
+        $second = isset($matches[4]) && $matches[4] !== '' ? (int) $matches[4] : 0;
+
+        if ($hour > 23 || $minute > 59 || $second > 59) {
+            throw new InvalidArgumentException('Localized datetime contains an invalid time.');
+        }
+
+        $local = new DateTimeImmutable(
+            sprintf('%s %02d:%02d:%02d', $date->toCanonical(), $hour, $minute, $second),
+            new DateTimeZone($context->timezone()),
+        );
+
+        return $local->setTimezone(new DateTimeZone('UTC'));
     }
 
     public function parseDateParts(int $day, int $month, int $year, ?TemporalContext $context = null): LocalDate
