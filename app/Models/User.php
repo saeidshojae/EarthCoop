@@ -180,29 +180,127 @@ class User extends Authenticatable
         if (!$this->last_seen || !auth()->check() || auth()->id() !== $this->id) {
             return false;
         }
-        return $this->last_seen->gt(now()->subMinutes(5));
+        return $this->last_seen->diffInMinutes(now()) < 5;
     }
 
-    public function avatarUrl(): string
+    /**
+     * روابط با Role ها
+     */
+    public function roles()
     {
-        if ($this->avatar) {
-            return asset('/images/users/avatars/' . $this->avatar);
+        return $this->belongsToMany(Role::class, 'user_role');
+    }
+
+    /**
+     * بررسی اینکه آیا کاربر دارای نقش خاصی است
+     */
+    public function hasRole($role)
+    {
+        if (is_string($role)) {
+            return $this->roles()->where('slug', $role)->exists();
+        }
+        return $this->roles->contains($role);
+    }
+
+    /**
+     * بررسی دسترسی کاربر
+     */
+    public function hasPermission($permission)
+    {
+        if ($this->is_admin || $this->hasRole('super-admin')) {
+            return true;
         }
 
-        return asset('images/default-avatar.png');
+        foreach ($this->roles as $role) {
+            if ($role->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    public function getNameAttribute(): string
+    public function hasAnyPermission(array $permissions)
     {
-        $name = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
-        return $name !== '' ? $name : ($this->email ?? 'کاربر');
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
-    protected function nationalId(): Attribute
+    public function hasAllPermissions(array $permissions)
     {
-        return Attribute::make(
-            get: fn ($value) => $value,
-            set: fn ($value) => $value === null ? null : preg_replace('/\D+/', '', (string) $value),
-        );
+        foreach ($permissions as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    public function assignRole($role)
+    {
+        if (is_string($role)) {
+            $role = Role::where('slug', $role)->first();
+        }
+        
+        if ($role && !$this->hasRole($role)) {
+            $this->roles()->attach($role);
+        }
+        
+        return $this;
+    }
+
+    public function removeRole($role)
+    {
+        if (is_string($role)) {
+            $role = Role::where('slug', $role)->first();
+        }
+        
+        if ($role) {
+            $this->roles()->detach($role);
+        }
+        
+        return $this;
+    }
+
+    public function syncRoles(array $roles)
+    {
+        $roleIds = [];
+        foreach ($roles as $role) {
+            if (is_string($role)) {
+                $r = Role::where('slug', $role)->first();
+                if ($r) {
+                    $roleIds[] = $r->id;
+                }
+            } else {
+                $roleIds[] = $role;
+            }
+        }
+        $this->roles()->sync($roleIds);
+        return $this;
+    }
+
+    public function getAllPermissions()
+    {
+        $permissions = collect();
+        foreach ($this->roles as $role) {
+            $permissions = $permissions->merge($role->permissions);
+        }
+        return $permissions->unique('id');
+    }
+
+    public function najmBaharProjects()
+    {
+        return $this->morphMany(\App\Modules\NajmBahar\Models\Project::class, 'owner');
+    }
+
+    public function najmBaharInvestments()
+    {
+        return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');
     }
 }
