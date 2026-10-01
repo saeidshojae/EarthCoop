@@ -10,6 +10,8 @@ on:
       - 'app/Http/Controllers/ChronicleController.php'
       - 'app/Providers/ChronicleServiceProvider.php'
       - 'app/View/Components/Temporal/**'
+      - 'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php'
+      - 'app/Modules/Stock/Views/admin_auction_create.blade.php'
       - 'config/temporal.php'
       - 'resources/lang/*/chronicle.php'
       - 'resources/js/temporal-input.js'
@@ -19,6 +21,7 @@ on:
       - 'tests/Unit/Chronicle/**'
       - 'tests/Feature/Temporal/**'
       - 'tests/Feature/Chronicle/**'
+      - 'tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php'
       - 'tests/js/temporal/**'
       - 'package.json'
       - '.github/workflows/temporal-system-targeted.yml'
@@ -32,6 +35,8 @@ on:
       - 'app/Http/Controllers/ChronicleController.php'
       - 'app/Providers/ChronicleServiceProvider.php'
       - 'app/View/Components/Temporal/**'
+      - 'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php'
+      - 'app/Modules/Stock/Views/admin_auction_create.blade.php'
       - 'config/temporal.php'
       - 'resources/lang/*/chronicle.php'
       - 'resources/js/temporal-input.js'
@@ -41,6 +46,7 @@ on:
       - 'tests/Unit/Chronicle/**'
       - 'tests/Feature/Temporal/**'
       - 'tests/Feature/Chronicle/**'
+      - 'tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php'
       - 'tests/js/temporal/**'
       - 'package.json'
       - '.github/workflows/temporal-system-targeted.yml'
@@ -146,6 +152,9 @@ jobs:
           php artisan test tests/Feature/Admin/CanonicalUserResidenceEditTest.php
           php artisan test tests/Feature/NajmHoda/SafeUserLifecycleControllerTest.php
           php artisan test tests/Feature/NajmBahar/MembershipRemovalServiceTest.php
+
+      - name: Run stock auction regressions
+        run: php artisan test tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php
 
       - name: Run Temporal frontend tests
         run: npm run test:temporal
