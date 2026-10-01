@@ -23,6 +23,22 @@ final class DeploymentVendorPackageBoundaryTest extends TestCase
         $this->assertStringContainsString('.ftp-deploy-vendor-package-state.json', $workflow);
     }
 
+    public function test_deploy_workflow_only_transfers_vendor_package_when_composer_lock_changes(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $workflow = file_get_contents($root.'/.github/workflows/deploy.yml');
+
+        $this->assertIsString($workflow);
+        $this->assertStringContainsString('Detect Composer lock change', $workflow);
+        $this->assertStringContainsString('id: vendor-package-change', $workflow);
+        $this->assertStringContainsString('git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- composer.lock', $workflow);
+        $this->assertStringContainsString('EVENT_NAME: ${{ github.event_name }}', $workflow);
+        $this->assertGreaterThanOrEqual(
+            3,
+            substr_count($workflow, "if: steps.vendor-package-change.outputs.changed == 'true'")
+        );
+    }
+
     public function test_vendor_package_php_surface_has_no_arbitrary_execution_primitive(): void
     {
         $root = dirname(__DIR__, 2);
