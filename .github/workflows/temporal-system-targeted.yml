@@ -11,7 +11,7 @@ on:
       - 'app/Providers/ChronicleServiceProvider.php'
       - 'app/View/Components/Temporal/**'
       - 'config/temporal.php'
-      - 'lang/*/chronicle.php'
+      - 'resources/lang/*/chronicle.php'
       - 'resources/js/temporal-input.js'
       - 'resources/views/chronicle/**'
       - 'resources/views/components/temporal/**'
@@ -33,7 +33,7 @@ on:
       - 'app/Providers/ChronicleServiceProvider.php'
       - 'app/View/Components/Temporal/**'
       - 'config/temporal.php'
-      - 'lang/*/chronicle.php'
+      - 'resources/lang/*/chronicle.php'
       - 'resources/js/temporal-input.js'
       - 'resources/views/chronicle/**'
       - 'resources/views/components/temporal/**'
@@ -140,6 +140,12 @@ jobs:
           if [ -d tests/Feature/Chronicle ]; then
             php artisan test tests/Feature/Chronicle
           fi
+
+      - name: Run admin-user safety regressions
+        run: |
+          php artisan test tests/Feature/Admin/CanonicalUserResidenceEditTest.php
+          php artisan test tests/Feature/NajmHoda/SafeUserLifecycleControllerTest.php
+          php artisan test tests/Feature/NajmBahar/MembershipRemovalServiceTest.php
 
       - name: Run Temporal frontend tests
         run: npm run test:temporal
