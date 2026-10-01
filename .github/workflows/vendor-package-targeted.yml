@@ -1,0 +1,51 @@
+name: Vendor Package Targeted Gate
+
+on:
+  push:
+    branches:
+      - agent/ftp-vendor-package-deployment-implementation-20261001
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, sqlite, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+      - name: Install dependencies
+        run: |
+          rm -rf vendor
+          composer install --prefer-dist --no-interaction --no-progress
+      - name: Create test environment
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          DB_CONNECTION=sqlite
+          DB_DATABASE=:memory:
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          FILESYSTEM_DISK=local
+          EOF
+          php artisan key:generate --force
+      - name: Vendor package RED GREEN gate
+        run: |
+          php artisan test tests/Unit/Deployment/VendorPackageInstallerTest.php tests/Architecture/DeploymentVendorPackageBoundaryTest.php
