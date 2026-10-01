@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   lockfile:
@@ -33,19 +33,5 @@ jobs:
       - name: Resolve dependencies
         working-directory: apps/mobile
         run: flutter pub get
-      - name: Commit resolved lockfile on the M6 branch
-        if: github.event_name == 'push' && github.ref_name == 'agent/flutter-native-client-foundation-20260929'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- apps/mobile/pubspec.lock; then
-            echo 'pubspec.lock is already current.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add apps/mobile/pubspec.lock
-          git commit -m 'chore(mobile): sync Flutter dependency lock [m6-device-uat-version]'
-          git push origin "HEAD:${GITHUB_REF_NAME}"
       - name: Verify lockfile is committed
         run: git diff --exit-code -- apps/mobile/pubspec.lock
