@@ -14,6 +14,7 @@ class StockAdminAuctionLocalizedDateTimeTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Validation probe: this contract must fail until the canonical admin auction boundary parses localized datetimes.
     public function test_persian_admin_can_store_auction_with_jalali_local_datetimes(): void
     {
         $this->withoutMiddleware();
