@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Setting;
+use App\Services\Communication\CommunicationDispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
@@ -32,7 +33,6 @@ class UserController extends Controller
             'groups'
         ]);
 
-        // فیلتر جستجو
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -44,17 +44,14 @@ class UserController extends Controller
             });
         }
 
-        // فیلتر وضعیت
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // فیلتر جنسیت
         if ($request->filled('gender')) {
             $query->where('gender', $request->gender);
         }
 
-        // فیلتر ایمیل تایید شده
         if ($request->filled('email_verified')) {
             if ($request->email_verified == '1') {
                 $query->whereNotNull('email_verified_at');
@@ -63,14 +60,12 @@ class UserController extends Controller
             }
         }
 
-        // فیلتر استان
         if ($request->filled('province_id')) {
             $query->whereHas('address', function($q) use ($request) {
                 $q->where('province_id', $request->province_id);
             });
         }
 
-        // فیلتر تاریخ ثبت‌نام
         if ($request->filled('created_from')) {
             $query->whereDate('created_at', '>=', $request->created_from);
         }
@@ -80,7 +75,6 @@ class UserController extends Controller
 
         $users = $query->orderBy('created_at', 'desc')->get();
 
-        // آمار
         $stats = [
             'total' => User::members()->count(),
             'active' => User::members()->where('status', 'active')->count(),
@@ -93,10 +87,8 @@ class UserController extends Controller
             'this_month' => User::members()->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
         ];
 
-        // دریافت لیست استان‌ها برای فیلتر
         $provinces = \App\Models\Province::orderBy('name')->get();
 
-        // داده‌های نمودار ثبت‌نام (30 روز گذشته)
         $registrationChartData = [];
         for ($i = 29; $i >= 0; $i--) {
             $date = now()->subDays($i);
@@ -107,7 +99,6 @@ class UserController extends Controller
             ];
         }
 
-        // داده‌های نمودار توزیع جغرافیایی (بر اساس استان)
         $geographicDistribution = \App\Models\User::members()->whereHas('address', function($q) {
             $q->whereNotNull('province_id');
         })
@@ -120,7 +111,7 @@ class UserController extends Controller
             return $users->count();
         })
         ->sortDesc()
-        ->take(10); // 10 استان اول
+        ->take(10);
 
         return view('admin.user.index', compact('users', 'stats', 'provinces', 'registrationChartData', 'geographicDistribution'));
     }
@@ -132,8 +123,7 @@ class UserController extends Controller
     
     public function store(Request $request){
         $inputs = $request->validate([
-                        'email'    => 'required|email|unique:users,email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-
+            'email'    => 'required|email|unique:users,email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'first_name'   => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name'    => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'birth_date'   => 'required|array|min:3',
@@ -146,36 +136,30 @@ class UserController extends Controller
         $nationalId = $this->convertNumbersToEnglish($inputs['national_id']);
         $phone = $this->normalizePhoneNumber($this->convertNumbersToEnglish($inputs['phone']));
 
-        // اعتبارسنجی کد ملی
         if (!$this->isValidIranianNationalCode($nationalId)) {
             return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
         }
 
-    [$day, $month, $year] = array_map(
-        fn($v) => $this->convertNumbersToEnglish($v),
-        $inputs['birth_date']
-    );
+        [$day, $month, $year] = array_map(
+            fn($v) => $this->convertNumbersToEnglish($v),
+            $inputs['birth_date']
+        );
 
+        $birthDateMiladi = (new \Morilog\Jalali\Jalalian((int)$year, (int)$month, (int)$day))->toCarbon();
 
-    $birthDateMiladi = (new \Morilog\Jalali\Jalalian((int)$year, (int)$month, (int)$day))->toCarbon();
-
-    // بررسی سن
-    if ($birthDateMiladi->age < 15) {
-        return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد');
-    }
-    
-    $inputs['birth_date'] = $birthDateMiladi->toDateString();
-
-
-    $inputs['password'] = Hash::make($inputs['password']);
+        if ($birthDateMiladi->age < 15) {
+            return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد');
+        }
+        
+        $inputs['birth_date'] = $birthDateMiladi->toDateString();
+        $inputs['password'] = Hash::make($inputs['password']);
         User::create($inputs);
         return redirect()->route('admin.users.index')->with('success', 'کاربر با موفقیت ایجاد شد');
     }
     
     public function update(Request $request, User $user){
         $inputs = $request->validate([
-                        'email'    => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/|unique:users,email,' . $user->id,
-
+            'email'    => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/|unique:users,email,' . $user->id,
             'first_name'   => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name'    => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'birth_date'   => 'required|array|min:3',
@@ -200,48 +184,41 @@ class UserController extends Controller
         $nationalId = $this->convertNumbersToEnglish($inputs['national_id']);
         $phone = $this->normalizePhoneNumber($this->convertNumbersToEnglish($inputs['phone']));
 
-        // اعتبارسنجی کد ملی
         if (!$this->isValidIranianNationalCode($nationalId)) {
             return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
         }
 
-    [$day, $month, $year] = array_map(
-        fn($v) => $this->convertNumbersToEnglish($v),
-        $inputs['birth_date']
-    );
+        [$day, $month, $year] = array_map(
+            fn($v) => $this->convertNumbersToEnglish($v),
+            $inputs['birth_date']
+        );
 
+        $birthDateMiladi = (new \Morilog\Jalali\Jalalian((int)$year, (int)$month, (int)$day))->toCarbon();
 
-    $birthDateMiladi = (new \Morilog\Jalali\Jalalian((int)$year, (int)$month, (int)$day))->toCarbon();
+        if ($birthDateMiladi->age < 15) {
+            return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد');
+        }
+        
+        $inputs['birth_date'] = $birthDateMiladi->toDateString();
 
-    // بررسی سن
-    if ($birthDateMiladi->age < 15) {
-        return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد');
+        if($inputs['password'] != null){
+             $inputs['password'] = Hash::make($inputs['password']);
+        }else{
+            unset($inputs['password']);
+        }
+        
+        if (!isset($inputs['status'])) {
+            $inputs['status'] = 'active';
+        }
+        
+        $user->update($inputs);
+        return redirect()->route('admin.users.index')->with('success', 'کاربر با موفقیت بروزرسانی شد');
     }
-    
-    $inputs['birth_date'] = $birthDateMiladi->toDateString();
 
-    
-    if($inputs['password'] != null){
-         $inputs['password'] = Hash::make($inputs['password']);
-    }else{
-        unset($inputs['password']);
-    }
-    
-    // Set default status if not provided
-    if (!isset($inputs['status'])) {
-        $inputs['status'] = 'active';
-    }
-    
-    $user->update($inputs);
-            return redirect()->route('admin.users.index')->with('success', 'کاربر با موفقیت بروزرسانی شد');
-
-   
-    }
     public function edit(User $user)
     {
         return view('admin.user.edit', compact('user'));
     }
-    
     
     public function show(User $user)
     {
@@ -263,21 +240,18 @@ class UserController extends Controller
             'roles.permissions'
         ]);
 
-        // آمار کاربر
         $userStats = [
             'groups_count' => $user->groups->count(),
-            'blog_posts_count' => \App\Models\Blog::where('user_id', $user->id)->count(), // پست‌های گروهی
-            'website_posts_count' => \App\Modules\Blog\Models\Post::where('user_id', $user->id)->count(), // پست‌های وبلاگ
-            'blog_comments_count' => \App\Models\Comment::where('user_id', $user->id)->count(), // نظرات پست‌های گروهی
-            'website_comments_count' => \App\Modules\Blog\Models\BlogComment::where('user_id', $user->id)->count(), // نظرات وبلاگ
+            'blog_posts_count' => \App\Models\Blog::where('user_id', $user->id)->count(),
+            'website_posts_count' => \App\Modules\Blog\Models\Post::where('user_id', $user->id)->count(),
+            'blog_comments_count' => \App\Models\Comment::where('user_id', $user->id)->count(),
+            'website_comments_count' => \App\Modules\Blog\Models\BlogComment::where('user_id', $user->id)->count(),
             'total_posts_count' => \App\Models\Blog::where('user_id', $user->id)->count() + \App\Modules\Blog\Models\Post::where('user_id', $user->id)->count(),
             'total_comments_count' => \App\Models\Comment::where('user_id', $user->id)->count() + \App\Modules\Blog\Models\BlogComment::where('user_id', $user->id)->count(),
         ];
 
-        // دریافت همه نقش‌ها برای اختصاص
         $allRoles = \App\Models\Role::orderBy('order')->get();
 
-        // دریافت Session های فعال کاربر
         $activeSessions = [];
         try {
             $sessions = \Illuminate\Support\Facades\DB::table('sessions')
@@ -294,13 +268,11 @@ class UserController extends Controller
                 ];
             }
         } catch (\Exception $e) {
-            // اگر جدول sessions وجود نداشت، خطا نده
         }
 
         return view('admin.user.show', compact('user', 'userStats', 'allRoles', 'activeSessions'));
     }
 
-    // نمایش لیست تراکنش‌های امتیاز کاربر (ledger) در پنل ادمین
     public function transactions(Request $request, User $user)
     {
         $query = \App\Models\UserPointTransaction::where('user_id', $user->id);
@@ -316,13 +288,11 @@ class UserController extends Controller
         }
 
         $transactions = $query->orderByDesc('created_at')->paginate(25)->appends($request->except('page'));
-
         $currentPoints = optional(\App\Models\UserPoint::where('user_id', $user->id)->first())->points ?? 0;
 
         return view('admin.user.transactions', compact('user', 'transactions', 'currentPoints'));
     }
 
-    // اختصاص نقش به کاربر
     public function assignRole(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -335,17 +305,15 @@ class UserController extends Controller
         return back()->with('success', 'نقش‌های کاربر با موفقیت بروزرسانی شد');
     }
 
-    // نمایش صفحه Import
     public function showImport()
     {
         return view('admin.user.import');
     }
 
-    // Import کاربران از Excel/CSV
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv|max:10240', // حداکثر 10MB
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
         try {
@@ -357,10 +325,8 @@ class UserController extends Controller
             $skipCount = 0;
 
             foreach ($data as $row) {
-                // تبدیل به آرایه
                 $rowData = $row->toArray();
                 
-                // اعتبارسنجی داده‌ها
                 $validator = Validator::make($rowData, [
                     'email' => 'required|email|unique:users,email',
                     'first_name' => 'required|string|max:255',
@@ -380,7 +346,6 @@ class UserController extends Controller
                     continue;
                 }
 
-                // ایجاد کاربر
                 $user = User::create([
                     'email' => $rowData['email'],
                     'first_name' => $rowData['first_name'],
@@ -388,7 +353,7 @@ class UserController extends Controller
                     'phone' => $rowData['phone'] ?? null,
                     'national_id' => $rowData['national_id'] ?? null,
                     'gender' => $rowData['gender'] ?? null,
-                    'password' => Hash::make($rowData['password'] ?? 'password123'), // رمز پیش‌فرض
+                    'password' => Hash::make($rowData['password'] ?? 'password123'),
                     'status' => $rowData['status'] ?? 'active',
                     'email_verified_at' => isset($rowData['email_verified']) && $rowData['email_verified'] == '1' ? now() : null,
                 ]);
@@ -408,13 +373,11 @@ class UserController extends Controller
         }
     }
 
-    // نمایش صفحه ارسال پیام/ایمیل
     public function showSendMessage(User $user)
     {
         return view('admin.user.send-message', compact('user'));
     }
 
-    // ارسال پیام/ایمیل به کاربر
     public function sendMessage(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -425,29 +388,30 @@ class UserController extends Controller
 
         try {
             if ($validated['type'] == 'email') {
-                // ارسال ایمیل
-                \Illuminate\Support\Facades\Mail::raw($validated['message'], function ($mail) use ($user, $validated) {
-                    $mail->to($user->email)
-                         ->subject($validated['subject']);
-                });
+                app(CommunicationDispatcher::class)->dispatch(
+                    'admin.manual_custom',
+                    ['type' => 'admin.user_message', 'id' => (string) $user->id],
+                    [$user],
+                    [
+                        'subject' => (string) $validated['subject'],
+                        'rendered_html' => nl2br(e((string) $validated['message'])),
+                    ],
+                    ['priority' => 2],
+                );
                 
-                return back()->with('success', 'ایمیل با موفقیت ارسال شد');
-            } else {
-                // ارسال اعلان
-                $user->notify(new \App\Notifications\AdminMessage($validated['message']));
-                
-                return back()->with('success', 'پیام با موفقیت ارسال شد');
+                return back()->with('success', 'ایمیل برای ارسال در صف مرکز ارتباطات قرار گرفت');
             }
+
+            $user->notify(new \App\Notifications\AdminMessage($validated['message']));
+            return back()->with('success', 'پیام با موفقیت ارسال شد');
         } catch (\Exception $e) {
             return back()->with('error', 'خطا در ارسال: ' . $e->getMessage());
         }
     }
 
-    // Force Logout (خروج اجباری کاربر)
     public function forceLogout(User $user)
     {
         try {
-            // حذف همه session های کاربر
             \Illuminate\Support\Facades\DB::table('sessions')
                 ->where('user_id', $user->id)
                 ->delete();
@@ -463,7 +427,6 @@ class UserController extends Controller
         throw new \LogicException('Direct admin user deletion is retired. Resolve the safe admin controller boundary.');
     }
 
-    // تغییر وضعیت کاربر
     public function updateStatus(Request $request, User $user)
     {
         $request->validate([
@@ -471,11 +434,9 @@ class UserController extends Controller
         ]);
 
         $user->update(['status' => $request->status]);
-        
         return back()->with('success', 'وضعیت کاربر با موفقیت تغییر کرد');
     }
 
-    // عملیات دسته‌ای
     public function bulkAction(Request $request)
     {
         $request->validate([
@@ -490,24 +451,19 @@ class UserController extends Controller
             case 'activate':
                 User::whereIn('id', $userIds)->update(['status' => 'active']);
                 return back()->with('success', count($userIds) . ' کاربر فعال شدند');
-            
             case 'deactivate':
                 User::whereIn('id', $userIds)->update(['status' => 'inactive']);
                 return back()->with('success', count($userIds) . ' کاربر غیرفعال شدند');
-            
             case 'suspend':
                 User::whereIn('id', $userIds)->update(['status' => 'suspended']);
                 return back()->with('success', count($userIds) . ' کاربر تعلیق شدند');
-            
             case 'delete':
                 throw new \LogicException('Direct admin bulk deletion is retired. Resolve the safe admin controller boundary.');
-            
             case 'export':
                 return $this->exportUsers($userIds);
         }
     }
 
-    // Export به Excel
     public function exportUsers($userIds = null)
     {
         $query = User::members()->with([
@@ -540,11 +496,7 @@ class UserController extends Controller
 
         $callback = function() use ($users) {
             $file = fopen('php://output', 'w');
-            
-            // BOM برای UTF-8
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // هدرها
             fputcsv($file, [
                 'نام', 'نام خانوادگی', 'ایمیل', 'شماره تماس', 'کد ملی',
                 'جنسیت', 'تاریخ تولد', 'وضعیت', 'ایمیل تایید شده',
@@ -553,7 +505,6 @@ class UserController extends Controller
                 'صنف', 'تخصص', 'تاریخ ثبت‌نام'
             ]);
 
-            // داده‌ها
             foreach ($users as $user) {
                 fputcsv($file, [
                     $user->first_name,
@@ -586,73 +537,46 @@ class UserController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    // Reset Password
     public function resetPassword(User $user)
     {
         $newPassword = \Str::random(12);
         $user->update(['password' => Hash::make($newPassword)]);
-        
         return back()->with('success', 'رمز عبور جدید: ' . $newPassword);
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     protected function isValidIranianNationalCode(string $code): bool
-{
-    if (!preg_match('/^[0-9]{10}$/', $code)) return false;
+    {
+        if (!preg_match('/^[0-9]{10}$/', $code)) return false;
 
-    // رد کردن کدهای تکراری مانند 1111111111
-    for ($i = 0; $i < 10; $i++) {
-        if (preg_match("/^{$i}{10}$/", $code)) return false;
+        for ($i = 0; $i < 10; $i++) {
+            if (preg_match("/^{$i}{10}$/", $code)) return false;
+        }
+
+        $sum = 0;
+        for ($i = 0; $i < 9; $i++) {
+            $sum += ((10 - $i) * (int)$code[$i]);
+        }
+
+        $remainder = $sum % 11;
+        $checkDigit = (int)$code[9];
+
+        return ($remainder < 2 && $checkDigit === $remainder) ||
+               ($remainder >= 2 && $checkDigit === (11 - $remainder));
     }
-
-    // الگوریتم بررسی صحت
-    $sum = 0;
-    for ($i = 0; $i < 9; $i++) {
-        $sum += ((10 - $i) * (int)$code[$i]);
-    }
-
-    $remainder = $sum % 11;
-    $checkDigit = (int)$code[9];
-
-    return ($remainder < 2 && $checkDigit === $remainder) ||
-           ($remainder >= 2 && $checkDigit === (11 - $remainder));
-}
 
     protected function convertNumbersToEnglish($string) {
         $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
         $arabic  = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
         $english = ['0','1','2','3','4','5','6','7','8','9'];
-    
         $string = str_replace($persian, $english, $string);
         return str_replace($arabic, $english, $string);
     }
     
-        
     public function normalizePhoneNumber($number) {
-        // حذف تمام فاصله‌ها و کاراکترهای اضافی
         $number = preg_replace('/\s+/', '', $number);
-    
-        // اگر شماره با 0 شروع شد، حذفش کن
         if (substr($number, 0, 1) === '0') {
             $number = substr($number, 1);
         }
-    
         return $number;
     }
-    
 }
