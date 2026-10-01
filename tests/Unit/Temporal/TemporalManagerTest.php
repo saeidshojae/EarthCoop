@@ -9,6 +9,7 @@ use App\Temporal\Formatting\DigitNormalizer;
 use App\Temporal\TemporalManager;
 use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 class TemporalManagerTest extends TestCase
@@ -67,6 +68,25 @@ class TemporalManagerTest extends TestCase
             '2026-10-01',
             $manager->parseDateParts(1, 10, 2026, $resolver->forLocale('en'))->toCanonical(),
         );
+    }
+
+    public function test_manager_parses_localized_datetime_into_canonical_utc_instant(): void
+    {
+        [$manager, $resolver] = $this->manager();
+
+        $persian = $manager->parseDateTime('۱۴۰۵/۰۷/۰۹ ۱۸:۰۰', $resolver->forLocale('fa', 'Asia/Tehran'));
+        $english = $manager->parseDateTime('2026-10-01 18:00', $resolver->forLocale('en', 'Europe/London'));
+
+        $this->assertSame('2026-10-01T14:30:00+00:00', $persian->format('c'));
+        $this->assertSame('2026-10-01T17:00:00+00:00', $english->format('c'));
+    }
+
+    public function test_manager_rejects_invalid_local_time(): void
+    {
+        [$manager, $resolver] = $this->manager();
+        $this->expectException(InvalidArgumentException::class);
+
+        $manager->parseDateTime('1405/07/09 25:00', $resolver->forLocale('fa', 'Asia/Tehran'));
     }
 
     public function test_local_day_boundaries_are_converted_to_utc_from_context_timezone(): void
