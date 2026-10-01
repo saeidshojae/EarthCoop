@@ -45,6 +45,20 @@ class TemporalManagerTest extends TestCase
         $this->assertSame('2026-10-01', $manager->date(LocalDate::fromCanonical('2026-10-01'), $en, 'short'));
     }
 
+    public function test_manager_assembles_date_parts_using_context_calendar(): void
+    {
+        [$manager, $resolver] = $this->manager();
+
+        $this->assertSame(
+            '2026-10-01',
+            $manager->parseDateParts(9, 7, 1405, $resolver->forLocale('fa'))->toCanonical(),
+        );
+        $this->assertSame(
+            '2026-10-01',
+            $manager->parseDateParts(1, 10, 2026, $resolver->forLocale('en'))->toCanonical(),
+        );
+    }
+
     public function test_same_instant_can_resolve_to_different_civil_dates_by_timezone(): void
     {
         [$manager, $resolver] = $this->manager();
