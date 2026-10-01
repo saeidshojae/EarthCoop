@@ -12,6 +12,7 @@ class ChroniclePageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('گاه‌شمار ارث‌کوپ');
+        $response->assertSee('تاریخ جلالی');
         $response->assertSee('مبدأ دوران ارث‌کوپ');
         $response->assertSee('۱ فروردین ۱۴۰۱');
         $response->assertSee('March 21, 2022');
