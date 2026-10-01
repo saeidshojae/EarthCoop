@@ -3,6 +3,8 @@
 namespace Tests\Feature\Temporal;
 
 use App\Temporal\ValueObjects\LocalDate;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
@@ -54,6 +56,43 @@ class TemporalDateInputAssetContractTest extends TestCase
             $this->assertStringContainsString('type="date"', $html, $locale);
             $this->assertStringContainsString('data-calendar="gregorian"', $html, $locale);
             $this->assertStringContainsString('value="2026-10-01"', $html, $locale);
+        }
+    }
+
+    public function test_persian_datetime_input_is_jalali_manual_first(): void
+    {
+        app()->setLocale('fa');
+        $instant = new DateTimeImmutable('2026-10-01 10:30:00', new DateTimeZone('UTC'));
+
+        $html = Blade::render(
+            '<x-temporal.date-time-input name="start_time" :value="$instant" required />',
+            ['instant' => $instant],
+        );
+
+        $this->assertStringContainsString('name="start_time"', $html);
+        $this->assertStringContainsString('type="text"', $html);
+        $this->assertStringContainsString('data-temporal-datetime-input', $html);
+        $this->assertStringContainsString('data-calendar="jalali"', $html);
+        $this->assertStringContainsString('value="۱۴۰۵/۰۷/۰۹ ۱۰:۳۰"', $html);
+        $this->assertStringContainsString('placeholder="۱۴۰۵/۰۷/۰۹ ۱۰:۳۰"', $html);
+        $this->assertStringContainsString('inputmode="numeric"', $html);
+    }
+
+    public function test_english_and_arabic_datetime_inputs_use_native_gregorian_contract(): void
+    {
+        $instant = new DateTimeImmutable('2026-10-01 10:30:00', new DateTimeZone('UTC'));
+
+        foreach (['en', 'ar'] as $locale) {
+            app()->setLocale($locale);
+
+            $html = Blade::render(
+                '<x-temporal.date-time-input name="start_time" :value="$instant" />',
+                ['instant' => $instant],
+            );
+
+            $this->assertStringContainsString('type="datetime-local"', $html, $locale);
+            $this->assertStringContainsString('data-calendar="gregorian"', $html, $locale);
+            $this->assertStringContainsString('value="2026-10-01T10:30"', $html, $locale);
         }
     }
 
