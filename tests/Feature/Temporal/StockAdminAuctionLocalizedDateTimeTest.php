@@ -52,15 +52,15 @@ class StockAdminAuctionLocalizedDateTimeTest extends TestCase
 
         $this->assertSame(
             $temporal->parseDateTime($payload['start_time'], $context)->format('Y-m-d H:i:s'),
-            $auction->start_time->utc()->format('Y-m-d H:i:s'),
+            $auction->getRawOriginal('start_time'),
         );
         $this->assertSame(
             $temporal->parseDateTime($payload['end_time'], $context)->format('Y-m-d H:i:s'),
-            $auction->end_time->utc()->format('Y-m-d H:i:s'),
+            $auction->getRawOriginal('end_time'),
         );
         $this->assertSame(
             $temporal->parseDateTime($payload['ends_at'], $context)->format('Y-m-d H:i:s'),
-            $auction->ends_at->utc()->format('Y-m-d H:i:s'),
+            $auction->getRawOriginal('ends_at'),
         );
     }
 }
