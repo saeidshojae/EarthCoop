@@ -22,6 +22,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Exports/NajmBaharTransactionsExport.php',
             'app/Http/Controllers/Admin/NajmBaharAnalyticsController.php',
             'app/Http/Controllers/Admin/ReportController.php',
+            'app/Http/Controllers/Admin/TemporalSafeUserController.php',
             'app/Http/Controllers/Admin/TicketController.php',
             'app/Http/Controllers/Auth/Register/Step1Controller.php',
             'app/Listeners/SendElectionStartedNotifications.php',
