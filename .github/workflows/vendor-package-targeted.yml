@@ -74,3 +74,44 @@ jobs:
             tests/Feature/Admin/DeploymentConsoleSecurityTest.php \
             tests/Feature/Admin/DeploymentConsoleExecutionTest.php \
             tests/Feature/Admin/DeploymentVendorPackageConsoleTest.php
+
+  package-build-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+      - name: Build production dependency tree
+        run: |
+          rm -rf vendor
+          composer validate --no-check-publish
+          composer audit --no-dev --abandoned=report
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+      - name: Build and verify vendor package exactly like production workflow
+        shell: bash
+        env:
+          SOURCE_GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          LOCK_SHA="$(sha256sum composer.lock | awk '{print $1}')"
+          PACKAGE_DIR=".deployment/vendor-package"
+          PACKAGE_NAME="vendor-${LOCK_SHA}.zip"
+          PACKAGE_PATH="${PACKAGE_DIR}/${PACKAGE_NAME}"
+          mkdir -p "$PACKAGE_DIR"
+          zip -qr "$PACKAGE_PATH" vendor
+          PACKAGE_SHA="$(sha256sum "$PACKAGE_PATH" | awk '{print $1}')"
+          CREATED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          PHP_VERSION="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+          export LOCK_SHA PACKAGE_NAME PACKAGE_SHA CREATED_AT PHP_VERSION SOURCE_GIT_SHA
+          php -r '$manifest=["schema_version"=>1,"package_filename"=>getenv("PACKAGE_NAME"),"package_sha256"=>getenv("PACKAGE_SHA"),"composer_lock_sha256"=>getenv("LOCK_SHA"),"source_git_sha"=>getenv("SOURCE_GIT_SHA"),"created_at"=>getenv("CREATED_AT"),"expected_top_level"=>"vendor","php_version"=>getenv("PHP_VERSION")]; file_put_contents(".deployment/vendor-package/manifest.json", json_encode($manifest, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));'
+          test -s "$PACKAGE_PATH"
+          test -s "$PACKAGE_DIR/manifest.json"
+          MANIFEST_LOCK="$(php -r '$m=json_decode(file_get_contents(".deployment/vendor-package/manifest.json"),true,512,JSON_THROW_ON_ERROR); echo $m["composer_lock_sha256"];')"
+          MANIFEST_PACKAGE_SHA="$(php -r '$m=json_decode(file_get_contents(".deployment/vendor-package/manifest.json"),true,512,JSON_THROW_ON_ERROR); echo $m["package_sha256"];')"
+          test "$LOCK_SHA" = "$MANIFEST_LOCK"
+          test "$(sha256sum "$PACKAGE_PATH" | awk '{print $1}')" = "$MANIFEST_PACKAGE_SHA"
+          unzip -l "$PACKAGE_PATH" | grep -F 'vendor/autoload.php' >/dev/null
