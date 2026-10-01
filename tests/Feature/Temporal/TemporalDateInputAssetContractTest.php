@@ -78,6 +78,30 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringContainsString('inputmode="numeric"', $html);
     }
 
+    public function test_persian_datetime_input_preserves_already_localized_value(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-time-input name="start_time" :value="$value" />',
+            ['value' => '۱۴۰۵/۰۷/۰۹ ۱۰:۳۰'],
+        );
+
+        $this->assertStringContainsString('value="۱۴۰۵/۰۷/۰۹ ۱۰:۳۰"', $html);
+    }
+
+    public function test_persian_datetime_input_relocalizes_canonical_value_after_validation(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-time-input name="start_time" :value="$value" />',
+            ['value' => '2026-10-01 10:30:00'],
+        );
+
+        $this->assertStringContainsString('value="۱۴۰۵/۰۷/۰۹ ۱۰:۳۰"', $html);
+    }
+
     public function test_english_and_arabic_datetime_inputs_use_native_gregorian_contract(): void
     {
         $instant = new DateTimeImmutable('2026-10-01 10:30:00', new DateTimeZone('UTC'));
