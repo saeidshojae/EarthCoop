@@ -57,7 +57,23 @@ class SetLocale
         view()->share('currentLocale', $locale);
         view()->share('direction', $direction);
 
-        return $next($request);
+        $response = $next($request);
+
+        if ($request->cookie('earthcoop_locale') !== $locale) {
+            $response->headers->setCookie(cookie(
+                'earthcoop_locale',
+                $locale,
+                525600,
+                '/',
+                null,
+                $request->isSecure(),
+                false,
+                false,
+                'lax',
+            ));
+        }
+
+        return $response;
     }
 
     private function canPersistUserLocale(): bool
