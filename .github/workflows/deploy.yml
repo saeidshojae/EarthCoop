@@ -274,7 +274,6 @@ jobs:
           **/.env
           **/.env.*
           **/node_modules/**
-          **/vendor/**
           **/tests/**
           **/.github/**
           storage/**
