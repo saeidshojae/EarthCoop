@@ -10,6 +10,7 @@ use Throwable;
 final class TemporalContextResolver
 {
     private readonly Closure $activeLocaleResolver;
+    private readonly Closure $activeUserResolver;
 
     public function __construct(
         private readonly array $localeCalendars,
@@ -17,9 +18,12 @@ final class TemporalContextResolver
         private readonly string $defaultTimezone = 'UTC',
         private readonly string $defaultLocale = 'fa',
         ?Closure $activeLocaleResolver = null,
+        ?Closure $activeUserResolver = null,
     ) {
         $this->activeLocaleResolver = $activeLocaleResolver
             ?? static fn (): string => $defaultLocale;
+        $this->activeUserResolver = $activeUserResolver
+            ?? static fn (): ?User => null;
     }
 
     public function forLocale(
@@ -72,7 +76,12 @@ final class TemporalContextResolver
 
     public function defaultContext(): TemporalContext
     {
-        return $this->forLocale($this->activeLocale(), $this->defaultTimezone);
+        $activeUser = ($this->activeUserResolver)();
+
+        return $this->forUser(
+            $activeUser instanceof User ? $activeUser : null,
+            $this->activeLocale(),
+        );
     }
 
     private function activeLocale(): string
