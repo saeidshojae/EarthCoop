@@ -17,9 +17,6 @@
     $typeLabels = ['single_winner'=>'تک‌برنده','uniform_price'=>'قیمت یکسان','pay_as_bid'=>'پرداخت به قیمت پیشنهادی'];
     $temporal = app(\App\Temporal\Contracts\TemporalService::class);
     $temporalContext = app(\App\Temporal\Context\TemporalContextResolver::class)->defaultContext();
-    $usesJalali = $temporalContext->calendar() === 'jalali';
-    $dateFromValue = request('date_from', $dateFrom ? $temporal->date($dateFrom, $temporalContext, 'short') : '');
-    $dateToValue = request('date_to', $dateTo ? $temporal->date($dateTo, $temporalContext, 'short') : '');
 @endphp
 
 @push('styles')
@@ -38,8 +35,8 @@
 
         <div class="report-filter">
             <form method="GET" class="grid gap-4 md:grid-cols-3 items-end">
-                <div><label class="block text-sm font-semibold mb-2">از تاریخ</label><input type="{{ $usesJalali ? 'text' : 'date' }}" data-temporal-date name="date_from" value="{{ $dateFromValue }}" class="w-full px-3 py-2 border rounded-lg" placeholder="{{ $usesJalali ? '1405/01/01' : '2026-03-21' }}"></div>
-                <div><label class="block text-sm font-semibold mb-2">تا تاریخ</label><input type="{{ $usesJalali ? 'text' : 'date' }}" data-temporal-date name="date_to" value="{{ $dateToValue }}" class="w-full px-3 py-2 border rounded-lg" placeholder="{{ $usesJalali ? '1405/12/29' : '2027-03-20' }}"></div>
+                <div><label class="block text-sm font-semibold mb-2" for="auction-report-date-from">از تاریخ</label><x-temporal.date-input name="date_from" id="auction-report-date-from" :value="$dateFrom" class="w-full px-3 py-2 border rounded-lg" /></div>
+                <div><label class="block text-sm font-semibold mb-2" for="auction-report-date-to">تا تاریخ</label><x-temporal.date-input name="date_to" id="auction-report-date-to" :value="$dateTo" class="w-full px-3 py-2 border rounded-lg" /></div>
                 <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold"><i class="fas fa-filter ml-2"></i>اعمال فیلتر</button>
             </form>
         </div>
