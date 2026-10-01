@@ -337,7 +337,7 @@
 
 
 
-            <span class="time" style="margin:0">{{ verta($blog->created_at)->format('Y/m/d H:i') }}</span>
+            <span class="time" style="margin:0"><x-temporal.date-time :value="$blog->created_at" style="short" /></span>
 
 
 
