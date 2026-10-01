@@ -29,6 +29,18 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringNotContainsString('https://', $html);
     }
 
+    public function test_persian_date_input_preserves_already_localized_filter_value(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="date_from" :value="$value" />',
+            ['value' => '۱۴۰۵/۰۷/۰۹'],
+        );
+
+        $this->assertStringContainsString('value="۱۴۰۵/۰۷/۰۹"', $html);
+    }
+
     public function test_english_and_arabic_date_inputs_use_native_gregorian_contract(): void
     {
         foreach (['en', 'ar'] as $locale) {
