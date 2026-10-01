@@ -119,8 +119,11 @@ Never use destructive database reset/fresh commands on production.
 
 ## 9. Deployment checklist
 
+The cPanel release must first complete the verified dependency-package flow documented in `docs/operations/CPANEL_VENDOR_PACKAGE_DEPLOYMENT_RUNBOOK.md`. In particular, the Deployment Console must report that the installed vendor state matches the currently deployed `composer.lock` before Communication Center migrations or runtime activation proceed.
+
 Before release:
 
+- verified vendor package activation is complete and current lock matches installed state;
 - migrations apply successfully;
 - `CommunicationDeliveryBoundaryTest` is green;
 - Communication feature/unit tests are green;
