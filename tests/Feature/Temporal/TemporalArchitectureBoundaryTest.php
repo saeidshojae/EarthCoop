@@ -31,6 +31,10 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'resources/views/groups/partials/poll.blade.php',
             'app/Modules/Stock/Views/admin_reports/financial.blade.php',
             'app/Modules/Stock/Views/admin_reports/auction_performance.blade.php',
+            'app/Modules/Stock/Views/auction_show.blade.php',
+            'app/Modules/Stock/Views/auction_list.blade.php',
+            'app/Modules/Stock/Views/admin_auction_show.blade.php',
+            'app/Modules/Stock/Views/admin_auction_list.blade.php',
             'resources/js/temporal-input.js',
         ];
     }
