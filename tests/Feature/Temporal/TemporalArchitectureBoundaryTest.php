@@ -33,6 +33,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Services/TicketSlaService.php',
             'resources/views/admin/user/transactions.blade.php',
             'resources/views/elections/responsibility-offer-confirm.blade.php',
+            'resources/views/groups/partials/comment.blade.php',
             'resources/views/groups/partials/poll.blade.php',
             'resources/views/partials/comments.blade.php',
             'app/Modules/Stock/Views/admin_auction_create.blade.php',
