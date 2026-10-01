@@ -84,6 +84,19 @@ final class TemporalManager implements TemporalService
         return $this->adapter($context)->parseDate($value);
     }
 
+    public function parseDateParts(int $day, int $month, int $year, ?TemporalContext $context = null): LocalDate
+    {
+        $context ??= $this->contexts->defaultContext();
+
+        $value = match ($context->calendar()) {
+            'jalali' => sprintf('%04d/%02d/%02d', $year, $month, $day),
+            'gregorian' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+            default => throw new InvalidArgumentException("Unsupported calendar: {$context->calendar()}"),
+        };
+
+        return $this->adapter($context)->parseDate($value);
+    }
+
     private function adapter(TemporalContext $context): CalendarAdapter
     {
         return match ($context->calendar()) {
