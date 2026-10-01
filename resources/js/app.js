@@ -59,8 +59,10 @@ const loadSwiperRuntime = () => { if (document.querySelector('swiper-container')
 const loadMemberInvitationRuntime = () => { if (document.querySelector('.invite-page-shell')) importFeature(() => import("./member-invitation-share.js"), "member invitation sharing"); };
 const loadProjectFormMobileRuntime = () => { const path = window.location.pathname.replace(/\/+$/, '') || '/'; if (path === '/najm-bahar/projects/create' || /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path)) importFeature(() => import("./project-form-mobile.js"), "project form mobile UX"); };
 const loadTemporalInputRuntime = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
-    if (hasTemporalInputs) importFeature(() => import("./temporal-input.js"), "temporal input");
+    const hasLegacyNajmBaharAnalyticsFilters = path === '/admin/najm-bahar/analytics';
+    if (hasTemporalInputs || hasLegacyNajmBaharAnalyticsFilters) importFeature(() => import("./temporal-input.js"), "temporal input");
 };
 const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadPrivateMessagingRuntime(); loadMyParticipationRuntime(); loadSwiperRuntime(); loadMemberInvitationRuntime(); loadProjectFormMobileRuntime(); loadTemporalInputRuntime(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
