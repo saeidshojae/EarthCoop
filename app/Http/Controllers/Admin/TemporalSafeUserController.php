@@ -7,9 +7,13 @@ use App\Modules\NajmBahar\Services\MembershipRemovalService;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\UserResidenceReadModel;
 use App\Services\Users\UserManagementService;
+use App\Temporal\Context\TemporalContext;
 use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use App\Temporal\Policies\AgePolicy;
+use App\Temporal\ValueObjects\LocalDate;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use InvalidArgumentException;
@@ -38,6 +42,114 @@ final class TemporalSafeUserController extends SafeUserController
             $canonicalGroupMembershipReconciler,
             $residenceReadModel,
         );
+    }
+
+    public function index(Request $request)
+    {
+        $query = User::members()->with([
+            'address.country',
+            'address.province',
+            'address.county',
+            'address.section',
+            'address.city',
+            'address.rural',
+            'address.region',
+            'address.village',
+            'address.neighborhood',
+            'address.street',
+            'address.alley',
+            'occupationalFields',
+            'experienceFields',
+            'groups',
+        ]);
+
+        if ($request->filled('search')) {
+            $search = (string) $request->input('search');
+            $query->where(function ($q) use ($search): void {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('national_id', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->input('gender'));
+        }
+
+        if ($request->filled('email_verified')) {
+            $request->input('email_verified') === '1'
+                ? $query->whereNotNull('email_verified_at')
+                : $query->whereNull('email_verified_at');
+        }
+
+        if ($request->filled('province_id')) {
+            $provinceId = $request->input('province_id');
+            $query->whereHas('address', fn ($q) => $q->where('province_id', $provinceId));
+        }
+
+        $context = $this->temporalContexts->defaultContext();
+        $this->applyLocalizedDateRange($query, $request, 'created_at', 'created_from', 'created_to', $context);
+
+        $users = $query->orderBy('created_at', 'desc')->get();
+        $today = $this->localToday($context);
+
+        $stats = [
+            'total' => User::members()->count(),
+            'active' => User::members()->where('status', 'active')->count(),
+            'inactive' => User::members()->where('status', 'inactive')->count(),
+            'suspended' => User::members()->where('status', 'suspended')->count(),
+            'verified' => User::members()->whereNotNull('email_verified_at')->count(),
+            'unverified' => User::members()->whereNull('email_verified_at')->count(),
+            'today' => User::members()->whereBetween('created_at', [
+                $this->temporal->startOfDay($today, $context),
+                $this->temporal->endOfDay($today, $context),
+            ])->count(),
+            // Preserve the historical application-wide semantics for these two
+            // aggregate cards. Calendar-aware month/week periods are a separate
+            // reporting concern and must not be silently redefined here.
+            'this_week' => User::members()->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'this_month' => User::members()->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+        ];
+
+        $provinces = \App\Models\Province::orderBy('name')->get();
+
+        $registrationChartData = [];
+        $canonicalToday = new DateTimeImmutable($today->toCanonical(), new DateTimeZone('UTC'));
+        for ($i = 29; $i >= 0; $i--) {
+            $date = LocalDate::fromCanonical($canonicalToday->modify("-{$i} days")->format('Y-m-d'));
+            $count = User::members()->whereBetween('created_at', [
+                $this->temporal->startOfDay($date, $context),
+                $this->temporal->endOfDay($date, $context),
+            ])->count();
+
+            $registrationChartData[] = [
+                'date' => $this->temporal->date($date, $context, 'short'),
+                'count' => $count,
+            ];
+        }
+
+        $geographicDistribution = User::members()
+            ->whereHas('address', fn ($q) => $q->whereNotNull('province_id'))
+            ->with('address.province')
+            ->get()
+            ->groupBy(fn ($user) => $user->address && $user->address->province ? $user->address->province->name : 'نامشخص')
+            ->map(fn ($users) => $users->count())
+            ->sortDesc()
+            ->take(10);
+
+        return view('admin.user.index', compact(
+            'users',
+            'stats',
+            'provinces',
+            'registrationChartData',
+            'geographicDistribution',
+        ));
     }
 
     public function store(Request $request)
@@ -103,7 +215,64 @@ final class TemporalSafeUserController extends SafeUserController
         return parent::update($request, $user);
     }
 
-    private function parseBirthDateParts(array $parts): ?\App\Temporal\ValueObjects\LocalDate
+    public function transactions(Request $request, User $user)
+    {
+        $query = \App\Models\UserPointTransaction::where('user_id', $user->id);
+
+        if ($request->filled('action')) {
+            $query->where('action', $request->input('action'));
+        }
+
+        $this->applyLocalizedDateRange(
+            $query,
+            $request,
+            'created_at',
+            'date_from',
+            'date_to',
+            $this->temporalContexts->defaultContext(),
+        );
+
+        $transactions = $query->orderByDesc('created_at')->paginate(25)->appends($request->except('page'));
+        $currentPoints = optional(\App\Models\UserPoint::where('user_id', $user->id)->first())->points ?? 0;
+
+        return view('admin.user.transactions', compact('user', 'transactions', 'currentPoints'));
+    }
+
+    private function applyLocalizedDateRange(
+        $query,
+        Request $request,
+        string $column,
+        string $fromField,
+        string $toField,
+        TemporalContext $context,
+    ): void {
+        if ($request->filled($fromField)) {
+            try {
+                $from = $this->temporal->parseDate((string) $request->input($fromField), $context);
+                $query->where($column, '>=', $this->temporal->startOfDay($from, $context));
+            } catch (\Throwable) {
+                // Preserve legacy optional-filter behavior: ignore malformed input.
+            }
+        }
+
+        if ($request->filled($toField)) {
+            try {
+                $to = $this->temporal->parseDate((string) $request->input($toField), $context);
+                $query->where($column, '<=', $this->temporal->endOfDay($to, $context));
+            } catch (\Throwable) {
+                // Preserve legacy optional-filter behavior: ignore malformed input.
+            }
+        }
+    }
+
+    private function localToday(TemporalContext $context): LocalDate
+    {
+        $localNow = new DateTimeImmutable('now', new DateTimeZone($context->timezone()));
+
+        return LocalDate::fromCanonical($localNow->format('Y-m-d'));
+    }
+
+    private function parseBirthDateParts(array $parts): ?LocalDate
     {
         if (count($parts) < 3) {
             return null;
