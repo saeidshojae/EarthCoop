@@ -1,7 +1,7 @@
 name: earthcoop_mobile
 description: EarthCoop native mobile client.
 publish_to: none
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -20,6 +20,7 @@ dependencies:
   go_router: ^18.0.2
   huawei_push: ^6.15.0+300
   json_annotation: ^4.12.0
+  package_info_plus: ^10.2.1
   path: ^1.9.1
   path_provider: ^2.1.6
 
