@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\ProfileCompletionService;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Morilog\Jalali\Jalalian;
 
 final class CanonicalProfileMembershipController extends Controller
 {
@@ -83,12 +83,14 @@ final class CanonicalProfileMembershipController extends Controller
 
         DB::transaction(function () use ($user, $birthDate, $reconciler): void {
             if (is_array($birthDate) && count($birthDate) >= 3) {
+                $canonicalBirthDate = app(TemporalService::class)->parseDateParts(
+                    (int) $birthDate[0],
+                    (int) $birthDate[1],
+                    (int) $birthDate[2],
+                );
+
                 $user->forceFill([
-                    'birth_date' => (new Jalalian(
-                        (int) $birthDate[2],
-                        (int) $birthDate[1],
-                        (int) $birthDate[0],
-                    ))->toCarbon(),
+                    'birth_date' => $canonicalBirthDate->toCanonical(),
                 ])->save();
             }
 
