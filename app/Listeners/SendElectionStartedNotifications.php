@@ -5,12 +5,16 @@ namespace App\Listeners;
 use App\Events\ElectionStarted;
 use App\Models\GroupUser;
 use App\Services\NotificationService;
-use Morilog\Jalali\Jalalian;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 
 class SendElectionStartedNotifications
 {
-    public function __construct(private NotificationService $notifications)
-    {
+    public function __construct(
+        private NotificationService $notifications,
+        private TemporalService $temporal,
+        private TemporalContextResolver $temporalContexts,
+    ) {
     }
 
     public function handle(ElectionStarted $event): void
@@ -29,11 +33,15 @@ class SendElectionStartedNotifications
             return;
         }
 
-        $endsAt = Jalalian::fromCarbon($election->ends_at)->format('Y/m/d H:i');
-        
+        $endsAt = $this->temporal->dateTime(
+            $election->ends_at,
+            $this->temporalContexts->defaultContext(),
+            'short',
+        );
+
         $title = 'انتخابات جدید در گروه ' . ($group->name ?? '');
         $preview = "انتخابات برای انتخاب هیأت مدیره و بازرسان شروع شد. مهلت رای‌گیری تا {$endsAt} است.";
-        
+
         $url = route('groups.chat', $group->id);
         $context = [
             'group_id' => $group->id,
@@ -51,4 +59,3 @@ class SendElectionStartedNotifications
         );
     }
 }
-
