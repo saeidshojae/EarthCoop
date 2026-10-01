@@ -120,15 +120,19 @@ export const markLegacyAnalyticsDateInputs = (root = document, locale = resolved
 
 let persianDatepickerPromise = null;
 
+const existingPersianDatepicker = () => window.jQuery?.fn?.persianDatepicker;
+
 const loadBundledPersianDatepicker = async () => {
+    const existing = existingPersianDatepicker();
+    if (typeof existing === 'function') return existing;
     if (persianDatepickerPromise) return persianDatepickerPromise;
 
     persianDatepickerPromise = (async () => {
         const persianDateModule = await import('persian-date');
-        window.persianDate = persianDateModule.default || persianDateModule;
+        window.persianDate = window.persianDate || persianDateModule.default || persianDateModule;
         await import('persian-datepicker/dist/js/persian-datepicker.min.js');
 
-        return window.jQuery?.fn?.persianDatepicker;
+        return existingPersianDatepicker();
     })();
 
     return persianDatepickerPromise;
