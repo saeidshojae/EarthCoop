@@ -72,6 +72,29 @@ export const enhanceLegacyBirthDate = (root = document, locale = document.docume
     return true;
 };
 
+export const markLegacyAnalyticsDateInputs = (root = document, locale = document.documentElement.lang || 'fa') => {
+    if (calendarForLocale(locale) !== 'jalali') return false;
+    if (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') !== '/admin/najm-bahar/analytics') {
+        return false;
+    }
+
+    const inputs = [...root.querySelectorAll('input[name="date_from"], input[name="date_to"]')];
+    if (inputs.length === 0) return false;
+
+    inputs.forEach((input) => {
+        const rawValue = input.getAttribute('value') || input.value || '';
+        input.type = 'text';
+        input.dataset.temporalDateInput = '';
+        input.dataset.calendar = 'jalali';
+        input.inputMode = 'numeric';
+        input.autocomplete = 'off';
+        input.placeholder = '۱۴۰۵/۰۷/۰۹';
+        input.value = rawValue;
+    });
+
+    return true;
+};
+
 let persianDatepickerPromise = null;
 
 const loadBundledPersianDatepicker = async () => {
@@ -116,6 +139,7 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 export const enhanceTemporalInputs = async (root = document) => {
     const locale = document.documentElement.lang || 'fa';
     enhanceLegacyBirthDate(root, locale);
+    markLegacyAnalyticsDateInputs(root, locale);
 
     if (calendarForLocale(locale) === 'jalali') {
         await enhanceJalaliDateInputs(root);
