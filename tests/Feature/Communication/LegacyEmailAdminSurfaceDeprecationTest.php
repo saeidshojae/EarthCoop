@@ -21,13 +21,11 @@ final class LegacyEmailAdminSurfaceDeprecationTest extends TestCase
             'body' => 'Old body',
             'is_active' => true,
         ]);
+        $canonical = route('admin.communications.templates.index');
 
-        $this->actingAs($admin)->get('/admin/emails')
-            ->assertRedirect(route('admin.communications.templates.index'));
-        $this->actingAs($admin)->get('/admin/emails/create')
-            ->assertRedirect(route('admin.communications.templates.index'));
-        $this->actingAs($admin)->get('/admin/emails/'.$legacy->id.'/edit')
-            ->assertRedirect(route('admin.communications.templates.show', 'legacy.email-template.'.$legacy->id));
+        $this->actingAs($admin)->get('/admin/emails')->assertRedirect($canonical);
+        $this->actingAs($admin)->get('/admin/emails/create')->assertRedirect($canonical);
+        $this->actingAs($admin)->get('/admin/emails/'.$legacy->id.'/edit')->assertRedirect($canonical);
     }
 
     public function test_legacy_template_mutation_endpoints_no_longer_mutate_legacy_rows(): void
@@ -96,5 +94,16 @@ final class LegacyEmailAdminSurfaceDeprecationTest extends TestCase
             'name' => 'Legacy Sender',
             'email' => 'legacy-sender@example.test',
         ]);
+    }
+
+    public function test_admin_sidebar_exposes_only_canonical_communication_management_entry(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
+
+        $this->assertIsString($sidebar);
+        $this->assertStringContainsString("route('admin.communications.index')", $sidebar);
+        $this->assertStringNotContainsString("route('admin.emails.index')", $sidebar);
+        $this->assertStringNotContainsString("route('admin.system-emails.index')", $sidebar);
+        $this->assertStringNotContainsString("route('admin.emails.send')", $sidebar);
     }
 }
