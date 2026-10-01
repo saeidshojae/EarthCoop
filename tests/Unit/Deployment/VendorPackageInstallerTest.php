@@ -143,7 +143,7 @@ class VendorPackageInstallerTest extends TestCase
         app(VendorPackageInstaller::class)->install();
         $after = app(VendorPackageInstaller::class)->status();
 
-        $this->assertTrue($after['pending']['available']);
+        $this->assertFalse($after['pending']['available']);
         $this->assertTrue($after['installed']['available']);
         $this->assertTrue($after['current_lock_matches_installed']);
     }
