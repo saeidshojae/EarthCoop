@@ -7,16 +7,20 @@ use App\Models\Election;
 use App\Models\GroupUser;
 use App\Models\Vote;
 use App\Services\NotificationService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Console\Command;
-use Morilog\Jalali\Jalalian;
 
 class SendElectionReminders extends Command
 {
     protected $signature = 'elections:send-reminders';
     protected $description = 'ارسال اعلان دعوت به شرکت در انتخابات برای کاربرانی که هنوز رای نداده‌اند';
 
-    public function __construct(private NotificationService $notifications)
-    {
+    public function __construct(
+        private NotificationService $notifications,
+        private TemporalService $temporal,
+        private TemporalContextResolver $temporalContexts,
+    ) {
         parent::__construct();
     }
 
@@ -76,10 +80,9 @@ class SendElectionReminders extends Command
                 continue;
             }
 
-            $endsAt = Jalalian::fromCarbon($election->ends_at);
-            $now = Jalalian::now();
-            $remainingDays = $endsAt->diffInDays($now);
-            $remainingHours = $endsAt->diffInHours($now) % 24;
+            $now = now();
+            $remainingDays = (int) $election->ends_at->diffInDays($now);
+            $remainingHours = ((int) $election->ends_at->diffInHours($now)) % 24;
 
             if ($remainingDays > 0) {
                 $timeRemaining = "{$remainingDays} روز";
@@ -89,7 +92,11 @@ class SendElectionReminders extends Command
                 $timeRemaining = 'کمتر از یک ساعت';
             }
 
-            $endsAtFormatted = $endsAt->format('Y/m/d H:i');
+            $endsAtFormatted = $this->temporal->dateTime(
+                $election->ends_at,
+                $this->temporalContexts->defaultContext(),
+                'short',
+            );
             $title = 'یادآوری: انتخابات گروه ' . ($group->name ?? '');
             $preview = "انتخابات گروه {$group->name} در حال برگزاری است. {$timeRemaining} تا پایان انتخابات باقی مانده است. (تا {$endsAtFormatted})";
             $url = route('groups.chat', $group->id);
