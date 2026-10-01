@@ -14,7 +14,7 @@ class ChroniclePageTest extends TestCase
         $response->assertSee('گاه‌شمار ارث‌کوپ');
         $response->assertSee('مبدأ دوران ارث‌کوپ');
         $response->assertSee('۱ فروردین ۱۴۰۱');
-        $response->assertSee('21 March 2022');
+        $response->assertSee('March 21, 2022');
     }
 
     public function test_chronicle_keeps_earthcoop_year_outside_temporal_core(): void
