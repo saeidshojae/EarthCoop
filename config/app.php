@@ -116,8 +116,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | This key is utilized by Laravel's encryption services and should be set
-    | to a random, 32 character string to ensure that all encrypted values are
-    | secure. You should do this prior to deploying the application.
+    | to a random 32 character string so that these encrypted values remain
+    | secure. This key must be set before the application is deployed.
     |
     */
 
@@ -149,8 +149,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | The service providers listed here will be automatically loaded on the
-    | request to your application. Feel free to add your own services to
-    | this array to grant expanded functionality to your applications.
+    | request to your application. Feel free to register as many as you wish.
     |
     */
 
@@ -174,7 +173,6 @@ return [
         Illuminate\Notifications\NotificationServiceProvider::class,
         Illuminate\Pagination\PaginationServiceProvider::class,
         Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
         Illuminate\Redis\RedisServiceProvider::class,
         Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
         Illuminate\Session\SessionServiceProvider::class,
@@ -191,6 +189,7 @@ return [
          */
         App\Providers\AssetPipelineServiceProvider::class,
         App\Providers\AppServiceProvider::class,
+        App\Providers\TemporalServiceProvider::class,
         App\Providers\PushServiceProvider::class,
         App\Providers\StockExternalCapitalServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
