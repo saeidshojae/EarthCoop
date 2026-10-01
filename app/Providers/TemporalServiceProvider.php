@@ -27,6 +27,7 @@ final class TemporalServiceProvider extends ServiceProvider
                 (string) config('temporal.default_timezone', 'UTC'),
                 (string) config('app.locale', 'fa'),
                 static fn (): string => app()->getLocale(),
+                static fn () => auth()->user(),
             );
         });
 
