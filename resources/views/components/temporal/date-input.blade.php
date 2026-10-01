@@ -9,7 +9,7 @@
         inputmode="numeric"
         autocomplete="off"
         placeholder="۱۴۰۵/۰۷/۰۹"
-        pattern="[۰-۹0-9]{4}/[۰-۹0-9]{2}/[۰-۹0-9]{2}"
+        pattern="[۰-۹٠-٩0-9]{4}/[۰-۹٠-٩0-9]{2}/[۰-۹٠-٩0-9]{2}"
         aria-describedby="{{ $resolvedId() }}-format-hint"
     @endif
     @if($required) required @endif
