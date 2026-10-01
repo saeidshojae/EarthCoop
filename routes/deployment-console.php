@@ -21,6 +21,8 @@ Route::post('/run/{operation}', [DeploymentConsoleController::class, 'run'])
         'topology_dry_run',
         'readiness',
         'flag_status',
+        'vendor_package_status',
+        'vendor_package_install',
         'migrate',
         'bootstrap',
         'stage_c_group_policy_apply',
