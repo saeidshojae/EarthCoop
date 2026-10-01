@@ -6,6 +6,12 @@ use Tests\TestCase;
 
 class ChroniclePageTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_public_chronicle_route_exists(): void
     {
         $response = $this->get('/chronicle');
