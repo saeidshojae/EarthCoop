@@ -72,4 +72,5 @@ jobs:
             tests/Unit/Deployment/DeploymentConsoleServiceTest.php \
             tests/Feature/Admin/DeploymentConsoleSourceContractTest.php \
             tests/Feature/Admin/DeploymentConsoleSecurityTest.php \
-            tests/Feature/Admin/DeploymentConsoleExecutionTest.php
+            tests/Feature/Admin/DeploymentConsoleExecutionTest.php \
+            tests/Feature/Admin/DeploymentVendorPackageConsoleTest.php
