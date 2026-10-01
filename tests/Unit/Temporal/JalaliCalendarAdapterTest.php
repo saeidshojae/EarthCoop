@@ -24,11 +24,14 @@ class JalaliCalendarAdapterTest extends TestCase
         $this->assertSame('2026-10-01', $adapter->parseDate('۱۴۰۵/۰۷/۰۹')->toCanonical());
     }
 
-    public function test_jalali_adapter_formats_known_canonical_date(): void
+    public function test_jalali_adapter_formats_supported_styles(): void
     {
         $adapter = new JalaliCalendarAdapter(new DigitNormalizer());
+        $date = LocalDate::fromCanonical('2026-10-01');
 
-        $this->assertSame('1405/07/09', $adapter->formatDate(LocalDate::fromCanonical('2026-10-01'), 'short', 'fa'));
+        $this->assertSame('1405/07/09', $adapter->formatDate($date, 'short', 'fa'));
+        $this->assertSame('9 مهر 1405', $adapter->formatDate($date, 'medium', 'fa'));
+        $this->assertSame('پنجشنبه 9 مهر 1405', $adapter->formatDate($date, 'long', 'fa'));
     }
 
     public function test_jalali_leap_day_round_trips(): void
