@@ -6,10 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\InvitationCode;
 use App\Models\InvitationCodeLog;
-use App\Mail\InvitationRejectedMail;
 use App\Services\Invitation\InvitationManagementService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -18,7 +16,6 @@ class InvitationCodeController extends Controller
     public function index(Request $request)
     {
         if ($request->has('invation')) {
-            // Requests tab
             $statusMap = ['pending' => 0, 'issued' => 1, 'rejected' => 2];
             $reqQuery = Invitation::query()->with('reviewer');
             if ($request->filled('status') && isset($statusMap[$request->status])) {
@@ -75,7 +72,6 @@ class InvitationCodeController extends Controller
 
             $codes = $query->orderBy('created_at', 'desc')->get();
 
-            // Stats
             $now = now();
             $stats = [
                 'total' => InvitationCode::count(),
@@ -88,7 +84,6 @@ class InvitationCodeController extends Controller
                 'week' => InvitationCode::whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->count(),
             ];
 
-            // Charts (weekly: last 8 days; monthly: last 12 months)
             $days = collect(range(7,0))->map(function($d){ return now()->subDays($d)->format('Y-m-d'); });
             $createdDaily = [];
             $usedDaily = [];
@@ -112,7 +107,6 @@ class InvitationCodeController extends Controller
                     })->count();
             }
 
-            // Weekly (last 12 weeks)
             $weeks = collect(range(11,0))->map(function($w){ return now()->startOfWeek()->subWeeks($w); });
             $weekLabels = [];
             $createdWeekly = [];
@@ -177,7 +171,6 @@ class InvitationCodeController extends Controller
 
         $affected = 0;
         if ($validated['action'] === 'delete') {
-            // Log BEFORE deletion to satisfy FK constraint
             foreach ($validated['ids'] as $id) { $this->log($id, 'delete', ['by' => auth()->id()]); }
             $affected = InvitationCode::whereIn('id', $validated['ids'])->delete();
         } elseif ($validated['action'] === 'invalidate') {
@@ -228,7 +221,6 @@ class InvitationCodeController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        // از همان فیلترهای index استفاده می‌کنیم
         $request->merge(['invation' => null]);
         $query = InvitationCode::query();
 
@@ -255,7 +247,6 @@ class InvitationCodeController extends Controller
 
         return response()->stream(function () use ($query) {
             $out = fopen('php://output', 'w');
-            // UTF-8 BOM
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, ['ID', 'کد', 'وضعیت', 'صادرکننده', 'استفاده‌کننده', 'تاریخ ایجاد', 'تاریخ انقضا']);
             $query->orderBy('created_at', 'desc')->chunk(500, function ($chunk) use ($out) {
@@ -300,8 +291,6 @@ class InvitationCodeController extends Controller
         }
 
         $logs = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
-
-        // برای لیست اقدامات یکتا
         $actions = InvitationCodeLog::select('action')->distinct()->pluck('action');
 
         return view('admin.invitation_codes.logs', compact('logs', 'actions'));
@@ -359,7 +348,6 @@ class InvitationCodeController extends Controller
             ->where('created_at', '<=', $threshold)
             ->update(['expire_at' => now()->subMinute()]);
 
-        // log each? avoid heavy; optional
         return back()->withInput()->with('success', "بی‌اعتبارسازی خودکار روی {$affected} کد اعمال شد.");
     }
 
@@ -381,41 +369,27 @@ class InvitationCodeController extends Controller
         return back()->with('warning', 'کد دعوت صادر شد اما ثبت ایمیل در صف ارتباطات با خطا مواجه شد. لطفاً لاگ‌ها را بررسی کنید.');
     }
 
-    public function rejectInvitation(Request $request, Invitation $invitation)
-    {
+    public function rejectInvitation(
+        Request $request,
+        Invitation $invitation,
+        InvitationManagementService $invitations,
+    ) {
         $validated = $request->validate(['admin_note' => 'nullable|string|max:500']);
-        $invitation->status = 2; // rejected
-        $invitation->admin_note = $validated['admin_note'] ?? null;
-        $invitation->reviewed_by = auth()->id();
-        $invitation->reviewed_at = now();
-        $invitation->save();
+        $result = $invitations->reject(
+            $invitation,
+            (int) auth()->id(),
+            $validated['admin_note'] ?? null,
+        );
 
-        // log
-        $this->log(0, 'reject', ['invitation_id' => $invitation->id, 'email' => $invitation->email, 'note' => $invitation->admin_note]);
-
-        // Send rejection email
-        try {
-            \Log::info('Attempting to send rejection email', [
-                'email' => $invitation->email,
-                'mail_driver' => config('mail.default'),
-            ]);
-
-            Mail::to($invitation->email)->send(new InvitationRejectedMail($invitation->admin_note));
-
-            \Log::info('Rejection email sent successfully', [
-                'email' => $invitation->email,
-            ]);
-
-            return back()->with('success', 'درخواست رد شد و به ایمیل کاربر اطلاع داده شد.');
-        } catch (\Exception $e) {
-            \Log::error('Failed to send rejection email', [
-                'email' => $invitation->email,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return back()->with('warning', 'درخواست رد شد اما ارسال ایمیل با خطا مواجه شد. لطفاً لاگ‌ها را بررسی کنید.');
+        if (($result['status'] ?? null) === 'already_reviewed') {
+            return back()->with('success', 'این درخواست قبلاً بررسی شده است.');
         }
+
+        if ((bool) ($result['mail_queued'] ?? $result['mail_sent'] ?? false)) {
+            return back()->with('success', 'درخواست رد شد و ایمیل اطلاع‌رسانی در صف قرار گرفت.');
+        }
+
+        return back()->with('warning', 'درخواست رد شد اما ثبت ایمیل در صف ارتباطات با خطا مواجه شد. لطفاً لاگ‌ها را بررسی کنید.');
     }
 
     public function bulkRequests(Request $request, InvitationManagementService $invitations)
@@ -435,29 +409,11 @@ class InvitationCodeController extends Controller
             }
         } elseif ($validated['action'] === 'reject') {
             foreach (Invitation::whereIn('id', $validated['ids'])->get() as $inv) {
-                if ((int) $inv->status === 2) continue;
-                $inv->status = 2; // rejected
-                $inv->reviewed_by = auth()->id();
-                $inv->reviewed_at = now();
-                $inv->save();
-                $this->log(0, 'reject', ['invitation_id' => $inv->id, 'email' => $inv->email]);
-
-                // Send rejection email
-                try {
-                    \Log::info('Attempting to send bulk rejection email', ['email' => $inv->email]);
-                    Mail::to($inv->email)->send(new InvitationRejectedMail($inv->admin_note));
-                    \Log::info('Bulk rejection email sent successfully', ['email' => $inv->email]);
-                } catch (\Exception $e) {
-                    \Log::error('Failed to send bulk rejection email', [
-                        'email' => $inv->email,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                }
-
+                if ((int) $inv->status !== 0) continue;
+                $invitations->reject($inv, (int) auth()->id(), $inv->admin_note);
                 $count++;
             }
-        } else { // delete
+        } else {
             $count = Invitation::whereIn('id', $validated['ids'])->delete();
         }
 
