@@ -54,4 +54,20 @@ class TemporalContextResolverTest extends TestCase
         $this->assertSame('gregorian', $context->calendar());
         $this->assertSame('Europe/London', $context->timezone());
     }
+
+    public function test_default_context_tracks_active_runtime_locale(): void
+    {
+        $resolver = new TemporalContextResolver(
+            ['fa' => 'jalali', 'en' => 'gregorian', 'ar' => 'gregorian'],
+            'gregorian',
+            'UTC',
+            'fa',
+            static fn (): string => 'en',
+        );
+
+        $context = $resolver->defaultContext();
+
+        $this->assertSame('en', $context->locale());
+        $this->assertSame('gregorian', $context->calendar());
+    }
 }
