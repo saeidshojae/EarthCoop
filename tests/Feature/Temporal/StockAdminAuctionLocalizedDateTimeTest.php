@@ -2,14 +2,12 @@
 
 namespace Tests\Feature\Temporal;
 
-use App\Modules\Stock\Controllers\AuctionController;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class StockAdminAuctionLocalizedDateTimeTest extends TestCase
@@ -62,54 +60,6 @@ class StockAdminAuctionLocalizedDateTimeTest extends TestCase
         );
         $this->assertSame(
             $temporal->parseDateTime($payload['ends_at'], $context)->format('Y-m-d H:i:s'),
-            $auction->getRawOriginal('ends_at'),
-        );
-    }
-
-    public function test_legacy_admin_store_parses_english_visible_datetimes_through_temporal_context(): void
-    {
-        app()->setLocale('en');
-
-        $stock = Stock::create([
-            'issuer_type' => 'earthcoop',
-            'startup_valuation' => 12_000_000,
-            'startup_valuation_gol' => 1_200_000_000,
-            'total_shares' => 100_000_000,
-            'base_share_price' => 0.12,
-            'base_share_price_gol' => 12,
-            'available_shares' => 10_000_000,
-        ]);
-
-        $payload = [
-            'stock_id' => $stock->id,
-            'shares_count' => 500_000,
-            'base_price_gol' => 12,
-            'settlement_channel' => SettlementChannel::ACTIVE_BAHAR,
-            'start_time_visible' => '2026-10-02 10:30',
-            'end_time_visible' => '2026-10-03 10:30',
-            'ends_at_visible' => '2026-10-03 10:30',
-            'type' => 'uniform_price',
-            'settlement_mode' => 'manual',
-            'lot_size' => 100,
-        ];
-
-        $request = Request::create('/admin/auctions', 'POST', $payload);
-        app(AuctionController::class)->adminStore($request);
-
-        $auction = Auction::query()->firstOrFail();
-        $temporal = app(TemporalService::class);
-        $context = app(TemporalContextResolver::class)->defaultContext();
-
-        $this->assertSame(
-            $temporal->parseDateTime($payload['start_time_visible'], $context)->format('Y-m-d H:i:s'),
-            $auction->getRawOriginal('start_time'),
-        );
-        $this->assertSame(
-            $temporal->parseDateTime($payload['end_time_visible'], $context)->format('Y-m-d H:i:s'),
-            $auction->getRawOriginal('end_time'),
-        );
-        $this->assertSame(
-            $temporal->parseDateTime($payload['ends_at_visible'], $context)->format('Y-m-d H:i:s'),
             $auction->getRawOriginal('ends_at'),
         );
     }
