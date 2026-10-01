@@ -28,6 +28,9 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Services/TicketSlaService.php',
             'resources/views/elections/responsibility-offer-confirm.blade.php',
             'resources/views/groups/partials/poll.blade.php',
+            'app/Modules/Stock/Views/admin_reports/financial.blade.php',
+            'app/Modules/Stock/Views/admin_reports/auction_performance.blade.php',
+            'resources/js/temporal-input.js',
         ];
     }
 
