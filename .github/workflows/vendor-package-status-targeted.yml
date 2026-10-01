@@ -1,0 +1,34 @@
+name: Vendor Package Status Targeted
+
+on:
+  push:
+    branches:
+      - agent/vendor-package-status-current-20261001
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vendor-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, zip
+          coverage: none
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Create test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Run vendor package status regression
+        run: php artisan test tests/Unit/Deployment/VendorPackageInstallerTest.php
