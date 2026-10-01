@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/app_environment.dart';
@@ -29,12 +30,10 @@ const _apiBaseUrl = String.fromEnvironment(
   'EARTHCOOP_API_BASE_URL',
   defaultValue: 'https://earthcoop.ir/api/v1',
 );
-const _appVersion = String.fromEnvironment(
-  'EARTHCOOP_APP_VERSION',
-  defaultValue: '0.1.0',
-);
 
 Future<MobileAppRuntime> createProductionRuntime() async {
+  final packageInfo = await PackageInfo.fromPlatform();
+  final appVersion = packageInfo.version;
   final apiConfiguration = ApiConfiguration(
     environment: AppEnvironment.production,
     baseUrl: Uri.parse(_apiBaseUrl),
@@ -78,7 +77,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   final bootstrapService = AppBootstrapService.fromApiClient(
     apiClient: apiClient,
     platform: 'android',
-    appVersion: _appVersion,
+    appVersion: appVersion,
     snapshotStore: bootstrapSnapshotStore,
     clock: DateTime.now,
   );
@@ -91,7 +90,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     sessionController: sessionController,
     deviceContext: () => DeviceContext(
       platform: 'android',
-      appVersion: _appVersion,
+      appVersion: appVersion,
       locale: 'fa',
       timezone: DateTime.now().timeZoneName,
       pushCapable: true,
