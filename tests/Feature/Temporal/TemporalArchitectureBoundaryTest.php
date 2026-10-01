@@ -70,7 +70,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Modules/Stock/Controllers/AuctionController.php: verta(',
             'app/Modules/Stock/Controllers/StockController.php: Jalalian::',
             'app/Modules/Stock/Controllers/StockController.php: Morilog\\Jalali',
-            'app/Modules/Stock/Views/wallet_index.blade.php: verta(',
             'app/Services/NajmHoda/NajmHodaGroupAssistantService.php: verta(',
             'resources/views/Stock/admin_holdings_show.blade.php: Jalalian::',
             'resources/views/Stock/admin_holdings_show.blade.php: Morilog\\Jalali',
