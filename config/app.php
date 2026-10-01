@@ -192,6 +192,7 @@ return [
         App\Providers\AssetPipelineServiceProvider::class,
         App\Providers\AppServiceProvider::class,
         App\Providers\TemporalServiceProvider::class,
+        App\Providers\ChronicleServiceProvider::class,
         App\Providers\PushServiceProvider::class,
         App\Providers\StockExternalCapitalServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
