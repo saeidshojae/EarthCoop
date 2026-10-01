@@ -11,6 +11,29 @@ export const calendarForLocale = (locale = '') => baseLocale(locale) === 'fa'
     ? 'jalali'
     : 'gregorian';
 
+export const localeFromCookie = (cookieString = '') => {
+    const pair = String(cookieString || '')
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('earthcoop_locale='));
+
+    if (!pair) return '';
+
+    try {
+        return decodeURIComponent(pair.slice('earthcoop_locale='.length));
+    } catch {
+        return '';
+    }
+};
+
+export const resolvedLocale = () => {
+    if (typeof document === 'undefined') return 'fa';
+
+    return localeFromCookie(document.cookie)
+        || document.documentElement.lang
+        || 'fa';
+};
+
 export const gregorianBirthYears = (currentYear = new Date().getFullYear(), minimumAge = 15, span = 135) => {
     const newest = currentYear - minimumAge;
     const oldest = newest - span;
@@ -39,7 +62,7 @@ const replaceOptions = (select, options, placeholder, selectedValue = '') => {
     });
 };
 
-export const enhanceLegacyBirthDate = (root = document, locale = document.documentElement.lang || 'fa') => {
+export const enhanceLegacyBirthDate = (root = document, locale = resolvedLocale()) => {
     const selects = [...root.querySelectorAll('select[name="birth_date[]"]')];
     if (selects.length !== 3 || calendarForLocale(locale) !== 'gregorian') return false;
 
@@ -72,7 +95,7 @@ export const enhanceLegacyBirthDate = (root = document, locale = document.docume
     return true;
 };
 
-export const markLegacyAnalyticsDateInputs = (root = document, locale = document.documentElement.lang || 'fa') => {
+export const markLegacyAnalyticsDateInputs = (root = document, locale = resolvedLocale()) => {
     if (calendarForLocale(locale) !== 'jalali') return false;
     if (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') !== '/admin/najm-bahar/analytics') {
         return false;
@@ -137,7 +160,7 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 };
 
 export const enhanceTemporalInputs = async (root = document) => {
-    const locale = document.documentElement.lang || 'fa';
+    const locale = resolvedLocale();
     enhanceLegacyBirthDate(root, locale);
     markLegacyAnalyticsDateInputs(root, locale);
 
