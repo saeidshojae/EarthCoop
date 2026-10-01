@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Communication;
 
+use App\Jobs\Communication\DeliverCommunicationRecipient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -28,5 +29,18 @@ class CommunicationQueueInfrastructureTest extends TestCase
                 "Missing required queue column: {$column}"
             );
         }
+    }
+
+    public function test_communication_job_is_persisted_on_named_database_queue(): void
+    {
+        config()->set('queue.default', 'database');
+
+        DeliverCommunicationRecipient::dispatch(12345)
+            ->onQueue('communications-critical');
+
+        $this->assertDatabaseHas('jobs', [
+            'queue' => 'communications-critical',
+            'attempts' => 0,
+        ]);
     }
 }
