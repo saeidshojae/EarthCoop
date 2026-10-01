@@ -12,7 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('production runtime derives version from installed package metadata', () {
+  test('production runtime derives version from installed package metadata',
+      () {
     final source = File(
       'lib/app/runtime/production_runtime.dart',
     ).readAsStringSync();
