@@ -4,15 +4,17 @@ This runbook is the operational contract for delivering Composer dependencies to
 
 ## 1. Why this flow exists
 
-The normal application FTP sync deliberately excludes `vendor/**` and `storage/**`. Production dependencies are built from the committed `composer.lock` in GitHub Actions, compressed into one ZIP, accompanied by a SHA-256 manifest, and transferred in a second package-only FTPS sync to:
+The normal application FTP sync deliberately excludes `vendor/**` and `storage/**`. Production dependencies are built from the committed `composer.lock` in GitHub Actions. When `composer.lock` changes, CI compresses the generated `vendor/` tree into one ZIP, accompanies it with a SHA-256 manifest, and transfers both in a second package-only FTPS sync to:
 
 `storage/deployment/vendor-packages/`
+
+Code-only deployments whose `composer.lock` is unchanged do not build or transfer a new vendor package. A manual `workflow_dispatch` intentionally forces package generation so the recovery path remains available.
 
 Do not restore file-by-file FTP upload of `vendor/`. It is slow, non-atomic, and can leave Production with a partially updated dependency tree.
 
 ## 2. Release artifacts
 
-For each deployment CI creates:
+When a dependency package is required, CI creates:
 
 - `vendor-<composer-lock-sha256>.zip`
 - `manifest.json`
@@ -24,16 +26,17 @@ The server-side installer recomputes checksums. A package is not trusted merely 
 ## 3. Deployment order
 
 1. GitHub Safety Gate passes, including `composer audit --no-dev --abandoned=report`.
-2. GitHub builds Production dependencies from the committed lock.
-3. CI creates and locally verifies the vendor ZIP and manifest.
+2. GitHub builds Production dependencies from the committed lock for validation/bootstrap purposes.
+3. CI compares the current release with the previous main release. If `composer.lock` changed, it creates and locally verifies the vendor ZIP and manifest. A manual workflow run also forces this step.
 4. Normal application files sync by FTPS with `vendor/**`, `storage/**`, `.env`, tests and CI files excluded.
-5. A second FTPS sync transfers only the ZIP and manifest into `storage/deployment/vendor-packages/`.
-6. The release is **not dependency-complete yet**. Open the protected Deployment Console.
-7. Run `vendor_package_status` and verify the pending package matches the current `composer.lock`.
-8. Run `vendor_package_install` only with exact secondary confirmation `INSTALL-VENDOR-PACKAGE`.
-9. Confirm the result is successful and the installed-state record now matches the current lock.
-10. Only after vendor activation, run any required forward migrations through the existing `migrate` operation.
-11. Perform application smoke checks.
+5. If a vendor package was created, a second FTPS sync transfers only the ZIP and manifest into `storage/deployment/vendor-packages/`.
+6. If no package was created because `composer.lock` is unchanged, the dependency portion of the release is already current and no vendor activation is required.
+7. If a package was transferred, open the protected Deployment Console and run `vendor_package_status`.
+8. Verify the pending package matches the current `composer.lock`.
+9. Run `vendor_package_install` only with exact secondary confirmation `INSTALL-VENDOR-PACKAGE`.
+10. Confirm the result is successful and the installed-state record now matches the current lock.
+11. Only after any required vendor activation, run forward migrations through the existing `migrate` operation.
+12. Perform application smoke checks.
 
 ## 4. Deployment Console checks
 
@@ -47,6 +50,8 @@ The package status panel exposes only sanitized metadata:
 - package creation time;
 - installed time;
 - current-lock match indicators.
+
+`Pending` means that the available manifest represents a different Composer dependency set from the installed state. A newer code commit with the same `composer.lock` is not a pending dependency update.
 
 It does not expose absolute filesystem paths or accept a package/manifest path from the browser.
 
@@ -75,7 +80,7 @@ There is no recursive in-place vendor merge fallback.
 
 ### Package or manifest did not arrive
 
-Do not install. The current vendor remains untouched. Re-run the deployment/package transfer after diagnosing FTPS.
+First confirm whether `composer.lock` changed. For a code-only deployment with an unchanged lock, the package sync is expected to be skipped. If a package was required and did not arrive, do not install; the current vendor remains untouched. Re-run the deployment/package transfer after diagnosing FTPS.
 
 ### Checksum or lock mismatch
 
@@ -132,7 +137,7 @@ For Communication Center releases additionally follow `docs/operations/COMMUNICA
 Stop the release if any of these are true:
 
 - Composer security audit is not clean;
-- pending package lock hash does not match deployed `composer.lock`;
+- a required pending package lock hash does not match deployed `composer.lock`;
 - package checksum fails;
 - installer reports unsafe archive entries;
 - staged/live paths are not on the same filesystem;

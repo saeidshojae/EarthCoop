@@ -148,6 +148,29 @@ class VendorPackageInstallerTest extends TestCase
         $this->assertTrue($after['current_lock_matches_installed']);
     }
 
+    public function test_status_does_not_report_a_new_code_release_as_pending_when_composer_lock_is_unchanged(): void
+    {
+        $this->writeValidPackage([
+            'vendor/autoload.php' => '<?php return new \\Composer\\Autoload\\ClassLoader();',
+            'vendor/composer/installed.json' => '{}',
+        ]);
+
+        $result = app(VendorPackageInstaller::class)->install();
+        $this->assertTrue($result['success'], $result['message'] ?? '');
+
+        $manifestPath = $this->packages.'/manifest.json';
+        $manifest = json_decode(file_get_contents($manifestPath), true, flags: JSON_THROW_ON_ERROR);
+        $manifest['source_git_sha'] = 'new-code-only-release';
+        $manifest['package_sha256'] = str_repeat('b', 64);
+        file_put_contents($manifestPath, json_encode($manifest, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+        $status = app(VendorPackageInstaller::class)->status();
+
+        $this->assertFalse($status['pending']['available']);
+        $this->assertTrue($status['installed']['available']);
+        $this->assertTrue($status['current_lock_matches_installed']);
+    }
+
     public function test_missing_autoload_rejects_staged_vendor(): void
     {
         $this->writeValidPackage(['vendor/composer/installed.json' => '{}']);
