@@ -17,11 +17,14 @@ class GregorianCalendarAdapterTest extends TestCase
         $this->assertSame('2026-10-01', $adapter->parseDate('2026-10-01')->toCanonical());
     }
 
-    public function test_gregorian_adapter_formats_short_date(): void
+    public function test_gregorian_adapter_formats_supported_styles(): void
     {
         $adapter = new GregorianCalendarAdapter(new DigitNormalizer());
+        $date = LocalDate::fromCanonical('2026-10-01');
 
-        $this->assertSame('2026-10-01', $adapter->formatDate(LocalDate::fromCanonical('2026-10-01'), 'short', 'en'));
+        $this->assertSame('2026-10-01', $adapter->formatDate($date, 'short', 'en'));
+        $this->assertSame('Oct 1, 2026', $adapter->formatDate($date, 'medium', 'en'));
+        $this->assertSame('Thursday, October 1, 2026', $adapter->formatDate($date, 'long', 'en'));
     }
 
     public function test_gregorian_adapter_rejects_invalid_date(): void
