@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Admin\TemporalSafeUserController;
+use App\Http\Controllers\Admin\UserController;
 use App\Temporal\Calendars\GregorianCalendarAdapter;
 use App\Temporal\Calendars\JalaliCalendarAdapter;
 use App\Temporal\Context\TemporalContextResolver;
@@ -32,5 +34,11 @@ final class TemporalServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(TemporalService::class, TemporalManager::class);
+
+        // AppServiceProvider first binds the legacy admin controller to the
+        // estate/location-safe boundary. TemporalServiceProvider is registered
+        // afterwards, so this final binding layers localized date handling on
+        // top without bypassing SafeUserController's lifecycle protections.
+        $this->app->bind(UserController::class, TemporalSafeUserController::class);
     }
 }
