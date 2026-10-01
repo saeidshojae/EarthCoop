@@ -69,6 +69,16 @@ class TemporalManagerTest extends TestCase
         );
     }
 
+    public function test_local_day_boundaries_are_converted_to_utc_from_context_timezone(): void
+    {
+        [$manager, $resolver] = $this->manager();
+        $context = $resolver->forLocale('fa', 'Asia/Tehran');
+        $date = LocalDate::fromCanonical('2026-10-01');
+
+        $this->assertSame('2026-09-30T20:30:00+00:00', $manager->startOfDay($date, $context)->format('c'));
+        $this->assertSame('2026-10-01T20:29:59+00:00', $manager->endOfDay($date, $context)->format('c'));
+    }
+
     public function test_same_instant_can_resolve_to_different_civil_dates_by_timezone(): void
     {
         [$manager, $resolver] = $this->manager();
