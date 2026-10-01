@@ -33,14 +33,15 @@ class TemporalManagerTest extends TestCase
         ];
     }
 
-    public function test_manager_parses_and_formats_using_context_calendar(): void
+    public function test_manager_parses_and_formats_using_context_calendar_and_numbering(): void
     {
         [$manager, $resolver] = $this->manager();
         $fa = $resolver->forLocale('fa', 'Asia/Tehran');
         $en = $resolver->forLocale('en', 'Europe/London');
 
         $this->assertSame('2026-10-01', $manager->parseDate('1405/07/09', $fa)->toCanonical());
-        $this->assertSame('1405/07/09', $manager->date(LocalDate::fromCanonical('2026-10-01'), $fa, 'short'));
+        $this->assertSame('۱۴۰۵/۰۷/۰۹', $manager->date(LocalDate::fromCanonical('2026-10-01'), $fa, 'short'));
+        $this->assertSame('۹ مهر ۱۴۰۵', $manager->date(LocalDate::fromCanonical('2026-10-01'), $fa, 'medium'));
         $this->assertSame('2026-10-01', $manager->date(LocalDate::fromCanonical('2026-10-01'), $en, 'short'));
     }
 
