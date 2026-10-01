@@ -80,7 +80,7 @@ const loadBundledPersianDatepicker = async () => {
     persianDatepickerPromise = (async () => {
         const persianDateModule = await import('persian-date');
         window.persianDate = persianDateModule.default || persianDateModule;
-        await import('persian-datepicker');
+        await import('persian-datepicker/dist/js/persian-datepicker.min.js');
 
         return window.jQuery?.fn?.persianDatepicker;
     })();
