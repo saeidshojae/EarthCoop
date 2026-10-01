@@ -110,6 +110,28 @@ final class TemporalManager implements TemporalService
         return $this->adapter($context)->parseDate($value);
     }
 
+    public function startOfDay(LocalDate $date, ?TemporalContext $context = null): DateTimeImmutable
+    {
+        $context ??= $this->contexts->defaultContext();
+        $local = new DateTimeImmutable(
+            $date->toCanonical() . ' 00:00:00',
+            new DateTimeZone($context->timezone()),
+        );
+
+        return $local->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    public function endOfDay(LocalDate $date, ?TemporalContext $context = null): DateTimeImmutable
+    {
+        $context ??= $this->contexts->defaultContext();
+        $local = new DateTimeImmutable(
+            $date->toCanonical() . ' 23:59:59.999999',
+            new DateTimeZone($context->timezone()),
+        );
+
+        return $local->setTimezone(new DateTimeZone('UTC'));
+    }
+
     private function adapter(TemporalContext $context): CalendarAdapter
     {
         return match ($context->calendar()) {
