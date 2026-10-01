@@ -295,7 +295,13 @@
                                 <td>{{ number_format($transaction->price ?? 0) }} ریال</td>
                                 <td style="font-weight: 600;">{{ number_format($transaction->amount ?? 0) }} ریال</td>
                                 <td>{{ $transaction->description ?? '-' }}</td>
-                                <td>{{ $transaction->created_at ? verta($transaction->created_at)->format('Y/m/d H:i') : '-' }}</td>
+                                <td>
+                                    @if($transaction->created_at)
+                                        <x-temporal.date-time :value="$transaction->created_at" style="short" />
+                                    @else
+                                        -
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
