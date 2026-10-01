@@ -23,8 +23,9 @@ class NajmBaharAnalyticsTemporalContractTest extends TestCase
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
         $this->assertStringContainsString("path === '/admin/najm-bahar/analytics'", $app);
-        $this->assertStringContainsString('markLegacyAnalyticsDateInputs', $runtime);
+        $this->assertStringContainsString('markLegacyAdminDateInputs', $runtime);
+        $this->assertStringContainsString("'/admin/najm-bahar/analytics'", $runtime);
         $this->assertStringContainsString("input[name=\"date_from\"], input[name=\"date_to\"]", $runtime);
-        $this->assertStringContainsString("input.dataset.calendar = 'jalali'", $runtime);
+        $this->assertStringContainsString("input.dataset.calendar = calendar", $runtime);
     }
 }
