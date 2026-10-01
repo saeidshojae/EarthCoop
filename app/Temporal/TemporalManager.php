@@ -8,6 +8,7 @@ use App\Temporal\Context\TemporalContext;
 use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\CalendarAdapter;
 use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Formatting\DigitFormatter;
 use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -16,19 +17,24 @@ use InvalidArgumentException;
 
 final class TemporalManager implements TemporalService
 {
+    private readonly DigitFormatter $digitFormatter;
+
     public function __construct(
         private readonly GregorianCalendarAdapter $gregorian,
         private readonly JalaliCalendarAdapter $jalali,
         private readonly TemporalContextResolver $contexts,
+        ?DigitFormatter $digitFormatter = null,
     ) {
+        $this->digitFormatter = $digitFormatter ?? new DigitFormatter();
     }
 
     public function date(DateTimeInterface|LocalDate|string $value, ?TemporalContext $context = null, string $style = 'medium'): string
     {
         $context ??= $this->contexts->defaultContext();
         $date = $this->toLocalDate($value, $context);
+        $formatted = $this->adapter($context)->formatDate($date, $style, $context->locale());
 
-        return $this->adapter($context)->formatDate($date, $style, $context->locale());
+        return $this->shapeDigits($formatted, $context);
     }
 
     public function dateTime(DateTimeInterface|string $value, ?TemporalContext $context = null, string $style = 'medium'): string
@@ -36,8 +42,9 @@ final class TemporalManager implements TemporalService
         $context ??= $this->contexts->defaultContext();
         $instant = $this->toInstant($value)->setTimezone(new DateTimeZone($context->timezone()));
         $date = LocalDate::fromCanonical($instant->format('Y-m-d'));
+        $formatted = $this->adapter($context)->formatDate($date, $style, $context->locale()) . ' ' . $instant->format('H:i');
 
-        return $this->adapter($context)->formatDate($date, $style, $context->locale()) . ' ' . $instant->format('H:i');
+        return $this->shapeDigits($formatted, $context);
     }
 
     public function relative(DateTimeInterface|string $value, ?TemporalContext $context = null): string
@@ -47,26 +54,27 @@ final class TemporalManager implements TemporalService
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $seconds = $target->getTimestamp() - $now->getTimestamp();
         $absolute = abs($seconds);
+        $isPersian = $this->baseLocale($context->locale()) === 'fa';
 
         if ($absolute < 60) {
             $amount = max(1, $absolute);
-            $unit = $context->locale() === 'fa' ? 'ثانیه' : 'seconds';
+            $unit = $isPersian ? 'ثانیه' : 'seconds';
         } elseif ($absolute < 3600) {
             $amount = intdiv($absolute, 60);
-            $unit = $context->locale() === 'fa' ? 'دقیقه' : 'minutes';
+            $unit = $isPersian ? 'دقیقه' : 'minutes';
         } elseif ($absolute < 86400) {
             $amount = intdiv($absolute, 3600);
-            $unit = $context->locale() === 'fa' ? 'ساعت' : 'hours';
+            $unit = $isPersian ? 'ساعت' : 'hours';
         } else {
             $amount = intdiv($absolute, 86400);
-            $unit = $context->locale() === 'fa' ? 'روز' : 'days';
+            $unit = $isPersian ? 'روز' : 'days';
         }
 
-        if ($context->locale() === 'fa') {
-            return $seconds < 0 ? "{$amount} {$unit} پیش" : "{$amount} {$unit} دیگر";
-        }
+        $formatted = $isPersian
+            ? ($seconds < 0 ? "{$amount} {$unit} پیش" : "{$amount} {$unit} دیگر")
+            : ($seconds < 0 ? "{$amount} {$unit} ago" : "in {$amount} {$unit}");
 
-        return $seconds < 0 ? "{$amount} {$unit} ago" : "in {$amount} {$unit}";
+        return $this->shapeDigits($formatted, $context);
     }
 
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate
@@ -107,5 +115,15 @@ final class TemporalManager implements TemporalService
         }
 
         return new DateTimeImmutable($value, new DateTimeZone('UTC'));
+    }
+
+    private function shapeDigits(string $value, TemporalContext $context): string
+    {
+        return $this->digitFormatter->format($value, $context->numberingSystem());
+    }
+
+    private function baseLocale(string $locale): string
+    {
+        return strtolower((string) preg_split('/[-_]/', $locale, 2)[0]);
     }
 }
