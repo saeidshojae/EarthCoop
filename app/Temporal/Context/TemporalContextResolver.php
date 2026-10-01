@@ -45,10 +45,14 @@ final class TemporalContextResolver
         ?string $localeOverride = null,
         ?string $timezoneOverride = null,
     ): TemporalContext {
-        return $this->forLocale(
-            $localeOverride ?? $this->activeLocale(),
-            $timezoneOverride,
-        );
+        $locale = $localeOverride
+            ?? $this->validStoredLocale($user?->locale)
+            ?? $this->activeLocale();
+        $timezone = $timezoneOverride
+            ?? $this->validStoredTimezone($user?->timezone)
+            ?? $this->defaultTimezone;
+
+        return $this->forLocale($locale, $timezone);
     }
 
     public function forRecipient(
@@ -56,7 +60,14 @@ final class TemporalContextResolver
         ?string $localeOverride = null,
         ?string $timezoneOverride = null,
     ): TemporalContext {
-        return $this->forUser($recipient, $localeOverride, $timezoneOverride);
+        $locale = $localeOverride
+            ?? $this->validStoredLocale($recipient->locale)
+            ?? $this->defaultLocale;
+        $timezone = $timezoneOverride
+            ?? $this->validStoredTimezone($recipient->timezone)
+            ?? $this->defaultTimezone;
+
+        return $this->forLocale($locale, $timezone);
     }
 
     public function defaultContext(): TemporalContext
@@ -71,16 +82,34 @@ final class TemporalContextResolver
         return is_string($locale) && $locale !== '' ? $locale : $this->defaultLocale;
     }
 
-    private function resolveTimezone(?string $timezone): string
+    private function validStoredLocale(mixed $locale): ?string
     {
-        $candidate = $timezone ?: $this->defaultTimezone;
+        if (! is_string($locale) || $locale === '') {
+            return null;
+        }
+
+        $baseLocale = strtolower((string) preg_split('/[-_]/', $locale, 2)[0]);
+
+        return array_key_exists($baseLocale, $this->localeCalendars) ? $locale : null;
+    }
+
+    private function validStoredTimezone(mixed $timezone): ?string
+    {
+        if (! is_string($timezone) || $timezone === '') {
+            return null;
+        }
 
         try {
-            new DateTimeZone($candidate);
+            new DateTimeZone($timezone);
 
-            return $candidate;
+            return $timezone;
         } catch (Throwable) {
-            return $this->defaultTimezone;
+            return null;
         }
+    }
+
+    private function resolveTimezone(?string $timezone): string
+    {
+        return $this->validStoredTimezone($timezone) ?? $this->defaultTimezone;
     }
 }
