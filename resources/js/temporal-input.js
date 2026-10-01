@@ -72,15 +72,66 @@ export const enhanceLegacyBirthDate = (root = document, locale = document.docume
     return true;
 };
 
-export const enhanceTemporalInputs = (root = document) => {
+let persianDatepickerPromise = null;
+
+const loadBundledPersianDatepicker = async () => {
+    if (persianDatepickerPromise) return persianDatepickerPromise;
+
+    persianDatepickerPromise = (async () => {
+        const persianDateModule = await import('persian-date');
+        window.persianDate = persianDateModule.default || persianDateModule;
+        await import('persian-datepicker');
+
+        return window.jQuery?.fn?.persianDatepicker;
+    })();
+
+    return persianDatepickerPromise;
+};
+
+export const enhanceJalaliDateInputs = async (root = document) => {
+    const inputs = [...root.querySelectorAll(
+        '[data-temporal-date-input][data-calendar="jalali"], [data-temporal-date][data-calendar="jalali"]',
+    )];
+    if (inputs.length === 0) return false;
+
+    const plugin = await loadBundledPersianDatepicker();
+    if (typeof plugin !== 'function' || !window.jQuery) return false;
+
+    inputs.forEach((input) => {
+        const $input = window.jQuery(input);
+        if ($input.data('temporalDatepickerReady')) return;
+
+        $input.persianDatepicker({
+            format: 'YYYY/MM/DD',
+            initialValue: Boolean(input.value),
+            autoClose: true,
+            calendar: { persian: { locale: 'fa' } },
+        });
+        $input.data('temporalDatepickerReady', true);
+    });
+
+    return true;
+};
+
+export const enhanceTemporalInputs = async (root = document) => {
     const locale = document.documentElement.lang || 'fa';
     enhanceLegacyBirthDate(root, locale);
+
+    if (calendarForLocale(locale) === 'jalali') {
+        await enhanceJalaliDateInputs(root);
+    }
 };
 
 if (typeof document !== 'undefined') {
+    const run = () => {
+        void enhanceTemporalInputs(document).catch((error) => {
+            console.warn('EarthCoop temporal input enhancement failed; manual date entry remains available.', error);
+        });
+    };
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => enhanceTemporalInputs(document), { once: true });
+        document.addEventListener('DOMContentLoaded', run, { once: true });
     } else {
-        enhanceTemporalInputs(document);
+        run();
     }
 }
