@@ -47,4 +47,32 @@ class TemporalBladeComponentsTest extends TestCase
         $this->assertStringContainsString('datetime="2026-10-01T13:30:00Z"', $html);
         $this->assertStringContainsString('Oct 1, 2026 13:30', $html);
     }
+
+    public function test_relative_component_renders_persian_relative_text_with_utc_machine_value(): void
+    {
+        app()->setLocale('fa');
+        $instant = new DateTimeImmutable('-5 minutes');
+
+        $html = Blade::render(
+            '<x-temporal.relative :value="$instant" />',
+            ['instant' => $instant],
+        );
+
+        $expectedMachineValue = $instant->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        $this->assertStringContainsString('datetime="' . $expectedMachineValue . '"', $html);
+        $this->assertStringContainsString('۵ دقیقه پیش', $html);
+    }
+
+    public function test_relative_component_follows_active_english_locale(): void
+    {
+        app()->setLocale('en');
+        $instant = new DateTimeImmutable('-5 minutes');
+
+        $html = Blade::render(
+            '<x-temporal.relative :value="$instant" />',
+            ['instant' => $instant],
+        );
+
+        $this->assertStringContainsString('5 minutes ago', $html);
+    }
 }
