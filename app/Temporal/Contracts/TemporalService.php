@@ -19,6 +19,8 @@ interface TemporalService
 
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate;
 
+    public function parseDateTime(string $value, ?TemporalContext $context = null): DateTimeImmutable;
+
     public function parseDateParts(int $day, int $month, int $year, ?TemporalContext $context = null): LocalDate;
 
     public function startOfDay(LocalDate $date, ?TemporalContext $context = null): DateTimeImmutable;
