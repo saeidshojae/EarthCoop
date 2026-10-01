@@ -22,9 +22,9 @@ class CanonicalProfileBirthDateTemporalTest extends TestCase
             'national_id' => null,
             'phone' => null,
             'birth_date' => null,
+            'locale' => 'fa',
         ]);
 
-        app()->setLocale('fa');
         $this->actingAs($persianUser)
             ->from('/profile/edit')
             ->put(route('profile.update.general'), [
@@ -41,9 +41,9 @@ class CanonicalProfileBirthDateTemporalTest extends TestCase
             'national_id' => null,
             'phone' => null,
             'birth_date' => null,
+            'locale' => 'en',
         ]);
 
-        app()->setLocale('en');
         $this->actingAs($englishUser)
             ->from('/profile/edit')
             ->put(route('profile.update.general'), [
