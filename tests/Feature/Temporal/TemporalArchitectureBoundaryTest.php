@@ -134,7 +134,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'resources/views/groups/comment.blade.php: verta(',
             'resources/views/groups/partials/comment.blade.php: verta(',
             'resources/views/groups/partials/message.blade.php: verta(',
-            'resources/views/groups/partials/post.blade.php: verta(',
             'resources/views/groups/show.blade.php: verta(',
             'resources/views/history/index-base.blade.php: verta(',
             'resources/views/history/index.blade.php: verta(',
