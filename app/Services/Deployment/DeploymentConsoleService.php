@@ -99,6 +99,18 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'vendor_package_status' => [
+            'command' => 'deployment:vendor-package-status',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'vendor_package_install' => [
+            'command' => 'deployment:install-vendor-package',
+            'arguments' => ['--confirm' => 'INSTALL-VENDOR-PACKAGE'],
+            'write' => true,
+            'confirmation' => 'INSTALL-VENDOR-PACKAGE',
+        ],
         'migrate' => [
             'command' => 'migrate',
             'arguments' => ['--force' => true],
