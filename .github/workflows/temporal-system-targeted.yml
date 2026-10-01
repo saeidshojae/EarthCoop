@@ -1,0 +1,47 @@
+name: Temporal System Targeted Gate
+
+on:
+  push:
+    branches:
+      - agent/temporal-system-20261001
+    paths:
+      - 'app/Temporal/**'
+      - 'config/temporal.php'
+      - 'tests/Unit/Temporal/**'
+      - 'tests/Feature/Temporal/**'
+      - '.github/workflows/temporal-system-targeted.yml'
+  workflow_dispatch:
+
+jobs:
+  temporal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, sqlite, pdo_sqlite
+          coverage: none
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          mkdir -p database
+          touch database/database.sqlite
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan key:generate
+
+      - name: Run Temporal unit tests
+        run: php artisan test tests/Unit/Temporal
+
+      - name: Run Temporal feature tests when present
+        shell: bash
+        run: |
+          if [ -d tests/Feature/Temporal ]; then
+            php artisan test tests/Feature/Temporal
+          fi
