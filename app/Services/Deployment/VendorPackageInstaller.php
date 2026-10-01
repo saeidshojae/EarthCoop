@@ -22,7 +22,7 @@ class VendorPackageInstaller
         $manifest = $this->readJsonFile($this->manifestPath());
         $installed = $this->readJsonFile($this->installedStatePath());
         $currentLockHash = $this->currentLockHash();
-        $pending = $this->sameRelease($manifest, $installed) ? null : $manifest;
+        $pending = $this->sameDependencySet($manifest, $installed) ? null : $manifest;
 
         return [
             'zip_supported' => class_exists(ZipArchive::class),
@@ -134,22 +134,19 @@ class VendorPackageInstaller
         }
     }
 
-    private function sameRelease(?array $manifest, ?array $installed): bool
+    private function sameDependencySet(?array $manifest, ?array $installed): bool
     {
         if (! is_array($manifest) || ! is_array($installed)) {
             return false;
         }
 
-        foreach (['package_sha256', 'composer_lock_sha256', 'source_git_sha'] as $key) {
-            if (! isset($manifest[$key], $installed[$key])
-                || ! is_string($manifest[$key])
-                || ! is_string($installed[$key])
-                || ! hash_equals($manifest[$key], $installed[$key])) {
-                return false;
-            }
-        }
+        $manifestLock = $manifest['composer_lock_sha256'] ?? null;
+        $installedLock = $installed['composer_lock_sha256'] ?? null;
 
-        return true;
+        return is_string($manifestLock)
+            && is_string($installedLock)
+            && $manifestLock !== ''
+            && hash_equals($manifestLock, $installedLock);
     }
 
     private function loadAndValidateManifest(): array
