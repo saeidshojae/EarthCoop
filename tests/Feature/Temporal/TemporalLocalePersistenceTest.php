@@ -46,4 +46,19 @@ class TemporalLocalePersistenceTest extends TestCase
 
         $this->assertSame(config('app.locale'), app()->getLocale());
     }
+
+    public function test_resolved_locale_is_exposed_in_non_http_only_cookie_for_frontend_temporal_runtime(): void
+    {
+        Session::put('locale', 'en');
+        $request = Request::create('/');
+
+        $response = app(SetLocale::class)->handle($request, fn () => response('ok'));
+        $cookie = collect($response->headers->getCookies())
+            ->first(fn ($cookie) => $cookie->getName() === 'earthcoop_locale');
+
+        $this->assertNotNull($cookie);
+        $this->assertSame('en', $cookie->getValue());
+        $this->assertFalse($cookie->isHttpOnly());
+        $this->assertSame('lax', strtolower((string) $cookie->getSameSite()));
+    }
 }
