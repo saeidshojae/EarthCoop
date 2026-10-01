@@ -4,6 +4,7 @@ namespace App\Temporal\Contracts;
 
 use App\Temporal\Context\TemporalContext;
 use App\Temporal\ValueObjects\LocalDate;
+use DateTimeImmutable;
 use DateTimeInterface;
 
 interface TemporalService
@@ -19,4 +20,8 @@ interface TemporalService
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate;
 
     public function parseDateParts(int $day, int $month, int $year, ?TemporalContext $context = null): LocalDate;
+
+    public function startOfDay(LocalDate $date, ?TemporalContext $context = null): DateTimeImmutable;
+
+    public function endOfDay(LocalDate $date, ?TemporalContext $context = null): DateTimeImmutable;
 }
