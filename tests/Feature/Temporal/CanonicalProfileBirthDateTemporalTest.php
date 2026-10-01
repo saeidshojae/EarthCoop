@@ -27,7 +27,7 @@ class CanonicalProfileBirthDateTemporalTest extends TestCase
         app()->setLocale('fa');
         $this->actingAs($persianUser)
             ->from('/profile/edit')
-            ->post(route('profile.update.general'), [
+            ->put(route('profile.update.general'), [
                 'birth_date' => [9, 7, 1405],
             ])
             ->assertRedirect();
@@ -46,7 +46,7 @@ class CanonicalProfileBirthDateTemporalTest extends TestCase
         app()->setLocale('en');
         $this->actingAs($englishUser)
             ->from('/profile/edit')
-            ->post(route('profile.update.general'), [
+            ->put(route('profile.update.general'), [
                 'birth_date' => [1, 10, 2026],
             ])
             ->assertRedirect();
