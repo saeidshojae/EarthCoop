@@ -9,105 +9,48 @@ use Illuminate\Http\Request;
 class SystemEmailController extends Controller
 {
     /**
-     * Display a listing of system emails
+     * SystemEmail is retained as a compatibility/import source only. Admin
+     * presentation identities are managed exclusively by Communication Center.
      */
     public function index()
     {
-        $emails = SystemEmail::latest()->paginate(15);
-        return view('admin.emails.system-emails.index', compact('emails'));
+        return $this->redirectToCanonicalSenders();
     }
 
-    /**
-     * Show the form for creating a new system email
-     */
     public function create()
     {
-        return view('admin.emails.system-emails.create');
+        return $this->redirectToCanonicalSenders();
     }
 
-    /**
-     * Store a newly created system email
-     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:system_emails,name',
-            'email' => 'required|email|unique:system_emails,email',
-            'display_name' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-            'is_default' => 'boolean',
-        ]);
-
-        $email = SystemEmail::create($validated);
-
-        // If this is set as default, unset others
-        if ($validated['is_default'] ?? false) {
-            $email->setAsDefault();
-        }
-
-        return redirect()->route('admin.system-emails.index')
-            ->with('success', 'ایمیل سیستم با موفقیت ایجاد شد.');
+        return $this->redirectToCanonicalSenders();
     }
 
-    /**
-     * Show the form for editing a system email
-     */
     public function edit(SystemEmail $systemEmail)
     {
-        return view('admin.emails.system-emails.edit', compact('systemEmail'));
+        return $this->redirectToCanonicalSenders();
     }
 
-    /**
-     * Update the specified system email
-     */
     public function update(Request $request, SystemEmail $systemEmail)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:system_emails,name,' . $systemEmail->id,
-            'email' => 'required|email|unique:system_emails,email,' . $systemEmail->id,
-            'display_name' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-            'is_default' => 'boolean',
-        ]);
-
-        $systemEmail->update($validated);
-
-        // If this is set as default, unset others
-        if ($validated['is_default'] ?? false) {
-            $systemEmail->setAsDefault();
-        }
-
-        return redirect()->route('admin.system-emails.index')
-            ->with('success', 'ایمیل سیستم با موفقیت به‌روزرسانی شد.');
+        return $this->redirectToCanonicalSenders();
     }
 
-    /**
-     * Remove the specified system email
-     */
     public function destroy(SystemEmail $systemEmail)
     {
-        // Prevent deletion of default email
-        if ($systemEmail->is_default) {
-            return back()->withErrors(['error' => 'نمی‌توانید ایمیل پیش‌فرض را حذف کنید. ابتدا یک ایمیل دیگر را به عنوان پیش‌فرض تنظیم کنید.']);
-        }
-
-        $systemEmail->delete();
-
-        return redirect()->route('admin.system-emails.index')
-            ->with('success', 'ایمیل سیستم با موفقیت حذف شد.');
+        return $this->redirectToCanonicalSenders();
     }
 
-    /**
-     * Set as default email
-     */
     public function setDefault(SystemEmail $systemEmail)
     {
-        $systemEmail->setAsDefault();
+        return $this->redirectToCanonicalSenders();
+    }
 
-        return redirect()->route('admin.system-emails.index')
-            ->with('success', 'ایمیل به عنوان پیش‌فرض تنظیم شد.');
+    private function redirectToCanonicalSenders()
+    {
+        return redirect()
+            ->route('admin.communications.senders.index')
+            ->with('info', 'هویت‌های فرستنده از این پس در مرکز ارتباطات مدیریت می‌شوند.');
     }
 }
-

@@ -2,20 +2,21 @@
 
 namespace App\Services\Invitation;
 
-use App\Mail\InvitationMail;
-use App\Mail\InvitationRejectedMail;
 use App\Models\Invitation;
 use App\Models\InvitationCode;
 use App\Models\InvitationCodeLog;
 use App\Models\Setting;
+use App\Services\Communication\CommunicationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
 class InvitationManagementService
 {
-    public function __construct(protected InvitationSystemIssuerResolver $systemIssuer) {}
+    public function __construct(
+        protected InvitationSystemIssuerResolver $systemIssuer,
+        protected CommunicationDispatcher $communications,
+    ) {}
 
     public function recommend(Invitation $invitation): array
     {
@@ -38,8 +39,6 @@ class InvitationManagementService
     {
         if ((int)$invitation->status !== 0) return ['success'=>true,'status'=>'already_reviewed','invitation_id'=>$invitation->id];
 
-        // Resolve before opening the transaction so an invalid deployment config
-        // fails without creating a code or changing the invitation state.
         $systemIssuerId=$this->systemIssuer->id();
 
         $result=DB::transaction(function() use($invitation,$actorId,$systemIssuerId){
@@ -54,26 +53,94 @@ class InvitationManagementService
         });
 
         if($result['already'])return ['success'=>true,'status'=>'already_reviewed','invitation_id'=>$invitation->id];
-        $mailSent=true; $mailError=null;
-        try{Mail::to($result['invitation']->email)->send(new InvitationMail($result['code']->code,$result['code']->expire_at));}
-        catch(\Throwable $e){$mailSent=false;$mailError=mb_substr($e->getMessage(),0,500);Log::error('Invitation email failed',['invitation_id'=>$invitation->id,'exception_class'=>$e::class]);}
-        return ['success'=>true,'status'=>'issued','invitation_id'=>$invitation->id,'invitation_code_id'=>$result['code']->id,'mail_sent'=>$mailSent,'mail_error'=>$mailError];
+
+        $mailQueued=true; $mailError=null;
+        try {
+            $this->communications->dispatchExternal(
+                'auth.invitation_issued',
+                ['type' => 'invitation', 'id' => (string) $result['invitation']->id],
+                [[
+                    'email' => (string) $result['invitation']->email,
+                    'locale' => 'fa',
+                ]],
+                [
+                    'code' => (string) $result['code']->code,
+                    'expire_at' => $result['code']->expire_at->toISOString(),
+                ],
+                [
+                    'locale' => 'fa',
+                    'deduplication_key' => 'auth.invitation_issued:'.$result['invitation']->id.':'.$result['code']->id,
+                ],
+            );
+        } catch (\Throwable $e) {
+            $mailQueued=false;
+            $mailError=mb_substr($e->getMessage(),0,500);
+            Log::error('Invitation communication queueing failed',[
+                'invitation_id'=>$invitation->id,
+                'exception_class'=>$e::class,
+            ]);
+        }
+
+        return [
+            'success'=>true,
+            'status'=>'issued',
+            'invitation_id'=>$invitation->id,
+            'invitation_code_id'=>$result['code']->id,
+            'mail_sent'=>$mailQueued,
+            'mail_queued'=>$mailQueued,
+            'mail_error'=>$mailError,
+        ];
     }
 
     public function reject(Invitation $invitation,int $actorId,?string $note=null): array
     {
-        $locked=DB::transaction(function() use($invitation,$actorId,$note){
+        $result=DB::transaction(function() use($invitation,$actorId,$note){
             $locked=Invitation::query()->whereKey($invitation->id)->lockForUpdate()->firstOrFail();
-            if((int)$locked->status===2)return $locked;
+            if((int)$locked->status===2)return ['invitation'=>$locked,'already'=>true];
             if((int)$locked->status!==0)throw new RuntimeException('Only pending invitation requests can be rejected.');
             $locked->forceFill(['status'=>2,'admin_note'=>$note,'reviewed_by'=>$actorId,'reviewed_at'=>now()])->save();
             $this->log(null,'reject',$actorId,['invitation_id'=>$locked->id,'email'=>$locked->email,'note'=>$note]);
-            return $locked;
+            return ['invitation'=>$locked,'already'=>false];
         });
-        $mailSent=true; $mailError=null;
-        try{Mail::to($locked->email)->send(new InvitationRejectedMail($locked->admin_note));}
-        catch(\Throwable $e){$mailSent=false;$mailError=mb_substr($e->getMessage(),0,500);Log::error('Invitation rejection email failed',['invitation_id'=>$invitation->id,'exception_class'=>$e::class]);}
-        return ['success'=>true,'status'=>'rejected','invitation_id'=>$invitation->id,'mail_sent'=>$mailSent,'mail_error'=>$mailError];
+
+        if ($result['already']) {
+            return ['success'=>true,'status'=>'already_reviewed','invitation_id'=>$invitation->id];
+        }
+
+        $mailQueued=true; $mailError=null;
+        try {
+            $noteText=trim((string)$result['invitation']->admin_note);
+            $noteHtml=$noteText === ''
+                ? ''
+                : '<p><strong>توضیح مدیر:</strong> '.e($noteText).'</p>';
+
+            $this->communications->dispatchExternal(
+                'auth.invitation_rejected',
+                ['type' => 'invitation_rejection', 'id' => (string)$result['invitation']->id],
+                [['email' => (string)$result['invitation']->email, 'locale' => 'fa']],
+                ['admin_note_html' => $noteHtml],
+                [
+                    'locale' => 'fa',
+                    'deduplication_key' => 'auth.invitation_rejected:'.$result['invitation']->id,
+                ],
+            );
+        } catch (\Throwable $e) {
+            $mailQueued=false;
+            $mailError=mb_substr($e->getMessage(),0,500);
+            Log::error('Invitation rejection communication queueing failed',[
+                'invitation_id'=>$invitation->id,
+                'exception_class'=>$e::class,
+            ]);
+        }
+
+        return [
+            'success'=>true,
+            'status'=>'rejected',
+            'invitation_id'=>$invitation->id,
+            'mail_sent'=>$mailQueued,
+            'mail_queued'=>$mailQueued,
+            'mail_error'=>$mailError,
+        ];
     }
 
     protected function uniqueCode(): string

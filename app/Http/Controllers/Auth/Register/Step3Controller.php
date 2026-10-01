@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth\Register;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Events\RegistrationCompleted;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Alley;
@@ -17,6 +18,7 @@ use App\Models\Neighborhood;
 use App\Models\Province;
 use App\Models\Region;
 use App\Models\Street;
+use App\Models\User;
 use App\Models\Village;
 use App\Services\GroupService;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
@@ -25,6 +27,7 @@ use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\IranSettlementAnchorResolver;
 use App\Services\LocationGovernance\ResidenceService;
 use App\Services\ProfileCompletionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -68,6 +71,14 @@ class Step3Controller extends Controller
             return redirect()->route('login')->withErrors('ابتدا وارد حساب خود شوید.');
         }
 
+        $registrationWasComplete = (bool) config('location-governance.registration_enabled')
+            ? $user->locationRelationships()
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->exists()
+            : Address::query()->where('user_id', $user->id)->exists();
+        $request->attributes->set('registration_was_complete', $registrationWasComplete);
+
         if ((bool) config('location-governance.registration_enabled')) {
             $validated = $request->validate([
                 'location_id' => ['nullable', 'integer', 'exists:locations,id'],
@@ -110,7 +121,10 @@ class Step3Controller extends Controller
 
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
-                return redirect()->route('home')->with('success', 'تبریک می‌گوییم! اطلاعات شما با موفقیت دریافت شد، ثبت‌نام شما تکمیل شد و در گروه‌های مربوط به خود عضو شدید. به EarthCoop خوش آمدید.');
+                return $this->completeRegistration(
+                    $user->fresh(),
+                    'تبریک می‌گوییم! اطلاعات شما با موفقیت دریافت شد، ثبت‌نام شما تکمیل شد و در گروه‌های مربوط به خود عضو شدید. به EarthCoop خوش آمدید.'
+                );
             }
 
             if ($referenceSettlementExternalId !== null) {
@@ -231,8 +245,8 @@ class Step3Controller extends Controller
                 }
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
-                return redirect()->route('home')->with(
-                    'success',
+                return $this->completeRegistration(
+                    $user->fresh(),
                     $settlementProposal !== null
                         ? 'ثبت‌نام شما تکمیل شد. آبادی و محلهٔ انتخابی تا بررسی انسانی در وضعیت pending می‌مانند و هیچ حوزهٔ حکمرانی رسمی خودکار ایجاد نشده است.'
                         : 'ثبت‌نام شما تکمیل شد. آبادی انتخابی شما به‌عنوان محل دقیق در انتظار بررسی/تطبیق باقی می‌ماند و حوزهٔ رسمی فعلاً بر اساس نزدیک‌ترین والد canonical تأییدشده محاسبه می‌شود.'
@@ -312,8 +326,8 @@ class Step3Controller extends Controller
             }
             app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
-            return redirect()->route('home')->with(
-                'success',
+            return $this->completeRegistration(
+                $user->fresh(),
                 'ثبت نام شما تکمیل شد. محل دقیق انتخابی شما در انتظار بررسی است و تا زمان تأیید، حوزه رسمی شما بر اساس نزدیک‌ترین مکان تأییدشده محاسبه می‌شود.'
             );
         }
@@ -411,6 +425,22 @@ class Step3Controller extends Controller
 
         app(ProfileCompletionService::class)->maybeAward($user);
 
-        return redirect()->route('home')->with('success', 'تبریک میگوییم، داده های شما دریافت و ثبت نام شما تکمیل شد و شما در گروه های مربوطه عضو شدید.\nاکنون به داشبورد وارد میشوید. برای ایجاد حساب مالی نجم بهار، روی لینک "حساب مالی نجم بهار" کلیک کنید.\n\nبا تشکر تیم توسعه EarthCoop');
+        return $this->completeRegistration(
+            $user->fresh(),
+            'تبریک میگوییم، داده های شما دریافت و ثبت نام شما تکمیل شد و شما در گروه های مربوطه عضو شدید.\nاکنون به داشبورد وارد میشوید. برای ایجاد حساب مالی نجم بهار، روی لینک "حساب مالی نجم بهار" کلیک کنید.\n\nبا تشکر تیم توسعه EarthCoop'
+        );
+    }
+
+    private function completeRegistration(User $user, string $message): RedirectResponse
+    {
+        if (! request()->attributes->getBoolean('registration_was_complete')) {
+            RegistrationCompleted::dispatch(
+                (int) $user->id,
+                now()->toIso8601String(),
+                app()->getLocale(),
+            );
+        }
+
+        return redirect()->route('home')->with('success', $message);
     }
 }

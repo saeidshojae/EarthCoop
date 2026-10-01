@@ -18,3 +18,7 @@ Route::middleware(Authenticate::class)->group(function (): void {
     Route::put('/profile/update/general', [CanonicalProfileMembershipController::class, 'updateGeneral'])
         ->name('profile.update.general');
 });
+
+// Communication preferences belong to the profile/settings surface but keep their
+// own route file so the signed public unsubscribe endpoint does not inherit auth.
+require base_path('routes/communication-preferences.php');

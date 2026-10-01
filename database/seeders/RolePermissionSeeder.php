@@ -70,6 +70,14 @@ class RolePermissionSeeder extends Seeder
             
             // مدیریت نقش‌ها و دسترسی‌ها
             ['name' => 'مدیریت نقش‌ها', 'slug' => 'roles.manage', 'description' => 'مدیریت نقش‌ها و دسترسی‌ها', 'module' => 'roles', 'order' => 60],
+
+            // مرکز ارتباطات
+            ['name' => 'مشاهده مرکز ارتباطات', 'slug' => 'communications.view', 'description' => 'مشاهده داشبورد، تاریخچه و پیکربندی خواندنی مرکز ارتباطات', 'module' => 'communications', 'order' => 70],
+            ['name' => 'مدیریت قالب‌های ارتباطی', 'slug' => 'communications.templates.manage', 'description' => 'انتشار نسخه جدید قالب‌های ارتباطی و پیش‌نمایش آن‌ها', 'module' => 'communications', 'order' => 71],
+            ['name' => 'مدیریت قواعد ارتباطی', 'slug' => 'communications.rules.manage', 'description' => 'ایجاد و مدیریت قواعد، شرایط و زمان‌بندی‌های ارتباطی', 'module' => 'communications', 'order' => 72],
+            ['name' => 'مدیریت فرستنده‌های ارتباطی', 'slug' => 'communications.senders.manage', 'description' => 'ایجاد و مدیریت هویت‌های فرستنده مرکز ارتباطات', 'module' => 'communications', 'order' => 73],
+            ['name' => 'ایجاد کمپین ارتباطی', 'slug' => 'communications.campaigns.create', 'description' => 'ایجاد و آماده‌سازی کمپین‌های ارتباطی بدون اختیار تایید نهایی', 'module' => 'communications', 'order' => 74],
+            ['name' => 'تایید کمپین ارتباطی', 'slug' => 'communications.campaigns.approve', 'description' => 'پیش‌نمایش و تایید نهایی کمپین‌های ارتباطی برای اجرا یا زمان‌بندی', 'module' => 'communications', 'order' => 75],
         ];
 
         foreach ($permissions as $permission) {

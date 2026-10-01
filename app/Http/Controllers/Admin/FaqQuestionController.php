@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Mail\FaqQuestionAnswered;
 use App\Models\FaqQuestion;
+use App\Services\Communication\CommunicationDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class FaqQuestionController extends Controller
 {
@@ -78,8 +78,11 @@ class FaqQuestionController extends Controller
     /**
      * Update FAQ question
      */
-    public function update(Request $request, FaqQuestion $question): RedirectResponse
-    {
+    public function update(
+        Request $request,
+        FaqQuestion $question,
+        CommunicationDispatcher $communications,
+    ): RedirectResponse {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'question' => ['required', 'string'],
@@ -112,19 +115,34 @@ class FaqQuestionController extends Controller
 
         $question->save();
 
-        // ارسال ایمیل در صورت پاسخ داده شدن
+        // Once the canonical engine accepts the logical message, notified_at records
+        // that notification work has been accepted. Delivery truth lives in the
+        // communication recipient/attempt records and is retryable independently.
         if ($question->status === 'answered'
             && $question->answer
             && $question->contact_email
             && $question->notified_at === null) {
             try {
-                Mail::to($question->contact_email)->send(new FaqQuestionAnswered($question));
+                $communications->dispatchExternal(
+                    'faq.answer',
+                    ['type' => 'faq', 'id' => (string) $question->id],
+                    [['email' => $question->contact_email, 'locale' => 'fa']],
+                    [
+                        'title' => (string) $question->title,
+                        'answer' => (string) $question->answer,
+                    ],
+                    [
+                        'deduplication_key' => 'faq:'.$question->id.':answered',
+                        'priority' => 2,
+                    ],
+                );
+
                 $question->forceFill(['notified_at' => Carbon::now()])->save();
-            } catch (\Exception $e) {
-                \Log::error('Failed to send FAQ answer email', [
+            } catch (\Throwable $e) {
+                Log::error('Failed to queue FAQ answer communication', [
                     'question_id' => $question->id,
                     'email' => $question->contact_email,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -183,4 +201,3 @@ class FaqQuestionController extends Controller
         return back()->with('success', 'سوال با موفقیت حذف شد.');
     }
 }
-

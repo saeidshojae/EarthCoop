@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\Profile;
 
+use App\Models\InvitationCode;
+use App\Models\Setting;
 use App\Models\User;
+use App\Services\Communication\CommunicationDispatcher;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\ProfileCompletionService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Morilog\Jalali\Jalalian;
 
 final class CanonicalProfileController extends ProfileController
@@ -162,5 +167,41 @@ final class CanonicalProfileController extends ProfileController
         app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
         return back()->with('success', 'پروفایل با موفقیت ویرایش شد');
+    }
+
+    public function sendInvitation(Request $request)
+    {
+        $request->validate([
+            'invite_email' => 'required|email',
+        ]);
+
+        $setting = Setting::find(1);
+        $code = InvitationCode::create([
+            'code' => Str::random(10),
+            'user_id' => auth()->id(),
+            'expire_at' => Carbon::now()->addHours(intval($setting->expire_invation_time ?? 72)),
+        ]);
+
+        app(CommunicationDispatcher::class)->dispatchExternal(
+            'membership.member_invitation',
+            [
+                'type' => 'member_invitation_code',
+                'id' => (string) $code->id,
+            ],
+            [[
+                'email' => (string) $request->invite_email,
+                'locale' => 'fa',
+            ]],
+            [
+                'code' => (string) $code->code,
+                'expire_at' => $code->expire_at?->toIso8601String() ?? (string) $code->expire_at,
+            ],
+            [
+                'deduplication_key' => 'member-invitation-code:'.$code->id,
+                'priority' => 2,
+            ],
+        );
+
+        return back()->with('success', 'ایمیل دعوت با موفقیت ارسال شد.');
     }
 }

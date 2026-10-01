@@ -11,8 +11,16 @@ class TicketComment extends Model
     protected $fillable = [
         'ticket_id',
         'user_id',
-        'message'
+        'message',
+        'metadata',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'metadata' => 'array',
+        ];
+    }
 
     public function ticket(): BelongsTo
     {
