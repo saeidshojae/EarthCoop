@@ -5,6 +5,7 @@ import {
     baseLocale,
     calendarForLocale,
     gregorianBirthYears,
+    localeFromCookie,
 } from '../../../resources/js/temporal-input.js';
 
 test('base locale normalizes regional variants', () => {
@@ -19,6 +20,12 @@ test('only Persian defaults to Jalali calendar', () => {
     assert.equal(calendarForLocale('en'), 'gregorian');
     assert.equal(calendarForLocale('ar'), 'gregorian');
     assert.equal(calendarForLocale('de'), 'gregorian');
+});
+
+test('server locale cookie can override stale hard-coded html lang', () => {
+    assert.equal(localeFromCookie('foo=bar; earthcoop_locale=en; theme=dark'), 'en');
+    assert.equal(localeFromCookie('earthcoop_locale=fa-IR'), 'fa-IR');
+    assert.equal(localeFromCookie('foo=bar'), '');
 });
 
 test('Gregorian birth year range begins at exact minimum-age year', () => {
