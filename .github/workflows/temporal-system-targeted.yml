@@ -22,6 +22,27 @@ on:
       - 'tests/js/temporal/**'
       - 'package.json'
       - '.github/workflows/temporal-system-targeted.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/Temporal/**'
+      - 'app/Chronicle/**'
+      - 'app/Http/Controllers/ChronicleController.php'
+      - 'app/Providers/ChronicleServiceProvider.php'
+      - 'app/View/Components/Temporal/**'
+      - 'config/temporal.php'
+      - 'lang/*/chronicle.php'
+      - 'resources/js/temporal-input.js'
+      - 'resources/views/chronicle/**'
+      - 'resources/views/components/temporal/**'
+      - 'tests/Unit/Temporal/**'
+      - 'tests/Unit/Chronicle/**'
+      - 'tests/Feature/Temporal/**'
+      - 'tests/Feature/Chronicle/**'
+      - 'tests/js/temporal/**'
+      - 'package.json'
+      - '.github/workflows/temporal-system-targeted.yml'
   workflow_dispatch:
 
 jobs:
