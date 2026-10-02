@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - agent/flutter-native-client-foundation-20260929
     paths:
       - 'apps/mobile/**'
       - '.github/workflows/mobile-uat-publish.yml'
@@ -37,21 +38,75 @@ jobs:
         working-directory: apps/mobile
         run: flutter build apk --debug
 
-      - name: Stage deployable APK and metadata
+      - name: Stage deployable APK, metadata, and download page
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p mobile-uat-dist
           cp apps/mobile/build/app/outputs/flutter-apk/app-debug.apk mobile-uat-dist/earthcoop-android-uat.apk
+
+          VERSION="$(awk '/^version:/ {print $2; exit}' apps/mobile/pubspec.yaml)"
+          APK_SHA256="$(sha256sum mobile-uat-dist/earthcoop-android-uat.apk | awk '{print $1}')"
+          APK_SIZE_BYTES="$(stat -c%s mobile-uat-dist/earthcoop-android-uat.apk)"
+          BUILT_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
           cat > mobile-uat-dist/build.json <<EOF
           {
             "channel": "uat",
             "platform": "android",
-            "version": "0.1.0+1",
+            "version": "${VERSION}",
             "git_sha": "${GITHUB_SHA}",
-            "built_at_utc": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            "apk_sha256": "${APK_SHA256}",
+            "apk_size_bytes": ${APK_SIZE_BYTES},
+            "built_at_utc": "${BUILT_AT_UTC}"
           }
           EOF
+
+          cat > mobile-uat-dist/index.html <<EOF
+          <!doctype html>
+          <html lang="fa" dir="rtl">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="robots" content="noindex,nofollow">
+            <title>دانلود نسخه آزمایشی EarthCoop</title>
+            <style>
+              *{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#17202a;font-family:Tahoma,Arial,sans-serif;min-height:100vh;display:grid;place-items:center;padding:22px}.card{width:min(100%,620px);background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:28px;box-shadow:0 16px 40px rgba(15,23,42,.08)}h1{margin:0 0 12px;font-size:1.7rem}.badge{display:inline-block;background:#fff3cd;color:#664d03;border-radius:999px;padding:6px 11px;margin-bottom:14px}.meta{background:#f8fafc;border-radius:12px;padding:14px 16px;line-height:1.9;margin:18px 0}.download{display:block;text-align:center;text-decoration:none;background:#155eef;color:#fff;font-weight:700;border-radius:12px;padding:15px 18px;margin:22px 0}.note{font-size:.92rem;line-height:1.9;color:#52606d;overflow-wrap:anywhere}ol{padding-right:22px;line-height:2}@media(prefers-color-scheme:dark){body{background:#0f172a;color:#e5e7eb}.card{background:#111827;border-color:#263244}.meta{background:#172033}.note{color:#b8c2cc}.badge{background:#4b3b07;color:#fff2b3}}
+            </style>
+          </head>
+          <body>
+            <main class="card">
+              <span class="badge">نسخه آزمایشی / UAT</span>
+              <h1>اپلیکیشن EarthCoop برای Android</h1>
+              <p>این فایل برای آزمون عملی نسخه موبایل EarthCoop روی دستگاه واقعی منتشر شده است و هنوز نسخه نهایی فروشگاهی نیست.</p>
+              <div class="meta">
+                <strong>نسخه:</strong> ${VERSION}<br>
+                <strong>حداقل Android:</strong> 7.0<br>
+                <strong>شناسه ساخت:</strong> ${GITHUB_SHA:0:12}
+              </div>
+              <a class="download" href="earthcoop-android-uat.apk?v=${GITHUB_SHA}" download>دانلود مستقیم APK</a>
+              <p class="note"><strong>SHA-256:</strong><br>${APK_SHA256}</p>
+              <h2>روش نصب</h2>
+              <ol>
+                <li>روی «دانلود مستقیم APK» بزنید.</li>
+                <li>پس از پایان دانلود، فایل را باز کنید.</li>
+                <li>در صورت درخواست Android، اجازه نصب از همین مرورگر یا File Manager را فعال کنید.</li>
+                <li>نسخه قبلی UAT را می‌توانید با همین فایل به‌روزرسانی کنید.</li>
+              </ol>
+            </main>
+          </body>
+          </html>
+          EOF
+
+      - name: Verify staged publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s mobile-uat-dist/earthcoop-android-uat.apk
+          test -s mobile-uat-dist/build.json
+          test -s mobile-uat-dist/index.html
+          grep -F 'دانلود مستقیم APK' mobile-uat-dist/index.html >/dev/null
+          grep -F '"version": "1.0.0+2"' mobile-uat-dist/build.json >/dev/null
 
       - name: Retain published APK as workflow artifact
         uses: actions/upload-artifact@v4
@@ -60,6 +115,7 @@ jobs:
           path: |
             mobile-uat-dist/earthcoop-android-uat.apk
             mobile-uat-dist/build.json
+            mobile-uat-dist/index.html
           if-no-files-found: error
           retention-days: 30
 
@@ -77,9 +133,12 @@ jobs:
           server: cp59.mihanvps.com
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           port: 21
           local-dir: ./mobile-uat-dist/
           server-dir: ./public/downloads/mobile/
+          security: strict
+          timeout: 300000
+          log-level: minimal
           state-name: .ftp-deploy-sync-state-mobile-uat.json
           dangerous-clean-slate: false
