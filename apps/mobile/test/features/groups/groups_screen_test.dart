@@ -38,6 +38,46 @@ void main() {
     expect(opened, 42);
   });
 
+  testWidgets('pending shell is visible and cannot open group detail',
+      (tester) async {
+    int? opened;
+    final pending = GroupDto.fromJson({
+      'id': null,
+      'name': 'مجمع عمومی محله در انتظار',
+      'identity': {
+        'governance_area_id': null,
+        'dimension_key': 'public',
+        'dimension_value_key': 'public',
+      },
+      'membership': {
+        'role': 1,
+        'role_label': 'فعال',
+        'status': 1,
+      },
+      'members_count': 0,
+      'last_activity_at': null,
+      'pending': true,
+      'pending_request_id': 901,
+      'can_open': false,
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupsScreen(
+          state: GroupsState.ready([pending]),
+          onOpenGroup: (id) => opened = id,
+        ),
+      ),
+    );
+
+    expect(find.text('مجمع عمومی محله در انتظار'), findsOneWidget);
+    expect(find.text('در انتظار تأیید'), findsOneWidget);
+    expect(find.textContaining('عضو'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('group-pending-901')));
+    expect(opened, isNull);
+  });
+
   testWidgets('retryable failure offers retry', (tester) async {
     var retried = false;
     await tester.pumpWidget(
