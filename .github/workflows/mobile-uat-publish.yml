@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare stable Android UAT signing
+      - name: Prepare Android UAT signing when configured
         shell: bash
         env:
           ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
@@ -33,10 +33,23 @@ jobs:
           ANDROID_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$ANDROID_UAT_KEYSTORE_BASE64" || { echo "::error::ANDROID_UAT_KEYSTORE_BASE64 is not configured"; exit 1; }
-          test -n "$ANDROID_UAT_KEY_ALIAS" || { echo "::error::ANDROID_UAT_KEY_ALIAS is not configured"; exit 1; }
-          test -n "$ANDROID_UAT_STORE_PASSWORD" || { echo "::error::ANDROID_UAT_STORE_PASSWORD is not configured"; exit 1; }
-          test -n "$ANDROID_UAT_KEY_PASSWORD" || { echo "::error::ANDROID_UAT_KEY_PASSWORD is not configured"; exit 1; }
+
+          configured=0
+          test -n "$ANDROID_UAT_KEYSTORE_BASE64" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_ALIAS" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_STORE_PASSWORD" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_PASSWORD" && configured=$((configured + 1))
+
+          if [ "$configured" -eq 0 ]; then
+            echo "::warning::Stable UAT signing secrets are not configured yet; publishing with the runner debug signing key so device UAT can continue."
+            echo "EARTHCOOP_UAT_SIGNING_MODE=debug" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ "$configured" -ne 4 ]; then
+            echo "::error::UAT signing secrets are only partially configured. Configure all four or none."
+            exit 1
+          fi
 
           UAT_KEYSTORE_PATH="$RUNNER_TEMP/earthcoop-uat.jks"
           printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$UAT_KEYSTORE_PATH"
@@ -47,6 +60,7 @@ jobs:
             echo "EARTHCOOP_UAT_KEY_ALIAS=$ANDROID_UAT_KEY_ALIAS"
             echo "EARTHCOOP_UAT_STORE_PASSWORD=$ANDROID_UAT_STORE_PASSWORD"
             echo "EARTHCOOP_UAT_KEY_PASSWORD=$ANDROID_UAT_KEY_PASSWORD"
+            echo "EARTHCOOP_UAT_SIGNING_MODE=stable-uat"
           } >> "$GITHUB_ENV"
 
       - uses: subosito/flutter-action@v2
@@ -74,6 +88,7 @@ jobs:
           APK_SHA256="$(sha256sum mobile-uat-dist/earthcoop-android-uat.apk | awk '{print $1}')"
           APK_SIZE_BYTES="$(stat -c%s mobile-uat-dist/earthcoop-android-uat.apk)"
           BUILT_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          SIGNING_MODE="${EARTHCOOP_UAT_SIGNING_MODE:-debug}"
 
           cat > mobile-uat-dist/build.json <<EOF
           {
@@ -81,11 +96,18 @@ jobs:
             "platform": "android",
             "version": "${VERSION}",
             "git_sha": "${GITHUB_SHA}",
+            "signing_mode": "${SIGNING_MODE}",
             "apk_sha256": "${APK_SHA256}",
             "apk_size_bytes": ${APK_SIZE_BYTES},
             "built_at_utc": "${BUILT_AT_UTC}"
           }
           EOF
+
+          if [ "$SIGNING_MODE" = "stable-uat" ]; then
+            INSTALL_NOTE='این نسخه با امضای ثابت UAT ساخته شده است و نسخه‌های بعدی همین کانال باید بدون حذف برنامه روی آن نصب شوند.'
+          else
+            INSTALL_NOTE='امضای ثابت UAT هنوز فعال نشده است. این نسخه برای ادامه آزمون دستگاه منتشر شده و ممکن است برای نصب نسخه بعدی لازم باشد نسخه فعلی یک‌بار حذف شود.'
+          fi
 
           cat > mobile-uat-dist/index.html <<EOF
           <!doctype html>
@@ -111,12 +133,12 @@ jobs:
               </div>
               <a class="download" href="earthcoop-android-uat.apk?v=${GITHUB_SHA}" download>دانلود مستقیم APK</a>
               <p class="note"><strong>SHA-256:</strong><br>${APK_SHA256}</p>
+              <p class="note">${INSTALL_NOTE}</p>
               <h2>روش نصب</h2>
               <ol>
                 <li>روی «دانلود مستقیم APK» بزنید.</li>
                 <li>پس از پایان دانلود، فایل را باز کنید.</li>
                 <li>در صورت درخواست Android، اجازه نصب از همین مرورگر یا File Manager را فعال کنید.</li>
-                <li>این کانال از امضای ثابت UAT استفاده می‌کند. اگر نسخه‌ای از قبلِ فعال شدن این امضا روی گوشی دارید، فقط برای این انتقال ممکن است لازم باشد آن نسخه را یک‌بار حذف کنید؛ پس از آن نسخه‌های UAT بعدی باید روی نسخه قبلی نصب شوند.</li>
               </ol>
             </main>
           </body>
@@ -133,6 +155,7 @@ jobs:
           test -s mobile-uat-dist/index.html
           grep -F 'دانلود مستقیم APK' mobile-uat-dist/index.html >/dev/null
           grep -F "\"version\": \"${VERSION}\"" mobile-uat-dist/build.json >/dev/null
+          grep -F '"signing_mode":' mobile-uat-dist/build.json >/dev/null
 
       - name: Retain published APK as workflow artifact
         uses: actions/upload-artifact@v4
