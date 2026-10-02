@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/m0-api-constitution-mobile-readiness-20260927
+      - agent/flutter-native-client-foundation-20260929
     paths:
       - 'app/**'
       - 'routes/**'
