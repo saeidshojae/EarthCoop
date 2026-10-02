@@ -8,12 +8,12 @@ use App\Models\User;
 use App\Services\Communication\CommunicationDispatcher;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\ProfileCompletionService;
+use App\Temporal\Contracts\TemporalService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Morilog\Jalali\Jalalian;
 
 final class CanonicalProfileController extends ProfileController
 {
@@ -139,11 +139,13 @@ final class CanonicalProfileController extends ProfileController
         }
 
         if (isset($inputs['birth_date']) && is_array($inputs['birth_date'])) {
-            $inputs['birth_date'] = (new Jalalian(
-                (int) $inputs['birth_date'][2],
-                (int) $inputs['birth_date'][1],
-                (int) $inputs['birth_date'][0],
-            ))->toCarbon();
+            $inputs['birth_date'] = app(TemporalService::class)
+                ->parseDateParts(
+                    (int) $inputs['birth_date'][0],
+                    (int) $inputs['birth_date'][1],
+                    (int) $inputs['birth_date'][2],
+                )
+                ->toCanonical();
         }
 
         DB::transaction(function () use ($user, $inputs): void {
