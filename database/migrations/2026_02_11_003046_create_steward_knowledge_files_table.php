@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -35,7 +36,13 @@ return new class extends Migration
             $table->index('is_active');
             $table->index('file_type');
             $table->index('created_at');
-            $table->fullText(['title', 'extracted_content']);
+
+            // Laravel's SQLite schema grammar does not support FULLTEXT indexes.
+            // Keep the production search index on supported database engines while
+            // allowing the portable in-memory test suite to run its migrations.
+            if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb', 'pgsql'], true)) {
+                $table->fullText(['title', 'extracted_content']);
+            }
         });
     }
 
