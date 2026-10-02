@@ -11,6 +11,7 @@ import '../../core/auth/session_controller.dart';
 import '../../core/auth/session_repository.dart';
 import '../../core/deep_links/semantic_link.dart';
 import '../../core/device/device_context.dart';
+import '../../core/device/device_timezone.dart';
 import '../../core/local/app_database.dart';
 import '../../features/auth/login_controller.dart';
 import '../../features/groups/group_cache.dart';
@@ -34,6 +35,7 @@ const _apiBaseUrl = String.fromEnvironment(
 Future<MobileAppRuntime> createProductionRuntime() async {
   final packageInfo = await PackageInfo.fromPlatform();
   final appVersion = packageInfo.version;
+  final deviceTimezone = await const DeviceTimezoneResolver().resolve();
   final apiConfiguration = ApiConfiguration(
     environment: AppEnvironment.production,
     baseUrl: Uri.parse(_apiBaseUrl),
@@ -92,7 +94,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       platform: 'android',
       appVersion: appVersion,
       locale: 'fa',
-      timezone: DateTime.now().timeZoneName,
+      timezone: deviceTimezone,
       pushCapable: true,
       deviceId: sessionController.state.session?.device.id,
     ),
