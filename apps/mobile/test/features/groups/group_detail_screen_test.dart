@@ -15,7 +15,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('detail renders server projection and stale warning',
+  testWidgets('detail renders user-facing projection without raw identity keys',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -25,10 +25,10 @@ void main() {
       ),
     );
 
-    expect(find.text('مجمع عمومی محله نمونه'), findsOneWidget);
+    expect(find.text('مجمع تخصصی علوم پایه در منطقه نمونه'), findsOneWidget);
     expect(find.text('فعال'), findsOneWidget);
-    expect(find.text('public'), findsOneWidget);
-    expect(find.text('assembly'), findsOneWidget);
+    expect(find.text('specialty'), findsNothing);
+    expect(find.text('experience_field:1'), findsNothing);
     expect(find.text('نمایش نسخه ذخیره‌شده'), findsOneWidget);
   });
 
@@ -68,11 +68,11 @@ void main() {
 
 GroupDto sampleGroup() => GroupDto(
       id: 42,
-      name: 'مجمع عمومی محله نمونه',
+      name: 'مجمع تخصصی علوم پایه در منطقه نمونه',
       identity: const GroupIdentity(
         governanceAreaId: 7,
-        dimensionKey: 'public',
-        dimensionValueKey: 'assembly',
+        dimensionKey: 'specialty',
+        dimensionValueKey: 'experience_field:1',
       ),
       membership: const GroupMembership(
         role: 1,

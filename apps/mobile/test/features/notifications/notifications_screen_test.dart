@@ -42,6 +42,33 @@ void main() {
     expect(opened?.params['group_id'], 42);
   });
 
+  testWidgets('technical notification keys are localized before display',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          state: NotificationsState.ready([
+            NotificationDto(
+              id: 'n-technical',
+              type: 'najm_hoda.approval.requested',
+              title: 'نیاز به تایید انسانی نجم‌هدا',
+              message:
+                  'اکشن review_auth_service_event با ریسک medium در صف تایید قرار گرفت.',
+              context: const {},
+              read: false,
+              createdAt: DateTime.utc(2026, 10, 2),
+            ),
+          ]),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('review_auth_service_event'), findsNothing);
+    expect(find.textContaining('medium'), findsNothing);
+    expect(find.textContaining('بررسی رویداد احراز هویت'), findsOneWidget);
+    expect(find.textContaining('متوسط'), findsOneWidget);
+  });
+
   testWidgets('notification without typed link is not executable',
       (tester) async {
     var opened = false;

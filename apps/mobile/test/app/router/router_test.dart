@@ -104,6 +104,56 @@ void main() {
     expect(find.byKey(const Key('home-route-screen')), findsOneWidget);
     expect(find.byKey(const Key('group-detail-route-screen')), findsNothing);
   });
+
+  testWidgets('drill-down routes preserve Android back history', (tester) async {
+    final appRouter = AppRouter(
+      bootstrap: const BootstrapState.compatible(),
+      session: SessionState.authenticated(sampleSession()),
+      groupsBuilder: (context, openGroup) => Scaffold(
+        key: const Key('test-groups-screen'),
+        body: FilledButton(
+          key: const Key('test-open-group'),
+          onPressed: () => openGroup(42),
+          child: const Text('باز کردن گروه'),
+        ),
+      ),
+      groupDetailBuilder: (context, groupId) => Scaffold(
+        key: const Key('test-group-detail-screen'),
+        body: Text('group:$groupId'),
+      ),
+      notificationsBuilder: (context, openLink) => const Scaffold(
+        key: Key('test-notifications-screen'),
+        body: Text('اعلان‌ها'),
+      ),
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: appRouter.router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-groups-action')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('test-groups-screen')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('test-open-group')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('test-group-detail-screen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('test-groups-screen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-route-screen')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('home-notifications-action')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('test-notifications-screen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-route-screen')), findsOneWidget);
+  });
 }
 
 NativeSession sampleSession() => NativeSession(
