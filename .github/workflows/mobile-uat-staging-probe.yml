@@ -1,0 +1,44 @@
+name: Mobile UAT Staging Readiness Probe
+
+on:
+  push:
+    branches:
+      - agent/mobile-uat-staging-probe-20261003
+    paths:
+      - '.github/workflows/mobile-uat-staging-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate dedicated staging secrets are configured
+        env:
+          FTP_SERVER: ${{ secrets.STAGING_FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.STAGING_FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.STAGING_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_SERVER" || { echo '::error::STAGING_FTP_SERVER is missing'; exit 1; }
+          test -n "$FTP_USERNAME" || { echo '::error::STAGING_FTP_USERNAME is missing'; exit 1; }
+          test -n "$FTP_PASSWORD" || { echo '::error::STAGING_FTP_PASSWORD is missing'; exit 1; }
+          echo 'Dedicated staging FTP secrets are configured.'
+
+      - name: Probe FTPS login read-only
+        env:
+          FTP_SERVER: ${{ secrets.STAGING_FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.STAGING_FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.STAGING_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --ssl-reqd --user "$FTP_USERNAME:$FTP_PASSWORD" "ftp://$FTP_SERVER:21/" --list-only >/tmp/staging-root-list.txt
+          echo 'Staging FTPS login succeeded.'
+
+      - name: Probe staging HTTPS origin
+        run: |
+          set -euo pipefail
+          getent hosts new.earthcoop.info
+          curl --fail --silent --show-error --location --max-time 20 --output /dev/null --write-out 'HTTP %{http_code}\n' https://new.earthcoop.info/
