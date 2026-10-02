@@ -8,7 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('najm_bahar_projects', function (Blueprint $table) {
+        $usesSqlite = Schema::getConnection()->getDriverName() === 'sqlite';
+
+        Schema::create('najm_bahar_projects', function (Blueprint $table) use ($usesSqlite) {
             $table->id();
             $table->morphs('owner');
             $table->unsignedBigInteger('category_level1_id')->nullable();
@@ -37,8 +39,13 @@ return new class extends Migration
             $table->enum('target_market', ['local', 'professional', 'general', 'external'])->nullable();
             $table->bigInteger('base_value_min')->nullable();
             $table->bigInteger('base_value_max')->nullable();
-            $table->unsignedInteger('total_shares')->default(100);
-            $table->decimal('initial_auction_percent', 5, 2)->default(10.00);
+            if ($usesSqlite) {
+                $table->unsignedInteger('total_shares')->nullable();
+                $table->decimal('initial_auction_percent', 5, 2)->nullable();
+            } else {
+                $table->unsignedInteger('total_shares')->default(100);
+                $table->decimal('initial_auction_percent', 5, 2)->default(10.00);
+            }
             $table->decimal('max_user_ownership_percent', 5, 2)->nullable();
             $table->enum('auction_period', ['monthly', 'quarterly', 'semi_annual', 'annual'])->nullable();
             $table->enum('risk_level', ['low', 'medium', 'high'])->nullable();
