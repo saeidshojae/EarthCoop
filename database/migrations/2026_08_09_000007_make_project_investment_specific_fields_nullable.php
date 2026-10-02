@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -9,17 +11,26 @@ return new class extends Migration
     {
         // These fields belong only to the auction-shares funding method.
         // Capital-participation projects intentionally store NULL here.
-        DB::statement('ALTER TABLE `najm_bahar_projects` MODIFY `total_shares` INT UNSIGNED NULL');
-        DB::statement('ALTER TABLE `najm_bahar_projects` MODIFY `initial_auction_percent` DECIMAL(5,2) NULL');
+        Schema::table('najm_bahar_projects', function (Blueprint $table): void {
+            $table->unsignedInteger('total_shares')->nullable()->change();
+            $table->decimal('initial_auction_percent', 5, 2)->nullable()->change();
+        });
     }
 
     public function down(): void
     {
         // Historical behavior used defaults for every project, even when the
         // project did not use auction shares. Restore those defaults on rollback.
-        DB::statement('UPDATE `najm_bahar_projects` SET `total_shares` = 100 WHERE `total_shares` IS NULL');
-        DB::statement('UPDATE `najm_bahar_projects` SET `initial_auction_percent` = 10.00 WHERE `initial_auction_percent` IS NULL');
-        DB::statement('ALTER TABLE `najm_bahar_projects` MODIFY `total_shares` INT UNSIGNED NOT NULL DEFAULT 100');
-        DB::statement('ALTER TABLE `najm_bahar_projects` MODIFY `initial_auction_percent` DECIMAL(5,2) NOT NULL DEFAULT 10.00');
+        DB::table('najm_bahar_projects')
+            ->whereNull('total_shares')
+            ->update(['total_shares' => 100]);
+        DB::table('najm_bahar_projects')
+            ->whereNull('initial_auction_percent')
+            ->update(['initial_auction_percent' => 10.00]);
+
+        Schema::table('najm_bahar_projects', function (Blueprint $table): void {
+            $table->unsignedInteger('total_shares')->default(100)->change();
+            $table->decimal('initial_auction_percent', 5, 2)->default(10.00)->change();
+        });
     }
 };
