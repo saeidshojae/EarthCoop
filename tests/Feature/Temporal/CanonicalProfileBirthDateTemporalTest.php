@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Temporal;
 
+use App\Models\AgeGroup;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -61,6 +62,12 @@ class CanonicalProfileBirthDateTemporalTest extends TestCase
     {
         config()->set('location-governance.registration_enabled', false);
         config()->set('location-governance.groups_enabled', false);
+
+        AgeGroup::create([
+            'title' => 'همه سنین تست',
+            'min_age' => 0,
+            'max_age' => 200,
+        ]);
 
         $persianUser = User::factory()->create([
             'first_name' => 'علی',
