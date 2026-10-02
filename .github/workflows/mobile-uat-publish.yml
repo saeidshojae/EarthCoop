@@ -155,6 +155,7 @@ jobs:
           test -s mobile-uat-dist/index.html
           grep -F 'دانلود مستقیم APK' mobile-uat-dist/index.html >/dev/null
           grep -F "\"version\": \"${VERSION}\"" mobile-uat-dist/build.json >/dev/null
+          grep -F "\"git_sha\": \"${GITHUB_SHA}\"" mobile-uat-dist/build.json >/dev/null
           grep -F '"signing_mode":' mobile-uat-dist/build.json >/dev/null
 
       - name: Retain published APK as workflow artifact

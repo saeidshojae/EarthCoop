@@ -8,6 +8,7 @@ on:
       - 'app/Services/Push/**'
       - 'app/Providers/PushServiceProvider.php'
       - 'config/services.php'
+      - 'database/migrations/**'
       - 'composer.json'
       - 'composer.lock'
       - 'tests/Unit/Services/Push/**'

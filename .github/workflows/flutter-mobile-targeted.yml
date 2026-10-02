@@ -7,6 +7,7 @@ on:
       - agent/flutter-native-client-foundation-20260929
     paths:
       - 'apps/mobile/**'
+      - 'database/migrations/**'
       - 'app/Http/Controllers/API/V1/Auth/NativeSessionController.php'
       - 'app/Http/Controllers/API/V1/BootstrapController.php'
       - 'app/Http/Controllers/API/V1/DevicePushController.php'
@@ -41,6 +42,7 @@ on:
   pull_request:
     paths:
       - 'apps/mobile/**'
+      - 'database/migrations/**'
       - 'app/Http/Controllers/API/V1/Auth/NativeSessionController.php'
       - 'app/Http/Controllers/API/V1/BootstrapController.php'
       - 'app/Http/Controllers/API/V1/DevicePushController.php'
@@ -137,6 +139,7 @@ jobs:
                 ;;
             esac
             case "$path" in
+              database/migrations/*|.github/workflows/flutter-mobile-targeted.yml|\
               app/Http/Controllers/API/V1/Auth/NativeSessionController.php|\
               app/Http/Controllers/API/V1/BootstrapController.php|\
               app/Http/Controllers/API/V1/DevicePushController.php|\
