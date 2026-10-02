@@ -21,11 +21,6 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      EARTHCOOP_UAT_KEYSTORE_PATH: ${{ runner.temp }}/earthcoop-uat.jks
-      EARTHCOOP_UAT_KEY_ALIAS: ${{ secrets.ANDROID_UAT_KEY_ALIAS }}
-      EARTHCOOP_UAT_STORE_PASSWORD: ${{ secrets.ANDROID_UAT_STORE_PASSWORD }}
-      EARTHCOOP_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,14 +28,26 @@ jobs:
         shell: bash
         env:
           ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
+          ANDROID_UAT_KEY_ALIAS: ${{ secrets.ANDROID_UAT_KEY_ALIAS }}
+          ANDROID_UAT_STORE_PASSWORD: ${{ secrets.ANDROID_UAT_STORE_PASSWORD }}
+          ANDROID_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$ANDROID_UAT_KEYSTORE_BASE64" || { echo "::error::ANDROID_UAT_KEYSTORE_BASE64 is not configured"; exit 1; }
-          test -n "$EARTHCOOP_UAT_KEY_ALIAS" || { echo "::error::ANDROID_UAT_KEY_ALIAS is not configured"; exit 1; }
-          test -n "$EARTHCOOP_UAT_STORE_PASSWORD" || { echo "::error::ANDROID_UAT_STORE_PASSWORD is not configured"; exit 1; }
-          test -n "$EARTHCOOP_UAT_KEY_PASSWORD" || { echo "::error::ANDROID_UAT_KEY_PASSWORD is not configured"; exit 1; }
-          printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$EARTHCOOP_UAT_KEYSTORE_PATH"
-          test -s "$EARTHCOOP_UAT_KEYSTORE_PATH" || { echo "::error::Decoded UAT keystore is empty"; exit 1; }
+          test -n "$ANDROID_UAT_KEY_ALIAS" || { echo "::error::ANDROID_UAT_KEY_ALIAS is not configured"; exit 1; }
+          test -n "$ANDROID_UAT_STORE_PASSWORD" || { echo "::error::ANDROID_UAT_STORE_PASSWORD is not configured"; exit 1; }
+          test -n "$ANDROID_UAT_KEY_PASSWORD" || { echo "::error::ANDROID_UAT_KEY_PASSWORD is not configured"; exit 1; }
+
+          UAT_KEYSTORE_PATH="$RUNNER_TEMP/earthcoop-uat.jks"
+          printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$UAT_KEYSTORE_PATH"
+          test -s "$UAT_KEYSTORE_PATH" || { echo "::error::Decoded UAT keystore is empty"; exit 1; }
+
+          {
+            echo "EARTHCOOP_UAT_KEYSTORE_PATH=$UAT_KEYSTORE_PATH"
+            echo "EARTHCOOP_UAT_KEY_ALIAS=$ANDROID_UAT_KEY_ALIAS"
+            echo "EARTHCOOP_UAT_STORE_PASSWORD=$ANDROID_UAT_STORE_PASSWORD"
+            echo "EARTHCOOP_UAT_KEY_PASSWORD=$ANDROID_UAT_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
 
       - uses: subosito/flutter-action@v2
         with:
