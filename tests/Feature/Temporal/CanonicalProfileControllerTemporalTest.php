@@ -30,6 +30,8 @@ class CanonicalProfileControllerTemporalTest extends TestCase
 
         $this->assertInstanceOf(CanonicalProfileController::class, app(ProfileController::class));
 
+        app()->setLocale('en');
+
         Route::put('/_test/temporal/canonical-profile/general', [ProfileController::class, 'updateGeneral']);
 
         $this->actingAs($user)
