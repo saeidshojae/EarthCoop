@@ -91,7 +91,7 @@ jobs:
                 <li>روی «دانلود مستقیم APK» بزنید.</li>
                 <li>پس از پایان دانلود، فایل را باز کنید.</li>
                 <li>در صورت درخواست Android، اجازه نصب از همین مرورگر یا File Manager را فعال کنید.</li>
-                <li>نسخه قبلی UAT را می‌توانید با همین فایل به‌روزرسانی کنید.</li>
+                <li>چون این نسخه با امضای آزمایشی CI ساخته می‌شود، اگر Android اجازه نصب روی نسخه UAT قبلی را نداد، نسخه قبلی را حذف و این نسخه را تازه نصب کنید.</li>
               </ol>
             </main>
           </body>
@@ -102,11 +102,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          VERSION="$(awk '/^version:/ {print $2; exit}' apps/mobile/pubspec.yaml)"
           test -s mobile-uat-dist/earthcoop-android-uat.apk
           test -s mobile-uat-dist/build.json
           test -s mobile-uat-dist/index.html
           grep -F 'دانلود مستقیم APK' mobile-uat-dist/index.html >/dev/null
-          grep -F '"version": "1.0.0+2"' mobile-uat-dist/build.json >/dev/null
+          grep -F "\"version\": \"${VERSION}\"" mobile-uat-dist/build.json >/dev/null
 
       - name: Retain published APK as workflow artifact
         uses: actions/upload-artifact@v4
