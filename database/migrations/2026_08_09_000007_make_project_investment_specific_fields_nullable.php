@@ -9,6 +9,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Fresh SQLite test schemas already create these fields nullable in the
+        // original table migration. Avoid Laravel compiling change() to MySQL's
+        // unsupported ALTER TABLE ... MODIFY syntax on SQLite.
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // These fields belong only to the auction-shares funding method.
         // Capital-participation projects intentionally store NULL here.
         Schema::table('najm_bahar_projects', function (Blueprint $table): void {
@@ -19,6 +26,12 @@ return new class extends Migration
 
     public function down(): void
     {
+        // The SQLite-only fresh-schema definition predates this migration in the
+        // test path and is already nullable, so there is nothing to roll back.
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Historical behavior used defaults for every project, even when the
         // project did not use auction shares. Restore those defaults on rollback.
         DB::table('najm_bahar_projects')
