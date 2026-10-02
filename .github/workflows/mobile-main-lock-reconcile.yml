@@ -1,0 +1,35 @@
+name: Mobile Main Lock Reconcile
+
+on:
+  push:
+    branches:
+      - agent/mobile-main-lock-reconcile-20261003
+    paths:
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/mobile-main-lock-reconcile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Reconcile google auth onto current main lock
+        run: composer update google/auth --with-all-dependencies --no-install --no-scripts --no-interaction --no-progress
+      - name: Validate reconciled Composer files
+        run: composer validate --no-check-publish
+      - name: Upload reconciled composer.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: reconciled-composer-lock
+          path: composer.lock
+          if-no-files-found: error
+          retention-days: 7
