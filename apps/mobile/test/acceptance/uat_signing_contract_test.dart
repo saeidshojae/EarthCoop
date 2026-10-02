@@ -5,8 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('UAT APK signing uses a stable secret-backed keystore contract', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
-    final workflow =
-        File('../../.github/workflows/mobile-uat-publish.yml').readAsStringSync();
+    final workflow = File(
+      '../../.github/workflows/mobile-uat-publish.yml',
+    ).readAsStringSync();
 
     expect(gradle, contains('EARTHCOOP_UAT_KEYSTORE_PATH'));
     expect(gradle, contains('EARTHCOOP_UAT_KEY_ALIAS'));
@@ -19,7 +20,10 @@ void main() {
     expect(workflow, contains('ANDROID_UAT_KEY_PASSWORD'));
     expect(workflow, contains('EARTHCOOP_UAT_KEYSTORE_PATH'));
 
-    expect(workflow, isNot(contains('apps/mobile/android/app/uat.keystore')));
+    expect(
+      workflow,
+      isNot(contains('apps/mobile/android/app/uat.keystore')),
+    );
     expect(workflow, isNot(contains('apps/mobile/android/app/uat.jks')));
   });
 }
