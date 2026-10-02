@@ -5,14 +5,14 @@ class GroupIdentity {
     required this.dimensionValueKey,
   });
 
-  final int governanceAreaId;
+  final int? governanceAreaId;
   final String dimensionKey;
   final String dimensionValueKey;
 
   factory GroupIdentity.fromJson(Object? raw) {
     final map = _stringMap(raw, 'identity');
     return GroupIdentity(
-      governanceAreaId: _requiredInt(map, 'governance_area_id'),
+      governanceAreaId: _nullableInt(map, 'governance_area_id'),
       dimensionKey: _requiredString(map, 'dimension_key'),
       dimensionValueKey: _requiredString(map, 'dimension_value_key'),
     );
@@ -60,17 +60,48 @@ class GroupDto {
     required this.membership,
     required this.membersCount,
     this.lastActivityAt,
+    this.pending = false,
+    this.pendingRequestId,
+    this.canOpen = true,
   });
 
-  final int id;
+  final int? id;
   final String name;
   final GroupIdentity identity;
   final GroupMembership membership;
   final int membersCount;
   final DateTime? lastActivityAt;
+  final bool pending;
+  final int? pendingRequestId;
+  final bool canOpen;
 
   factory GroupDto.fromJson(Object? raw) {
     final map = _stringMap(raw, 'group');
+    final pending = _optionalBool(map, 'pending', defaultValue: false);
+    final id = _nullableInt(map, 'id');
+    final pendingRequestId = _nullableInt(map, 'pending_request_id');
+    final canOpen = _optionalBool(
+      map,
+      'can_open',
+      defaultValue: !pending && id != null,
+    );
+    final identity = GroupIdentity.fromJson(map['identity']);
+
+    if (!pending && id == null) {
+      throw const FormatException('materialized group id must be an integer');
+    }
+    if (!pending && identity.governanceAreaId == null) {
+      throw const FormatException(
+          'materialized governance_area_id must be an integer');
+    }
+    if (pending && pendingRequestId == null) {
+      throw const FormatException(
+          'pending_request_id must be an integer for pending groups');
+    }
+    if (canOpen && id == null) {
+      throw const FormatException('openable group requires materialized id');
+    }
+
     final lastActivityRaw = map['last_activity_at'];
     DateTime? lastActivityAt;
     if (lastActivityRaw != null) {
@@ -86,12 +117,15 @@ class GroupDto {
     }
 
     return GroupDto(
-      id: _requiredInt(map, 'id'),
+      id: id,
       name: _requiredString(map, 'name'),
-      identity: GroupIdentity.fromJson(map['identity']),
+      identity: identity,
       membership: GroupMembership.fromJson(map['membership']),
       membersCount: _requiredInt(map, 'members_count'),
       lastActivityAt: lastActivityAt,
+      pending: pending,
+      pendingRequestId: pendingRequestId,
+      canOpen: canOpen,
     );
   }
 
@@ -102,6 +136,9 @@ class GroupDto {
         'membership': membership.toJson(),
         'members_count': membersCount,
         'last_activity_at': lastActivityAt?.toUtc().toIso8601String(),
+        'pending': pending,
+        'pending_request_id': pendingRequestId,
+        'can_open': canOpen,
       };
 }
 
@@ -117,6 +154,24 @@ Map<String, Object?> _stringMap(Object? raw, String field) {
 int _requiredInt(Map<String, Object?> map, String key) {
   final value = map[key];
   if (value is! int) throw FormatException('$key must be an integer');
+  return value;
+}
+
+int? _nullableInt(Map<String, Object?> map, String key) {
+  final value = map[key];
+  if (value == null) return null;
+  if (value is! int) throw FormatException('$key must be an integer or null');
+  return value;
+}
+
+bool _optionalBool(
+  Map<String, Object?> map,
+  String key, {
+  required bool defaultValue,
+}) {
+  final value = map[key];
+  if (value == null) return defaultValue;
+  if (value is! bool) throw FormatException('$key must be a boolean');
   return value;
 }
 

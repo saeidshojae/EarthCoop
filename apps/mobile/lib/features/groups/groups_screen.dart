@@ -70,12 +70,17 @@ class GroupsScreen extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final group = state.items[index];
+                  final canOpen = onOpenGroup != null &&
+                      group.canOpen &&
+                      group.id != null &&
+                      !group.pending;
+                  final cardKey = group.pending
+                      ? Key('group-pending-${group.pendingRequestId ?? index}')
+                      : Key('group-card-${group.id}');
                   return Card(
                     child: InkWell(
-                      key: Key('group-card-${group.id}'),
-                      onTap: onOpenGroup == null
-                          ? null
-                          : () => onOpenGroup!(group.id),
+                      key: cardKey,
+                      onTap: canOpen ? () => onOpenGroup!(group.id!) : null,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -88,8 +93,16 @@ class GroupsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(group.membership.roleLabel),
-                            const SizedBox(height: 4),
-                            Text('${_persianDigits(group.membersCount)} عضو'),
+                            if (group.pending) ...[
+                              const SizedBox(height: 6),
+                              const Text(
+                                'در انتظار تأیید',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 4),
+                              Text('${_persianDigits(group.membersCount)} عضو'),
+                            ],
                           ],
                         ),
                       ),

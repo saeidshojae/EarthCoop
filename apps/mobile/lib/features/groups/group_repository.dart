@@ -29,8 +29,11 @@ class GroupRepository {
         '/groups',
         decodeData: _decodeList,
       );
-      await _bestEffortWrite(
-          response.data.map((group) => group.toJson()).toList());
+      final cacheable = response.data
+          .where((group) => group.id != null && !group.pending)
+          .map((group) => group.toJson())
+          .toList(growable: false);
+      await _bestEffortWrite(cacheable);
       return GroupProjection(value: response.data, isStale: false);
     } on ApiFailure catch (failure) {
       if (!failure.retryable) rethrow;
@@ -78,6 +81,7 @@ class GroupRepository {
   }
 
   Future<void> _bestEffortMerge(GroupDto value) async {
+    if (value.id == null || value.pending) return;
     try {
       final existing = await _cache.readAll();
       final merged = existing.where((item) => item['id'] != value.id).toList()
