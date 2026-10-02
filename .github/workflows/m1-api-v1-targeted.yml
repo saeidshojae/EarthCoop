@@ -15,6 +15,7 @@ on:
       - 'tests/Feature/GroupChat/**'
       - 'tests/Feature/Elections/**'
       - '.github/workflows/m1-api-v1-targeted.yml'
+      - '.github/workflows/flutter-mobile-targeted.yml'
       - 'composer.json'
       - 'composer.lock'
 
