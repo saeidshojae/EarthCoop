@@ -28,9 +28,7 @@ jobs:
           from pathlib import Path
           path = Path('app/Providers/RouteServiceProvider.php')
           source = path.read_text()
-          marker = """            Route::middleware('web')
-                ->group(base_path('routes/web.php'));
-          """
+          needle = "->group(base_path('routes/web.php'));"
           block = """
 
             // Communication Center observability stays isolated from the legacy
@@ -41,9 +39,11 @@ jobs:
                 ->group(base_path('routes/communication-center.php'));
           """
           if "routes/communication-center.php" not in source:
-              if marker not in source:
+              position = source.find(needle)
+              if position < 0:
                   raise SystemExit('routes/web.php marker not found')
-              source = source.replace(marker, marker + block, 1)
+              insert_at = position + len(needle)
+              source = source[:insert_at] + block + source[insert_at:]
               path.write_text(source)
       - name: Validate reconciled files
         run: |
