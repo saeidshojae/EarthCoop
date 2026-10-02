@@ -1,0 +1,158 @@
+name: Communication Center Targeted Gate
+
+on:
+  push:
+    branches:
+      - agent/communication-center-implementation-20260930
+    paths:
+      - 'app/Enums/Communication/**'
+      - 'app/Models/Communication*.php'
+      - 'app/Services/Communication/**'
+      - 'app/Services/Email/EmailTemplateManagementService.php'
+      - 'app/Services/Invitation/InvitationManagementService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailTemplateDecisionService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailDraftService.php'
+      - 'app/Jobs/Communication/**'
+      - 'app/Events/RegistrationCompleted.php'
+      - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
+      - 'app/Providers/EventServiceProvider.php'
+      - 'app/Http/Controllers/Auth/EmailVerificationController.php'
+      - 'app/Http/Controllers/Auth/LoginController.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Http/Controllers/Admin/InvitationCodeController.php'
+      - 'app/Http/Controllers/Admin/Communication/**'
+      - 'app/Http/Controllers/Profile/ProfileController.php'
+      - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
+      - 'database/migrations/2026_09_30_18*.php'
+      - 'database/migrations/2026_10_01_*.php'
+      - 'tests/Feature/Communication/**'
+      - 'tests/Unit/Communication/**'
+      - 'tests/Feature/LocationGovernance/*Registration*.php'
+      - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
+      - 'tests/Feature/NajmHoda/InvitationManagementServiceTest.php'
+      - 'tests/Feature/Auth/**'
+      - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
+      - '.github/workflows/communication-center-targeted.yml'
+  pull_request:
+    branches:
+      - agent/communication-center-spec-20260930
+    paths:
+      - 'app/Enums/Communication/**'
+      - 'app/Models/Communication*.php'
+      - 'app/Services/Communication/**'
+      - 'app/Services/Email/EmailTemplateManagementService.php'
+      - 'app/Services/Invitation/InvitationManagementService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailTemplateDecisionService.php'
+      - 'app/Services/NajmHoda/FounderOps/FounderEmailDraftService.php'
+      - 'app/Jobs/Communication/**'
+      - 'app/Events/RegistrationCompleted.php'
+      - 'app/Listeners/DispatchRegistrationCompletedCommunication.php'
+      - 'app/Providers/EventServiceProvider.php'
+      - 'app/Http/Controllers/Auth/EmailVerificationController.php'
+      - 'app/Http/Controllers/Auth/LoginController.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Http/Controllers/Admin/InvitationCodeController.php'
+      - 'app/Http/Controllers/Admin/Communication/**'
+      - 'app/Http/Controllers/Profile/ProfileController.php'
+      - 'app/Http/Controllers/Profile/CommunicationPreferenceController.php'
+      - 'database/migrations/2026_09_30_18*.php'
+      - 'database/migrations/2026_10_01_*.php'
+      - 'tests/Feature/Communication/**'
+      - 'tests/Unit/Communication/**'
+      - 'tests/Feature/LocationGovernance/*Registration*.php'
+      - 'tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php'
+      - 'tests/Feature/NajmHoda/InvitationManagementServiceTest.php'
+      - 'tests/Feature/Auth/**'
+      - 'tests/Architecture/CommunicationDeliveryBoundaryTest.php'
+      - '.github/workflows/communication-center-targeted.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: communication-center-targeted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  communication-center:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql, gd
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop_test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          php artisan migrate:fresh --force
+      - name: Run Communication Center targeted tests
+        run: |
+          if [ -d tests/Feature/Communication ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication
+          fi
+          if [ -d tests/Unit/Communication ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Communication
+          fi
+          if [ -f tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/FounderEmailManagementConnectivityTest.php
+          fi
+          if [ -f tests/Architecture/CommunicationDeliveryBoundaryTest.php ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Architecture/CommunicationDeliveryBoundaryTest.php
+          fi
+      - name: Run authentication-sensitive email regressions
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmHoda/InvitationManagementServiceTest.php
+          if [ -d tests/Feature/Auth ]; then
+            vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Auth
+          fi
+      - name: Run registration regression tests
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist \
+            tests/Feature/LocationGovernance/LegacyRegistrationLocationContractTest.php \
+            tests/Feature/LocationGovernance/PendingRegistrationGroupContractTest.php \
+            tests/Feature/LocationGovernance/RegistrationPendingResidenceTest.php \
+            tests/Feature/LocationGovernance/RegistrationPrimaryResidenceTest.php \
+            tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php \
+            tests/Feature/LocationGovernance/RegistrationStep3CanonicalUxRegressionTest.php \
+            tests/Feature/LocationGovernance/RegistrationStep3OriginalUxContractTest.php \
+            tests/Feature/LocationGovernance/RegistrationStructuralClaimEntryPointTest.php

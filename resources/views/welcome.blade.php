@@ -10,7 +10,34 @@
     <meta name="theme-color" content="#10b981">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
-    <title>{{ __('langWelcome.site_title') }}</title>
+    @php
+        $homeCanonical = app(\App\Support\Seo\CanonicalUrl::class)->to('/');
+        $homeImage = app(\App\Support\Seo\CanonicalUrl::class)->to(config('seo.default_image'));
+        $homeJsonLd = [
+            [
+                '@context' => 'https://schema.org',
+                '@type' => 'Organization',
+                'name' => 'EarthCoop',
+                'url' => $homeCanonical,
+                'logo' => $homeImage,
+                'sameAs' => config('seo.social_profiles', []),
+            ],
+            [
+                '@context' => 'https://schema.org',
+                '@type' => 'WebSite',
+                'name' => 'EarthCoop',
+                'url' => $homeCanonical,
+                'inLanguage' => 'fa-IR',
+            ],
+        ];
+    @endphp
+    <x-seo-meta
+        :title="__('langWelcome.site_title')"
+        :description="config('seo.default_description')"
+        :canonical="$homeCanonical"
+        :image="$homeImage"
+        :json-ld="$homeJsonLd"
+    />
 
     <!-- Tailwind & Bootstrap CSS via Vite -->
     @vite(['resources/js/app.js'])

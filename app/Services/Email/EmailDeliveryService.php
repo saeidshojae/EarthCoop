@@ -2,9 +2,14 @@
 
 namespace App\Services\Email;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use App\Services\Communication\CommunicationDispatcher;
+use Illuminate\Support\Str;
 
+/**
+ * @deprecated Compatibility facade for older callers. New code should depend on
+ * CommunicationDispatcher directly. This class no longer talks to the mail
+ * provider and cannot bypass the canonical Communication Center.
+ */
 class EmailDeliveryService
 {
     /**
@@ -19,36 +24,36 @@ class EmailDeliveryService
             $recipients
         ), static fn (string $email): bool => filter_var($email, FILTER_VALIDATE_EMAIL) !== false)));
 
-        $sent = 0;
-        $failed = 0;
-        $fromAddress = trim((string) ($from['address'] ?? ''));
-        $fromName = trim((string) ($from['name'] ?? ''));
-        $replyTo = trim((string) ($from['reply_to'] ?? ''));
-
-        foreach ($valid as $recipient) {
-            try {
-                Mail::html($body, function ($message) use ($recipient, $subject, $fromAddress, $fromName, $replyTo): void {
-                    $message->to($recipient)->subject($subject);
-                    if ($fromAddress !== '') {
-                        $message->from($fromAddress, $fromName !== '' ? $fromName : null);
-                    }
-                    if ($replyTo !== '') {
-                        $message->replyTo($replyTo, $fromName !== '' ? $fromName : null);
-                    }
-                });
-                $sent++;
-            } catch (\Throwable $e) {
-                $failed++;
-                Log::error('Failed to send email', [
-                    'recipient' => $recipient,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        if ($valid === []) {
+            return [
+                'sent_count' => 0,
+                'failed_count' => 0,
+                'recipients' => [],
+            ];
         }
 
+        app(CommunicationDispatcher::class)->dispatchExternal(
+            'admin.manual_custom',
+            ['type' => 'legacy.email_delivery', 'id' => (string) Str::uuid()],
+            array_map(
+                static fn (string $email): array => ['email' => $email, 'locale' => 'fa'],
+                $valid,
+            ),
+            [
+                'subject' => $subject,
+                'rendered_html' => $body,
+            ],
+            [
+                'priority' => 2,
+                'deduplication_key' => 'legacy.email_delivery:'.Str::uuid(),
+            ],
+        );
+
+        // Backward-compatible result shape: accepted canonical recipients are
+        // counted as sent by legacy callers even though provider delivery is async.
         return [
-            'sent_count' => $sent,
-            'failed_count' => $failed,
+            'sent_count' => count($valid),
+            'failed_count' => 0,
             'recipients' => $valid,
         ];
     }

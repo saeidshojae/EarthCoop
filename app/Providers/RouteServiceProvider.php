@@ -56,6 +56,14 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+  // Communication Center observability stays isolated from the legacy
+  // email CRUD surface and remains administrator-only.
+  Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
+      ->prefix('admin/communications')
+      ->name('admin.communications.')
+      ->group(base_path('routes/communication-center.php'));
+
+
             // Public mobile UAT download page is isolated from the legacy web route file
             // so binary delivery can evolve independently from authenticated web flows.
             Route::middleware('web')

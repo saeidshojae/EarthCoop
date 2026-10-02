@@ -4,9 +4,11 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Models\Invitation;
 use App\Models\InvitationCode;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\Invitation\InvitationManagementService;
 use App\Services\Invitation\InvitationSystemIssuerResolver;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
@@ -54,6 +56,58 @@ class InvitationManagementServiceTest extends TestCase
         $code=InvitationCode::query()->findOrFail((int)$result['invitation_code_id']);
         $this->assertNull($code->user_id);
         $this->assertFalse((bool)$code->used);
+    }
+
+    public function test_issue_preserves_six_character_uppercase_hex_code_and_configured_expiry(): void
+    {
+        Mail::fake();
+        config(['invitation-management.system_issuer_user_id' => null]);
+        $now = CarbonImmutable::parse('2026-10-01 03:30:00', 'Asia/Tehran');
+        CarbonImmutable::setTestNow($now);
+        \Carbon\Carbon::setTestNow($now);
+
+        try {
+            $settings = Setting::singleton();
+            $settings->expire_invation_time = 18;
+            $settings->save();
+            $actor = User::factory()->create();
+            $invitation = Invitation::query()->create(['email' => 'expiry@example.test', 'status' => 0]);
+
+            $result = app(InvitationManagementService::class)->issue($invitation, (int) $actor->id);
+            $code = InvitationCode::query()->findOrFail((int) $result['invitation_code_id']);
+
+            $this->assertMatchesRegularExpression('/^[A-F0-9]{6}$/', (string) $code->code);
+            $this->assertSame($now->addHours(18)->timestamp, $code->expire_at->timestamp);
+            $this->assertFalse((bool) $code->used);
+        } finally {
+            CarbonImmutable::setTestNow();
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
+    public function test_invitation_expiry_never_falls_below_one_hour(): void
+    {
+        Mail::fake();
+        config(['invitation-management.system_issuer_user_id' => null]);
+        $now = CarbonImmutable::parse('2026-10-01 03:30:00', 'Asia/Tehran');
+        CarbonImmutable::setTestNow($now);
+        \Carbon\Carbon::setTestNow($now);
+
+        try {
+            $settings = Setting::singleton();
+            $settings->expire_invation_time = 0;
+            $settings->save();
+            $actor = User::factory()->create();
+            $invitation = Invitation::query()->create(['email' => 'minimum@example.test', 'status' => 0]);
+
+            $result = app(InvitationManagementService::class)->issue($invitation, (int) $actor->id);
+            $code = InvitationCode::query()->findOrFail((int) $result['invitation_code_id']);
+
+            $this->assertSame($now->addHour()->timestamp, $code->expire_at->timestamp);
+        } finally {
+            CarbonImmutable::setTestNow();
+            \Carbon\Carbon::setTestNow();
+        }
     }
 
     public function test_invalid_config_fails_before_invitation_state_changes(): void

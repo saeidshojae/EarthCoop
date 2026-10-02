@@ -192,6 +192,34 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Detect Composer lock change
+      id: vendor-package-change
+      shell: bash
+      env:
+        BEFORE_SHA: ${{ github.event.before }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: |
+        set -euo pipefail
+        if [[ "$EVENT_NAME" == "workflow_dispatch" || -z "${BEFORE_SHA:-}" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Vendor package required for manual or initial deployment."
+          exit 0
+        fi
+
+        if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+          git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
+        fi
+
+        if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- composer.lock; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          echo "Vendor package not required: composer.lock is unchanged."
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Vendor package required: composer.lock changed."
+        fi
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
@@ -231,6 +259,41 @@ jobs:
     - name: Run Laravel package discovery
       run: php artisan package:discover --ansi
 
+    - name: Build verified vendor package
+      if: steps.vendor-package-change.outputs.changed == 'true'
+      shell: bash
+      env:
+        SOURCE_GIT_SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+        LOCK_SHA="$(sha256sum composer.lock | awk '{print $1}')"
+        PACKAGE_DIR=".deployment/vendor-package"
+        PACKAGE_NAME="vendor-${LOCK_SHA}.zip"
+        PACKAGE_PATH="${PACKAGE_DIR}/${PACKAGE_NAME}"
+        mkdir -p "$PACKAGE_DIR"
+        rm -f "$PACKAGE_DIR"/*.zip "$PACKAGE_DIR"/manifest.json
+        zip -qr "$PACKAGE_PATH" vendor
+        PACKAGE_SHA="$(sha256sum "$PACKAGE_PATH" | awk '{print $1}')"
+        CREATED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        PHP_VERSION="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+        export LOCK_SHA PACKAGE_NAME PACKAGE_SHA CREATED_AT PHP_VERSION SOURCE_GIT_SHA
+        php -r '$manifest=["schema_version"=>1,"package_filename"=>getenv("PACKAGE_NAME"),"package_sha256"=>getenv("PACKAGE_SHA"),"composer_lock_sha256"=>getenv("LOCK_SHA"),"source_git_sha"=>getenv("SOURCE_GIT_SHA"),"created_at"=>getenv("CREATED_AT"),"expected_top_level"=>"vendor","php_version"=>getenv("PHP_VERSION")]; file_put_contents(".deployment/vendor-package/manifest.json", json_encode($manifest, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));'
+
+    - name: Verify vendor package manifest locally
+      if: steps.vendor-package-change.outputs.changed == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        test -s .deployment/vendor-package/manifest.json
+        LOCK_SHA="$(sha256sum composer.lock | awk '{print $1}')"
+        PACKAGE=".deployment/vendor-package/vendor-${LOCK_SHA}.zip"
+        test -s "$PACKAGE"
+        MANIFEST_LOCK="$(php -r '$m=json_decode(file_get_contents(".deployment/vendor-package/manifest.json"),true,512,JSON_THROW_ON_ERROR); echo $m["composer_lock_sha256"];')"
+        MANIFEST_PACKAGE_SHA="$(php -r '$m=json_decode(file_get_contents(".deployment/vendor-package/manifest.json"),true,512,JSON_THROW_ON_ERROR); echo $m["package_sha256"];')"
+        test "$LOCK_SHA" = "$MANIFEST_LOCK"
+        test "$(sha256sum "$PACKAGE" | awk '{print $1}')" = "$MANIFEST_PACKAGE_SHA"
+        unzip -l "$PACKAGE" | grep -F 'vendor/autoload.php' >/dev/null
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -252,7 +315,7 @@ jobs:
         test -n "$FTP_USERNAME" || { echo "FTP_USERNAME secret is missing"; exit 1; }
         test -n "$FTP_PASSWORD" || { echo "FTP_PASSWORD secret is missing"; exit 1; }
 
-    - name: Sync files to cPanel via FTP
+    - name: Sync application files to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.4.0
       with:
         server: cp59.mihanvps.com
@@ -277,4 +340,22 @@ jobs:
           **/vendor/**
           **/tests/**
           **/.github/**
+          .deployment/**
           storage/**
+
+    - name: Sync vendor package to cPanel via FTP
+      if: steps.vendor-package-change.outputs.changed == 'true'
+      uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+      with:
+        server: cp59.mihanvps.com
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        protocol: ftps
+        port: 21
+        local-dir: ./.deployment/vendor-package/
+        server-dir: ./storage/deployment/vendor-packages/
+        security: strict
+        timeout: 300000
+        log-level: minimal
+        state-name: .ftp-deploy-vendor-package-state.json
+        dangerous-clean-slate: false

@@ -14,6 +14,8 @@ use Illuminate\Foundation\Http\Events\RequestHandled;
 use App\Contracts\Geocoding\ReverseGeocoder;
 use App\Http\Controllers\Admin\SafeUserController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Profile\CanonicalProfileController;
+use App\Http\Controllers\Profile\ProfileController;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
@@ -47,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SubAccountService::class, SafeSubAccountService::class);
         $this->app->bind(TransactionService::class, StrictTransactionService::class);
         $this->app->bind(UserController::class, SafeUserController::class);
+        $this->app->bind(ProfileController::class, CanonicalProfileController::class);
         $this->app->bind(NajmHodaPrivateGroupMeetingCommandService::class, NajmHodaPrivateGroupMeetingDecisionCommandService::class);
         $this->app->bind(SecretariatKnowledgeRanker::class, DeterministicSecretariatKnowledgeRanker::class);
         $this->app->bind(AuctionService::class, CanonicalAwareAuctionService::class);

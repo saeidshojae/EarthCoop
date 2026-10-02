@@ -43,6 +43,7 @@ use App\Modules\Stock\Controllers\BidController;
 use App\Modules\Blog\Controllers\BlogController as ModuleBlogController;
 use App\Modules\Blog\Controllers\AdminBlogController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\Seo\SitemapController;
 
 use App\Http\Controllers\Auth\Register\StartController;
 use App\Http\Controllers\Auth\Register\Step1Controller;
@@ -101,8 +102,9 @@ Route::get('/lang/current', [LocaleController::class, 'current'])->name('locale.
 */
 date_default_timezone_set("Asia/tehran");
 
-Route::view('/terms', 'terms')->name('terms');
+Route::view('/terms', 'terms', ['seoRobots' => 'index,follow'])->name('terms');
 Route::post('/terms', [TermController::class, 'store'])->name('terms.store');
+Route::get('/sitemap.xml', SitemapController::class)->name('seo.sitemap');
 
 /*
 |--------------------------------------------------------------------------
@@ -1576,4 +1578,3 @@ Route::middleware([\App\Http\Middleware\AdminMiddleware::class])->prefix('admin/
     // Steward Dashboard (Monitoring)
     Route::get('/steward-dashboard', fn() => view('steward-dashboard'))->name('steward.dashboard');
 });
-

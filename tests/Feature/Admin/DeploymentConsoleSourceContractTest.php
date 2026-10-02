@@ -10,6 +10,9 @@ class DeploymentConsoleSourceContractTest extends TestCase
     {
         $paths = [
             app_path('Services/Deployment/DeploymentConsoleService.php'),
+            app_path('Services/Deployment/VendorPackageInstaller.php'),
+            app_path('Console/Commands/InstallVendorPackage.php'),
+            app_path('Console/Commands/VendorPackageStatus.php'),
             app_path('Http/Controllers/Admin/DeploymentConsoleController.php'),
             base_path('routes/deployment-console.php'),
         ];

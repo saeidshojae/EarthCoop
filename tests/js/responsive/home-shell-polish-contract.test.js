@@ -14,7 +14,8 @@ test('Shared sidebar owns semantic sections on every page instead of Home inject
         ['network', 'شبکه و ارتباطات'],
         ['governance', 'حکمرانی و مشارکت'],
         ['economy', 'اقتصاد'],
-        ['account-support', 'حساب و راهنما'],
+        ['account-support', 'حساب و پشتیبانی'],
+        ['explore-docs', 'کاوش و اسناد'],
     ]) {
         assert.match(sidebar, new RegExp(`data-sidebar-section=["']${section[0]}["']`));
         assert.match(sidebar, new RegExp(section[1]));
