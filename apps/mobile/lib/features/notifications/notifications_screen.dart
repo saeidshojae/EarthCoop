@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/deep_links/semantic_link.dart';
 import 'notification_dto.dart';
+import 'notification_presentation.dart';
 import 'notifications_controller.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -20,6 +21,7 @@ class NotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       key: const Key('notifications-route-screen'),
+      appBar: AppBar(title: const Text('اعلان‌ها')),
       body: SafeArea(child: _body(context)),
     );
   }
@@ -109,7 +111,11 @@ class _NotificationCard extends StatelessWidget {
                       ),
                     if (notification.message != null) ...[
                       const SizedBox(height: 6),
-                      Text(notification.message!),
+                      Text(
+                        NotificationPresentation.localizeMessage(
+                          notification.message!,
+                        ),
+                      ),
                     ],
                   ],
                 ),

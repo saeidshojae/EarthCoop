@@ -42,8 +42,8 @@ class AppRouter {
             GoRoute(
               path: '/home',
               builder: (context, state) => HomeScreen(
-                onOpenGroups: () => context.go('/groups'),
-                onOpenNotifications: () => context.go('/notifications'),
+                onOpenGroups: () => context.push('/groups'),
+                onOpenNotifications: () => context.push('/notifications'),
               ),
             ),
             GoRoute(
@@ -78,7 +78,7 @@ class AppRouter {
                     )
                   : groupsBuilder(
                       context,
-                      (groupId) => context.go('/groups/$groupId'),
+                      (groupId) => context.push('/groups/$groupId'),
                     ),
             ),
             GoRoute(
@@ -174,7 +174,7 @@ class AppRouter {
     required SessionState session,
     required DeepLinkRegistry registry,
   }) {
-    context.go(
+    context.push(
       _resolveSemanticLocation(
         bootstrap: bootstrap,
         session: session,

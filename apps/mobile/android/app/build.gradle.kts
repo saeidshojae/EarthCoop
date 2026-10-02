@@ -4,6 +4,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val uatKeystorePath = System.getenv("EARTHCOOP_UAT_KEYSTORE_PATH")
+val uatKeyAlias = System.getenv("EARTHCOOP_UAT_KEY_ALIAS")
+val uatStorePassword = System.getenv("EARTHCOOP_UAT_STORE_PASSWORD")
+val uatKeyPassword = System.getenv("EARTHCOOP_UAT_KEY_PASSWORD")
+val hasUatSigning = listOf(
+    uatKeystorePath,
+    uatKeyAlias,
+    uatStorePassword,
+    uatKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "coop.earthcoop.earthcoop_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -14,12 +25,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        if (hasUatSigning) {
+            create("uat") {
+                storeFile = file(uatKeystorePath!!)
+                storePassword = uatStorePassword!!
+                keyAlias = uatKeyAlias!!
+                keyPassword = uatKeyPassword!!
+            }
+        }
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "coop.earthcoop.earthcoop_mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk =  24
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -30,9 +52,14 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            if (hasUatSigning) {
+                signingConfig = signingConfigs.getByName("uat")
+            }
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Production/store signing is intentionally separate from the UAT certificate.
+            // Keep the existing development fallback until the release-signing task is completed.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
