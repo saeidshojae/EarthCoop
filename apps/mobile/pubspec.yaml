@@ -1,7 +1,7 @@
 name: earthcoop_mobile
 description: EarthCoop native mobile client.
 publish_to: none
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -17,6 +17,7 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^3.4.3
   flutter_secure_storage: ^11.2.0
+  flutter_timezone: ^5.1.0
   go_router: ^18.0.2
   huawei_push: ^6.15.0+300
   json_annotation: ^4.12.0
