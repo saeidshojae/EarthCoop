@@ -1,4 +1,5 @@
 name: Flutter Mobile Targeted Gate
+run-name: Flutter Mobile Targeted Gate @ ${{ github.sha }}
 
 on:
   push:
