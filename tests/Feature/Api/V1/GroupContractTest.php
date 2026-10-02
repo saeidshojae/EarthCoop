@@ -2,16 +2,22 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\Membership\GroupCreationMode;
 use App\Models\GovernanceArea;
 use App\Models\Group;
+use App\Models\GroupCreationPolicy;
 use App\Models\GroupUser;
 use App\Models\LocationScopedGroupRequest;
+use App\Models\MembershipDimension;
 use App\Models\User;
+use App\Models\UserLocationRelationship;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\Membership\PublicDimensionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Group as TestGroup;
+use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
 
 #[TestGroup('mysql-group')]
@@ -62,7 +68,46 @@ class GroupContractTest extends TestCase
 
         $user = $this->member();
         [$token, $deviceId] = $this->nativeSession($user);
+
+        $dimension = MembershipDimension::query()->updateOrCreate(
+            ['key' => 'public'],
+            [
+                'name' => 'Public',
+                'resolver_class' => PublicDimensionResolver::class,
+                'enabled' => true,
+            ],
+        );
+        GroupCreationPolicy::query()->updateOrCreate(
+            [
+                'membership_dimension_id' => $dimension->id,
+                'governance_area_id' => null,
+            ],
+            [
+                'mode' => GroupCreationMode::Automatic,
+                'enabled' => true,
+            ],
+        );
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath($schema, [
+            'country',
+            'province',
+            'county',
+            'section',
+            'city',
+            'urban_region',
+            'neighborhood',
+        ])->last();
         $area = $this->area();
+        $area->locations()->attach($residence->id);
+        UserLocationRelationship::create([
+            'user_id' => $user->id,
+            'location_id' => $residence->id,
+            'relationship_type' => 'primary_residence',
+            'started_at' => now(),
+            'metadata' => [],
+        ]);
+
         $active = $this->canonicalGroup($area, 'Active Group', 'public', 'public');
         GroupUser::create(['group_id' => $active->id, 'user_id' => $user->id, 'role' => 1, 'status' => 1]);
 
