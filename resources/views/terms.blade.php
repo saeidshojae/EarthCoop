@@ -23,6 +23,7 @@
 
 
 @section('title', 'اساسنامه و شرایط استفاده - ' . config('app.name', 'EarthCoop'))
+@section('meta_description', 'اساسنامه، شرایط استفاده و قواعد مشارکت در پلتفرم ارث‌کوپ را مطالعه کنید.')
 
 
 
@@ -6316,7 +6317,6 @@
 
 
 @endpush
-
 
 
 

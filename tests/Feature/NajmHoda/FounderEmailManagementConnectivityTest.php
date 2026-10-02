@@ -2,9 +2,13 @@
 
 namespace Tests\Feature\NajmHoda;
 
+use App\Enums\Communication\CommunicationClassification;
+use App\Models\CommunicationSenderIdentity;
+use App\Models\CommunicationTemplate;
 use App\Models\EmailTemplate;
 use App\Models\FounderEmailDraft;
 use App\Models\User;
+use App\Services\Communication\CommunicationTemplateService;
 use App\Services\NajmHoda\FounderOps\FounderEmailDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderEmailDraftService;
 use App\Services\NajmHoda\FounderOps\FounderEmailTemplateDecisionService;
@@ -17,7 +21,61 @@ class FounderEmailManagementConnectivityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_template_edit_is_persisted_as_review_draft_and_applied_only_after_founder_approval(): void
+    public function test_canonical_template_edit_publishes_new_immutable_version_only_after_founder_approval(): void
+    {
+        $founder = User::factory()->create(['is_system' => false]);
+        config(['najm-hoda-founder-action-policy.founder_approval.user_ids' => [$founder->id]]);
+
+        $sender = CommunicationSenderIdentity::query()->where('key', 'management')->firstOrFail();
+        $template = CommunicationTemplate::query()->create([
+            'key' => 'founder.test.canonical',
+            'name' => 'Canonical Founder Test',
+            'category' => 'admin',
+            'classification' => CommunicationClassification::Operational,
+            'is_active' => true,
+        ]);
+        $v1 = app(CommunicationTemplateService::class)->publish(
+            $template,
+            'fa',
+            'Old subject {{name}}',
+            '<p>Old body {{name}}</p>',
+            ['name' => ['type' => 'string', 'required' => true]],
+            $sender,
+            $founder->id,
+            $founder->id,
+        );
+
+        $service = app(FounderEmailTemplateDecisionService::class);
+        $prepared = $service->requestEdit($template, [
+            'subject' => 'New subject {{name}}',
+            'body' => '<p>New body {{name}}</p>',
+        ], $founder->id, 'canonical-founder-template-edit-'.$template->id);
+
+        $this->assertSame('awaiting_approval', $prepared['status']);
+        $this->assertSame(1, $template->versions()->where('locale', 'fa')->count());
+        $this->assertSame('Old subject {{name}}', $v1->fresh()->subject);
+
+        $requestId = (string) data_get($prepared, 'approval_request.id', '');
+        $approved = $service->decideAndExecute($requestId, 'approve', $founder->id, 'Approve canonical revision');
+
+        $this->assertTrue($approved['success']);
+        $this->assertSame('executed', $approved['status']);
+        $this->assertSame(2, $template->versions()->where('locale', 'fa')->count());
+        $v2 = $template->versions()->where('locale', 'fa')->orderByDesc('version')->firstOrFail();
+        $this->assertSame(2, $v2->version);
+        $this->assertSame('New subject {{name}}', $v2->subject);
+        $this->assertSame('<p>New body {{name}}</p>', $v2->body);
+        $this->assertSame($sender->id, $v2->communication_sender_identity_id);
+        $this->assertSame($founder->id, $v2->approved_by);
+        $this->assertSame('Old subject {{name}}', $v1->fresh()->subject);
+        $this->assertDatabaseHas('founder_email_template_drafts', [
+            'communication_template_id' => $template->id,
+            'status' => 'applied',
+            'approved_by' => $founder->id,
+        ]);
+    }
+
+    public function test_legacy_template_edit_is_persisted_as_review_draft_and_applied_only_after_founder_approval(): void
     {
         $founder = User::factory()->create(['is_system' => false]);
         config(['najm-hoda-founder-action-policy.founder_approval.user_ids' => [$founder->id]]);

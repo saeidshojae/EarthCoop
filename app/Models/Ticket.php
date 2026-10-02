@@ -20,8 +20,16 @@ class Ticket extends Model
         'assignee_id',
         'name',
         'email',
-        'phone'
+        'phone',
+        'metadata',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'metadata' => 'array',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -51,5 +59,27 @@ class Ticket extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(TicketActivity::class)->orderBy('created_at', 'desc');
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ((string) $this->status) {
+            'open' => 'باز',
+            'in_progress' => 'در حال بررسی',
+            'waiting' => 'در انتظار پاسخ',
+            'closed' => 'بسته',
+            default => (string) $this->status,
+        };
+    }
+
+    public function getPriorityLabelAttribute(): string
+    {
+        return match ((string) $this->priority) {
+            'low' => 'کم',
+            'normal' => 'عادی',
+            'high' => 'زیاد',
+            'urgent' => 'فوری',
+            default => (string) $this->priority,
+        };
     }
 }

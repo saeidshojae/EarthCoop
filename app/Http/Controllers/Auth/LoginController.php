@@ -8,6 +8,7 @@ use App\Models\Address;
 use App\Models\EmailVerification;
 use App\Models\User;
 use App\Models\UserExperience;
+use App\Services\Communication\CommunicationDispatcher;
 use App\Services\ProfileCompletionService;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -15,7 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Throwable;
 
 class LoginController extends Controller
@@ -29,8 +30,9 @@ class LoginController extends Controller
      */
     protected $redirectTo = '/home';
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly CommunicationDispatcher $communications,
+    ) {
         $this->middleware(RedirectIfAuthenticated::class)->except('logout');
     }
 
@@ -40,7 +42,7 @@ class LoginController extends Controller
             return route('register.step1');
         }
 
-        if (!UserExperience::where('user_id', auth()->user()->id)->exists()) {
+        if (! UserExperience::where('user_id', auth()->user()->id)->exists()) {
             return route('register.step2');
         }
 
@@ -114,6 +116,7 @@ class LoginController extends Controller
     {
         if (isset($_GET['email'])) {
             $email = $_GET['email'];
+
             return view('auth.reset-password.reset', compact('email'));
         }
 
@@ -142,9 +145,19 @@ class LoginController extends Controller
                 ]
             );
 
-            Mail::send('emails.change-pass', ['code' => $code], function ($message) use ($email) {
-                $message->to($email)->subject('Password change verification code');
-            });
+            $user = User::query()->where('email', $email)->firstOrFail();
+            $this->communications->dispatch(
+                'auth.password_reset',
+                ['type' => 'password_reset', 'id' => (string) $user->id],
+                [$user],
+                [
+                    'code' => (string) $code,
+                ],
+                [
+                    'locale' => 'fa',
+                    'deduplication_key' => 'auth.password_reset:'.Str::uuid(),
+                ],
+            );
 
             $this->emitRuntime('najm_hoda.input.auth.service.password_reset.succeeded', [
                 'email' => (string) $email,
@@ -182,7 +195,7 @@ class LoginController extends Controller
             ->where('expires_at', '>', Carbon::now())
             ->first();
 
-        if (!$verification) {
+        if (! $verification) {
             $this->emitRuntime('najm_hoda.input.auth.service.password_change.rejected', [
                 'email' => (string) $email,
                 'reason' => 'verification_code_invalid_or_expired',
