@@ -7,6 +7,7 @@ use App\Models\Continent;
 use App\Services\GroupService;
 use App\Services\ProfileCompletionService;
 use App\Services\Communication\CommunicationDispatcher;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -386,7 +387,13 @@ class ProfileController
         if ($newBirthDate && $oldBirthDate !== $newBirthDate) {
             $groupService = new \App\Services\GroupService();
             $oldAgeGroup = $groupService->getAgeGroup($user);
-            $inputs['birth_date'] = (new \Morilog\Jalali\Jalalian((int)$inputs['birth_date'][2], (int)$inputs['birth_date'][1], (int)$inputs['birth_date'][0]))->toCarbon();
+            $inputs['birth_date'] = app(TemporalService::class)
+                ->parseDateParts(
+                    (int) $inputs['birth_date'][0],
+                    (int) $inputs['birth_date'][1],
+                    (int) $inputs['birth_date'][2],
+                )
+                ->toCanonical();
             $user->update($inputs);
             $newAgeGroup = $groupService->getAgeGroup($user);
             if (!$oldAgeGroup || !$newAgeGroup || $oldAgeGroup->id !== $newAgeGroup->id) {
