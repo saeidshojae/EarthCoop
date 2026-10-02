@@ -1,0 +1,52 @@
+name: Mobile Main Merge Verification
+
+on:
+  push:
+    branches:
+      - agent/mobile-main-lock-reconcile-20261003
+    paths:
+      - '.github/workflows/mobile-main-merge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  merge-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge current main with pre-resolved conflicts
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            printf 'Conflicts:\n%s\n' "$conflicts"
+            unexpected="$(printf '%s\n' "$conflicts" | grep -v -E '^(composer\.lock|app/Providers/RouteServiceProvider\.php)$' || true)"
+            if [ -n "$unexpected" ]; then
+              echo "::error::Unexpected main merge conflicts: $unexpected"
+              exit 1
+            fi
+            for file in composer.lock app/Providers/RouteServiceProvider.php; do
+              if printf '%s\n' "$conflicts" | grep -Fx "$file" >/dev/null; then
+                git checkout --ours -- "$file"
+                git add "$file"
+              fi
+            done
+          fi
+          test -z "$(git diff --name-only --diff-filter=U)" || { echo '::error::Unresolved conflicts remain'; exit 1; }
+          git rm .github/workflows/mobile-main-merge.yml
+          git diff --cached --check
+          git commit -m 'merge: sync mobile foundation with current main'
+          git push origin "HEAD:${BRANCH_NAME}"
