@@ -25,6 +25,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Http/Controllers/Admin/TemporalSafeUserController.php',
             'app/Http/Controllers/Admin/TicketController.php',
             'app/Http/Controllers/Auth/Register/Step1Controller.php',
+            'app/Http/Controllers/Profile/ProfileController.php',
             'app/Listeners/SendElectionStartedNotifications.php',
             'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php',
             'app/Modules/Stock/Controllers/StockReportController.php',
@@ -61,7 +62,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
         return [
             'app/Http/Controllers/Admin/UserController.php: Jalalian::',
             'app/Http/Controllers/Admin/UserController.php: Morilog\\Jalali',
-            'app/Http/Controllers/Profile/ProfileController.php: Morilog\\Jalali',
             'app/Modules/Stock/Controllers/AuctionController.php: CalendarUtils::',
             'app/Modules/Stock/Controllers/AuctionController.php: Jalalian::',
             'app/Modules/Stock/Controllers/AuctionController.php: Morilog\\Jalali',
