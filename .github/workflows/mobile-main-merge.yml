@@ -46,7 +46,7 @@ jobs:
             done
           fi
           test -z "$(git diff --name-only --diff-filter=U)" || { echo '::error::Unresolved conflicts remain'; exit 1; }
+          git diff --check -- composer.lock app/Providers/RouteServiceProvider.php
           git rm .github/workflows/mobile-main-merge.yml
-          git diff --cached --check
           git commit -m 'merge: sync mobile foundation with current main'
           git push origin "HEAD:${BRANCH_NAME}"
