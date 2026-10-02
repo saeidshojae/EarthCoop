@@ -152,7 +152,8 @@ void main() {
 
       await tester.tap(find.byKey(const Key('home-notifications-action')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('test-notifications-screen')), findsOneWidget);
+      expect(
+          find.byKey(const Key('test-notifications-screen')), findsOneWidget);
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
