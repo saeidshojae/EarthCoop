@@ -17,7 +17,9 @@ class Ticket extends Model
         'message',
         'status',
         'priority',
+        'category',
         'assignee_id',
+        'sla_deadline',
         'name',
         'email',
         'phone',
@@ -28,6 +30,9 @@ class Ticket extends Model
     {
         return [
             'metadata' => 'array',
+            'first_response_at' => 'datetime',
+            'resolved_at' => 'datetime',
+            'sla_deadline' => 'datetime',
         ];
     }
 

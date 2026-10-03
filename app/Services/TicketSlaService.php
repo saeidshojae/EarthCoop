@@ -23,16 +23,18 @@ class TicketSlaService
     {
         $priority = $ticket->priority ?? 'normal';
         $hours = self::SLA_DEADLINES[$priority] ?? self::SLA_DEADLINES['normal'];
+        $createdAt = $ticket->created_at?->copy() ?? now();
 
-        return $ticket->created_at?->copy()->addHours($hours);
+        return $createdAt->addHours($hours);
     }
 
     public function calculateFirstResponseDeadline(Ticket $ticket): ?Carbon
     {
         $priority = $ticket->priority ?? 'normal';
         $hours = self::FIRST_RESPONSE_SLA[$priority] ?? self::FIRST_RESPONSE_SLA['normal'];
+        $createdAt = $ticket->created_at?->copy() ?? now();
 
-        return $ticket->created_at?->copy()->addHours($hours);
+        return $createdAt->addHours($hours);
     }
 
     public function meetsFirstResponseSla(Ticket $ticket): bool
