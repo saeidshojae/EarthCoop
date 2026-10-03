@@ -8,7 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('controller marks notification read optimistically and persists it', () async {
+  test('controller marks notification read optimistically and persists it',
+      () async {
     final service = _FakeNotificationSyncService();
     final controller = NotificationsController(service);
 
