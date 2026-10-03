@@ -159,7 +159,7 @@ jobs:
           retention-days: 30
 
       - name: Validate FTP secrets
-        if: ${{ inputs.publish_to_host }}
+        if: ${{ inputs.publish_to_host == true }}
         env:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
@@ -168,7 +168,7 @@ jobs:
           test -n "$FTP_PASSWORD" || { echo "FTP_PASSWORD is not configured"; exit 1; }
 
       - name: Publish UAT APK to EarthCoop host
-        if: ${{ inputs.publish_to_host }}
+        if: ${{ inputs.publish_to_host == true }}
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: cp59.mihanvps.com
