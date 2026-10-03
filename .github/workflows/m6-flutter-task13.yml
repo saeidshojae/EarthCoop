@@ -12,6 +12,7 @@ on:
       - 'apps/mobile/lib/features/groups/**'
       - 'apps/mobile/lib/features/notifications/**'
       - 'apps/mobile/docs/DEVICE_ACCEPTANCE.md'
+      - '.github/workflows/mobile-uat-publish.yml'
       - '.github/workflows/m6-flutter-task13.yml'
 
 permissions:
