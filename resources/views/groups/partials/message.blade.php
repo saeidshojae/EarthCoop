@@ -129,8 +129,6 @@
 
                     @php
 
-                    $createdAt = verta($item->created_at);
-
                     $isEdited = false;
 
                     if (isset($item->edited)) {
@@ -147,7 +145,7 @@
 
                     }
 
-                    $updatedAt = $isEdited && $item->updated_at ? verta($item->updated_at) : null;
+                    $updatedAt = $isEdited && $item->updated_at ? $item->updated_at : null;
 
                     @endphp
 
@@ -161,9 +159,9 @@
 
                             <span class="menu-meta-time__label">ارسال شده:</span>
 
-                            <span class="menu-meta-time__value">{{ $createdAt->format('Y/m/d') }} در
+                            <span class="menu-meta-time__value"><x-temporal.date :value="$item->created_at" style="short" /> در
 
-                                {{ $createdAt->format('H:i:s') }}</span>
+                                <x-temporal.time :value="$item->created_at" style="long" /></span>
 
                         </div>
 
@@ -177,9 +175,9 @@
 
                             <span class="menu-meta-time__label">ویرایش شده:</span>
 
-                            <span class="menu-meta-time__value">{{ $updatedAt->format('Y/m/d') }} در
+                            <span class="menu-meta-time__value"><x-temporal.date :value="$updatedAt" style="short" /> در
 
-                                {{ $updatedAt->format('H:i:s') }}</span>
+                                <x-temporal.time :value="$updatedAt" style="long" /></span>
 
                         </div>
 
@@ -274,8 +272,6 @@
 
                     @php
 
-                    $createdAt = verta($item->created_at);
-
                     $isEdited = false;
 
                     if (isset($item->edited)) {
@@ -292,7 +288,7 @@
 
                     }
 
-                    $updatedAt = $isEdited && $item->updated_at ? verta($item->updated_at) : null;
+                    $updatedAt = $isEdited && $item->updated_at ? $item->updated_at : null;
 
                     @endphp
 
@@ -306,9 +302,9 @@
 
                             <span class="menu-meta-time__label">ارسال شده:</span>
 
-                            <span class="menu-meta-time__value">{{ $createdAt->format('Y/m/d') }} در
+                            <span class="menu-meta-time__value"><x-temporal.date :value="$item->created_at" style="short" /> در
 
-                                {{ $createdAt->format('H:i:s') }}</span>
+                                <x-temporal.time :value="$item->created_at" style="long" /></span>
 
                         </div>
 
@@ -322,9 +318,9 @@
 
                             <span class="menu-meta-time__label">ویرایش شده:</span>
 
-                            <span class="menu-meta-time__value">{{ $updatedAt->format('Y/m/d') }} در
+                            <span class="menu-meta-time__value"><x-temporal.date :value="$updatedAt" style="short" /> در
 
-                                {{ $updatedAt->format('H:i:s') }}</span>
+                                <x-temporal.time :value="$updatedAt" style="long" /></span>
 
                         </div>
 
@@ -565,8 +561,6 @@
 
         @php
 
-        $createdAt = verta($item->created_at);
-
         $isEdited = false;
 
         if (isset($item->edited)) {
@@ -583,9 +577,19 @@
 
         }
 
-        $updatedAt = $isEdited && $item->updated_at ? verta($item->updated_at) : null;
+        $updatedAt = $isEdited && $item->updated_at ? $item->updated_at : null;
 
-        $timeStr = $createdAt->format('H:i');
+        $updatedAtTitle = null;
+
+        if ($updatedAt) {
+
+        $temporal = app(\App\Temporal\Contracts\TemporalService::class);
+
+        $temporalContext = app(\App\Temporal\Context\TemporalContextResolver::class)->defaultContext();
+
+        $updatedAtTitle = $temporal->date($updatedAt, $temporalContext, 'short') . ' ' . $temporal->time($updatedAt, $temporalContext, 'long');
+
+        }
 
         $reactions = [];
 
@@ -716,12 +720,12 @@
 
             <div class="message-primary-meta" style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
 
-                <span class="message-time">{{ $timeStr }}</span>
+                <span class="message-time"><x-temporal.time :value="$item->created_at" /></span>
 
             </div>
 
             @if($isEdited && $updatedAt)
-            <span class="message-edit-status" title="ویرایش شده در {{ $updatedAt->format('Y/m/d H:i:s') }}">(ویرایش شده)</span>
+            <span class="message-edit-status" title="ویرایش شده در {{ $updatedAtTitle }}">(ویرایش شده)</span>
             @endif
 
             @if($isMine)
