@@ -47,20 +47,10 @@ final class TemporalSafeUserController extends SafeUserController
     public function index(Request $request)
     {
         $query = User::members()->with([
-            'address.country',
-            'address.province',
-            'address.county',
-            'address.section',
-            'address.city',
-            'address.rural',
-            'address.region',
-            'address.village',
-            'address.neighborhood',
-            'address.street',
-            'address.alley',
-            'occupationalFields',
-            'experienceFields',
-            'groups',
+            'address.country', 'address.province', 'address.county', 'address.section',
+            'address.city', 'address.rural', 'address.region', 'address.village',
+            'address.neighborhood', 'address.street', 'address.alley',
+            'occupationalFields', 'experienceFields', 'groups',
         ]);
 
         if ($request->filled('search')) {
@@ -77,17 +67,14 @@ final class TemporalSafeUserController extends SafeUserController
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
-
         if ($request->filled('gender')) {
             $query->where('gender', $request->input('gender'));
         }
-
         if ($request->filled('email_verified')) {
             $request->input('email_verified') === '1'
                 ? $query->whereNotNull('email_verified_at')
                 : $query->whereNull('email_verified_at');
         }
-
         if ($request->filled('province_id')) {
             $provinceId = $request->input('province_id');
             $query->whereHas('address', fn ($q) => $q->where('province_id', $provinceId));
@@ -110,15 +97,11 @@ final class TemporalSafeUserController extends SafeUserController
                 $this->temporal->startOfDay($today, $context),
                 $this->temporal->endOfDay($today, $context),
             ])->count(),
-            // Preserve the historical application-wide semantics for these two
-            // aggregate cards. Calendar-aware month/week periods are a separate
-            // reporting concern and must not be silently redefined here.
             'this_week' => User::members()->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
             'this_month' => User::members()->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
         ];
 
         $provinces = \App\Models\Province::orderBy('name')->get();
-
         $registrationChartData = [];
         $canonicalToday = new DateTimeImmutable($today->toCanonical(), new DateTimeZone('UTC'));
         for ($i = 29; $i >= 0; $i--) {
@@ -127,7 +110,6 @@ final class TemporalSafeUserController extends SafeUserController
                 $this->temporal->startOfDay($date, $context),
                 $this->temporal->endOfDay($date, $context),
             ])->count();
-
             $registrationChartData[] = [
                 'date' => $this->temporal->date($date, $context, 'short'),
                 'count' => $count,
@@ -144,11 +126,7 @@ final class TemporalSafeUserController extends SafeUserController
             ->take(10);
 
         return view('admin.user.index', compact(
-            'users',
-            'stats',
-            'provinces',
-            'registrationChartData',
-            'geographicDistribution',
+            'users', 'stats', 'provinces', 'registrationChartData', 'geographicDistribution',
         ));
     }
 
@@ -158,7 +136,7 @@ final class TemporalSafeUserController extends SafeUserController
             'email' => 'required|email|unique:users,email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
-            'birth_date' => 'required|array|min:3',
+            'birth_date' => 'required',
             'gender' => 'required|in:male,female',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
             'phone' => 'required|regex:/^(0)?9\d{9}$/|unique:users,phone',
@@ -172,18 +150,16 @@ final class TemporalSafeUserController extends SafeUserController
             return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
         }
 
-        $birthDate = $this->parseBirthDateParts((array) $inputs['birth_date']);
+        $birthDate = $this->parseBirthDateInput($inputs['birth_date']);
         if ($birthDate === null) {
             return back()->with('error', 'تاریخ تولد وارد شده معتبر نیست')->withInput();
         }
-
         if (! $this->agePolicy->meetsMinimumAge($birthDate, 15)) {
             return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد')->withInput();
         }
 
         $inputs['birth_date'] = $birthDate->toCanonical();
         $inputs['password'] = Hash::make($inputs['password']);
-
         User::create($inputs);
 
         return redirect()->route('admin.users.index')->with('success', 'کاربر با موفقیت ایجاد شد');
@@ -191,19 +167,16 @@ final class TemporalSafeUserController extends SafeUserController
 
     public function update(Request $request, User $user)
     {
-        $birthDate = $this->parseBirthDateParts((array) $request->input('birth_date', []));
+        $birthDate = $this->parseBirthDateInput($request->input('birth_date'));
         if ($birthDate === null) {
             return back()->with('error', 'تاریخ تولد وارد شده معتبر نیست')->withInput();
         }
-
         if (! $this->agePolicy->meetsMinimumAge($birthDate, 15)) {
             return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد')->withInput();
         }
 
-        // SafeUserController currently delegates non-lifecycle profile fields to
-        // the legacy parent updater. Feed that boundary a Jalali triplet derived
-        // from the canonical LocalDate so the active path is locale-neutral
-        // without duplicating the protected lifecycle/reconciliation logic here.
+        // SafeUserController still delegates non-lifecycle fields to the legacy updater.
+        // Bridge only at that internal boundary; external admin input remains locale-aware.
         $jalali = $this->temporal->date(
             $birthDate,
             $this->temporalContexts->forLocale('fa', 'UTC'),
@@ -218,11 +191,9 @@ final class TemporalSafeUserController extends SafeUserController
     public function transactions(Request $request, User $user)
     {
         $query = \App\Models\UserPointTransaction::where('user_id', $user->id);
-
         if ($request->filled('action')) {
             $query->where('action', $request->input('action'));
         }
-
         $this->applyLocalizedDateRange(
             $query,
             $request,
@@ -251,16 +222,13 @@ final class TemporalSafeUserController extends SafeUserController
                 $from = $this->temporal->parseDate((string) $request->input($fromField), $context);
                 $query->where($column, '>=', $this->temporal->startOfDay($from, $context));
             } catch (\Throwable) {
-                // Preserve legacy optional-filter behavior: ignore malformed input.
             }
         }
-
         if ($request->filled($toField)) {
             try {
                 $to = $this->temporal->parseDate((string) $request->input($toField), $context);
                 $query->where($column, '<=', $this->temporal->endOfDay($to, $context));
             } catch (\Throwable) {
-                // Preserve legacy optional-filter behavior: ignore malformed input.
             }
         }
     }
@@ -268,30 +236,36 @@ final class TemporalSafeUserController extends SafeUserController
     private function localToday(TemporalContext $context): LocalDate
     {
         $localNow = new DateTimeImmutable('now', new DateTimeZone($context->timezone()));
-
         return LocalDate::fromCanonical($localNow->format('Y-m-d'));
     }
 
-    private function parseBirthDateParts(array $parts): ?LocalDate
+    private function parseBirthDateInput(mixed $value): ?LocalDate
     {
-        if (count($parts) < 3) {
-            return null;
-        }
-
         try {
-            [$day, $month, $year] = array_map(
-                fn ($value): int => (int) $this->convertNumbersToEnglish((string) $value),
-                array_slice($parts, 0, 3),
-            );
+            if (is_string($value) && trim($value) !== '') {
+                return $this->temporal->parseDate(
+                    trim($value),
+                    $this->temporalContexts->defaultContext(),
+                );
+            }
 
-            return $this->temporal->parseDateParts(
-                $day,
-                $month,
-                $year,
-                $this->temporalContexts->defaultContext(),
-            );
+            if (is_array($value) && count($value) >= 3) {
+                [$day, $month, $year] = array_map(
+                    fn ($part): int => (int) $this->convertNumbersToEnglish((string) $part),
+                    array_slice($value, 0, 3),
+                );
+
+                return $this->temporal->parseDateParts(
+                    $day,
+                    $month,
+                    $year,
+                    $this->temporalContexts->defaultContext(),
+                );
+            }
         } catch (InvalidArgumentException|\ValueError) {
             return null;
         }
+
+        return null;
     }
 }

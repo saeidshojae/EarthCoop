@@ -8,13 +8,6 @@ use Tests\TestCase;
 
 class TemporalArchitectureBoundaryTest extends TestCase
 {
-    /**
-     * Files already migrated to the Temporal boundary. Once a path enters this
-     * list it may never regain a direct dependency on Jalali/Verta formatting.
-     * The list expands until the final repository-wide guard can replace it.
-     *
-     * @return array<int,string>
-     */
     private function migratedPaths(): array
     {
         return [
@@ -32,6 +25,8 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Rules/JalaliMinimumAge.php',
             'app/Services/Communication/Context/WeeklyMemberReportContextBuilder.php',
             'app/Services/TicketSlaService.php',
+            'resources/views/admin/user/create.blade.php',
+            'resources/views/admin/user/edit.blade.php',
             'resources/views/admin/user/transactions.blade.php',
             'resources/views/elections/responsibility-offer-confirm.blade.php',
             'resources/views/groups/partials/group_hero.blade.php',
@@ -50,13 +45,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
         ];
     }
 
-    /**
-     * Temporary baseline of known active legacy calendar debt.
-     * Entries may only be removed as their surfaces migrate to Temporal;
-     * any newly introduced dependency must fail the repository-wide ratchet.
-     *
-     * @return array<int,string>
-     */
     private function knownLegacyDebt(): array
     {
         return [
@@ -113,10 +101,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'resources/views/admin/tickets/index.blade.php: Morilog\\Jalali',
             'resources/views/admin/tickets/show.blade.php: Jalalian::',
             'resources/views/admin/tickets/show.blade.php: Morilog\\Jalali',
-            'resources/views/admin/user/create.blade.php: Jalalian::',
-            'resources/views/admin/user/create.blade.php: Morilog\\Jalali',
-            'resources/views/admin/user/edit.blade.php: Jalalian::',
-            'resources/views/admin/user/edit.blade.php: Morilog\\Jalali',
             'resources/views/admin/user/index.blade.php: Jalalian::',
             'resources/views/admin/user/index.blade.php: Morilog\\Jalali',
             'resources/views/admin/user/show.blade.php: Jalalian::',
@@ -163,9 +147,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
         ];
     }
 
-    /**
-     * @return array<int,string>
-     */
     private function forbiddenLegacyNeedles(): array
     {
         return [
@@ -181,7 +162,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     public function test_migrated_surfaces_never_call_legacy_calendar_apis_directly(): void
     {
         $offenders = [];
-
         foreach ($this->migratedPaths() as $path) {
             $contents = file_get_contents(base_path($path));
             foreach ($this->forbiddenLegacyNeedles() as $needle) {
@@ -191,39 +171,27 @@ class TemporalArchitectureBoundaryTest extends TestCase
             }
         }
 
-        $this->assertSame(
-            [],
-            $offenders,
-            "Migrated temporal surfaces may not regain direct legacy calendar dependencies:\n" . implode("\n", $offenders),
-        );
+        $this->assertSame([], $offenders, "Migrated temporal surfaces may not regain direct legacy calendar dependencies:\n" . implode("\n", $offenders));
     }
 
     public function test_active_repository_surfaces_match_known_legacy_calendar_debt(): void
     {
-        $roots = [
-            app_path(),
-            resource_path('views'),
-            resource_path('js'),
-            base_path('routes'),
-        ];
+        $roots = [app_path(), resource_path('views'), resource_path('js'), base_path('routes')];
         $offenders = [];
 
         foreach ($roots as $root) {
             if (! is_dir($root)) {
                 continue;
             }
-
             $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
             foreach ($iterator as $file) {
                 if (! $file->isFile()) {
                     continue;
                 }
-
                 $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
                 if ($relative === 'app/Temporal/Calendars/JalaliCalendarAdapter.php') {
                     continue;
                 }
-
                 $contents = file_get_contents($file->getPathname());
                 foreach ($this->forbiddenLegacyNeedles() as $needle) {
                     if (str_contains($contents, $needle)) {
@@ -234,7 +202,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
         }
 
         sort($offenders);
-
         $this->assertSame(
             $this->knownLegacyDebt(),
             $offenders,
@@ -252,14 +219,9 @@ class TemporalArchitectureBoundaryTest extends TestCase
             if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
-
             $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
             $contents = file_get_contents($file->getPathname());
-
-            if (
-                str_contains($contents, 'Morilog\\Jalali')
-                && $relative !== 'app/Temporal/Calendars/JalaliCalendarAdapter.php'
-            ) {
+            if (str_contains($contents, 'Morilog\\Jalali') && $relative !== 'app/Temporal/Calendars/JalaliCalendarAdapter.php') {
                 $offenders[] = $relative;
             }
         }
@@ -277,7 +239,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
             if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
-
             $contents = file_get_contents($file->getPathname());
             if (preg_match('/EarthCoop(?:Year|Era|Epoch)|Chronicle/i', $contents) === 1) {
                 $offenders[] = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
