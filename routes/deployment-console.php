@@ -23,6 +23,7 @@ Route::post('/run/{operation}', [DeploymentConsoleController::class, 'run'])
         'flag_status',
         'vendor_package_status',
         'vendor_package_install',
+        'optimize_clear',
         'migrate',
         'bootstrap',
         'stage_c_group_policy_apply',

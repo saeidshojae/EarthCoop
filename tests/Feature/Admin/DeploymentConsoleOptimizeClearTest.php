@@ -43,4 +43,11 @@ class DeploymentConsoleOptimizeClearTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertSame('Caches cleared', $result['output']);
     }
+
+    public function test_optimize_clear_is_allowed_by_the_http_run_route(): void
+    {
+        $routeSource = file_get_contents(base_path('routes/deployment-console.php'));
+
+        $this->assertStringContainsString("'optimize_clear'", $routeSource);
+    }
 }
