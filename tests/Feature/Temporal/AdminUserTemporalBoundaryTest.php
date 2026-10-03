@@ -127,6 +127,50 @@ class AdminUserTemporalBoundaryTest extends TestCase
         $this->assertSame('1985-05-15', $user->fresh()->birth_date->format('Y-m-d'));
     }
 
+    public function test_legacy_admin_user_writer_accepts_localized_birth_date_string_without_legacy_calendar_api(): void
+    {
+        app()->setLocale('en');
+
+        $user = User::factory()->create([
+            'first_name' => 'علی',
+            'last_name' => 'رضایی',
+            'birth_date' => '1990-01-01',
+            'gender' => 'male',
+            'national_id' => '1234567891',
+            'phone' => '09123456789',
+            'status' => 'active',
+        ]);
+
+        $request = Request::create('/admin/users/'.$user->id, 'PUT', [
+            'email' => $user->email,
+            'first_name' => 'علی',
+            'last_name' => 'رضایی',
+            'birth_date' => '1985-05-15',
+            'gender' => 'male',
+            'national_id' => '1234567806',
+            'phone' => '09123456780',
+            'password' => null,
+        ]);
+
+        (new UserController())->update($request, $user);
+
+        $this->assertSame('1985-05-15', $user->fresh()->birth_date->format('Y-m-d'));
+
+        $source = file_get_contents(app_path('Http/Controllers/Admin/UserController.php'));
+        $this->assertStringContainsString(TemporalService::class, $source);
+        $this->assertStringContainsString(TemporalContextResolver::class, $source);
+        $this->assertStringNotContainsString('Morilog\\Jalali', $source);
+        $this->assertStringNotContainsString('Jalalian::', $source);
+    }
+
+    public function test_temporal_safe_update_does_not_round_trip_birth_date_through_jalali_bridge(): void
+    {
+        $source = file_get_contents(app_path('Http/Controllers/Admin/TemporalSafeUserController.php'));
+
+        $this->assertStringNotContainsString("forLocale('fa'", $source);
+        $this->assertStringNotContainsString('$jalali', $source);
+    }
+
     public function test_admin_user_create_and_edit_forms_use_temporal_date_input_without_direct_jalali_api(): void
     {
         foreach (['admin/user/create.blade.php', 'admin/user/edit.blade.php'] as $path) {

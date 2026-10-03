@@ -16,6 +16,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Http/Controllers/Admin/NajmBaharAnalyticsController.php',
             'app/Http/Controllers/Admin/ReportController.php',
             'app/Http/Controllers/Admin/TemporalSafeUserController.php',
+            'app/Http/Controllers/Admin/UserController.php',
             'app/Http/Controllers/Admin/TicketController.php',
             'app/Http/Controllers/Auth/Register/Step1Controller.php',
             'app/Http/Controllers/Profile/ProfileController.php',
@@ -48,8 +49,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     private function knownLegacyDebt(): array
     {
         return [
-            'app/Http/Controllers/Admin/UserController.php: Jalalian::',
-            'app/Http/Controllers/Admin/UserController.php: Morilog\\Jalali',
             'app/Modules/Stock/Controllers/AuctionController.php: CalendarUtils::',
             'app/Modules/Stock/Controllers/AuctionController.php: Jalalian::',
             'app/Modules/Stock/Controllers/AuctionController.php: Morilog\\Jalali',
