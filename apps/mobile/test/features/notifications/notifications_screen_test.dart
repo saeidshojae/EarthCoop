@@ -65,8 +65,7 @@ void main() {
       ),
     );
 
-    await tester
-        .tap(find.byKey(const Key('notification-card-n-legacy-group')));
+    await tester.tap(find.byKey(const Key('notification-card-n-legacy-group')));
     expect(opened?.route, 'group.detail');
     expect(opened?.params['group_id'], 42);
   });
@@ -93,7 +92,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('notification-card-n-unsafe-legacy')));
+    await tester
+        .tap(find.byKey(const Key('notification-card-n-unsafe-legacy')));
     expect(opened, isFalse);
   });
 
