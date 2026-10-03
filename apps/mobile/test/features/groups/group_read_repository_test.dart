@@ -10,7 +10,8 @@ import 'package:earthcoop_mobile/features/groups/group_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('markRead posts the visible sequence with a deterministic idempotency key',
+  test(
+      'markRead posts the visible sequence with a deterministic idempotency key',
       () async {
     final adapter = _RecordingAdapter([
       _jsonResponse(
