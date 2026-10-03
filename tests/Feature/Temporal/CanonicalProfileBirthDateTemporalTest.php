@@ -4,6 +4,8 @@ namespace Tests\Feature\Temporal;
 
 use App\Models\AgeGroup;
 use App\Models\User;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -64,16 +66,32 @@ class CanonicalProfileBirthDateTemporalTest extends TestCase
         config()->set('location-governance.groups_enabled', false);
 
         $persianUser = User::factory()->create(['birth_date' => null, 'locale' => 'fa']);
+        $persianContext = app(TemporalContextResolver::class)->forUser($persianUser);
+        $this->assertSame(
+            '2026-10-01',
+            app(TemporalService::class)->parseDate('1405/07/09', $persianContext)->toCanonical(),
+            'The Jalali parser and persisted Persian user context must agree before HTTP middleware/controller handling.',
+        );
+
         $this->actingAs($persianUser)
             ->from('/profile/edit')
             ->put(route('profile.update.general'), ['birth_date' => '1405/07/09'])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $englishUser = User::factory()->create(['birth_date' => null, 'locale' => 'en']);
+        $englishContext = app(TemporalContextResolver::class)->forUser($englishUser);
+        $this->assertSame(
+            '2026-10-01',
+            app(TemporalService::class)->parseDate('2026-10-01', $englishContext)->toCanonical(),
+            'The Gregorian parser and persisted English user context must agree before HTTP middleware/controller handling.',
+        );
+
         $this->actingAs($englishUser)
             ->from('/profile/edit')
             ->put(route('profile.update.general'), ['birth_date' => '2026-10-01'])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $this->assertSame('2026-10-01', substr((string) $persianUser->fresh()->getRawOriginal('birth_date'), 0, 10));
         $this->assertSame('2026-10-01', substr((string) $englishUser->fresh()->getRawOriginal('birth_date'), 0, 10));
