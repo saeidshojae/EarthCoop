@@ -2,8 +2,13 @@
 
 namespace App\Rules;
 
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Policies\AgePolicy;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Contracts\Validation\Rule;
-use Morilog\Jalali\Jalalian;
+use Throwable;
 
 class JalaliMinimumAge implements Rule
 {
@@ -17,11 +22,18 @@ class JalaliMinimumAge implements Rule
     public function passes($attribute, $value)
     {
         try {
-            $birthDate = Jalalian::fromFormat('Y-m-d', $value)->toCarbon();
-            $minAllowed = Jalalian::now()->subYears($this->minAge)->toCarbon();
+            $contexts = app(TemporalContextResolver::class);
+            $temporal = app(TemporalService::class);
+            $agePolicy = app(AgePolicy::class);
+            $context = $contexts->forLocale('fa');
+            $birthDate = $temporal->parseDate(
+                str_replace('-', '/', (string) $value),
+                $context,
+            );
+            $today = new DateTimeImmutable('today', new DateTimeZone($context->timezone()));
 
-            return $birthDate->lte($minAllowed); // ✅ حالا درست کار می‌کنه
-        } catch (\Exception $e) {
+            return $agePolicy->meetsMinimumAge($birthDate, (int) $this->minAge, $today);
+        } catch (Throwable) {
             return false;
         }
     }

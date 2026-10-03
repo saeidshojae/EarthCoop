@@ -52,9 +52,9 @@
             <div class="detail-metric"><span>وضعیت</span><strong>{{ $statusLabels[$auction->status] ?? 'وضعیت نامشخص' }}</strong></div>
             <div class="detail-metric"><span>روش حراج</span><strong>{{ $typeLabels[$auction->type] ?? 'نامشخص' }}</strong></div>
             <div class="detail-metric"><span>روش اجرای تسویه</span><strong>{{ $settlementModeLabels[$auction->settlement_mode] ?? 'نامشخص' }}</strong></div>
-            <div class="detail-metric"><span>شروع</span><strong>{{ $auction->start_time ? verta($auction->start_time)->format('Y/m/d H:i') : '—' }}</strong></div>
-            <div class="detail-metric"><span>پایان</span><strong>{{ $auction->end_time ? verta($auction->end_time)->format('Y/m/d H:i') : '—' }}</strong></div>
-            <div class="detail-metric"><span>بسته‌شدن</span><strong>{{ $auction->ends_at ? verta($auction->ends_at)->format('Y/m/d H:i') : '—' }}</strong></div>
+            <div class="detail-metric"><span>شروع</span><strong>@if($auction->start_time)<x-temporal.date-time :value="$auction->start_time" style="short" />@else—@endif</strong></div>
+            <div class="detail-metric"><span>پایان</span><strong>@if($auction->end_time)<x-temporal.date-time :value="$auction->end_time" style="short" />@else—@endif</strong></div>
+            <div class="detail-metric"><span>بسته‌شدن</span><strong>@if($auction->ends_at)<x-temporal.date-time :value="$auction->ends_at" style="short" />@else—@endif</strong></div>
             <div class="detail-metric"><span>اندازه هر بخش سفارش</span><strong>{{ $fa($auction->lot_size ?? 0) }}</strong></div>
         </div>
     </section>

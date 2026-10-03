@@ -7,12 +7,16 @@ use App\Models\Election;
 use App\Models\Poll;
 use App\Models\User;
 use App\Services\Groups\EffectiveGroupMembershipService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Carbon\CarbonPeriod;
 
 final class WeeklyMemberReportContextBuilder
 {
     public function __construct(
         private readonly EffectiveGroupMembershipService $memberships,
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
     ) {
     }
 
@@ -28,9 +32,11 @@ final class WeeklyMemberReportContextBuilder
             ->values()
             ->all();
 
+        $context = $this->temporalContexts->forRecipient($user);
+
         return [
-            'period_start' => $period->getStartDate()->format('Y-m-d'),
-            'period_end' => $period->getEndDate()->format('Y-m-d'),
+            'period_start' => $this->temporal->date($period->getStartDate()->format('Y-m-d'), $context, 'short'),
+            'period_end' => $this->temporal->date($period->getEndDate()->format('Y-m-d'), $context, 'short'),
             'display_name' => $this->displayName($user),
             'groups_count' => count($groupIds),
             'open_elections_count' => $this->openElectionsCount($groupIds),

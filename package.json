@@ -7,6 +7,7 @@
     "build": "vite build",
     "test:group-chat": "node --test tests/js/group-chat/*.test.js",
     "test:location-governance": "node --test tests/js/location-governance",
+    "test:temporal": "node --test tests/js/temporal/*.test.js",
     "realtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-soketi.ps1",
     "realtime:smoke": "node_modules\\node\\bin\\node.exe scripts/realtime-smoke.cjs"
   },

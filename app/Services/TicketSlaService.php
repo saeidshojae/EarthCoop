@@ -7,93 +7,72 @@ use Carbon\Carbon;
 
 class TicketSlaService
 {
-    /**
-     * SLA deadlines based on priority (in hours)
-     */
     private const SLA_DEADLINES = [
-        'high' => 4,      // 4 hours for high priority
-        'normal' => 24,   // 24 hours for normal priority
-        'low' => 72,      // 72 hours for low priority
+        'high' => 4,
+        'normal' => 24,
+        'low' => 72,
     ];
 
-    /**
-     * First response SLA (in hours)
-     */
     private const FIRST_RESPONSE_SLA = [
-        'high' => 1,      // 1 hour for high priority
-        'normal' => 4,    // 4 hours for normal priority
-        'low' => 12,      // 12 hours for low priority
+        'high' => 1,
+        'normal' => 4,
+        'low' => 12,
     ];
 
-    /**
-     * Calculate SLA deadline for a ticket
-     */
     public function calculateDeadline(Ticket $ticket): ?Carbon
     {
         $priority = $ticket->priority ?? 'normal';
         $hours = self::SLA_DEADLINES[$priority] ?? self::SLA_DEADLINES['normal'];
-        
-        return $ticket->created_at->addHours($hours);
+        $createdAt = $ticket->created_at?->copy() ?? now();
+
+        return $createdAt->addHours($hours);
     }
 
-    /**
-     * Calculate first response deadline
-     */
     public function calculateFirstResponseDeadline(Ticket $ticket): ?Carbon
     {
         $priority = $ticket->priority ?? 'normal';
         $hours = self::FIRST_RESPONSE_SLA[$priority] ?? self::FIRST_RESPONSE_SLA['normal'];
-        
-        return $ticket->created_at->addHours($hours);
+        $createdAt = $ticket->created_at?->copy() ?? now();
+
+        return $createdAt->addHours($hours);
     }
 
-    /**
-     * Check if ticket meets first response SLA
-     */
     public function meetsFirstResponseSla(Ticket $ticket): bool
     {
-        if (!$ticket->first_response_at) {
+        if (! $ticket->first_response_at) {
             return false;
         }
 
         $deadline = $this->calculateFirstResponseDeadline($ticket);
-        return $ticket->first_response_at <= $deadline;
+
+        return $deadline !== null && $ticket->first_response_at <= $deadline;
     }
 
-    /**
-     * Check if ticket meets resolution SLA
-     */
     public function meetsResolutionSla(Ticket $ticket): bool
     {
-        if (!$ticket->resolved_at || !$ticket->sla_deadline) {
+        if (! $ticket->resolved_at || ! $ticket->sla_deadline) {
             return false;
         }
 
         return $ticket->resolved_at <= $ticket->sla_deadline;
     }
 
-    /**
-     * Get remaining hours until deadline
-     */
     public function getRemainingHours(Ticket $ticket): ?float
     {
-        if (!$ticket->sla_deadline) {
+        if (! $ticket->sla_deadline) {
             return null;
         }
 
         return max(0, now()->diffInHours($ticket->sla_deadline, false));
     }
 
-    /**
-     * Get SLA status
-     */
     public function getSlaStatus(Ticket $ticket): string
     {
         if ($ticket->status === 'closed') {
             return $this->meetsResolutionSla($ticket) ? 'met' : 'missed';
         }
 
-        if (!$ticket->sla_deadline) {
+        if (! $ticket->sla_deadline) {
             return 'no_sla';
         }
 
@@ -108,9 +87,6 @@ class TicketSlaService
         return 'on_time';
     }
 
-    /**
-     * Get SLA performance statistics
-     */
     public function getPerformanceStats($fromDate = null, $toDate = null): array
     {
         $query = Ticket::where('status', 'closed');
@@ -153,16 +129,16 @@ class TicketSlaService
                 }
             }
 
-            $overdueTickets = $query->get()->filter(function($ticket) {
+            $overdueTickets = $tickets->filter(function ($ticket) {
                 return $this->getSlaStatus($ticket) === 'missed';
             })->count();
 
             if (count($firstResponseTimes) > 0) {
-                $averageFirstResponseTime = round(array_sum($firstResponseTimes) / count($firstResponseTimes) / 60, 2); // in hours
+                $averageFirstResponseTime = round(array_sum($firstResponseTimes) / count($firstResponseTimes) / 60, 2);
             }
 
             if (count($resolutionTimes) > 0) {
-                $averageResolutionTime = round(array_sum($resolutionTimes) / count($resolutionTimes) / 60, 2); // in hours
+                $averageResolutionTime = round(array_sum($resolutionTimes) / count($resolutionTimes) / 60, 2);
             }
         }
 
@@ -178,9 +154,6 @@ class TicketSlaService
         ];
     }
 
-    /**
-     * Get SLA performance by priority
-     */
     public function getPerformanceByPriority($fromDate = null, $toDate = null): array
     {
         $priorities = ['high', 'normal', 'low'];
@@ -188,7 +161,7 @@ class TicketSlaService
 
         foreach ($priorities as $priority) {
             $query = Ticket::where('status', 'closed')
-                          ->where('priority', $priority);
+                ->where('priority', $priority);
 
             if ($fromDate) {
                 $query->where('created_at', '>=', $fromDate);
@@ -200,7 +173,7 @@ class TicketSlaService
 
             $tickets = $query->get();
             $total = $tickets->count();
-            $metSla = $tickets->filter(function($ticket) {
+            $metSla = $tickets->filter(function ($ticket) {
                 return $this->meetsResolutionSla($ticket);
             })->count();
 
@@ -214,9 +187,6 @@ class TicketSlaService
         return $stats;
     }
 
-    /**
-     * Get SLA trends over time
-     */
     public function getTrends($months = 12): array
     {
         $trends = [];
@@ -225,11 +195,13 @@ class TicketSlaService
             $date = now()->subMonths($i);
             $fromDate = $date->copy()->startOfMonth();
             $toDate = $date->copy()->endOfMonth();
-
             $monthStats = $this->getPerformanceStats($fromDate, $toDate);
 
             $trends[] = [
-                'month' => \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m'),
+                // This is a canonical Gregorian bucket identifier, not a human calendar label.
+                'month' => $fromDate->format('Y-m'),
+                'period_start' => $fromDate->format('Y-m-d'),
+                'period_end' => $toDate->format('Y-m-d'),
                 'total' => $monthStats['total_tickets'],
                 'met_sla' => $monthStats['met_resolution_sla'],
                 'percentage' => $monthStats['resolution_sla_percentage'],
@@ -239,4 +211,3 @@ class TicketSlaService
         return $trends;
     }
 }
-

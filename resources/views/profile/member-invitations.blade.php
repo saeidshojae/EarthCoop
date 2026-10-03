@@ -203,11 +203,11 @@
                             <dl class="grid grid-cols-2 gap-3 text-sm mb-4">
                                 <div class="rounded-xl bg-slate-50 p-3">
                                     <dt class="text-xs text-slate-500 mb-1">ایجاد</dt>
-                                    <dd class="font-bold text-slate-700 mb-0">{{ verta($code->created_at)->format('Y/m/d H:i') }}</dd>
+                                    <dd class="font-bold text-slate-700 mb-0"><x-temporal.date-time :value="$code->created_at" style="short" /></dd>
                                 </div>
                                 <div class="rounded-xl bg-slate-50 p-3">
                                     <dt class="text-xs text-slate-500 mb-1">انقضا</dt>
-                                    <dd class="font-bold text-slate-700 mb-0">{{ $code->expire_at ? verta($code->expire_at)->format('Y/m/d H:i') : '-' }}</dd>
+                                    <dd class="font-bold text-slate-700 mb-0">@if($code->expire_at)<x-temporal.date-time :value="$code->expire_at" style="short" />@else-@endif</dd>
                                 </div>
                             </dl>
 
@@ -258,8 +258,8 @@
                                             <span class="rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs font-bold">آماده استفاده</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-4 text-slate-600">{{ verta($code->created_at)->format('Y/m/d H:i') }}</td>
-                                    <td class="px-4 py-4 text-slate-600">{{ $code->expire_at ? verta($code->expire_at)->format('Y/m/d H:i') : '-' }}</td>
+                                    <td class="px-4 py-4 text-slate-600"><x-temporal.date-time :value="$code->created_at" style="short" /></td>
+                                    <td class="px-4 py-4 text-slate-600">@if($code->expire_at)<x-temporal.date-time :value="$code->expire_at" style="short" />@else-@endif</td>
                                     <td class="px-4 py-4">
                                         @if(!$code->used && !$expired)
                                             <div class="inline-flex items-center gap-2">

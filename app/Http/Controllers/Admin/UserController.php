@@ -6,10 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Setting;
 use App\Services\Communication\CommunicationDispatcher;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Policies\AgePolicy;
+use App\Temporal\ValueObjects\LocalDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
 
 
 class UserController extends Controller
@@ -89,12 +94,18 @@ class UserController extends Controller
 
         $provinces = \App\Models\Province::orderBy('name')->get();
 
+        $temporal = app(TemporalService::class);
+        $temporalContext = app(TemporalContextResolver::class)->defaultContext();
         $registrationChartData = [];
         for ($i = 29; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $count = User::members()->whereDate('created_at', $date->format('Y-m-d'))->count();
             $registrationChartData[] = [
-                'date' => \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d'),
+                'date' => $temporal->date(
+                    LocalDate::fromCanonical($date->format('Y-m-d')),
+                    $temporalContext,
+                    'short',
+                ),
                 'count' => $count
             ];
         }
@@ -126,7 +137,7 @@ class UserController extends Controller
             'email'    => 'required|email|unique:users,email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'first_name'   => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name'    => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
-            'birth_date'   => 'required|array|min:3',
+            'birth_date'   => 'required',
             'gender'       => 'required|in:male,female',
             'national_id'  => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
             'phone'        => 'required|regex:/^(0)?9\d{9}$/|unique:users,phone',
@@ -140,18 +151,16 @@ class UserController extends Controller
             return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
         }
 
-        [$day, $month, $year] = array_map(
-            fn($v) => $this->convertNumbersToEnglish($v),
-            $inputs['birth_date']
-        );
+        $birthDate = $this->parseLocalizedBirthDate($inputs['birth_date']);
+        if ($birthDate === null) {
+            return back()->with('error', 'تاریخ تولد وارد شده معتبر نیست')->withInput();
+        }
 
-        $birthDateMiladi = (new \Morilog\Jalali\Jalalian((int)$year, (int)$month, (int)$day))->toCarbon();
-
-        if ($birthDateMiladi->age < 15) {
+        if (! app(AgePolicy::class)->meetsMinimumAge($birthDate, 15)) {
             return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد');
         }
         
-        $inputs['birth_date'] = $birthDateMiladi->toDateString();
+        $inputs['birth_date'] = $birthDate->toCanonical();
         $inputs['password'] = Hash::make($inputs['password']);
         User::create($inputs);
         return redirect()->route('admin.users.index')->with('success', 'کاربر با موفقیت ایجاد شد');
@@ -162,7 +171,7 @@ class UserController extends Controller
             'email'    => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/|unique:users,email,' . $user->id,
             'first_name'   => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name'    => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
-            'birth_date'   => 'required|array|min:3',
+            'birth_date'   => 'required',
             'gender'       => 'required|in:male,female',
             'national_id'  => 'required|string|regex:/^\d{10}$/|unique:users,national_id,' . $user->id,
             'phone'        => 'required|regex:/^(0)?9\d{9}$/|unique:users,phone,' . $user->id,
@@ -188,18 +197,16 @@ class UserController extends Controller
             return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
         }
 
-        [$day, $month, $year] = array_map(
-            fn($v) => $this->convertNumbersToEnglish($v),
-            $inputs['birth_date']
-        );
+        $birthDate = $this->parseLocalizedBirthDate($inputs['birth_date']);
+        if ($birthDate === null) {
+            return back()->with('error', 'تاریخ تولد وارد شده معتبر نیست')->withInput();
+        }
 
-        $birthDateMiladi = (new \Morilog\Jalali\Jalalian((int)$year, (int)$month, (int)$day))->toCarbon();
-
-        if ($birthDateMiladi->age < 15) {
+        if (! app(AgePolicy::class)->meetsMinimumAge($birthDate, 15)) {
             return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد');
         }
         
-        $inputs['birth_date'] = $birthDateMiladi->toDateString();
+        $inputs['birth_date'] = $birthDate->toCanonical();
 
         if($inputs['password'] != null){
              $inputs['password'] = Hash::make($inputs['password']);
@@ -213,6 +220,31 @@ class UserController extends Controller
         
         $user->update($inputs);
         return redirect()->route('admin.users.index')->with('success', 'کاربر با موفقیت بروزرسانی شد');
+    }
+
+    protected function parseLocalizedBirthDate(mixed $value): ?LocalDate
+    {
+        try {
+            $temporal = app(TemporalService::class);
+            $context = app(TemporalContextResolver::class)->defaultContext();
+
+            if (is_string($value) && trim($value) !== '') {
+                return $temporal->parseDate(trim($value), $context);
+            }
+
+            if (is_array($value) && count($value) >= 3) {
+                [$day, $month, $year] = array_map(
+                    fn ($part): int => (int) $this->convertNumbersToEnglish((string) $part),
+                    array_slice($value, 0, 3),
+                );
+
+                return $temporal->parseDateParts($day, $month, $year, $context);
+            }
+        } catch (InvalidArgumentException|\ValueError) {
+            return null;
+        }
+
+        return null;
     }
 
     public function edit(User $user)

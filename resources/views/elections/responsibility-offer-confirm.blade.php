@@ -10,7 +10,7 @@
             <p class="mb-2">گروه: <strong>{{ $offer->election->group->name ?? '—' }}</strong></p>
             <p class="mb-2">مسئولیت: <strong>{{ $offer->position === 'manager' ? 'مدیر' : 'بازرس' }}</strong></p>
             <p class="mb-2">رتبه در نتیجه قطعی: <strong>{{ $offer->ranking_position }}</strong></p>
-            <p class="mb-4">مهلت پاسخ: <strong>{{ verta($offer->expires_at)->format('Y-m-d H:i') }}</strong></p>
+            <p class="mb-4">مهلت پاسخ: <strong><x-temporal.date-time :value="$offer->expires_at" style="short" /></strong></p>
             <div class="border rounded p-3 mb-3 bg-light" style="white-space: pre-wrap;">{{ $offer->contractVersion->body }}</div>
             <p class="text-muted small mb-2">نسخه قرارداد: {{ $offer->contractVersion->version }} — این نسخه پس از انتشار تغییرپذیر نیست.</p>
             <p class="mb-4"><a href="{{ route('elections.responsibility-contracts.download', $offer->contractVersion) }}">دانلود همین نسخه قرارداد</a></p>
