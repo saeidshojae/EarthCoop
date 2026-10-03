@@ -293,10 +293,7 @@ const invitationWelcomeUrl = @json(url('/'));
 
 function buildInviteMessage(code) {
     const url = invitationWelcomeUrl + '?invite=' + encodeURIComponent(code);
-    return `من به EarthCoop پیوسته‌ام؛ بستری برای همکاری و مشارکت از محله تا جهان.\
-اگر دوست داری تو هم از اعضای نخستین باشی، با دعوت من بپیوند.\
-کد دعوت: ${code}\
-${url}`;
+    return `من به EarthCoop پیوسته‌ام؛ بستری برای همکاری و مشارکت از محله تا جهان.\nاگر دوست داری تو هم از اعضای نخستین باشی، با دعوت من بپیوند.\nکد دعوت: ${code}\n${url}`;
 }
 
 function showInviteToast(message) {
