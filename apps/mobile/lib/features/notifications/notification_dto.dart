@@ -11,6 +11,7 @@ class NotificationDto {
     required this.createdAt,
     this.readAt,
     this.link,
+    this.legacyUrl,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class NotificationDto {
   final DateTime? readAt;
   final DateTime? createdAt;
   final SemanticLink? link;
+  final String? legacyUrl;
 
   factory NotificationDto.fromJson(Object? raw) {
     final map = _stringMap(raw, 'notification');
@@ -37,6 +39,7 @@ class NotificationDto {
       readAt: _nullableDateTime(map['read_at'], 'read_at'),
       createdAt: _nullableDateTime(map['created_at'], 'created_at'),
       link: linkRaw == null ? null : SemanticLink.fromJson(linkRaw),
+      legacyUrl: _nullableString(map['url'], 'url'),
     );
   }
 
@@ -49,6 +52,7 @@ class NotificationDto {
         'read': read,
         'read_at': readAt?.toUtc().toIso8601String(),
         'created_at': createdAt?.toUtc().toIso8601String(),
+        'url': legacyUrl,
         'link': link == null
             ? null
             : {
