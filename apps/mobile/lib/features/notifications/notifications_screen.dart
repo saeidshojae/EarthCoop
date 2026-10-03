@@ -10,11 +10,13 @@ class NotificationsScreen extends StatelessWidget {
     super.key,
     required this.state,
     this.onOpenLink,
+    this.onMarkRead,
     this.onRetry,
   });
 
   final NotificationsState state;
   final ValueChanged<SemanticLink>? onOpenLink;
+  final ValueChanged<NotificationDto>? onMarkRead;
   final VoidCallback? onRetry;
 
   @override
@@ -61,6 +63,7 @@ class NotificationsScreen extends StatelessWidget {
           itemBuilder: (context, index) => _NotificationCard(
             notification: state.items[index],
             onOpenLink: onOpenLink,
+            onMarkRead: onMarkRead,
           ),
         );
     }
@@ -71,10 +74,12 @@ class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.notification,
     required this.onOpenLink,
+    required this.onMarkRead,
   });
 
   final NotificationDto notification;
   final ValueChanged<SemanticLink>? onOpenLink;
+  final ValueChanged<NotificationDto>? onMarkRead;
 
   @override
   Widget build(BuildContext context) {
@@ -82,8 +87,12 @@ class _NotificationCard extends StatelessWidget {
     return Card(
       key: Key('notification-card-${notification.id}'),
       child: InkWell(
-        onTap:
-            link == null || onOpenLink == null ? null : () => onOpenLink!(link),
+        onTap: link == null || onOpenLink == null
+            ? null
+            : () {
+                onMarkRead?.call(notification);
+                onOpenLink!(link);
+              },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

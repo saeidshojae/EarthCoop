@@ -20,11 +20,20 @@ abstract interface class NotificationPageSource {
   Future<NotificationPage> fetchPage({String? cursor, int limit = 20});
 }
 
+abstract interface class NotificationReadSource {
+  Future<NotificationDto?> markRead(
+    String notificationId, {
+    required String idempotencyKey,
+    required bool networkAllowed,
+  });
+}
+
 typedef OptimisticNotificationRead = Future<void> Function(
   String notificationId,
 );
 
-class NotificationRepository implements NotificationPageSource {
+class NotificationRepository
+    implements NotificationPageSource, NotificationReadSource {
   NotificationRepository({
     required ApiClient apiClient,
     OfflineQueueRepository? offlineQueue,
@@ -79,6 +88,7 @@ class NotificationRepository implements NotificationPageSource {
     );
   }
 
+  @override
   Future<NotificationDto?> markRead(
     String notificationId, {
     required String idempotencyKey,

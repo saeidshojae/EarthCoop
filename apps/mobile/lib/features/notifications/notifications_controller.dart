@@ -77,6 +77,29 @@ class NotificationsController extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  Future<void> markRead(String notificationId) async {
+    if (state.phase != NotificationsPhase.ready) return;
+
+    var changed = false;
+    final markedAt = DateTime.now().toUtc();
+    final updated = state.items.map((item) {
+      if (item.id != notificationId || item.read) return item;
+      changed = true;
+      return item.asRead(at: markedAt);
+    }).toList(growable: false);
+
+    if (!changed) return;
+
+    state = NotificationsState.ready(updated);
+    notifyListeners();
+
+    try {
+      await _syncService.markRead(notificationId);
+    } catch (_) {
+      // Keep the UI responsive. The next authoritative sync reconciles state.
+    }
+  }
 }
 
 NotificationViewFailure _mapFailure(ApiFailure failure) {

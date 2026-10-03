@@ -249,6 +249,9 @@ class _NotificationsRuntimeViewState extends State<_NotificationsRuntimeView> {
   @override
   Widget build(BuildContext context) => NotificationsScreen(
         state: widget.controller.state,
+        onMarkRead: (notification) {
+          unawaited(widget.controller.markRead(notification.id));
+        },
         onOpenLink: widget.onOpenLink,
         onRetry: widget.controller.load,
       );

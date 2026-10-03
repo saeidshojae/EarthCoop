@@ -25,6 +25,22 @@ class NotificationDto {
   final SemanticLink? link;
   final String? legacyUrl;
 
+  NotificationDto asRead({DateTime? at}) {
+    if (read) return this;
+    return NotificationDto(
+      id: id,
+      type: type,
+      title: title,
+      message: message,
+      context: context,
+      read: true,
+      readAt: readAt ?? at,
+      createdAt: createdAt,
+      link: link,
+      legacyUrl: legacyUrl,
+    );
+  }
+
   factory NotificationDto.fromJson(Object? raw) {
     final map = _stringMap(raw, 'notification');
     final linkRaw = map['link'];

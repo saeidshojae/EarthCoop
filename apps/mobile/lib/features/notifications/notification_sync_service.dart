@@ -114,6 +114,61 @@ class NotificationSyncService {
 
   Future<List<NotificationDto>> syncFromHint() => syncOnResume();
 
+  Future<void> markRead(String notificationId) async {
+    final source = _source;
+    if (source is! NotificationReadSource) {
+      throw StateError('Notification read source is not configured.');
+    }
+
+    final markedAt = DateTime.now().toUtc();
+    await _bestEffortPersistOptimisticRead(notificationId, markedAt);
+
+    final authoritative = await source.markRead(
+      notificationId,
+      idempotencyKey: 'notification-read-$notificationId',
+      networkAllowed: true,
+    );
+    if (authoritative != null) {
+      await _bestEffortPersistAuthoritative(authoritative);
+    }
+  }
+
+  Future<void> _bestEffortPersistOptimisticRead(
+    String notificationId,
+    DateTime markedAt,
+  ) async {
+    try {
+      final existing = await _store.readAll();
+      var changed = false;
+      final updated = existing.map((item) {
+        if (item.id != notificationId || item.read) return item;
+        changed = true;
+        return item.asRead(at: markedAt);
+      }).toList(growable: false);
+      if (changed) await _store.replaceAll(updated);
+    } catch (_) {
+      // Projection is non-authoritative; read mutation must still reach the API.
+    }
+  }
+
+  Future<void> _bestEffortPersistAuthoritative(
+    NotificationDto authoritative,
+  ) async {
+    try {
+      final existing = await _store.readAll();
+      var replaced = false;
+      final updated = existing.map((item) {
+        if (item.id != authoritative.id) return item;
+        replaced = true;
+        return authoritative;
+      }).toList(growable: true);
+      if (!replaced) updated.add(authoritative);
+      await _store.replaceAll(updated);
+    } catch (_) {
+      // Projection is non-authoritative and will reconcile on the next sweep.
+    }
+  }
+
   Future<List<NotificationDto>> _runAuthoritativeSweep() async {
     var cursor = null as String?;
     var restartedAfterInvalidCursor = false;
