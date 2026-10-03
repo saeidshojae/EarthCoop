@@ -8,8 +8,9 @@ use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\EarthCoopPrimaryOfferingPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use App\Temporal\Context\TemporalContext;
-use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\ValueObjects\LocalDate;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -22,6 +23,105 @@ final class CanonicalAdminAuctionController extends Controller
         private readonly TemporalService $temporal,
         private readonly TemporalContextResolver $temporalContexts,
     ) {
+    }
+
+    public function index(Request $request)
+    {
+        $query = Auction::with('bids');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+        if ($request->filled('q')) {
+            $search = (string) $request->input('q');
+            $query->where(function ($nested) use ($search): void {
+                $nested->where('info', 'like', "%{$search}%")
+                    ->orWhere('type', 'like', "%{$search}%");
+            });
+        }
+
+        $context = $this->temporalContexts->defaultContext();
+        if ($request->filled('date_from')) {
+            try {
+                $dateFrom = $this->parseFilterDate((string) $request->input('date_from'), $context);
+                $query->where('start_time', '>=', $this->temporal->startOfDay($dateFrom, $context));
+            } catch (\Throwable) {
+                // Keep optional filters non-fatal, matching the mature admin behavior.
+            }
+        }
+        if ($request->filled('date_to')) {
+            try {
+                $dateTo = $this->parseFilterDate((string) $request->input('date_to'), $context);
+                $query->where('start_time', '<=', $this->temporal->endOfDay($dateTo, $context));
+            } catch (\Throwable) {
+                // Keep optional filters non-fatal, matching the mature admin behavior.
+            }
+        }
+
+        if ($request->filled('price_min')) {
+            $query->where('base_price', '>=', $request->input('price_min'));
+        }
+        if ($request->filled('price_max')) {
+            $query->where('base_price', '<=', $request->input('price_max'));
+        }
+        if ($request->filled('volume_min')) {
+            $query->where('shares_count', '>=', $request->input('volume_min'));
+        }
+        if ($request->filled('volume_max')) {
+            $query->where('shares_count', '<=', $request->input('volume_max'));
+        }
+
+        $sortBy = (string) $request->input('sort_by', 'id');
+        $sortOrder = (string) $request->input('sort_order', 'desc');
+        if (in_array($sortBy, ['id', 'shares_count', 'base_price', 'start_time', 'ends_at', 'status', 'type', 'created_at'], true)) {
+            $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
+        }
+
+        $auctions = $query->paginate(25)->appends($request->except('page'));
+        $allAuctions = Auction::with('bids')->get();
+        $stats = [
+            'total_auctions' => $allAuctions->count(),
+            'running_auctions' => $allAuctions->where('status', 'running')->count(),
+            'scheduled_auctions' => $allAuctions->where('status', 'scheduled')->count(),
+            'settled_auctions' => $allAuctions->whereIn('status', ['settled', 'completed'])->count(),
+            'canceled_auctions' => $allAuctions->whereIn('status', ['canceled', 'cancelled'])->count(),
+            'total_bids' => $allAuctions->sum(fn ($auction) => $auction->bids->count()),
+            'total_volume' => $allAuctions->sum(fn ($auction) => $auction->bids->sum('quantity')),
+            'total_capital' => $allAuctions->sum(fn ($auction) => $auction->bids->sum(fn ($bid) => ($bid->price ?? 0) * ($bid->quantity ?? 0))),
+        ];
+        $chartData = $this->getAuctionChartData($allAuctions, $context);
+        $statusCounts = [
+            'running' => $stats['running_auctions'],
+            'scheduled' => $stats['scheduled_auctions'],
+            'settled' => $stats['settled_auctions'],
+            'canceled' => $stats['canceled_auctions'],
+        ];
+        $totalVolume = $auctions->sum(fn ($auction) => $auction->bids->sum('quantity'));
+
+        $auctions->getCollection()->transform(function ($auction) {
+            $bids = $auction->bids;
+            $auction->bids_count = $bids->count();
+            $auction->highest_bid = $bids->max('price') ?? null;
+            $auction->lowest_bid = $bids->min('price') ?? null;
+            $auction->total_bid_volume = $bids->sum('quantity');
+            $auction->order_book = $bids->where('status', 'active')->sortByDesc('price')->take(5)->values();
+
+            return $auction;
+        });
+
+        if ($request->filled('bids_min')) {
+            $minimum = (int) $request->input('bids_min');
+            $auctions->setCollection($auctions->getCollection()->reject(fn ($auction) => $auction->bids_count < $minimum));
+        }
+        if ($request->filled('bids_max')) {
+            $maximum = (int) $request->input('bids_max');
+            $auctions->setCollection($auctions->getCollection()->reject(fn ($auction) => $auction->bids_count > $maximum));
+        }
+
+        return view('Stock::admin_auction_list', compact('auctions', 'stats', 'statusCounts', 'totalVolume', 'chartData'));
     }
 
     public function create()
@@ -125,6 +225,46 @@ final class CanonicalAdminAuctionController extends Controller
         if ($normalized !== []) {
             $request->merge($normalized);
         }
+    }
+
+    private function parseFilterDate(string $value, TemporalContext $context): LocalDate
+    {
+        $raw = trim($value);
+        $parseContext = preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1
+            ? $this->temporalContexts->forLocale('en', $context->timezone())
+            : $context;
+
+        return $this->temporal->parseDate($raw, $parseContext);
+    }
+
+    /** @return array{labels: array<int,string>, volumes: array<int,int|float>, prices: array<int,int|float>, counts: array<int,int>} */
+    private function getAuctionChartData($auctions, TemporalContext $context): array
+    {
+        $labels = [];
+        $volumes = [];
+        $prices = [];
+        $counts = [];
+
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $formattedDate = $this->temporal->date($date, $context, 'short');
+            $parts = preg_split('/[\/-]/u', $formattedDate) ?: [];
+            $monthLabel = count($parts) >= 2 ? $parts[0].'/'.$parts[1] : $formattedDate;
+
+            $monthAuctions = $auctions->filter(
+                fn ($auction) => $auction->start_time && $auction->start_time->format('Y-m') === $date->format('Y-m'),
+            );
+            $monthVolume = $monthAuctions->sum(fn ($auction) => $auction->bids->sum('quantity'));
+            $monthPrices = $monthAuctions->flatMap(fn ($auction) => $auction->bids->pluck('price')->filter());
+            $monthAvgPrice = $monthPrices->count() > 0 ? $monthPrices->avg() : 0;
+
+            $labels[] = $monthLabel;
+            $volumes[] = $monthVolume;
+            $prices[] = round($monthAvgPrice, 2);
+            $counts[] = $monthAuctions->count();
+        }
+
+        return compact('labels', 'volumes', 'prices', 'counts');
     }
 
     private function dateTimeParseContext(string $value, TemporalContext $context): TemporalContext

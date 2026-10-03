@@ -6,6 +6,10 @@ use App\Modules\Stock\Controllers\ExternalCapitalOperationsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware([AdminMiddleware::class])->prefix('admin/auctions')->name('admin.auction.')->group(function (): void {
+    Route::middleware('permission:stock.view-dashboard')->group(function (): void {
+        Route::get('/', [CanonicalAdminAuctionController::class, 'index'])->name('index');
+    });
+
     Route::middleware('permission:stock.create')->group(function (): void {
         Route::get('/create', [CanonicalAdminAuctionController::class, 'create'])->name('create');
         Route::post('/', [CanonicalAdminAuctionController::class, 'store'])->name('store');
