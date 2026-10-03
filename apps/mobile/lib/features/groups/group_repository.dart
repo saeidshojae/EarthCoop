@@ -1,5 +1,6 @@
 import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
+import '../../core/api/request_context.dart';
 import 'group_cache.dart';
 import 'group_dto.dart';
 import 'group_feed_dto.dart';
@@ -66,7 +67,7 @@ class GroupRepository {
     }
   }
 
-  Future<List<GroupFeedEvent>> activity(int id, {int limit = 20}) async {
+  Future<GroupFeedPage> activityPage(int id, {int limit = 20}) async {
     final boundedLimit = limit < 1
         ? 1
         : limit > 100
@@ -80,7 +81,12 @@ class GroupRepository {
       },
       decodeData: GroupFeedPage.fromJson,
     );
-    return response.data.events;
+    return response.data;
+  }
+
+  Future<List<GroupFeedEvent>> activity(int id, {int limit = 20}) async {
+    final page = await activityPage(id, limit: limit);
+    return page.events;
   }
 
   Future<int> unreadCount(int id) async {
@@ -89,6 +95,25 @@ class GroupRepository {
       decodeData: GroupUnreadProjection.fromJson,
     );
     return response.data.total;
+  }
+
+  Future<void> markRead(int id, {required int throughSequence}) async {
+    if (throughSequence < 0) {
+      throw ArgumentError.value(
+        throughSequence,
+        'throughSequence',
+        'must not be negative',
+      );
+    }
+
+    await _apiClient.post<Object?>(
+      '/groups/$id/read',
+      data: {'through_sequence': throughSequence},
+      context: RequestContext(
+        idempotencyKey: 'group-read-$id-$throughSequence',
+      ),
+      decodeData: (raw) => raw,
+    );
   }
 
   List<GroupDto> _decodeList(Object? raw) {

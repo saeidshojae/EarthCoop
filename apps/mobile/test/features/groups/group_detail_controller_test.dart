@@ -17,6 +17,7 @@ void main() {
     await controller.load();
 
     expect(repository.markReadCalls, 1);
+    expect(repository.markedThroughSequence, 8);
     expect(controller.state.phase, GroupDetailPhase.ready);
     expect(controller.state.unreadCount, 0);
   });
@@ -36,6 +37,7 @@ class _FakeGroupRepository extends GroupRepository {
         );
 
   int markReadCalls = 0;
+  int? markedThroughSequence;
 
   @override
   Future<GroupProjection<GroupDto>> find(int id) async => GroupProjection(
@@ -62,11 +64,23 @@ class _FakeGroupRepository extends GroupRepository {
   Future<int> unreadCount(int id) async => 3;
 
   @override
-  Future<List<GroupFeedEvent>> activity(int id, {int limit = 20}) async =>
-      const <GroupFeedEvent>[];
+  Future<GroupFeedPage> activityPage(int id, {int limit = 20}) async =>
+      const GroupFeedPage(
+        events: <GroupFeedEvent>[
+          GroupFeedEvent.message(
+            sequence: 8,
+            sender: 'کاربر نمونه',
+            message: 'سلام',
+          ),
+        ],
+        latestSequence: 8,
+        hasMore: false,
+      );
 
-  Future<void> markRead(int id) async {
+  @override
+  Future<void> markRead(int id, {required int throughSequence}) async {
     markReadCalls += 1;
+    markedThroughSequence = throughSequence;
   }
 }
 

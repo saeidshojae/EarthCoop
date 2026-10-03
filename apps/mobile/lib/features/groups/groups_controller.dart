@@ -157,7 +157,20 @@ class GroupDetailController extends ChangeNotifier {
       }
 
       try {
-        activity = await _repository.activity(groupId);
+        final page = await _repository.activityPage(groupId);
+        activity = page.events;
+        if (page.latestSequence > 0) {
+          try {
+            await _repository.markRead(
+              groupId,
+              throughSequence: page.latestSequence,
+            );
+            unreadCount = 0;
+          } catch (_) {
+            activityFailure ??=
+                'فعالیت‌ها نمایش داده شدند اما وضعیت خوانده‌شدن ثبت نشد.';
+          }
+        }
       } catch (_) {
         activityFailure = 'فعالیت‌های گروه فعلاً دریافت نشد.';
       }
