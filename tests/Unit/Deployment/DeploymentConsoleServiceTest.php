@@ -26,6 +26,7 @@ class DeploymentConsoleServiceTest extends TestCase
             'flag_status',
             'vendor_package_status',
             'vendor_package_install',
+            'optimize_clear',
             'migrate',
             'bootstrap',
             'stage_c_group_policy_apply',
@@ -39,6 +40,7 @@ class DeploymentConsoleServiceTest extends TestCase
         $this->assertSame('APPLY-IR', $service->confirmationFor('reference_apply'));
         $this->assertSame('APPLY-GOV-IR', $service->confirmationFor('topology_apply'));
         $this->assertSame('INSTALL-VENDOR-PACKAGE', $service->confirmationFor('vendor_package_install'));
+        $this->assertSame('OPTIMIZE-CLEAR', $service->confirmationFor('optimize_clear'));
         $this->assertNull($service->confirmationFor('vendor_package_status'));
         $this->assertNull($service->confirmationFor('migration_status'));
         $this->assertNull($service->confirmationFor('reference_dry_run'));
