@@ -35,8 +35,8 @@ final class WeeklyMemberReportContextBuilder
         $context = $this->temporalContexts->forRecipient($user);
 
         return [
-            'period_start' => $this->temporal->date($period->getStartDate(), $context, 'short'),
-            'period_end' => $this->temporal->date($period->getEndDate(), $context, 'short'),
+            'period_start' => $this->temporal->date($period->getStartDate()->format('Y-m-d'), $context, 'short'),
+            'period_end' => $this->temporal->date($period->getEndDate()->format('Y-m-d'), $context, 'short'),
             'display_name' => $this->displayName($user),
             'groups_count' => count($groupIds),
             'open_elections_count' => $this->openElectionsCount($groupIds),
