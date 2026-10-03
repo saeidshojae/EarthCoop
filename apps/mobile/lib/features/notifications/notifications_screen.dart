@@ -78,7 +78,7 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final link = notification.link;
+    final link = _navigationLink(notification);
     return Card(
       key: Key('notification-card-${notification.id}'),
       child: InkWell(
@@ -126,4 +126,32 @@ class _NotificationCard extends StatelessWidget {
       ),
     );
   }
+}
+
+SemanticLink? _navigationLink(NotificationDto notification) {
+  if (notification.link != null) return notification.link;
+
+  final raw = notification.legacyUrl;
+  if (raw == null || raw.isEmpty) return null;
+
+  final uri = Uri.tryParse(raw);
+  if (uri == null ||
+      uri.hasScheme ||
+      uri.hasAuthority ||
+      uri.query.isNotEmpty ||
+      uri.fragment.isNotEmpty) {
+    return null;
+  }
+
+  final segments = uri.pathSegments;
+  if (segments.length != 2 || segments.first != 'groups') return null;
+
+  final groupId = int.tryParse(segments[1]);
+  if (groupId == null || groupId <= 0) return null;
+
+  return SemanticLink(
+    version: 1,
+    route: 'group.detail',
+    params: {'group_id': groupId},
+  );
 }
