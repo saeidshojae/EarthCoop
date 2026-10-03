@@ -35,9 +35,12 @@ void main() {
     expect(workflow, contains('publish_to_host:'));
     expect(workflow, contains('default: false'));
     expect(
-      RegExp(r'if:\s*\$\{\{\s*inputs\.publish_to_host\s*==\s*true\s*\}\}').allMatches(workflow).length,
+      RegExp(
+        r'if:\s*\$\{\{\s*inputs\.publish_to_host\s*==\s*true\s*\}\}',
+      ).allMatches(workflow).length,
       greaterThanOrEqualTo(2),
-      reason: 'Both FTP validation and host publication must be opt-in guarded.',
+      reason:
+          'Both FTP validation and host publication must be opt-in guarded.',
     );
   });
 }
