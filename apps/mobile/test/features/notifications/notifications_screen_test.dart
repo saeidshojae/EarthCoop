@@ -42,6 +42,61 @@ void main() {
     expect(opened?.params['group_id'], 42);
   });
 
+  testWidgets('legacy internal group URL is converted to typed navigation',
+      (tester) async {
+    SemanticLink? opened;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          state: NotificationsState.ready([
+            NotificationDto(
+              id: 'n-legacy-group',
+              type: 'legacy',
+              title: 'گروه',
+              message: 'مشاهده گروه',
+              context: const {},
+              read: false,
+              createdAt: DateTime.utc(2026, 10, 3),
+              legacyUrl: '/groups/42',
+            ),
+          ]),
+          onOpenLink: (link) => opened = link,
+        ),
+      ),
+    );
+
+    await tester
+        .tap(find.byKey(const Key('notification-card-n-legacy-group')));
+    expect(opened?.route, 'group.detail');
+    expect(opened?.params['group_id'], 42);
+  });
+
+  testWidgets('unsafe legacy URL stays non executable', (tester) async {
+    var opened = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          state: NotificationsState.ready([
+            NotificationDto(
+              id: 'n-unsafe-legacy',
+              type: 'legacy',
+              title: 'پیوند نامعتبر',
+              message: 'متن',
+              context: const {},
+              read: false,
+              createdAt: DateTime.utc(2026, 10, 3),
+              legacyUrl: 'javascript:alert(1)',
+            ),
+          ]),
+          onOpenLink: (_) => opened = true,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('notification-card-n-unsafe-legacy')));
+    expect(opened, isFalse);
+  });
+
   testWidgets('technical notification keys are localized before display',
       (tester) async {
     await tester.pumpWidget(
