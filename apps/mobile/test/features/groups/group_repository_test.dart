@@ -59,7 +59,8 @@ void main() {
       expect(adapter.requests.single.path, '/groups/42');
     });
 
-    test('activity decodes canonical feed snapshots and sends bounded delta query',
+    test(
+        'activity decodes canonical feed snapshots and sends bounded delta query',
         () async {
       final adapter = RecordingAdapter([
         jsonResponse(
