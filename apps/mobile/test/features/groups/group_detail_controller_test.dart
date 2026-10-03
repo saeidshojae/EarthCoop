@@ -9,7 +9,8 @@ import 'package:earthcoop_mobile/features/groups/groups_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('opening a live group marks its feed read and clears unread count', () async {
+  test('opening a live group marks its feed read and clears unread count',
+      () async {
     final repository = _FakeGroupRepository();
     final controller = GroupDetailController(repository, 42);
 
