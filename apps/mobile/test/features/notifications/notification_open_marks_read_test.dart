@@ -74,6 +74,7 @@ class _FakeNotificationSyncService extends NotificationSyncService {
   @override
   Future<List<NotificationDto>> syncOnResume() async => [_notification()];
 
+  @override
   Future<void> markRead(String notificationId) async {
     markReadCalls += 1;
   }

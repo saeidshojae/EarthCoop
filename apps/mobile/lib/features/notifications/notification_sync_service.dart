@@ -119,11 +119,12 @@ class NotificationSyncService {
     if (source is! NotificationReadSource) {
       throw StateError('Notification read source is not configured.');
     }
+    final readSource = source as NotificationReadSource;
 
     final markedAt = DateTime.now().toUtc();
     await _bestEffortPersistOptimisticRead(notificationId, markedAt);
 
-    final authoritative = await source.markRead(
+    final authoritative = await readSource.markRead(
       notificationId,
       idempotencyKey: 'notification-read-$notificationId',
       networkAllowed: true,
