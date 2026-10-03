@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Modules\Stock\Controllers\AuctionController;
+use App\Modules\Stock\Controllers\CanonicalAuctionController;
 use App\Modules\Stock\Controllers\CanonicalStockAdminController;
 use App\Modules\Stock\Controllers\ExternalCapitalBidController;
 use App\Modules\Stock\Controllers\StockController;
@@ -25,6 +27,7 @@ final class StockExternalCapitalServiceProvider extends ServiceProvider
         $paymentProvider = trim((string) config('stock.external_capital.payment_provider', 'unavailable'));
 
         $this->app->bind(StockController::class, CanonicalStockAdminController::class);
+        $this->app->bind(AuctionController::class, CanonicalAuctionController::class);
 
         $this->app->bind(
             AuthoritativeRateProvider::class,
