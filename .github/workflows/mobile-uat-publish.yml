@@ -1,13 +1,6 @@
 name: Publish Mobile UAT APK
 
 on:
-  push:
-    branches:
-      - main
-      - agent/flutter-native-client-foundation-20260929
-    paths:
-      - 'apps/mobile/**'
-      - '.github/workflows/mobile-uat-publish.yml'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare Android UAT signing when configured
+      - name: Prepare Android UAT signing
         shell: bash
         env:
           ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
@@ -40,14 +33,8 @@ jobs:
           test -n "$ANDROID_UAT_STORE_PASSWORD" && configured=$((configured + 1))
           test -n "$ANDROID_UAT_KEY_PASSWORD" && configured=$((configured + 1))
 
-          if [ "$configured" -eq 0 ]; then
-            echo "::warning::Stable UAT signing secrets are not configured yet; publishing with the runner debug signing key so device UAT can continue."
-            echo "EARTHCOOP_UAT_SIGNING_MODE=debug" >> "$GITHUB_ENV"
-            exit 0
-          fi
-
           if [ "$configured" -ne 4 ]; then
-            echo "::error::UAT signing secrets are only partially configured. Configure all four or none."
+            echo "::error::Published UAT APKs require all four stable UAT signing secrets."
             exit 1
           fi
 
@@ -88,7 +75,7 @@ jobs:
           APK_SHA256="$(sha256sum mobile-uat-dist/earthcoop-android-uat.apk | awk '{print $1}')"
           APK_SIZE_BYTES="$(stat -c%s mobile-uat-dist/earthcoop-android-uat.apk)"
           BUILT_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          SIGNING_MODE="${EARTHCOOP_UAT_SIGNING_MODE:-debug}"
+          SIGNING_MODE="${EARTHCOOP_UAT_SIGNING_MODE}"
 
           cat > mobile-uat-dist/build.json <<EOF
           {
@@ -103,11 +90,7 @@ jobs:
           }
           EOF
 
-          if [ "$SIGNING_MODE" = "stable-uat" ]; then
-            INSTALL_NOTE='این نسخه با امضای ثابت UAT ساخته شده است و نسخه‌های بعدی همین کانال باید بدون حذف برنامه روی آن نصب شوند.'
-          else
-            INSTALL_NOTE='امضای ثابت UAT هنوز فعال نشده است. این نسخه برای ادامه آزمون دستگاه منتشر شده و ممکن است برای نصب نسخه بعدی لازم باشد نسخه فعلی یک‌بار حذف شود.'
-          fi
+          INSTALL_NOTE='این نسخه با امضای ثابت UAT ساخته شده است و نسخه‌های بعدی همین کانال باید بدون حذف برنامه روی آن نصب شوند.'
 
           cat > mobile-uat-dist/index.html <<EOF
           <!doctype html>
@@ -156,7 +139,7 @@ jobs:
           grep -F 'دانلود مستقیم APK' mobile-uat-dist/index.html >/dev/null
           grep -F "\"version\": \"${VERSION}\"" mobile-uat-dist/build.json >/dev/null
           grep -F "\"git_sha\": \"${GITHUB_SHA}\"" mobile-uat-dist/build.json >/dev/null
-          grep -F '"signing_mode":' mobile-uat-dist/build.json >/dev/null
+          grep -F '"signing_mode": "stable-uat"' mobile-uat-dist/build.json >/dev/null
 
       - name: Retain published APK as workflow artifact
         uses: actions/upload-artifact@v4
