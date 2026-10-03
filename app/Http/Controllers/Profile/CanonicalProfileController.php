@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Communication\CommunicationDispatcher;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\ProfileCompletionService;
+use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use App\Temporal\Formatting\DigitNormalizer;
 use Carbon\Carbon;
@@ -213,6 +214,8 @@ final class CanonicalProfileController extends ProfileController
             return null;
         }
 
+        $context = app(TemporalContextResolver::class)->forUser(Auth::user());
+
         try {
             if (is_array($value)) {
                 if (count($value) < 3 || $value[0] === '' || $value[1] === '' || $value[2] === '') {
@@ -220,12 +223,12 @@ final class CanonicalProfileController extends ProfileController
                 }
 
                 return app(TemporalService::class)
-                    ->parseDateParts((int) $value[0], (int) $value[1], (int) $value[2])
+                    ->parseDateParts((int) $value[0], (int) $value[1], (int) $value[2], $context)
                     ->toCanonical();
             }
 
             if (is_string($value)) {
-                return app(TemporalService::class)->parseDate(trim($value))->toCanonical();
+                return app(TemporalService::class)->parseDate(trim($value), $context)->toCanonical();
             }
         } catch (InvalidArgumentException|ValueError) {
             throw ValidationException::withMessages([
