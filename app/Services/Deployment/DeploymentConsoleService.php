@@ -111,6 +111,12 @@ class DeploymentConsoleService
             'write' => true,
             'confirmation' => 'INSTALL-VENDOR-PACKAGE',
         ],
+        'optimize_clear' => [
+            'command' => 'optimize:clear',
+            'arguments' => [],
+            'write' => true,
+            'confirmation' => 'OPTIMIZE-CLEAR',
+        ],
         'migrate' => [
             'command' => 'migrate',
             'arguments' => ['--force' => true],
