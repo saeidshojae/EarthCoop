@@ -1,0 +1,51 @@
+name: M6 Flutter Task 3 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/lib/app/bootstrap/**'
+      - 'apps/mobile/lib/core/local/**'
+      - 'apps/mobile/test/app/bootstrap/**'
+      - '.github/workflows/m6-flutter-task3.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/app/bootstrap)
+          [ ! -d lib/app/bootstrap ] || scopes+=(lib/app/bootstrap)
+          [ ! -d lib/core/local ] || scopes+=(lib/core/local)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
+      - name: Analyze bootstrap scope
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/app/bootstrap)
+          [ ! -d lib/app/bootstrap ] || scopes+=(lib/app/bootstrap)
+          [ ! -d lib/core/local ] || scopes+=(lib/core/local)
+          flutter analyze "${scopes[@]}"
+      - name: Run Task 3 bootstrap contracts
+        working-directory: apps/mobile
+        run: flutter test test/app/bootstrap

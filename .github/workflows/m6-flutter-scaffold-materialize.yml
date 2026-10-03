@@ -1,0 +1,83 @@
+name: M6 Flutter Scaffold Materialize
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - '.github/workflows/m6-flutter-scaffold-materialize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Generate canonical Android and iOS scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d apps/mobile/android ] || [ -d apps/mobile/ios ]; then
+            echo 'Platform scaffold already exists; refusing to overwrite.'
+            exit 1
+          fi
+          rm -rf /tmp/earthcoop_mobile_scaffold
+          flutter create \
+            --platforms=android,ios \
+            --project-name earthcoop_mobile \
+            --org coop.earthcoop \
+            /tmp/earthcoop_mobile_scaffold
+          cp -R /tmp/earthcoop_mobile_scaffold/android apps/mobile/android
+          cp -R /tmp/earthcoop_mobile_scaffold/ios apps/mobile/ios
+      - name: Enforce platform floors
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_GRADLE=$(find apps/mobile/android/app -maxdepth 1 \( -name 'build.gradle' -o -name 'build.gradle.kts' \) | head -n 1)
+          test -n "$ANDROID_GRADLE"
+          sed -i -E 's/minSdk([[:space:]]*=[[:space:]]*)flutter\.minSdkVersion/minSdk\1 24/' "$ANDROID_GRADLE"
+          sed -i -E 's/minSdkVersion[[:space:]]+flutter\.minSdkVersion/minSdkVersion 24/' "$ANDROID_GRADLE"
+          grep -Eq 'minSdk([^0-9]*24|Version[[:space:]]+24)' "$ANDROID_GRADLE"
+          find apps/mobile/ios -type f \( -name 'project.pbxproj' -o -name 'Podfile' \) -print0 | xargs -0 -r sed -i -E "s/(IPHONEOS_DEPLOYMENT_TARGET = )[0-9.]+/\115.0/g; s/(platform :ios, ')[0-9.]+';/\115.0';/g"
+          grep -R 'IPHONEOS_DEPLOYMENT_TARGET = 15.0' apps/mobile/ios/Runner.xcodeproj/project.pbxproj
+      - name: Add foundation dependencies and lock them
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub add flutter_riverpod dio go_router drift flutter_secure_storage json_annotation path path_provider
+          flutter pub add --dev build_runner json_serializable drift_dev
+          flutter pub get
+      - name: Verify generated project
+        working-directory: apps/mobile
+        run: |
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test test/app_smoke_test.dart
+          flutter build apk --debug
+      - name: Commit generated scaffold and dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'earthcoop-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add apps/mobile/android apps/mobile/ios apps/mobile/pubspec.yaml apps/mobile/pubspec.lock apps/mobile/analysis_options.yaml
+          git diff --cached --quiet && { echo 'No scaffold changes to commit'; exit 1; }
+          git diff --cached --check
+          if ! git diff --quiet; then
+            echo 'Unexpected unstaged generated changes remain:'
+            git status --short
+            exit 1
+          fi
+          git commit -m 'feat(mobile): materialize Flutter platform scaffold'
+          git pull --rebase origin agent/flutter-native-client-foundation-20260929
+          git push origin HEAD:agent/flutter-native-client-foundation-20260929

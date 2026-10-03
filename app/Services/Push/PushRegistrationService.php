@@ -14,7 +14,7 @@ class PushRegistrationService
         $provider = strtolower(trim($provider));
         $token = trim($token);
 
-        if (! in_array($provider, ['fcm', 'apns'], true)) {
+        if (! in_array($provider, ['fcm', 'apns', 'hms'], true)) {
             throw ValidationException::withMessages(['provider' => ['Unsupported push provider.']]);
         }
 

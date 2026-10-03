@@ -36,6 +36,17 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
-    
+
+    'push' => [
+        'driver' => env('PUSH_DELIVERY_DRIVER', 'null'),
+        'fcm' => [
+            'project_id' => env('FCM_PROJECT_ID'),
+            'credentials' => env('FCM_SERVICE_ACCOUNT_FILE'),
+        ],
+        'hms' => [
+            'project_id' => env('HMS_PROJECT_ID'),
+            'credentials' => env('HMS_SERVICE_ACCOUNT_FILE'),
+        ],
+    ],
 
 ];

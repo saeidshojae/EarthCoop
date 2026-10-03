@@ -1,0 +1,40 @@
+name: M6 Flutter Task 1 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/m6-flutter-task1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep 'Flutter 3.47.5'
+          dart --version 2>&1 | grep 'Dart SDK version: 3.13.4'
+      - name: Resolve dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
+      - name: Run Task 1 smoke test
+        working-directory: apps/mobile
+        run: flutter test test/app_smoke_test.dart

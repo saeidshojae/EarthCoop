@@ -1,0 +1,33 @@
+name: M6 Runtime Format Diff
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - '.github/workflows/m6-runtime-format-diff.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  format-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get --enforce-lockfile
+      - name: Print canonical Dart formatter diff
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart format test/app_runtime_wiring_test.dart
+          git diff -- test/app_runtime_wiring_test.dart
+          git diff --exit-code -- test/app_runtime_wiring_test.dart

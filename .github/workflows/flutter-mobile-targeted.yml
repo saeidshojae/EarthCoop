@@ -1,0 +1,311 @@
+name: Flutter Mobile Targeted Gate
+run-name: Flutter Mobile Targeted Gate @ ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - main
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/**'
+      - 'database/migrations/**'
+      - 'app/Http/Controllers/API/V1/Auth/NativeSessionController.php'
+      - 'app/Http/Controllers/API/V1/BootstrapController.php'
+      - 'app/Http/Controllers/API/V1/DevicePushController.php'
+      - 'app/Http/Controllers/API/V1/NotificationController.php'
+      - 'app/Http/Middleware/ApiV1Context.php'
+      - 'app/Http/Middleware/ApiV1Envelope.php'
+      - 'app/Http/Middleware/ApiV1Device.php'
+      - 'app/Http/Middleware/ApiV1Idempotency.php'
+      - 'app/Http/Requests/API/V1/DevicePushRequest.php'
+      - 'app/Models/NativeDevice.php'
+      - 'app/Notifications/GenericNotification.php'
+      - 'app/Providers/PushServiceProvider.php'
+      - 'app/Services/ClientCompatibility/**'
+      - 'app/Services/Notifications/**'
+      - 'app/Services/Push/**'
+      - 'app/Support/Notifications/**'
+      - 'config/client-compatibility.php'
+      - 'config/services.php'
+      - 'routes/api-v1.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'tests/Feature/Api/V1/BootstrapCompatibilityTest.php'
+      - 'tests/Feature/Api/V1/DevicePushContractTest.php'
+      - 'tests/Feature/Api/V1/DevicePushReleaseTest.php'
+      - 'tests/Feature/Api/V1/IdempotencyContractTest.php'
+      - 'tests/Feature/Api/V1/NativeSessionTest.php'
+      - 'tests/Feature/Api/V1/NotificationDeliveryContractTest.php'
+      - 'tests/Feature/Api/V1/PushProviderFailureIsolationTest.php'
+      - 'tests/Unit/Push/**'
+      - 'tests/Unit/Services/Push/**'
+      - '.github/workflows/flutter-mobile-targeted.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'database/migrations/**'
+      - 'app/Http/Controllers/API/V1/Auth/NativeSessionController.php'
+      - 'app/Http/Controllers/API/V1/BootstrapController.php'
+      - 'app/Http/Controllers/API/V1/DevicePushController.php'
+      - 'app/Http/Controllers/API/V1/NotificationController.php'
+      - 'app/Http/Middleware/ApiV1Context.php'
+      - 'app/Http/Middleware/ApiV1Envelope.php'
+      - 'app/Http/Middleware/ApiV1Device.php'
+      - 'app/Http/Middleware/ApiV1Idempotency.php'
+      - 'app/Http/Requests/API/V1/DevicePushRequest.php'
+      - 'app/Models/NativeDevice.php'
+      - 'app/Notifications/GenericNotification.php'
+      - 'app/Providers/PushServiceProvider.php'
+      - 'app/Services/ClientCompatibility/**'
+      - 'app/Services/Notifications/**'
+      - 'app/Services/Push/**'
+      - 'app/Support/Notifications/**'
+      - 'config/client-compatibility.php'
+      - 'config/services.php'
+      - 'routes/api-v1.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'tests/Feature/Api/V1/BootstrapCompatibilityTest.php'
+      - 'tests/Feature/Api/V1/DevicePushContractTest.php'
+      - 'tests/Feature/Api/V1/DevicePushReleaseTest.php'
+      - 'tests/Feature/Api/V1/IdempotencyContractTest.php'
+      - 'tests/Feature/Api/V1/NativeSessionTest.php'
+      - 'tests/Feature/Api/V1/NotificationDeliveryContractTest.php'
+      - 'tests/Feature/Api/V1/PushProviderFailureIsolationTest.php'
+      - 'tests/Unit/Push/**'
+      - 'tests/Unit/Services/Push/**'
+      - '.github/workflows/flutter-mobile-targeted.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: flutter-mobile-targeted-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mobile: ${{ steps.changed.outputs.mobile }}
+      backend: ${{ steps.changed.outputs.backend }}
+      ios: ${{ steps.changed.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changed
+        name: Classify changed paths
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base="$PR_BASE"
+          else
+            base="$PUSH_BEFORE"
+          fi
+
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+          fi
+
+          git diff --name-only "$base" "${{ github.sha }}" > /tmp/m6-changed-paths.txt
+          mobile=false
+          backend=false
+          ios=false
+
+          while IFS= read -r path; do
+            case "$path" in
+              apps/mobile/*|.github/workflows/flutter-mobile-targeted.yml)
+                mobile=true
+                ;;
+            esac
+            case "$path" in
+              apps/mobile/ios/*|apps/mobile/pubspec.yaml|apps/mobile/pubspec.lock|\
+              apps/mobile/lib/core/push/*|.github/workflows/flutter-mobile-targeted.yml)
+                ios=true
+                ;;
+            esac
+            case "$path" in
+              database/migrations/*|.github/workflows/flutter-mobile-targeted.yml|\
+              app/Http/Controllers/API/V1/Auth/NativeSessionController.php|\
+              app/Http/Controllers/API/V1/BootstrapController.php|\
+              app/Http/Controllers/API/V1/DevicePushController.php|\
+              app/Http/Controllers/API/V1/NotificationController.php|\
+              app/Http/Middleware/ApiV1Context.php|\
+              app/Http/Middleware/ApiV1Envelope.php|\
+              app/Http/Middleware/ApiV1Device.php|\
+              app/Http/Middleware/ApiV1Idempotency.php|\
+              app/Http/Requests/API/V1/DevicePushRequest.php|\
+              app/Models/NativeDevice.php|\
+              app/Notifications/GenericNotification.php|\
+              app/Providers/PushServiceProvider.php|\
+              app/Services/ClientCompatibility/*|\
+              app/Services/Notifications/*|\
+              app/Services/Push/*|\
+              app/Support/Notifications/*|\
+              config/client-compatibility.php|config/services.php|routes/api-v1.php|\
+              composer.json|composer.lock|\
+              tests/Feature/Api/V1/BootstrapCompatibilityTest.php|\
+              tests/Feature/Api/V1/DevicePushContractTest.php|\
+              tests/Feature/Api/V1/DevicePushReleaseTest.php|\
+              tests/Feature/Api/V1/IdempotencyContractTest.php|\
+              tests/Feature/Api/V1/NativeSessionTest.php|\
+              tests/Feature/Api/V1/NotificationDeliveryContractTest.php|\
+              tests/Feature/Api/V1/PushProviderFailureIsolationTest.php|\
+              tests/Unit/Push/*|tests/Unit/Services/Push/*)
+                backend=true
+                ;;
+            esac
+          done < /tmp/m6-changed-paths.txt
+
+          echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
+          echo "Changed paths:"
+          cat /tmp/m6-changed-paths.txt
+          echo "mobile=$mobile backend=$backend ios=$ios"
+
+  mobile:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true' || needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          dart format lib test integration_test
+          if ! git diff --quiet -- lib test integration_test; then
+            echo '::group::Formatter diff'
+            git diff -- lib test integration_test
+            echo '::endgroup::'
+            exit 1
+          fi
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
+      - name: Run unit and widget tests
+        working-directory: apps/mobile
+        run: flutter test
+      - name: Build Android debug APK
+        working-directory: apps/mobile
+        run: flutter build apk --debug
+      - name: Stage Android UAT APK
+        run: cp apps/mobile/build/app/outputs/flutter-apk/app-debug.apk earthcoop-android-uat.apk
+      - name: Upload Android UAT APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-${{ github.sha }}
+          path: earthcoop-android-uat.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  backend-regressions:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql, gd
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop-test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          php artisan migrate:fresh --force
+      - name: Run affected M1/M5 contracts
+        run: >-
+          vendor/bin/phpunit -c phpunit.xml.dist
+          tests/Feature/Api/V1/NativeSessionTest.php
+          tests/Feature/Api/V1/IdempotencyContractTest.php
+          tests/Feature/Api/V1/BootstrapCompatibilityTest.php
+          tests/Feature/Api/V1/DevicePushContractTest.php
+          tests/Feature/Api/V1/DevicePushReleaseTest.php
+          tests/Feature/Api/V1/NotificationDeliveryContractTest.php
+          tests/Feature/Api/V1/PushProviderFailureIsolationTest.php
+          tests/Unit/Push/PushDeliveryGatewayTest.php
+          tests/Unit/Services/Push/CompositePushDeliveryGatewayTest.php
+          tests/Unit/Services/Push/FcmHttpV1PushDeliveryGatewayTest.php
+          tests/Unit/Services/Push/HmsPushDeliveryGatewayTest.php
+
+  ios-compile:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Build iOS without signing
+        working-directory: apps/mobile
+        run: flutter build ios --debug --no-codesign

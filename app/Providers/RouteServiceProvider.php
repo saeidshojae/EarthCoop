@@ -56,13 +56,18 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
-            // Communication Center observability stays isolated from the legacy
-            // email CRUD surface. Task 8 is intentionally read-only and protected
-            // by the same administrator boundary as the rest of the admin panel.
-            Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
-                ->prefix('admin/communications')
-                ->name('admin.communications.')
-                ->group(base_path('routes/communication-center.php'));
+  // Communication Center observability stays isolated from the legacy
+  // email CRUD surface and remains administrator-only.
+  Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
+      ->prefix('admin/communications')
+      ->name('admin.communications.')
+      ->group(base_path('routes/communication-center.php'));
+
+
+            // Public mobile UAT download page is isolated from the legacy web route file
+            // so binary delivery can evolve independently from authenticated web flows.
+            Route::middleware('web')
+                ->group(base_path('routes/mobile-download.php'));
 
             // Canonical profile runtime shadows only the profile read route. The
             // adapter delegates to the legacy controller when runtime is disabled,

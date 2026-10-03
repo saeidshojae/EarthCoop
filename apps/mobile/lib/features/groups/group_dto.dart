@@ -1,0 +1,184 @@
+class GroupIdentity {
+  const GroupIdentity({
+    required this.governanceAreaId,
+    required this.dimensionKey,
+    required this.dimensionValueKey,
+  });
+
+  final int? governanceAreaId;
+  final String dimensionKey;
+  final String dimensionValueKey;
+
+  factory GroupIdentity.fromJson(Object? raw) {
+    final map = _stringMap(raw, 'identity');
+    return GroupIdentity(
+      governanceAreaId: _nullableInt(map, 'governance_area_id'),
+      dimensionKey: _requiredString(map, 'dimension_key'),
+      dimensionValueKey: _requiredString(map, 'dimension_value_key'),
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+        'governance_area_id': governanceAreaId,
+        'dimension_key': dimensionKey,
+        'dimension_value_key': dimensionValueKey,
+      };
+}
+
+class GroupMembership {
+  const GroupMembership({
+    required this.role,
+    required this.roleLabel,
+    required this.status,
+  });
+
+  final int role;
+  final String roleLabel;
+  final int status;
+
+  factory GroupMembership.fromJson(Object? raw) {
+    final map = _stringMap(raw, 'membership');
+    return GroupMembership(
+      role: _requiredInt(map, 'role'),
+      roleLabel: _requiredString(map, 'role_label'),
+      status: _requiredInt(map, 'status'),
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+        'role': role,
+        'role_label': roleLabel,
+        'status': status,
+      };
+}
+
+class GroupDto {
+  const GroupDto({
+    required this.id,
+    required this.name,
+    required this.identity,
+    required this.membership,
+    required this.membersCount,
+    this.lastActivityAt,
+    this.pending = false,
+    this.pendingRequestId,
+    this.canOpen = true,
+  });
+
+  final int? id;
+  final String name;
+  final GroupIdentity identity;
+  final GroupMembership membership;
+  final int membersCount;
+  final DateTime? lastActivityAt;
+  final bool pending;
+  final int? pendingRequestId;
+  final bool canOpen;
+
+  factory GroupDto.fromJson(Object? raw) {
+    final map = _stringMap(raw, 'group');
+    final pending = _optionalBool(map, 'pending', defaultValue: false);
+    final id = _nullableInt(map, 'id');
+    final pendingRequestId = _nullableInt(map, 'pending_request_id');
+    final canOpen = _optionalBool(
+      map,
+      'can_open',
+      defaultValue: !pending && id != null,
+    );
+    final identity = GroupIdentity.fromJson(map['identity']);
+
+    if (!pending && id == null) {
+      throw const FormatException('materialized group id must be an integer');
+    }
+    if (!pending && identity.governanceAreaId == null) {
+      throw const FormatException(
+          'materialized governance_area_id must be an integer');
+    }
+    if (pending && pendingRequestId == null) {
+      throw const FormatException(
+          'pending_request_id must be an integer for pending groups');
+    }
+    if (canOpen && id == null) {
+      throw const FormatException('openable group requires materialized id');
+    }
+
+    final lastActivityRaw = map['last_activity_at'];
+    DateTime? lastActivityAt;
+    if (lastActivityRaw != null) {
+      if (lastActivityRaw is! String) {
+        throw const FormatException(
+            'last_activity_at must be a string or null');
+      }
+      final parsed = DateTime.tryParse(lastActivityRaw);
+      if (parsed == null) {
+        throw const FormatException('last_activity_at is invalid');
+      }
+      lastActivityAt = parsed.toUtc();
+    }
+
+    return GroupDto(
+      id: id,
+      name: _requiredString(map, 'name'),
+      identity: identity,
+      membership: GroupMembership.fromJson(map['membership']),
+      membersCount: _requiredInt(map, 'members_count'),
+      lastActivityAt: lastActivityAt,
+      pending: pending,
+      pendingRequestId: pendingRequestId,
+      canOpen: canOpen,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+        'id': id,
+        'name': name,
+        'identity': identity.toJson(),
+        'membership': membership.toJson(),
+        'members_count': membersCount,
+        'last_activity_at': lastActivityAt?.toUtc().toIso8601String(),
+        'pending': pending,
+        'pending_request_id': pendingRequestId,
+        'can_open': canOpen,
+      };
+}
+
+Map<String, Object?> _stringMap(Object? raw, String field) {
+  if (raw is! Map) throw FormatException('$field must be an object');
+  try {
+    return Map<String, Object?>.from(raw);
+  } catch (_) {
+    throw FormatException('$field must use string keys');
+  }
+}
+
+int _requiredInt(Map<String, Object?> map, String key) {
+  final value = map[key];
+  if (value is! int) throw FormatException('$key must be an integer');
+  return value;
+}
+
+int? _nullableInt(Map<String, Object?> map, String key) {
+  final value = map[key];
+  if (value == null) return null;
+  if (value is! int) throw FormatException('$key must be an integer or null');
+  return value;
+}
+
+bool _optionalBool(
+  Map<String, Object?> map,
+  String key, {
+  required bool defaultValue,
+}) {
+  final value = map[key];
+  if (value == null) return defaultValue;
+  if (value is! bool) throw FormatException('$key must be a boolean');
+  return value;
+}
+
+String _requiredString(Map<String, Object?> map, String key) {
+  final value = map[key];
+  if (value is! String || value.isEmpty) {
+    throw FormatException('$key must be a non-empty string');
+  }
+  return value;
+}
