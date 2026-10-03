@@ -175,16 +175,6 @@ final class TemporalSafeUserController extends SafeUserController
             return back()->with('error', 'سن شما باید حداقل ۱۵ سال باشد')->withInput();
         }
 
-        // SafeUserController still delegates non-lifecycle fields to the legacy updater.
-        // Bridge only at that internal boundary; external admin input remains locale-aware.
-        $jalali = $this->temporal->date(
-            $birthDate,
-            $this->temporalContexts->forLocale('fa', 'UTC'),
-            'short',
-        );
-        [$year, $month, $day] = explode('/', $jalali);
-        $request->merge(['birth_date' => [$day, $month, $year]]);
-
         return parent::update($request, $user);
     }
 
