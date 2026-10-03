@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/api/api_error.dart';
 import 'group_dto.dart';
+import 'group_feed_dto.dart';
 import 'group_repository.dart';
 
 enum GroupViewFailureKind { retryable, forbidden, nonRetryable }
@@ -61,16 +62,27 @@ class GroupDetailState {
     required this.phase,
     this.group,
     this.isStale = false,
+    this.unreadCount = 0,
+    this.activity = const <GroupFeedEvent>[],
+    this.activityFailure,
     this.failure,
   });
 
   const GroupDetailState.loading() : this._(phase: GroupDetailPhase.loading);
 
-  const GroupDetailState.ready(GroupDto group, {bool isStale = false})
-      : this._(
+  const GroupDetailState.ready(
+    GroupDto group, {
+    bool isStale = false,
+    int unreadCount = 0,
+    List<GroupFeedEvent> activity = const <GroupFeedEvent>[],
+    String? activityFailure,
+  }) : this._(
           phase: GroupDetailPhase.ready,
           group: group,
           isStale: isStale,
+          unreadCount: unreadCount,
+          activity: activity,
+          activityFailure: activityFailure,
         );
 
   const GroupDetailState.failure(GroupViewFailure failure)
@@ -79,6 +91,9 @@ class GroupDetailState {
   final GroupDetailPhase phase;
   final GroupDto? group;
   final bool isStale;
+  final int unreadCount;
+  final List<GroupFeedEvent> activity;
+  final String? activityFailure;
   final GroupViewFailure? failure;
 }
 
@@ -121,7 +136,38 @@ class GroupDetailController extends ChangeNotifier {
     notifyListeners();
     try {
       final result = await _repository.find(groupId);
-      state = GroupDetailState.ready(result.value, isStale: result.isStale);
+      if (result.isStale) {
+        state = GroupDetailState.ready(
+          result.value,
+          isStale: true,
+          activityFailure: 'برای دریافت فعالیت‌های تازه به اینترنت نیاز است.',
+        );
+        notifyListeners();
+        return;
+      }
+
+      var unreadCount = 0;
+      var activity = const <GroupFeedEvent>[];
+      String? activityFailure;
+
+      try {
+        unreadCount = await _repository.unreadCount(groupId);
+      } catch (_) {
+        activityFailure = 'بخشی از اطلاعات فعالیت گروه فعلاً دریافت نشد.';
+      }
+
+      try {
+        activity = await _repository.activity(groupId);
+      } catch (_) {
+        activityFailure = 'فعالیت‌های گروه فعلاً دریافت نشد.';
+      }
+
+      state = GroupDetailState.ready(
+        result.value,
+        unreadCount: unreadCount,
+        activity: activity,
+        activityFailure: activityFailure,
+      );
     } on ApiFailure catch (failure) {
       state = GroupDetailState.failure(_mapFailure(failure));
     } catch (_) {

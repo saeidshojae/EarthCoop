@@ -2,6 +2,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
 import 'group_cache.dart';
 import 'group_dto.dart';
+import 'group_feed_dto.dart';
 
 class GroupProjection<T> {
   const GroupProjection({
@@ -63,6 +64,31 @@ class GroupRepository {
         isStale: true,
       );
     }
+  }
+
+  Future<List<GroupFeedEvent>> activity(int id, {int limit = 20}) async {
+    final boundedLimit = limit < 1
+        ? 1
+        : limit > 100
+            ? 100
+            : limit;
+    final response = await _apiClient.get<GroupFeedPage>(
+      '/groups/$id/feed/delta',
+      queryParameters: {
+        'after_sequence': 0,
+        'limit': boundedLimit,
+      },
+      decodeData: GroupFeedPage.fromJson,
+    );
+    return response.data.events;
+  }
+
+  Future<int> unreadCount(int id) async {
+    final response = await _apiClient.get<GroupUnreadProjection>(
+      '/groups/$id/unread',
+      decodeData: GroupUnreadProjection.fromJson,
+    );
+    return response.data.total;
   }
 
   List<GroupDto> _decodeList(Object? raw) {
