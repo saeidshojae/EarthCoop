@@ -13,7 +13,7 @@ class NajmHodaGroupAssistantTemporalPresentationTest extends TestCase
 
         $this->assertStringContainsString('TemporalService::class', $contents);
         $this->assertStringContainsString('TemporalContextResolver::class', $contents);
-        $this->assertStringContainsString("->date(now(), $temporalContext, 'short')", $contents);
+        $this->assertStringContainsString('$temporal->date(now(), $temporalContext, \'short\')', $contents);
         $this->assertStringNotContainsString('verta(', $contents);
     }
 }
