@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class DeploymentConsoleOptimizeClearTest extends TestCase
 {
-    public function test_optimize_clear_is_allowlisted_as_fixed_non_write_operation(): void
+    public function test_optimize_clear_is_allowlisted_as_fixed_confirmed_operation(): void
     {
         $service = app(DeploymentConsoleService::class);
 
@@ -33,7 +33,7 @@ class DeploymentConsoleOptimizeClearTest extends TestCase
             ->withArgs(function (string $message, array $context): bool {
                 return $message === 'deployment_console_operation'
                     && $context['operation'] === 'optimize_clear'
-                    && $context['write'] === false
+                    && $context['write'] === true
                     && $context['exit_code'] === 0
                     && $context['success'] === true;
             });
