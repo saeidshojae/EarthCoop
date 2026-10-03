@@ -2928,7 +2928,7 @@
 
 
 
-                                @php
+                                @if($announcement->created_at)
 
 
 
@@ -2938,7 +2938,7 @@
 
 
 
-                                    try {
+                                    <x-temporal.date-time :value="$announcement->created_at" />
 
 
 
@@ -2948,7 +2948,7 @@
 
 
 
-                                        $date = isset($announcement->created_at) ? \Carbon\Carbon::parse($announcement->created_at) : null;
+                                @else
 
 
 
@@ -2958,7 +2958,7 @@
 
 
 
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
+                                    -
 
 
 
@@ -2968,37 +2968,7 @@
 
 
 
-                                    } catch (\Exception $e) {
-
-
-
-
-
-
-
-
-
-                                        echo '-';
-
-
-
-
-
-
-
-
-
-                                    }
-
-
-
-
-
-
-
-
-
-                                @endphp
+                                @endif
 
 
 
