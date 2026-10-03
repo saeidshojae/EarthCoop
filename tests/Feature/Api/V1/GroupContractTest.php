@@ -2,15 +2,22 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\Membership\GroupCreationMode;
 use App\Models\GovernanceArea;
 use App\Models\Group;
+use App\Models\GroupCreationPolicy;
 use App\Models\GroupUser;
+use App\Models\LocationScopedGroupRequest;
+use App\Models\MembershipDimension;
 use App\Models\User;
+use App\Models\UserLocationRelationship;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\Membership\PublicDimensionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Group as TestGroup;
+use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
 
 #[TestGroup('mysql-group')]
@@ -53,6 +60,86 @@ class GroupContractTest extends TestCase
 
         $this->freshBearer($token, $deviceId)->getJson('/api/v1/groups/'.$hidden->id)
             ->assertNotFound();
+    }
+
+    public function test_group_list_includes_pending_location_shells_without_fake_group_identity(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+
+        $user = $this->member();
+        [$token, $deviceId] = $this->nativeSession($user);
+
+        $dimension = MembershipDimension::query()->updateOrCreate(
+            ['key' => 'public'],
+            [
+                'name' => 'Public',
+                'resolver_class' => PublicDimensionResolver::class,
+                'enabled' => true,
+            ],
+        );
+        GroupCreationPolicy::query()->updateOrCreate(
+            [
+                'membership_dimension_id' => $dimension->id,
+                'governance_area_id' => null,
+            ],
+            [
+                'mode' => GroupCreationMode::Automatic,
+                'enabled' => true,
+            ],
+        );
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath($schema, [
+            'country',
+            'province',
+            'county',
+            'section',
+            'city',
+            'urban_region',
+            'neighborhood',
+        ])->last();
+        $area = $this->area();
+        $area->locations()->attach($residence->id);
+        UserLocationRelationship::create([
+            'user_id' => $user->id,
+            'location_id' => $residence->id,
+            'relationship_type' => 'primary_residence',
+            'started_at' => now(),
+            'metadata' => [],
+        ]);
+
+        $active = $this->canonicalGroup($area, 'Active Group', 'public', 'public');
+        GroupUser::create(['group_id' => $active->id, 'user_id' => $user->id, 'role' => 1, 'status' => 1]);
+
+        $pending = LocationScopedGroupRequest::create([
+            'requester_user_id' => $user->id,
+            'scope_kind' => 'official_system',
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+            'status' => 'pending_location',
+            'metadata' => [
+                'type_key' => 'neighborhood',
+                'canonical_name' => 'محله در انتظار',
+                'is_pending_base' => true,
+            ],
+        ]);
+
+        $response = $this->freshBearer($token, $deviceId)
+            ->getJson('/api/v1/groups')
+            ->assertOk();
+
+        $items = collect($response->json('data'));
+        $this->assertCount(2, $items);
+        $this->assertSame($active->id, $items->firstWhere('pending', false)['id']);
+
+        $pendingItem = $items->firstWhere('pending', true);
+        $this->assertNotNull($pendingItem);
+        $this->assertNull($pendingItem['id']);
+        $this->assertNull($pendingItem['identity']['governance_area_id']);
+        $this->assertSame($pending->id, $pendingItem['pending_request_id']);
+        $this->assertSame('مجمع عمومی محله در انتظار', $pendingItem['name']);
+        $this->assertSame('فعال', $pendingItem['membership']['role_label']);
+        $this->assertFalse($pendingItem['can_open']);
     }
 
     public function test_feed_delta_preserves_sequence_event_identity_and_duplicate_recording_semantics(): void
