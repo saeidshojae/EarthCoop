@@ -9,6 +9,7 @@ import 'package:earthcoop_mobile/core/api/api_client.dart';
 import 'package:earthcoop_mobile/core/api/retry_policy.dart';
 import 'package:earthcoop_mobile/core/local/app_database.dart';
 import 'package:earthcoop_mobile/features/groups/group_cache.dart';
+import 'package:earthcoop_mobile/features/groups/group_feed_dto.dart';
 import 'package:earthcoop_mobile/features/groups/group_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -56,6 +57,115 @@ void main() {
       expect(result.isStale, isFalse);
       expect(result.value.name, 'مجمع عمومی محله نمونه');
       expect(adapter.requests.single.path, '/groups/42');
+    });
+
+    test('activity decodes canonical feed snapshots and sends bounded delta query',
+        () async {
+      final adapter = RecordingAdapter([
+        jsonResponse(
+          200,
+          successEnvelope({
+            'events': [
+              {
+                'version': 1,
+                'event_id': 'feed:8:v1',
+                'group_id': 42,
+                'sequence': 8,
+                'type': 'feed.message.snapshot',
+                'actor_id': 7,
+                'occurred_at': '2026-10-03T10:00:00Z',
+                'payload': {
+                  'content_type': 'message',
+                  'content_id': 80,
+                  'message': 'سلام به اعضای گروه',
+                  'user_id': 7,
+                  'sender': 'سعید شجاعی',
+                  'created_at': '13:30',
+                  'parent_id': null,
+                  'state': 'sent',
+                },
+              },
+              {
+                'version': 1,
+                'event_id': 'feed:9:v1',
+                'group_id': 42,
+                'sequence': 9,
+                'type': 'feed.post.snapshot',
+                'actor_id': 7,
+                'occurred_at': '2026-10-03T10:01:00Z',
+                'payload': {
+                  'content_type': 'post',
+                  'content_id': 90,
+                  'title': 'گزارش فعالیت',
+                  'content': 'خلاصه گزارش گروه',
+                },
+              },
+              {
+                'version': 1,
+                'event_id': 'feed:10:v1',
+                'group_id': 42,
+                'sequence': 10,
+                'type': 'feed.poll.snapshot',
+                'actor_id': 7,
+                'occurred_at': '2026-10-03T10:02:00Z',
+                'payload': {
+                  'content_type': 'poll',
+                  'content_id': 100,
+                  'question': 'جلسه بعدی چه روزی باشد؟',
+                  'options': [
+                    {'id': 1, 'poll_id': 100, 'text': 'شنبه'},
+                    {'id': 2, 'poll_id': 100, 'text': 'یکشنبه'},
+                  ],
+                },
+              },
+            ],
+            'after_sequence': 0,
+            'latest_sequence': 10,
+            'has_more': false,
+          }),
+        ),
+      ]);
+      final repository = GroupRepository(
+        apiClient: buildClient(adapter),
+        cache: MemoryGroupCache(),
+      );
+
+      final events = await repository.activity(42, limit: 20);
+
+      expect(events, hasLength(3));
+      expect(events[0].kind, GroupFeedKind.message);
+      expect(events[0].sender, 'سعید شجاعی');
+      expect(events[0].message, 'سلام به اعضای گروه');
+      expect(events[1].kind, GroupFeedKind.post);
+      expect(events[1].title, 'گزارش فعالیت');
+      expect(events[2].kind, GroupFeedKind.poll);
+      expect(events[2].question, 'جلسه بعدی چه روزی باشد؟');
+      expect(events[2].options, ['شنبه', 'یکشنبه']);
+      expect(adapter.requests.single.path, '/groups/42/feed/delta');
+      expect(adapter.requests.single.queryParameters['after_sequence'], 0);
+      expect(adapter.requests.single.queryParameters['limit'], 20);
+    });
+
+    test('unread count uses authoritative group unread endpoint', () async {
+      final adapter = RecordingAdapter([
+        jsonResponse(
+          200,
+          successEnvelope({
+            'total': 3,
+            'cursor': 7,
+            'first_unread_sequence': 8,
+          }),
+        ),
+      ]);
+      final repository = GroupRepository(
+        apiClient: buildClient(adapter),
+        cache: MemoryGroupCache(),
+      );
+
+      final unread = await repository.unreadCount(42);
+
+      expect(unread, 3);
+      expect(adapter.requests.single.path, '/groups/42/unread');
     });
 
     test('transient list failure may return stale cached projection', () async {

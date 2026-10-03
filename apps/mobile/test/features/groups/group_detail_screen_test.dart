@@ -33,7 +33,7 @@ void main() {
     expect(find.text('نمایش نسخه ذخیره‌شده'), findsOneWidget);
   });
 
-  testWidgets('detail renders unread count and recent native group activity',
+  testWidgets('detail renders unread count and native group activity',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -64,7 +64,7 @@ void main() {
     );
 
     expect(find.text('۳ خوانده‌نشده'), findsOneWidget);
-    expect(find.text('فعالیت‌های اخیر'), findsOneWidget);
+    expect(find.text('فعالیت‌های گروه'), findsOneWidget);
     expect(find.text('سعید شجاعی'), findsOneWidget);
     expect(find.text('سلام به اعضای گروه'), findsOneWidget);
     expect(find.text('گزارش فعالیت'), findsOneWidget);
