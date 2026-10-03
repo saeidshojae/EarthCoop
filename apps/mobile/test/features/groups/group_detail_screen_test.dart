@@ -1,5 +1,6 @@
 import 'package:earthcoop_mobile/features/groups/group_detail_screen.dart';
 import 'package:earthcoop_mobile/features/groups/group_dto.dart';
+import 'package:earthcoop_mobile/features/groups/group_feed_dto.dart';
 import 'package:earthcoop_mobile/features/groups/groups_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +31,62 @@ void main() {
     expect(find.text('specialty'), findsNothing);
     expect(find.text('experience_field:1'), findsNothing);
     expect(find.text('نمایش نسخه ذخیره‌شده'), findsOneWidget);
+  });
+
+  testWidgets('detail renders unread count and recent native group activity',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupDetailScreen(
+          state: GroupDetailState.ready(
+            sampleGroup(),
+            unreadCount: 3,
+            activity: [
+              GroupFeedEvent.message(
+                sequence: 8,
+                sender: 'سعید شجاعی',
+                message: 'سلام به اعضای گروه',
+              ),
+              GroupFeedEvent.post(
+                sequence: 9,
+                title: 'گزارش فعالیت',
+                content: 'خلاصه گزارش گروه',
+              ),
+              GroupFeedEvent.poll(
+                sequence: 10,
+                question: 'جلسه بعدی چه روزی باشد؟',
+                options: const ['شنبه', 'یکشنبه'],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('۳ خوانده‌نشده'), findsOneWidget);
+    expect(find.text('فعالیت‌های اخیر'), findsOneWidget);
+    expect(find.text('سعید شجاعی'), findsOneWidget);
+    expect(find.text('سلام به اعضای گروه'), findsOneWidget);
+    expect(find.text('گزارش فعالیت'), findsOneWidget);
+    expect(find.text('خلاصه گزارش گروه'), findsOneWidget);
+    expect(find.text('جلسه بعدی چه روزی باشد؟'), findsOneWidget);
+    expect(find.text('۲ گزینه'), findsOneWidget);
+  });
+
+  testWidgets('activity failure does not hide group identity', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupDetailScreen(
+          state: GroupDetailState.ready(
+            sampleGroup(),
+            activityFailure: 'فعالیت‌های گروه فعلاً دریافت نشد.',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('مجمع تخصصی علوم پایه در منطقه نمونه'), findsOneWidget);
+    expect(find.text('فعالیت‌های گروه فعلاً دریافت نشد.'), findsOneWidget);
   });
 
   testWidgets('retryable detail failure offers retry', (tester) async {
