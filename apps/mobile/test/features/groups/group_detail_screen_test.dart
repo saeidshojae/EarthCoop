@@ -42,20 +42,20 @@ void main() {
             sampleGroup(),
             unreadCount: 3,
             activity: [
-              GroupFeedEvent.message(
+              const GroupFeedEvent.message(
                 sequence: 8,
                 sender: 'سعید شجاعی',
                 message: 'سلام به اعضای گروه',
               ),
-              GroupFeedEvent.post(
+              const GroupFeedEvent.post(
                 sequence: 9,
                 title: 'گزارش فعالیت',
                 content: 'خلاصه گزارش گروه',
               ),
-              GroupFeedEvent.poll(
+              const GroupFeedEvent.poll(
                 sequence: 10,
                 question: 'جلسه بعدی چه روزی باشد؟',
-                options: const ['شنبه', 'یکشنبه'],
+                options: ['شنبه', 'یکشنبه'],
               ),
             ],
           ),

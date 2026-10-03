@@ -188,7 +188,8 @@ int _requiredInt(Map<String, Object?> map, String key) {
 
 String? _nullableString(Object? value) {
   if (value == null) return null;
-  if (value is! String)
+  if (value is! String) {
     throw const FormatException('value must be text or null');
+  }
   return value;
 }
