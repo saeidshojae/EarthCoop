@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Modules\Stock\Controllers\CanonicalAdminAuctionController;
+use App\Modules\Stock\Controllers\CanonicalAdminAuctionLifecycleController;
 use App\Modules\Stock\Controllers\ExternalCapitalOperationsController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin/auctions')->name('adm
     Route::middleware('permission:stock.edit')->group(function (): void {
         Route::get('/{auction}/edit', [CanonicalAdminAuctionController::class, 'edit'])->name('edit');
         Route::put('/{auction}', [CanonicalAdminAuctionController::class, 'update'])->name('update');
+        Route::post('/{auction}/start', [CanonicalAdminAuctionLifecycleController::class, 'start'])->name('start');
     });
 });
 
