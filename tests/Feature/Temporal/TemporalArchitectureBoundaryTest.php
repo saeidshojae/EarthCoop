@@ -21,6 +21,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Http/Controllers/Auth/Register/Step1Controller.php',
             'app/Http/Controllers/Profile/ProfileController.php',
             'app/Listeners/SendElectionStartedNotifications.php',
+            'app/Modules/Stock/Controllers/AuctionController.php',
             'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php',
             'app/Modules/Stock/Controllers/CanonicalAuctionController.php',
             'app/Modules/Stock/Controllers/StockController.php',
@@ -71,8 +72,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     private function knownLegacyDebt(): array
     {
         return [
-            'app/Modules/Stock/Controllers/AuctionController.php: CalendarUtils::',
-            'app/Modules/Stock/Controllers/AuctionController.php: Morilog\\Jalali',
             'app/Services/NajmHoda/NajmHodaGroupAssistantService.php: verta(',
             'resources/views/Stock/admin_holdings_show.blade.php: Jalalian::',
             'resources/views/Stock/admin_holdings_show.blade.php: Morilog\\Jalali',
