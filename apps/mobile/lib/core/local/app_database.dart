@@ -115,7 +115,9 @@ class AppDatabase extends GeneratedDatabase {
       'SELECT payload_json, fetched_at_ms, had_authenticated_session '
       'FROM app_bootstrap_snapshot WHERE singleton_id = 1 LIMIT 1',
     ).getSingleOrNull();
-    if (row == null) { return null; }
+    if (row == null) {
+      return null;
+    }
 
     return BootstrapSnapshotRecord(
       payloadJson: row.read<String>('payload_json'),

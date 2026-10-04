@@ -72,21 +72,29 @@ class NotificationsController extends ChangeNotifier {
   NotificationsState state = const NotificationsState.loading();
 
   Future<void> load() async {
-    if (_disposed) { return; }
+    if (_disposed) {
+      return;
+    }
     final sequence = ++_loadSequence;
     state = const NotificationsState.loading();
     _notify();
     try {
       final items = await _syncService.syncOnResume();
-      if (_disposed || sequence != _loadSequence) { return; }
+      if (_disposed || sequence != _loadSequence) {
+        return;
+      }
       state = items.isEmpty
           ? const NotificationsState.empty()
           : NotificationsState.ready(items);
     } on ApiFailure catch (failure) {
-      if (_disposed || sequence != _loadSequence) { return; }
+      if (_disposed || sequence != _loadSequence) {
+        return;
+      }
       state = NotificationsState.failure(_mapFailure(failure));
     } catch (_) {
-      if (_disposed || sequence != _loadSequence) { return; }
+      if (_disposed || sequence != _loadSequence) {
+        return;
+      }
       state = const NotificationsState.failure(
         NotificationViewFailure.nonRetryable(
           'امکان دریافت اعلان‌ها وجود ندارد.',
@@ -97,17 +105,23 @@ class NotificationsController extends ChangeNotifier {
   }
 
   Future<void> markRead(String notificationId) async {
-    if (_disposed || state.phase != NotificationsPhase.ready) { return; }
+    if (_disposed || state.phase != NotificationsPhase.ready) {
+      return;
+    }
 
     var changed = false;
     final markedAt = DateTime.now().toUtc();
     final updated = state.items.map((item) {
-      if (item.id != notificationId || item.read) { return item; }
+      if (item.id != notificationId || item.read) {
+        return item;
+      }
       changed = true;
       return item.asRead(at: markedAt);
     }).toList(growable: false);
 
-    if (!changed) { return; }
+    if (!changed) {
+      return;
+    }
 
     state = NotificationsState.ready(updated);
     _notify();
