@@ -230,3 +230,25 @@ successful API responses isolate the observed workspace failure to its connectio
 path; no server code fix or additional deployment was necessary for that symptom.
 Physical authorized retrieval, Android save/open and notification delivery remain
 OPEN. This receipt supersedes earlier uncertainty about public route reachability.
+
+## Current candidate +10 — account-owned group cache
+
++10 supersedes +9 for the next physical run. Source
+427cd3fdda6585ef872f8e85d1e7d66db0175fdc was verified in run 37236983954:
+193 Flutter tests, formatting 117 files, analysis and Android APK build passed.
+Artifact 11315613308 is retained until 2026-11-03T21:47:22Z:
+https://github.com/saeidshojae/EarthCoop/actions/runs/37236983954/artifacts/11315613308
+
+Group projections now belong to the captured account/device, old views cannot
+return/cache data after a session change, and logout clears the outgoing group
+cache. The unowned legacy cache is not imported: load groups online once after
+upgrading, then test cached read-only groups offline. When the phone returns,
+verify logout/login does not expose old group details/actions. Same-group text,
+notification/offline recovery and attachment save/open remain OPEN. Previously
+accepted 81-group counting remains accepted. No physical-phone success is claimed.
+
+No +10 host publication is performed by this checkpoint. FCM client configuration
+was unavailable during the APK build; live push and the separate server vendor
+installation/configuration are still unverified. See
+GROUP_ACCOUNT_ISOLATION_CHECKPOINT.md and
+../../../docs/NATIVE_PUSH_PROVIDER_SERVER_RELEASE_20261004.md.
