@@ -7,7 +7,7 @@ permissions:
 jobs:
   offline-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: apps/mobile
@@ -19,5 +19,12 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - run: dart format --set-exit-if-changed lib test
       - run: flutter analyze
-      - run: flutter test test/features/notifications/notification_read_offline_test.dart test/core/offline/offline_replay_engine_test.dart test/core/offline/scoped_offline_queue_test.dart test/features/notifications/notification_sync_service_test.dart test/features/notifications/notification_account_storage_test.dart
+      - run: flutter test
+        if: always()
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: flutter build apk --debug

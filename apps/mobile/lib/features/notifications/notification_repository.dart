@@ -147,7 +147,9 @@ class NotificationRepository
       if (!failure.retryable ||
           _offlineQueue == null ||
           failure.httpStatus == 401 ||
-          failure.httpStatus == 403) rethrow;
+          failure.httpStatus == 403) {
+        rethrow;
+      }
       await markRead(
         notificationId,
         idempotencyKey: idempotencyKey,

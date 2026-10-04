@@ -77,7 +77,7 @@ class ScopedOfflineQueueRepository implements OfflineQueueRepository {
       (await _delegate.all()).where(_owns).toList(growable: false);
   @override
   Future<void> remove(OfflineOperation operation) async {
-    if (_owns(operation)) {
+    if (_isCurrent() && _owns(operation)) {
       await _delegate.remove(operation);
     }
   }
@@ -87,14 +87,14 @@ class ScopedOfflineQueueRepository implements OfflineQueueRepository {
     OfflineOperation operation,
     String errorCode,
   ) async {
-    if (_owns(operation)) {
+    if (_isCurrent() && _owns(operation)) {
       await _delegate.markRetryableFailure(operation, errorCode);
     }
   }
 
   @override
   Future<void> markBlocked(OfflineOperation operation, String errorCode) async {
-    if (_owns(operation)) {
+    if (_isCurrent() && _owns(operation)) {
       await _delegate.markBlocked(operation, errorCode);
     }
   }
