@@ -9,29 +9,31 @@ import 'package:earthcoop_mobile/core/offline/offline_replay_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('queue coalesces duplicate notification read and preserves original key',
-      () async {
-    final queue = MemoryOfflineQueueRepository();
-    final first = OfflineOperation.notificationRead(
-      notificationId: 'n-1',
-      idempotencyKey: 'idem-original',
-      createdAt: DateTime.utc(2026, 9, 29),
-    );
-    final duplicate = OfflineOperation.notificationRead(
-      notificationId: 'n-1',
-      idempotencyKey: 'idem-other',
-      createdAt: DateTime.utc(2026, 9, 29, 0, 1),
-    );
+  test(
+    'queue coalesces duplicate notification read and preserves original key',
+    () async {
+      final queue = MemoryOfflineQueueRepository();
+      final first = OfflineOperation.notificationRead(
+        notificationId: 'n-1',
+        idempotencyKey: 'idem-original',
+        createdAt: DateTime.utc(2026, 9, 29),
+      );
+      final duplicate = OfflineOperation.notificationRead(
+        notificationId: 'n-1',
+        idempotencyKey: 'idem-other',
+        createdAt: DateTime.utc(2026, 9, 29, 0, 1),
+      );
 
-    await queue.enqueue(first);
-    await queue.enqueue(duplicate);
+      await queue.enqueue(first);
+      await queue.enqueue(duplicate);
 
-    final pending = await queue.pending();
-    expect(pending, hasLength(1));
-    expect(pending.single.idempotencyKey, 'idem-original');
-    expect(pending.single.payloadHash, first.payloadHash);
-    expect(pending.single.clientSequence, 1);
-  });
+      final pending = await queue.pending();
+      expect(pending, hasLength(1));
+      expect(pending.single.idempotencyKey, 'idem-original');
+      expect(pending.single.payloadHash, first.payloadHash);
+      expect(pending.single.clientSequence, 1);
+    },
+  );
 
   test('registry rejects operations outside the explicit allowlist', () {
     final registry = OfflineOperationRegistry.notificationReadOnly(
@@ -73,30 +75,32 @@ void main() {
     expect(await queue.pending(), isEmpty);
   });
 
-  test('retryable failure remains queued and increments attempt count',
-      () async {
-    final queue = MemoryOfflineQueueRepository();
-    await queue.enqueue(readOperation());
-    final engine = OfflineReplayEngine(
-      queue: queue,
-      registry: OfflineOperationRegistry.notificationReadOnly(
-        markNotificationRead: (_) async => throw const ApiFailure(
-          code: 'network_error',
-          message: 'offline',
-          retryable: true,
+  test(
+    'retryable failure remains queued and increments attempt count',
+    () async {
+      final queue = MemoryOfflineQueueRepository();
+      await queue.enqueue(readOperation());
+      final engine = OfflineReplayEngine(
+        queue: queue,
+        registry: OfflineOperationRegistry.notificationReadOnly(
+          markNotificationRead: (_) async => throw const ApiFailure(
+            code: 'network_error',
+            message: 'offline',
+            retryable: true,
+          ),
         ),
-      ),
-      bootstrapState: () => const BootstrapState.compatible(),
-      sessionState: authenticatedSession,
-    );
+        bootstrapState: () => const BootstrapState.compatible(),
+        sessionState: authenticatedSession,
+      );
 
-    await engine.replayEligible();
+      await engine.replayEligible();
 
-    final pending = await queue.pending();
-    expect(pending.single.attemptCount, 1);
-    expect(pending.single.lastErrorCode, 'network_error');
-    expect(pending.single.state, OfflineOperationState.pending);
-  });
+      final pending = await queue.pending();
+      expect(pending.single.attemptCount, 1);
+      expect(pending.single.lastErrorCode, 'network_error');
+      expect(pending.single.state, OfflineOperationState.pending);
+    },
+  );
 
   test('non-retryable conflict stops operation without retry loop', () async {
     final queue = MemoryOfflineQueueRepository();
@@ -156,58 +160,103 @@ void main() {
     expect(await queue.pending(), hasLength(1));
   });
 
-  test('required update blocks replay even with authenticated session',
-      () async {
-    final queue = MemoryOfflineQueueRepository();
-    await queue.enqueue(readOperation());
-    var calls = 0;
-    final engine = OfflineReplayEngine(
-      queue: queue,
-      registry: OfflineOperationRegistry.notificationReadOnly(
-        markNotificationRead: (_) async => calls += 1,
-      ),
-      bootstrapState: () => const BootstrapState.requiredUpdate(),
-      sessionState: authenticatedSession,
-    );
+  test(
+    'required update blocks replay even with authenticated session',
+    () async {
+      final queue = MemoryOfflineQueueRepository();
+      await queue.enqueue(readOperation());
+      var calls = 0;
+      final engine = OfflineReplayEngine(
+        queue: queue,
+        registry: OfflineOperationRegistry.notificationReadOnly(
+          markNotificationRead: (_) async => calls += 1,
+        ),
+        bootstrapState: () => const BootstrapState.requiredUpdate(),
+        sessionState: authenticatedSession,
+      );
 
-    await engine.replayEligible();
+      await engine.replayEligible();
 
-    expect(calls, 0);
-  });
+      expect(calls, 0);
+    },
+  );
 
-  test('queue clearAll removes user-owned offline intent on logout cleanup',
-      () async {
-    final queue = MemoryOfflineQueueRepository();
-    await queue.enqueue(readOperation());
+  for (final change in ['logout', 'account', 'update']) {
+    test('replay stops before next operation after $change', () async {
+      final queue = MemoryOfflineQueueRepository();
+      await queue.enqueue(readOperation());
+      await queue.enqueue(
+        OfflineOperation.notificationRead(
+          notificationId: 'n-2',
+          idempotencyKey: 'key-2',
+          createdAt: DateTime.utc(2026),
+        ),
+      );
+      var session = authenticatedSession();
+      var bootstrap = const BootstrapState.compatible();
+      var calls = 0;
+      final engine = OfflineReplayEngine(
+        queue: queue,
+        bootstrapState: () => bootstrap,
+        sessionState: () => session,
+        registry: OfflineOperationRegistry.notificationReadOnly(
+          markNotificationRead: (_) async {
+            calls++;
+            if (change == 'update') {
+              bootstrap = const BootstrapState.requiredUpdate();
+            } else if (change == 'logout') {
+              session = const SessionState.unauthenticated();
+            } else {
+              final previous = session.session!;
+              session = SessionState.authenticated(
+                NativeSession(
+                  token: 'other-token',
+                  expiresAt: previous.expiresAt,
+                  user: const SessionUser(id: 8, firstName: '', lastName: ''),
+                  device: previous.device,
+                ),
+              );
+            }
+          },
+        ),
+      );
+      await engine.replayEligible();
+      expect(calls, 1);
+      expect(await queue.pending(), hasLength(1));
+    });
+  }
 
-    await queue.clearAll();
+  test(
+    'queue clearAll removes user-owned offline intent on logout cleanup',
+    () async {
+      final queue = MemoryOfflineQueueRepository();
+      await queue.enqueue(readOperation());
 
-    expect(await queue.all(), isEmpty);
-  });
+      await queue.clearAll();
+
+      expect(await queue.all(), isEmpty);
+    },
+  );
 }
 
 OfflineOperation readOperation() => OfflineOperation.notificationRead(
-      notificationId: 'n-1',
-      idempotencyKey: 'idem-1',
-      createdAt: DateTime.utc(2026, 9, 29),
-    );
+  notificationId: 'n-1',
+  idempotencyKey: 'idem-1',
+  createdAt: DateTime.utc(2026, 9, 29),
+);
 
 SessionState authenticatedSession() => SessionState.authenticated(
-      NativeSession(
-        token: 'secret-token',
-        expiresAt: DateTime.utc(2026, 10, 29),
-        user: const SessionUser(
-          id: 7,
-          firstName: 'کاربر',
-          lastName: 'آزمایشی',
-        ),
-        device: const SessionDevice(
-          id: 'device-1',
-          platform: 'android',
-          appVersion: '0.1.0',
-          locale: 'fa',
-          timezone: 'Asia/Tehran',
-          pushCapable: true,
-        ),
-      ),
-    );
+  NativeSession(
+    token: 'secret-token',
+    expiresAt: DateTime.utc(2026, 10, 29),
+    user: const SessionUser(id: 7, firstName: 'کاربر', lastName: 'آزمایشی'),
+    device: const SessionDevice(
+      id: 'device-1',
+      platform: 'android',
+      appVersion: '0.1.0',
+      locale: 'fa',
+      timezone: 'Asia/Tehran',
+      pushCapable: true,
+    ),
+  ),
+);
