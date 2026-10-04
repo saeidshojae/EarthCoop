@@ -24,7 +24,8 @@ void main() {
           'message': 'Try later',
           'retryable': true,
         },
-        'meta': {'api_version': 'v1'}
+        'meta': {'api_version': 'v1'},
+        'request_id': 'req-push-failure'
       }),
       jsonResponse(200, successData(pushData(provider: 'fcm'))),
     ]);
@@ -38,6 +39,38 @@ void main() {
     expect(await service.initialize(), PushRegistrationStatus.registered);
     expect(adapter.requests, hasLength(2));
     expect(source.initializeCalls, 1);
+  });
+
+  test('failed token rotation is contained and next rotation registers',
+      () async {
+    final adapter = SequenceHttpAdapter([
+      jsonResponse(200, successData(pushData(provider: 'fcm'))),
+      jsonResponse(503, {
+        'status': 'error',
+        'data': null,
+        'error': {
+          'code': 'unavailable',
+          'message': 'Try later',
+          'retryable': true,
+        },
+        'meta': {'api_version': 'v1'},
+        'request_id': 'req-push-failure'
+      }),
+      jsonResponse(200, successData(pushData(provider: 'fcm'))),
+    ]);
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm, initialToken: 'token-a');
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    await service.initialize();
+    source.emit('token-b');
+    await adapter.waitForRequestCount(2).timeout(const Duration(seconds: 5));
+    await source.flush();
+    source.emit('token-c');
+    await adapter.waitForRequestCount(3).timeout(const Duration(seconds: 5));
+    expect(adapter.requests.last.data, {'provider': 'fcm', 'token': 'token-c'});
   });
 
   test('initial token registers once and repeated initialization is idempotent',

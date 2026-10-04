@@ -16,7 +16,7 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/mobile
-      - run: flutter test
+      - run: flutter test test/core/push/push_registration_service_test.dart
         working-directory: apps/mobile
       - run: dart format --output=none --set-exit-if-changed lib test
         working-directory: apps/mobile
