@@ -10,6 +10,9 @@ import 'package:earthcoop_mobile/core/api/retry_policy.dart';
 import 'package:earthcoop_mobile/core/offline/offline_queue_repository.dart';
 import 'package:earthcoop_mobile/features/notifications/notification_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earthcoop_mobile/features/notifications/notification_dto.dart';
+import 'package:earthcoop_mobile/features/notifications/notification_sync_service.dart';
+import 'notification_sync_service_test.dart' as fixtures;
 
 void main() {
   test('offline read queues once and applies optimistic local state', () async {
@@ -102,6 +105,37 @@ void main() {
     expect(await queue.all(), isEmpty);
   });
 
+  for (final read in [false, true]) {
+    test(
+        'delayed ${read ? "read" : "page"} response cannot restore projection after logout',
+        () async {
+      final body = successEnvelope(read
+          ? notificationJson('n-1', read: true)
+          : [notificationJson('n-1', read: false)]);
+      if (!read)
+        (body['meta'] as Map)['pagination'] = {
+          'has_more': false,
+          'next_cursor': null
+        };
+      final adapter = DelayedAdapter([jsonResponse(200, body)]);
+      var current = true;
+      final repository = NotificationRepository(
+          apiClient: buildClient(adapter), isCurrentSession: () => current);
+      final store = fixtures.MemoryNotificationProjectionStore(items: [
+        NotificationDto.fromJson(notificationJson('n-1', read: false))
+      ]);
+      final service = NotificationSyncService(source: repository, store: store);
+      final request = read ? service.markRead('n-1') : service.syncOnResume();
+      await adapter.started.future;
+      current = false;
+      await store.replaceAll([]);
+      final assertion = expectLater(request, throwsA(isA<ApiFailure>()));
+      adapter.release.complete();
+      await assertion;
+      expect(await store.readAll(), isEmpty);
+    });
+  }
+
   test('replay read posts with the original idempotency key', () async {
     final adapter = RecordingAdapter([
       jsonResponse(200, successEnvelope(notificationJson('n-1', read: true))),
@@ -190,4 +224,17 @@ class RecordingAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+class DelayedAdapter extends RecordingAdapter {
+  DelayedAdapter(super.responses);
+  final started = Completer<void>();
+  final release = Completer<void>();
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    started.complete();
+    await release.future;
+    return super.fetch(options, requestStream, cancelFuture);
+  }
 }
