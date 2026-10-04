@@ -1,0 +1,74 @@
+name: Native group message checkpoint
+on:
+  push:
+    branches: [agent/mobile-group-message-verification-20261004]
+permissions:
+  contents: read
+jobs:
+  transport-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_sqlite, pdo_mysql
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop-test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+      - name: Group message RED contract
+        run: |
+          php artisan migrate:fresh --force
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/GroupMessageContractTest.php
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/mobile
+      - run: flutter test test/features/groups/group_message_send_test.dart
+        working-directory: apps/mobile
