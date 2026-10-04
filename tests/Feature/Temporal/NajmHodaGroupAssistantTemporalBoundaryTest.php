@@ -13,7 +13,7 @@ class NajmHodaGroupAssistantTemporalBoundaryTest extends TestCase
 
         $this->assertStringContainsString('use App\\Temporal\\Contracts\\TemporalService;', $contents);
         $this->assertStringContainsString('protected TemporalService $temporal', $contents);
-        $this->assertStringContainsString("$this->temporal->date(now(), style: 'short')", $contents);
+        $this->assertStringContainsString("\$this->temporal->date(now(), style: 'short')", $contents);
         $this->assertStringNotContainsString('verta(', $contents);
     }
 }
