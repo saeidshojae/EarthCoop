@@ -1,7 +1,7 @@
 name: Native group text API targeted
 on:
   push:
-    branches: [agent/native-group-text-api-20261004]
+    branches: [agent/native-group-text-newline-verification-20261004]
 permissions:
   contents: read
 jobs:
