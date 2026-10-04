@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:earthcoop_mobile/core/api/api_error.dart';
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/core/api/api_client.dart';
 import 'package:earthcoop_mobile/core/api/retry_policy.dart';
@@ -9,6 +11,20 @@ import 'package:earthcoop_mobile/features/groups/groups_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('superseded load failure cannot overwrite a newer ready state',
+      () async {
+    final repository = _DelayedGroupRepository();
+    final controller = GroupDetailController(repository, 42);
+    final first = controller.load();
+    await controller.load();
+    expect(controller.state.phase, GroupDetailPhase.ready);
+    repository.first.completeError(
+        const ApiFailure(code: 'network_error', message: '', retryable: true));
+    await first;
+    expect(controller.state.phase, GroupDetailPhase.ready);
+    controller.dispose();
+  });
+
   test('opening a live group marks its feed read and clears unread count',
       () async {
     final repository = _FakeGroupRepository();
@@ -94,4 +110,14 @@ class _NoopGroupCache implements GroupProjectionCache {
 
   @override
   Future<void> writeAll(List<Map<String, Object?>> values) async {}
+}
+
+class _DelayedGroupRepository extends _FakeGroupRepository {
+  final first = Completer<GroupProjection<GroupDto>>();
+  var calls = 0;
+  @override
+  Future<GroupProjection<GroupDto>> find(int id) {
+    if (++calls == 1) return first.future;
+    return super.find(id);
+  }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'group_feed_dto.dart';
+import 'group_message_composer.dart';
+import 'group_message_composer_controller.dart';
 import 'groups_controller.dart';
 
 class GroupDetailScreen extends StatelessWidget {
@@ -8,16 +10,39 @@ class GroupDetailScreen extends StatelessWidget {
     super.key,
     required this.state,
     this.onRetry,
+    this.composer,
   });
 
   final GroupDetailState state;
   final VoidCallback? onRetry;
+  final GroupMessageComposerController? composer;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: const Key('group-detail-route-screen'),
-      appBar: AppBar(title: const Text('گروه')),
+      appBar: AppBar(
+        title: const Text('گروه'),
+        actions: [
+          if (state.phase == GroupDetailPhase.ready && onRetry != null)
+            IconButton(
+              tooltip: 'دریافت فعالیت‌های تازه',
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+            ),
+        ],
+      ),
+      bottomNavigationBar: state.phase == GroupDetailPhase.ready &&
+              !state.isStale &&
+              state.group!.membership.role != 0 &&
+              state.group!.membership.status == 1 &&
+              composer != null
+          ? SafeArea(
+              child: GroupMessageComposer(
+                controller: composer!,
+              ),
+            )
+          : null,
       body: SafeArea(child: _body(context)),
     );
   }
@@ -56,10 +81,7 @@ class GroupDetailScreen extends StatelessWidget {
               const Text('نمایش نسخه ذخیره‌شده'),
               const SizedBox(height: 12),
             ],
-            Text(
-              group.name,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text(group.name, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -127,28 +149,43 @@ class _ActivityCard extends StatelessWidget {
     final children = <Widget>[];
     switch (event.kind) {
       case GroupFeedKind.message:
-        _appendText(children, event.sender,
-            style: Theme.of(context).textTheme.labelLarge);
+        _appendText(
+          children,
+          event.sender,
+          style: Theme.of(context).textTheme.labelLarge,
+        );
         _appendText(children, event.message);
         break;
       case GroupFeedKind.file:
-        _appendText(children, event.sender,
-            style: Theme.of(context).textTheme.labelLarge);
+        _appendText(
+          children,
+          event.sender,
+          style: Theme.of(context).textTheme.labelLarge,
+        );
         _appendText(children, event.message ?? 'فایل ارسال شد.');
         break;
       case GroupFeedKind.voice:
-        _appendText(children, event.sender,
-            style: Theme.of(context).textTheme.labelLarge);
+        _appendText(
+          children,
+          event.sender,
+          style: Theme.of(context).textTheme.labelLarge,
+        );
         _appendText(children, event.message ?? 'پیام صوتی ارسال شد.');
         break;
       case GroupFeedKind.post:
-        _appendText(children, event.title,
-            style: Theme.of(context).textTheme.titleMedium);
+        _appendText(
+          children,
+          event.title,
+          style: Theme.of(context).textTheme.titleMedium,
+        );
         _appendText(children, event.content);
         break;
       case GroupFeedKind.poll:
-        _appendText(children, event.question,
-            style: Theme.of(context).textTheme.titleMedium);
+        _appendText(
+          children,
+          event.question,
+          style: Theme.of(context).textTheme.titleMedium,
+        );
         children.add(Text('${_persianDigits(event.options.length)} گزینه'));
         break;
       case GroupFeedKind.comment:
@@ -174,11 +211,7 @@ class _ActivityCard extends StatelessWidget {
     );
   }
 
-  void _appendText(
-    List<Widget> children,
-    String? value, {
-    TextStyle? style,
-  }) {
+  void _appendText(List<Widget> children, String? value, {TextStyle? style}) {
     if (value == null || value.trim().isEmpty) return;
     children.add(Text(value, style: style));
   }

@@ -1,0 +1,127 @@
+name: Native group message checkpoint
+on:
+  push:
+    branches: [agent/mobile-group-message-verification-20261004]
+permissions:
+  contents: read
+jobs:
+  transport-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_sqlite, pdo_mysql
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop-test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+      - name: Group message and authorization contracts
+        run: |
+          php artisan migrate:fresh --force
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/GroupMessageContractTest.php tests/Feature/Api/V1/GroupContractTest.php tests/Feature/Api/V1/NativeSessionTest.php tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/GroupChat/MessageAuthorizationTest.php tests/Feature/GroupChat/MembershipParticipationGateContractTest.php
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/mobile
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+        working-directory: apps/mobile
+      - name: Analyze
+        run: flutter analyze
+        working-directory: apps/mobile
+      - run: flutter test
+        working-directory: apps/mobile
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare Android UAT signing
+        shell: bash
+        env:
+          ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
+          ANDROID_UAT_KEY_ALIAS: ${{ secrets.ANDROID_UAT_KEY_ALIAS }}
+          ANDROID_UAT_STORE_PASSWORD: ${{ secrets.ANDROID_UAT_STORE_PASSWORD }}
+          ANDROID_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          configured=0
+          test -n "$ANDROID_UAT_KEYSTORE_BASE64" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_ALIAS" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_STORE_PASSWORD" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_PASSWORD" && configured=$((configured + 1))
+
+          if [ "$configured" -ne 4 ]; then
+            echo "::error::Published UAT APKs require all four stable UAT signing secrets."
+            exit 1
+          fi
+
+          UAT_KEYSTORE_PATH="$RUNNER_TEMP/earthcoop-uat.jks"
+          printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$UAT_KEYSTORE_PATH"
+          test -s "$UAT_KEYSTORE_PATH" || { echo "::error::Decoded UAT keystore is empty"; exit 1; }
+
+          {
+            echo "EARTHCOOP_UAT_KEYSTORE_PATH=$UAT_KEYSTORE_PATH"
+            echo "EARTHCOOP_UAT_KEY_ALIAS=$ANDROID_UAT_KEY_ALIAS"
+            echo "EARTHCOOP_UAT_STORE_PASSWORD=$ANDROID_UAT_STORE_PASSWORD"
+            echo "EARTHCOOP_UAT_KEY_PASSWORD=$ANDROID_UAT_KEY_PASSWORD"
+            echo "EARTHCOOP_UAT_SIGNING_MODE=stable-uat"
+          } >> "$GITHUB_ENV"
+
+      - name: Android stable UAT compile
+        run: flutter build apk --debug
+        working-directory: apps/mobile
+      - name: Retain signed candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-1.0.0+6-${{ github.sha }}
+          path: apps/mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

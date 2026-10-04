@@ -131,11 +131,24 @@ class GroupDetailController extends ChangeNotifier {
 
   GroupDetailState state = const GroupDetailState.loading();
 
+  bool _disposed = false;
+  int _loadEpoch = 0;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _loadEpoch++;
+    super.dispose();
+  }
+
   Future<void> load() async {
+    if (_disposed) return;
+    final epoch = ++_loadEpoch;
     state = const GroupDetailState.loading();
     notifyListeners();
     try {
       final result = await _repository.find(groupId);
+      if (_disposed || epoch != _loadEpoch) return;
       if (result.isStale) {
         state = GroupDetailState.ready(
           result.value,
@@ -175,6 +188,7 @@ class GroupDetailController extends ChangeNotifier {
         activityFailure = 'فعالیت‌های گروه فعلاً دریافت نشد.';
       }
 
+      if (_disposed || epoch != _loadEpoch) return;
       state = GroupDetailState.ready(
         result.value,
         unreadCount: unreadCount,
@@ -182,13 +196,15 @@ class GroupDetailController extends ChangeNotifier {
         activityFailure: activityFailure,
       );
     } on ApiFailure catch (failure) {
+      if (_disposed || epoch != _loadEpoch) return;
       state = GroupDetailState.failure(_mapFailure(failure));
     } catch (_) {
+      if (_disposed || epoch != _loadEpoch) return;
       state = const GroupDetailState.failure(
         GroupViewFailure.nonRetryable('امکان دریافت این گروه وجود ندارد.'),
       );
     }
-    notifyListeners();
+    if (!_disposed && epoch == _loadEpoch) notifyListeners();
   }
 }
 
@@ -198,8 +214,10 @@ GroupViewFailure _mapFailure(ApiFailure failure) {
   }
   if (failure.retryable) {
     return const GroupViewFailure.retryable(
-        'ارتباط برقرار نشد. دوباره تلاش کنید.');
+      'ارتباط برقرار نشد. دوباره تلاش کنید.',
+    );
   }
   return const GroupViewFailure.nonRetryable(
-      'امکان دریافت اطلاعات وجود ندارد.');
+    'امکان دریافت اطلاعات وجود ندارد.',
+  );
 }
