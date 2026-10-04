@@ -41,3 +41,10 @@ Thumbs.db
 # Web server logs
 /public/error_log
 .npm-cache-node18/
+
+# Provider client configuration is supplied outside Git at build time.
+/apps/mobile/.generated/
+/apps/mobile/android/app/google-services.json
+/apps/mobile/android/app/agconnect-services.json
+/apps/mobile/lib/firebase_options.dart
+/apps/mobile/android/app/src/main/res/values/earthcoop_firebase.xml

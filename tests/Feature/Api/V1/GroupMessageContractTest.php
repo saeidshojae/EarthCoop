@@ -48,6 +48,68 @@ class GroupMessageContractTest extends TestCase
             ->postJson('/api/v1/groups/'.($group ?? $this->group)->id.'/messages', $data);
     }
 
+    private function attachmentMessage(): Message
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $path = 'group-chat/messages/'.$this->group->id.'/guide.pdf';
+        \Illuminate\Support\Facades\Storage::disk('local')->put($path, 'private attachment bytes');
+        return Message::create(['group_id' => $this->group->id, 'user_id' => $this->member->id,
+            'message' => 'Guide', 'file_path' => $path, 'file_name' => 'guide.pdf', 'file_type' => 'application/pdf']);
+    }
+
+    private function downloadAttachment(Message $message)
+    {
+        Auth::forgetGuards();
+        return $this->withToken($this->token)->withHeader('X-Device-ID', $this->device)
+            ->get('/api/v1/groups/'.$this->group->id.'/messages/'.$message->id.'/attachment', ['Accept' => 'application/json']);
+    }
+
+    public function test_native_member_downloads_private_legacy_attachment(): void
+    {
+        $message = $this->attachmentMessage();
+        $response = $this->downloadAttachment($message)->assertOk()->assertDownload('guide.pdf');
+        $response->assertHeader('Content-Type', 'application/pdf')->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->assertSame('private attachment bytes', $response->streamedContent());
+    }
+
+    public function test_native_attachment_denies_message_from_another_group(): void
+    {
+        $message = $this->attachmentMessage();
+        $other = Group::create(['name' => 'Another group', 'group_type' => 'test']);
+        $message->update(['group_id' => $other->id]);
+        $this->downloadAttachment($message)->assertNotFound();
+    }
+
+    public function test_native_attachment_denies_removed_member(): void
+    {
+        $message = $this->attachmentMessage();
+        GroupUser::where('group_id', $this->group->id)->where('user_id', $this->member->id)->update(['status' => 0]);
+        $this->downloadAttachment($message)->assertNotFound();
+    }
+
+    public function test_native_attachment_denies_deleted_message_and_missing_file(): void
+    {
+        $message = $this->attachmentMessage();
+        $message->update(['lifecycle_state' => 'deleted']);
+        $this->downloadAttachment($message)->assertNotFound();
+        $message->update(['lifecycle_state' => 'sent']);
+        \Illuminate\Support\Facades\Storage::disk('local')->delete($message->file_path);
+        $this->downloadAttachment($message)->assertNotFound();
+    }
+
+    public function test_native_file_feed_exposes_download_identity_without_storage_path(): void
+    {
+        $message = $this->attachmentMessage();
+        app(\App\Services\GroupChat\GroupFeedService::class)->record($this->group->id, 'file', $message->id, $this->member->id, now());
+        Auth::forgetGuards();
+        $response = $this->withToken($this->token)->withHeader('X-Device-ID', $this->device)
+            ->getJson('/api/v1/groups/'.$this->group->id.'/feed/delta?window=latest&limit=20')->assertOk()
+            ->assertJsonPath('data.events.0.payload.attachment.file_name', 'guide.pdf')
+            ->assertJsonPath('data.events.0.payload.attachment.download_path', '/groups/'.$this->group->id.'/messages/'.$message->id.'/attachment');
+        $this->assertStringNotContainsString($message->file_path, $response->getContent());
+    }
+
     public function test_member_sends_once_and_receives_a_native_projection(): void
     {
         $first = $this->send(['message' => 'سلام <script>bad</script>'])->assertCreated()

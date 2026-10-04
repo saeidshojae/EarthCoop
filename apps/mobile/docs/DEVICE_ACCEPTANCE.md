@@ -171,3 +171,25 @@ account change, and logout. A real server notification is required for delivery
 and link-navigation acceptance; a group with no activity is not evidence of failure.
 Provider application configuration and notification permission remain prerequisites
 for delivery. No hardware row is marked PASS by this follow-up.
+
+
+## Current candidate +8 — push configuration and attachment API
+
++8 supersedes +7 for the next physical run. Earlier +6/+7 paragraphs are historical
+receipts. +8 corrects Firebase initialization order and accepts validated external
+Android client configuration. Missing configuration leaves FCM unavailable.
+Install the latest stable-signed candidate over +5 when the phone returns, then
+perform the already-open text composer and same-group activity checks. Previously
+accepted 81-group counting remains accepted.
+
+FCM/HMS real delivery and notification taps remain NOT EXECUTED. Provider credentials
+and permission are prerequisites. HMS Android/server adapter compatibility remains
+an open configuration gate. No device result is inferred from automated tests.
+
+Existing legacy attachment retrieval is prepared at the API layer only; it is not
+yet deployed and there is no Flutter download action. New uploads remain deferred.
+See PUSH_CONFIGURATION_CHECKPOINT.md and GROUP_ATTACHMENT_READ_CHECKPOINT.md.
+
+Automated +8 receipt: run 37204210736 passed 174 Flutter tests, 62 server contracts,
+5 configuration tests and stable-signed APK build. Artifact 11304436534 is retained
+until 2026-11-03. FCM configuration was unavailable during this build.

@@ -3,6 +3,11 @@ name: Publish Mobile UAT APK
 on:
   workflow_dispatch:
     inputs:
+      require_fcm_configuration:
+        description: 'Require real Android Firebase client configuration in this APK'
+        required: true
+        default: false
+        type: boolean
       publish_to_host:
         description: 'Also publish the signed UAT package to the EarthCoop download host'
         required: true
@@ -66,9 +71,23 @@ jobs:
         working-directory: apps/mobile
         run: flutter pub get
 
+      - name: Materialize Firebase Android client configuration
+        env:
+          EARTHCOOP_FIREBASE_ANDROID_JSON_BASE64: ${{ secrets.EARTHCOOP_FIREBASE_ANDROID_JSON_BASE64 }}
+          REQUIRE_FCM_CONFIGURATION: ${{ inputs.require_fcm_configuration }}
+        run: |
+          arguments=()
+          if [ "$REQUIRE_FCM_CONFIGURATION" != "true" ]; then arguments+=(--allow-missing); fi
+          python scripts/mobile/firebase_configuration.py --output "$RUNNER_TEMP/firebase-defines.json" --android-resources apps/mobile/android/app/src/main/res/values/earthcoop_firebase.xml "${arguments[@]}"
+          if [ -n "$EARTHCOOP_FIREBASE_ANDROID_JSON_BASE64" ]; then
+            echo 'EARTHCOOP_FCM_CONFIGURED=true' >> "$GITHUB_ENV"
+          else
+            echo 'EARTHCOOP_FCM_CONFIGURED=false' >> "$GITHUB_ENV"
+          fi
+
       - name: Build Android UAT APK
         working-directory: apps/mobile
-        run: flutter build apk --debug
+        run: flutter build apk --debug --dart-define-from-file="$RUNNER_TEMP/firebase-defines.json"
 
       - name: Stage deployable APK, metadata, and download page
         shell: bash
@@ -89,6 +108,7 @@ jobs:
             "platform": "android",
             "version": "${VERSION}",
             "git_sha": "${GITHUB_SHA}",
+            "fcm_configured": ${EARTHCOOP_FCM_CONFIGURED},
             "signing_mode": "${SIGNING_MODE}",
             "apk_sha256": "${APK_SHA256}",
             "apk_size_bytes": ${APK_SIZE_BYTES},
