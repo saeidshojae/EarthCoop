@@ -44,6 +44,6 @@ class PushServiceProviderBindingTest extends TestCase
 
     public function test_google_auth_dependency_is_available(): void
     {
-        $this->assertTrue(class_exists(\Google\Auth\ServiceAccountCredentials::class));
+        $this->assertTrue(class_exists(\Google\Auth\Credentials\ServiceAccountCredentials::class));
     }
 }
