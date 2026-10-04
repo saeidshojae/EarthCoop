@@ -102,7 +102,9 @@ class PushRegistrationService {
       if (_disabled ||
           !_isCurrent() ||
           token != _latestToken ||
-          token == _lastRegisteredToken) return;
+          token == _lastRegisteredToken) {
+        return;
+      }
       final source = _tokenSource;
       if (source == null) return;
       await _apiClient.put<Object?>('/devices/$_deviceId/push',
