@@ -53,12 +53,16 @@ void main() {
   test('logout while provider selection is pending prevents registration',
       () async {
     final selected = Completer<PushRegistrationService>();
+    final entered = Completer<void>();
     final adapter = SequenceHttpAdapter([]);
     final source =
         FakePushTokenSource(provider: PushProvider.fcm, initialToken: 'late');
-    final coordinator =
-        SessionPushCoordinator(createRegistration: (_) => selected.future);
+    final coordinator = SessionPushCoordinator(createRegistration: (_) {
+      entered.complete();
+      return selected.future;
+    });
     final activation = coordinator.activate(sampleSession());
+    await entered.future;
     await coordinator.disable();
     selected.complete(PushRegistrationService(
         apiClient: buildClient(adapter),

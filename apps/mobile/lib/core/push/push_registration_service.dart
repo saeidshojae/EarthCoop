@@ -64,7 +64,7 @@ class PushRegistrationService {
       }));
     }, onError: (Object _) => _recordFailure());
 
-    if (!_sourceInitialized) {
+    if (!_sourceInitialized || _latestToken == null) {
       final revision = _tokenRevision;
       final initialToken = await source.initialize();
       _sourceInitialized = true;

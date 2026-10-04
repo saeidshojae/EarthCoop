@@ -13,6 +13,57 @@ import 'package:earthcoop_mobile/core/push/push_token_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('foreground retry obtains a token when initial provider result is empty',
+      () async {
+    var attempts = 0;
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm,
+        initialToken: null,
+        initializeToken: () async => attempts++ == 0 ? null : 'recovered');
+    final adapter = SequenceHttpAdapter(
+        [jsonResponse(200, successData(pushData(provider: 'fcm')))]);
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    expect(await service.initialize(), PushRegistrationStatus.awaitingToken);
+    expect(await service.initialize(), PushRegistrationStatus.registered);
+    expect(adapter.requests, hasLength(1));
+    expect(source.initializeCalls, 2);
+    await service.dispose();
+  });
+
+  test(
+      'latest rotation during provider initialization wins over stale initial token',
+      () async {
+    final pending = Completer<String?>();
+    final entered = Completer<void>();
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm,
+        initialToken: null,
+        initializeToken: () {
+          entered.complete();
+          return pending.future;
+        });
+    final adapter = SequenceHttpAdapter(
+        [jsonResponse(200, successData(pushData(provider: 'fcm')))]);
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    final initialization = service.initialize();
+    await entered.future;
+    source.emit('newest');
+    await adapter.waitForRequestCount(1).timeout(const Duration(seconds: 5));
+    await source.flush();
+    pending.complete('stale-initial');
+    expect(await initialization, PushRegistrationStatus.registered);
+    expect(adapter.requests, hasLength(1));
+    expect(
+        adapter.requests.single.data, {'provider': 'fcm', 'token': 'newest'});
+    await service.dispose();
+  });
+
   test('initial registration can recover after a failed HTTP attempt',
       () async {
     final adapter = SequenceHttpAdapter([
@@ -276,11 +327,13 @@ class FakePushTokenSource implements PushTokenSource {
   FakePushTokenSource({
     required this.provider,
     required this.initialToken,
+    this.initializeToken,
   });
 
   @override
   final PushProvider provider;
   final String? initialToken;
+  final Future<String?> Function()? initializeToken;
   final StreamController<String> _controller =
       StreamController<String>.broadcast();
 
@@ -290,7 +343,7 @@ class FakePushTokenSource implements PushTokenSource {
   @override
   Future<String?> initialize() async {
     initializeCalls += 1;
-    return initialToken;
+    return initializeToken == null ? initialToken : await initializeToken!();
   }
 
   @override

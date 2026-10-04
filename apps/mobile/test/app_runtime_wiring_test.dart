@@ -47,7 +47,7 @@ void main() {
     await tester.pumpWidget(EarthCoopApp(runtimeFactory: factory));
     await tester.pumpAndSettle();
     expect(created, 1);
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(foreground, 1);
