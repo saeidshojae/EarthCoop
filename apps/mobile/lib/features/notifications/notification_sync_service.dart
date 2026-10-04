@@ -19,7 +19,19 @@ abstract interface class NotificationProjectionStore {
 }
 
 class DriftNotificationProjectionStore implements NotificationProjectionStore {
-  DriftNotificationProjectionStore(this._database);
+  DriftNotificationProjectionStore(this._database,
+      {bool Function()? isCurrentSession})
+      : _isCurrentSession = isCurrentSession ?? (() => true);
+  final bool Function() _isCurrentSession;
+  void _checkSession() {
+    if (!_isCurrentSession()) {
+      throw const ApiFailure(
+          code: 'session_changed',
+          message: '',
+          retryable: false,
+          httpStatus: 401);
+    }
+  }
 
   final AppDatabase _database;
 
@@ -35,6 +47,7 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
           'ORDER BY position ASC',
         )
         .get();
+    _checkSession();
     return rows
         .map(
           (row) => NotificationDto.fromJson(
@@ -48,6 +61,7 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
   Future<void> replaceAll(List<NotificationDto> values) async {
     await _ensureSchema();
     await _database.transaction(() async {
+      _checkSession();
       await _database.customStatement(
         'DELETE FROM notification_projection_cache',
       );
@@ -75,12 +89,14 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
           'WHERE singleton_id = 1 LIMIT 1',
         )
         .getSingleOrNull();
+    _checkSession();
     return row?.readNullable<String>('next_cursor');
   }
 
   @override
   Future<void> writeNextCursor(String? cursor) async {
     await _ensureSchema();
+    _checkSession();
     await _database.customInsert(
       'INSERT OR REPLACE INTO notification_sync_state '
       '(singleton_id, next_cursor) VALUES (?, ?)',
@@ -105,7 +121,9 @@ class NotificationSyncService {
 
   Future<List<NotificationDto>> syncOnResume() {
     final active = _activeSync;
-    if (active != null) return active;
+    if (active != null) {
+      return active;
+    }
 
     final run = _runAuthoritativeSweep();
     _activeSync = run;
@@ -153,11 +171,15 @@ class NotificationSyncService {
       final existing = await _store.readAll();
       var changed = false;
       final updated = existing.map((item) {
-        if (item.id != notificationId || item.read) return item;
+        if (item.id != notificationId || item.read) {
+          return item;
+        }
         changed = true;
         return item.asRead(at: markedAt);
       }).toList(growable: false);
-      if (changed) await _store.replaceAll(updated);
+      if (changed) {
+        await _store.replaceAll(updated);
+      }
     } catch (_) {
       // Projection is non-authoritative; read mutation must still reach the API.
     }
@@ -170,7 +192,9 @@ class NotificationSyncService {
       final existing = await _store.readAll();
       var replaced = false;
       final updated = existing.map((item) {
-        if (item.id != authoritative.id) return item;
+        if (item.id != authoritative.id) {
+          return item;
+        }
         replaced = true;
         return authoritative;
       }).toList(growable: true);

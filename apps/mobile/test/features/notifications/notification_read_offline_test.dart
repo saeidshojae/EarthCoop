@@ -112,11 +112,12 @@ void main() {
       final body = successEnvelope(read
           ? notificationJson('n-1', read: true)
           : [notificationJson('n-1', read: false)]);
-      if (!read)
-        (body['meta'] as Map)['pagination'] = {
-          'has_more': false,
-          'next_cursor': null
+      if (!read) {
+        body['meta'] = <String, Object?>{
+          'api_version': 'v1',
+          'pagination': {'has_more': false, 'next_cursor': null}
         };
+      }
       final adapter = DelayedAdapter([jsonResponse(200, body)]);
       var current = true;
       final repository = NotificationRepository(

@@ -30,6 +30,7 @@ import '../../features/notifications/notifications_screen.dart';
 import '../bootstrap/app_bootstrap_service.dart';
 import '../bootstrap/bootstrap_snapshot_store.dart';
 import 'mobile_app_runtime.dart';
+import 'notification_account_storage.dart';
 
 const _apiBaseUrl = String.fromEnvironment(
   'EARTHCOOP_API_BASE_URL',
@@ -72,7 +73,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     apiClient: apiClient,
     secureStore: secureStore,
   );
-  final notificationDatabases = <String, Future<AppDatabase>>{};
+  final notificationStorage = NotificationAccountStorage();
   var notificationEpoch = 0;
   late final SessionController sessionController;
   sessionController = SessionController(
@@ -81,15 +82,8 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       notificationEpoch++;
       final session = sessionController.state.session;
       if (session != null) {
-        final scopedDatabase =
-            notificationDatabases['${session.user.id}:${session.device.id}'];
-        if (scopedDatabase != null) {
-          final db = await scopedDatabase;
-          await DriftOfflineQueueRepository(db).clearAll();
-          final projection = DriftNotificationProjectionStore(db);
-          await projection.replaceAll([]);
-          await projection.writeNextCursor(null);
-        }
+        await notificationStorage.clear(
+            userId: session.user.id, deviceId: session.device.id);
       }
       await DriftGroupProjectionCache(database).writeAll([]);
     },
@@ -131,13 +125,14 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   );
   Future<NotificationsController> createNotificationsController() async {
     final session = sessionController.state.session;
-    if (session == null)
+    if (session == null) {
       throw const ApiFailure(
         code: 'unauthenticated',
         message: '',
         retryable: false,
         httpStatus: 401,
       );
+    }
     final epoch = notificationEpoch;
     bool isCurrent() =>
         notificationEpoch == epoch &&
@@ -146,23 +141,19 @@ Future<MobileAppRuntime> createProductionRuntime() async {
         sessionController.state.session?.user.id == session.user.id &&
         sessionController.state.session?.device.id == session.device.id;
     void checkSession() {
-      if (!isCurrent())
+      if (!isCurrent()) {
         throw const ApiFailure(
           code: 'session_changed',
           message: '',
           retryable: false,
           httpStatus: 401,
         );
+      }
     }
 
     final scope = '${session.user.id}:${session.device.id}';
-    final scopedDatabase = await notificationDatabases.putIfAbsent(
-      scope,
-      () => AppDatabase.openForAccount(
-        userId: session.user.id,
-        deviceId: session.device.id,
-      ),
-    );
+    final scopedDatabase = await notificationStorage.database(
+        userId: session.user.id, deviceId: session.device.id);
     checkSession();
     // Capture this session's credentials: an old view can never send as a new account.
     final scopedApi = ApiClient(
@@ -194,7 +185,8 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     );
     final sync = NotificationSyncService(
       source: repository,
-      store: DriftNotificationProjectionStore(scopedDatabase),
+      store: DriftNotificationProjectionStore(scopedDatabase,
+          isCurrentSession: isCurrent),
       beforeSync: () async {
         checkSession();
         replayBootstrap = await bootstrapService.start();
@@ -333,7 +325,7 @@ class _NotificationsRuntimeLoaderState
   Widget build(BuildContext context) => FutureBuilder<NotificationsController>(
         future: _controller,
         builder: (context, snapshot) {
-          if (snapshot.hasError)
+          if (snapshot.hasError) {
             return Scaffold(
               body: Center(
                 child: TextButton(
@@ -344,10 +336,12 @@ class _NotificationsRuntimeLoaderState
                 ),
               ),
             );
+          }
           final controller = snapshot.data;
-          if (controller == null)
+          if (controller == null) {
             return const Scaffold(
                 body: Center(child: CircularProgressIndicator()));
+          }
           return _NotificationsRuntimeView(
             controller: controller,
             onOpenLink: widget.onOpenLink,

@@ -50,13 +50,14 @@ class NotificationRepository
   final bool Function() _isCurrentSession;
 
   void _checkSession() {
-    if (!_isCurrentSession())
+    if (!_isCurrentSession()) {
       throw const ApiFailure(
         code: 'session_changed',
         message: 'Session changed.',
         retryable: false,
         httpStatus: 401,
       );
+    }
   }
 
   final OptimisticNotificationRead? _optimisticMarkRead;
@@ -77,6 +78,7 @@ class NotificationRepository
       decodeData: _decodeItems,
     );
 
+    _checkSession();
     final paginationRaw = response.meta['pagination'];
     if (paginationRaw is! Map) {
       throw const FormatException(
@@ -182,6 +184,7 @@ class NotificationRepository
       context: RequestContext(idempotencyKey: idempotencyKey),
       decodeData: NotificationDto.fromJson,
     );
+    _checkSession();
     return response.data;
   }
 

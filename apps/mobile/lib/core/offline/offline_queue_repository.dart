@@ -32,13 +32,14 @@ class ScopedOfflineQueueRepository implements OfflineQueueRepository {
   final bool Function() _isCurrent;
 
   void _checkCurrent() {
-    if (!_isCurrent())
+    if (!_isCurrent()) {
       throw const ApiFailure(
         code: 'session_changed',
         message: 'Session changed.',
         retryable: false,
         httpStatus: 401,
       );
+    }
   }
 
   bool _owns(OfflineOperation operation) =>
@@ -76,7 +77,9 @@ class ScopedOfflineQueueRepository implements OfflineQueueRepository {
       (await _delegate.all()).where(_owns).toList(growable: false);
   @override
   Future<void> remove(OfflineOperation operation) async {
-    if (_owns(operation)) await _delegate.remove(operation);
+    if (_owns(operation)) {
+      await _delegate.remove(operation);
+    }
   }
 
   @override
@@ -84,13 +87,16 @@ class ScopedOfflineQueueRepository implements OfflineQueueRepository {
     OfflineOperation operation,
     String errorCode,
   ) async {
-    if (_owns(operation))
+    if (_owns(operation)) {
       await _delegate.markRetryableFailure(operation, errorCode);
+    }
   }
 
   @override
   Future<void> markBlocked(OfflineOperation operation, String errorCode) async {
-    if (_owns(operation)) await _delegate.markBlocked(operation, errorCode);
+    if (_owns(operation)) {
+      await _delegate.markBlocked(operation, errorCode);
+    }
   }
 
   @override
@@ -115,7 +121,9 @@ class MemoryOfflineQueueRepository implements OfflineQueueRepository {
           item.operation == normalized.operation &&
           item.payloadHash == normalized.payloadHash,
     );
-    if (duplicateIndex >= 0) return _items[duplicateIndex];
+    if (duplicateIndex >= 0) {
+      return _items[duplicateIndex];
+    }
 
     final sequenced = normalized.clientSequence > 0
         ? normalized
@@ -204,7 +212,9 @@ class DriftOfflineQueueRepository implements OfflineQueueRepository {
           Variable.withString(normalized.payloadHash),
         ],
       ).getSingleOrNull();
-      if (duplicate != null) return _fromRow(duplicate);
+      if (duplicate != null) {
+        return _fromRow(duplicate);
+      }
 
       final maxRow = await _database
           .customSelect(

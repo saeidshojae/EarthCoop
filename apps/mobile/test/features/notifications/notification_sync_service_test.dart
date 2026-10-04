@@ -54,12 +54,13 @@ void main() {
         store: MemoryNotificationProjectionStore(),
         beforeSync: () async {
           attempts++;
-          if (attempts == 1)
+          if (attempts == 1) {
             throw const ApiFailure(
               code: 'network_error',
               message: '',
               retryable: true,
             );
+          }
         },
       );
       await expectLater(service.syncOnResume(), throwsA(isA<ApiFailure>()));
@@ -176,7 +177,9 @@ void main() {
       );
       final file = File('${directory.path}/app.sqlite');
       addTearDown(() async {
-        if (await directory.exists()) await directory.delete(recursive: true);
+        if (await directory.exists()) {
+          await directory.delete(recursive: true);
+        }
       });
 
       final firstDb = AppDatabase.file(file);
@@ -247,7 +250,9 @@ class FakeNotificationPageSource implements NotificationPageSource {
   Future<NotificationPage> fetchPage({String? cursor, int limit = 20}) async {
     requestedCursors.add(cursor);
     final response = _responses.removeAt(0);
-    if (response is ApiFailure) throw response;
+    if (response is ApiFailure) {
+      throw response;
+    }
     return response as NotificationPage;
   }
 }

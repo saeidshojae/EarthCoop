@@ -19,4 +19,5 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - run: flutter analyze
       - run: flutter test test/features/notifications/notification_read_offline_test.dart test/core/offline/offline_replay_engine_test.dart test/core/offline/scoped_offline_queue_test.dart test/features/notifications/notification_sync_service_test.dart test/features/notifications/notification_account_storage_test.dart
