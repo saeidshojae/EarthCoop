@@ -1,6 +1,7 @@
 import '../../core/local/app_database.dart';
 import '../../core/offline/offline_queue_repository.dart';
 import '../../features/notifications/notification_sync_service.dart';
+import '../../features/groups/group_cache.dart';
 
 typedef NotificationDatabaseOpener = Future<AppDatabase> Function(
     int userId, String deviceId);
@@ -25,5 +26,6 @@ class NotificationAccountStorage {
     final projection = DriftNotificationProjectionStore(db);
     await projection.replaceAll([]);
     await projection.writeNextCursor(null);
+    await DriftGroupProjectionCache(db).writeAll([]);
   }
 }

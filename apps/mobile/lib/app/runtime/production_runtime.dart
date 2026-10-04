@@ -158,10 +158,34 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     ),
   );
 
-  final groupRepository = GroupRepository(
-    apiClient: apiClient,
-    cache: DriftGroupProjectionCache(database),
-  );
+  GroupRepository createGroupRepository() {
+    final session = sessionController.state.session!;
+    final epoch = notificationEpoch;
+    bool isCurrent() =>
+        notificationEpoch == epoch &&
+        sessionController.state.phase == SessionPhase.authenticated &&
+        sessionController.state.session?.token == session.token &&
+        sessionController.state.session?.user.id == session.user.id &&
+        sessionController.state.session?.device.id == session.device.id;
+    final scopedApi = ApiClient(
+      dio: dio,
+      bearerTokenProvider: () async => session.token,
+      deviceIdProvider: () async => session.device.id,
+      requestIdFactory: () =>
+          'group-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+      retryDelay: Future<void>.delayed,
+    );
+    return GroupRepository(
+      apiClient: scopedApi,
+      isCurrentSession: isCurrent,
+      cache: AccountGroupProjectionCache(
+        openDatabase: () => notificationStorage.database(
+            userId: session.user.id, deviceId: session.device.id),
+        isCurrentSession: isCurrent,
+      ),
+    );
+  }
+
   Future<NotificationsController> createNotificationsController() async {
     final session = sessionController.state.session;
     if (session == null) {
@@ -271,8 +295,8 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     },
     sessionController: sessionController,
     loginController: loginController,
-    groupsBuilder: (context, openGroup) =>
-        _GroupsRuntimeView(repository: groupRepository, onOpenGroup: openGroup),
+    groupsBuilder: (context, openGroup) => _GroupsRuntimeView(
+        repository: createGroupRepository(), onOpenGroup: openGroup),
     groupDetailBuilder: (context, groupId) {
       final session = sessionController.state.session!;
       final epoch = notificationEpoch;
@@ -299,7 +323,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
               isCurrentGroupSession() &&
               pushBootstrap?.allowsProtectedNetwork == true);
       return _GroupDetailRuntimeView(
-        repository: groupRepository,
+        repository: createGroupRepository(),
         groupId: groupId,
         sender: sender,
         downloadAttachment: attachments.download,
