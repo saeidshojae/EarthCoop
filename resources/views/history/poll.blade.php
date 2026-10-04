@@ -566,7 +566,7 @@
 
                         </td>
 
-                        <td>{{ verta($poll->created_at)->format('Y-m-d') }}</td>
+                        <td><x-temporal.date :value="$poll->created_at" /></td>
 
                         <td>
 
