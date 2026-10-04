@@ -44,8 +44,8 @@ return [
             'credentials' => env('FCM_SERVICE_ACCOUNT_FILE'),
         ],
         'hms' => [
-            'project_id' => env('HMS_PROJECT_ID'),
-            'credentials' => env('HMS_SERVICE_ACCOUNT_FILE'),
+            'client_id' => env('HMS_CLIENT_ID'),
+            'credentials' => env('HMS_CLIENT_CREDENTIALS_FILE'),
         ],
     ],
 

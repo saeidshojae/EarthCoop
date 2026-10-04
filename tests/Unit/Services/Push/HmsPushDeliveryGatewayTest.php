@@ -34,7 +34,9 @@ class HmsPushDeliveryGatewayTest extends TestCase
                 && ! $request->hasHeader('push-type')
                 && data_get($body, 'message.token.0') === 'hms-device-token'
                 && data_get($body, 'message.notification.title') === 'Title'
-                && data_get($body, 'message.notification.body') === 'Body';
+                && data_get($body, 'message.notification.body') === 'Body'
+                && data_get($body, 'message.android.notification.click_action.type') === 3
+                && json_decode(data_get($body, 'message.data'), true)['context']['notification_id'] === 'n-1';
         });
     }
 
@@ -82,6 +84,13 @@ class HmsPushDeliveryGatewayTest extends TestCase
 
         $this->assertSame(PushDeliveryResult::PERMANENT_FAILURE, $result->status);
         $this->assertSame('80100001', $result->code);
+    }
+
+    public function test_missing_provider_success_code_is_not_delivery_success(): void
+    {
+        Http::fake(['*' => Http::response([], 200)]);
+        $gateway = new HmsPushDeliveryGateway($this->tokenProvider('oauth'), 'client-456');
+        $this->assertSame(PushDeliveryResult::PERMANENT_FAILURE, $gateway->send($this->device('token'), $this->envelope())->status);
     }
 
     private function tokenProvider(?string $token): HmsAccessTokenProvider
