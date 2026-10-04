@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/core/api/api_client.dart';
 import 'package:earthcoop_mobile/core/api/api_error.dart';

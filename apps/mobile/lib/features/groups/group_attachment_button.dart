@@ -36,16 +36,18 @@ class _GroupAttachmentButtonState extends State<GroupAttachmentButton> {
       final saved = await widget.download(widget.attachment, token, (value) {
         if (mounted && !token.isCancelled) setState(() => _progress = value);
       });
-      if (mounted)
+      if (mounted) {
         setState(
             () => _status = saved ? 'فایل ذخیره شد.' : 'ذخیره فایل لغو شد.');
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() => _status = token.isCancelled
             ? 'دانلود لغو شد.'
             : error is ApiFailure && error.code == 'attachment_too_large'
                 ? 'حجم فایل بیش از ۲۰ مگابایت است.'
                 : 'دریافت فایل انجام نشد. دسترسی یا اتصال را بررسی و دوباره تلاش کنید.');
+      }
     } finally {
       if (mounted) setState(() => _cancellation = null);
     }

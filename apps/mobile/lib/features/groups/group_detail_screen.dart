@@ -174,11 +174,12 @@ class _ActivityCard extends StatelessWidget {
         final attachment = event.attachment;
         if (attachment != null) {
           children.add(Text(attachment.fileName));
-          if (download != null)
+          if (download != null) {
             children.add(GroupAttachmentButton(
                 key: ValueKey(attachment.path),
                 attachment: attachment,
                 download: download!));
+          }
         }
         break;
       case GroupFeedKind.voice:

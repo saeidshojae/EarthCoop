@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
@@ -26,7 +24,9 @@ class GroupAttachment {
             .firstMatch(path);
     if (match == null ||
         raw['file_name'] is! String ||
-        raw['mime_type'] is! String) return null;
+        raw['mime_type'] is! String) {
+      return null;
+    }
     final group = int.tryParse(match[1]!);
     final message = int.tryParse(match[2]!);
     if (group == null || message == null) return null;
@@ -71,12 +71,14 @@ class GroupAttachmentDownloader {
 
   Future<bool> download(GroupAttachment attachment, CancelToken cancellation,
       void Function(double?) progress) async {
-    if (!isCurrentSession() || attachment.groupId != groupId)
+    if (!isCurrentSession() || attachment.groupId != groupId) {
       throw StateError('session or group changed');
+    }
     final bytes = await api.downloadAttachment(attachment.path,
         cancelToken: cancellation, onProgress: progress);
-    if (!isCurrentSession() || cancellation.isCancelled)
+    if (!isCurrentSession() || cancellation.isCancelled) {
       throw StateError('session changed');
+    }
     return export(attachment, bytes);
   }
 }
