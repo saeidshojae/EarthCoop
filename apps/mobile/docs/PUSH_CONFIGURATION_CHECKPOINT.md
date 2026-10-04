@@ -76,3 +76,16 @@ client and the server's HarmonyOS V3/JWT adapter. The documented Android HMS
 contract uses V1/client ID and OAuth client credentials. No adapter correction or
 provider activation is claimed. One app remains; HMS is an optional service path.
 Candidate +9 and its existing APK remain unchanged by this documentation audit.
+
+
+## Android HMS correction checkpoint
+
+The foundation server source now uses Android HMS V1 and OAuth client credentials,
+verified by targeted run 37212896689. Configure HMS_CLIENT_ID and external
+HMS_CLIENT_CREDENTIALS_FILE containing matching client_id/client_secret. The
+former HMS_PROJECT_ID/HMS_SERVICE_ACCOUNT_FILE V3 configuration is superseded for
+Android and is not silently reused. No account credentials were supplied.
+
+Production main still binds the null push gateway. A bounded provider-infrastructure
+release and credentials remain required before real FCM/HMS delivery. This source
+correction is not deployed and does not require a new APK; +9 remains current.

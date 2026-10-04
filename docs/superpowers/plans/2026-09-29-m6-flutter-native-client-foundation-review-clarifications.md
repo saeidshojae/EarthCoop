@@ -24,6 +24,16 @@ POST https://fcm.googleapis.com/v1/projects/{project_id}/messages:send
 
 ## 2. Huawei server delivery contract
 
+**Correction 2026-10-04:** The V3/JWT requirement below was a platform-selection
+mistake: it describes HarmonyOS, whereas this client uses Android huawei_push.
+For Android HMS use the official V1/client-ID message-send API and OAuth
+client_credentials contract. The historical V3 requirement is superseded for
+this Android app. See apps/mobile/docs/HUAWEI_PUSH_AUDIT.md and primary Android
+reference https://developer.huawei.com/consumer/en/doc/hmscore-references/https-send-api-0000001050986197.
+No separate HarmonyOS product or account setup is authorized by this correction.
+
+Historical requirement (superseded for Android):
+
 For M6 Android/HMS delivery, use the current Huawei Push Kit **V3** server message API, not legacy V1/V2 message-send endpoints:
 
 ```text

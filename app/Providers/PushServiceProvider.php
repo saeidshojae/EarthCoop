@@ -25,8 +25,8 @@ class PushServiceProvider extends ServiceProvider
                 config('services.push.fcm.project_id'),
             );
             $hms = new HmsPushDeliveryGateway(
-                new HmsAccessTokenProvider(config('services.push.hms.credentials')),
-                config('services.push.hms.project_id'),
+                new HmsAccessTokenProvider(config('services.push.hms.credentials'), config('services.push.hms.client_id')),
+                config('services.push.hms.client_id'),
             );
 
             return new CompositePushDeliveryGateway($fcm, $hms);
