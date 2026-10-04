@@ -141,15 +141,15 @@ still absent. Neither is represented as completed by this text checkpoint.
 
 ## Server activation receipt — 2026-10-04
 
-PR192 merged as `5115a8222b62bfebcdc342682ee6d52130949041` and production
-[deploy37197422692](https://github.com/saeidshojae/EarthCoop/actions/runs/37197422692)
+PR #192 merged as `5115a8222b62bfebcdc342682ee6d52130949041` and production
+[deploy 37197422692](https://github.com/saeidshojae/EarthCoop/actions/runs/37197422692)
 passed its Safety, Strict Readiness and FTP jobs. An unauthenticated POST to the
-new message endpoint changed from404to401with `unauthenticated` and api_versionv1.
+new message endpoint changed from 404 to 401 with `unauthenticated` and api_version v1.
 This proves the route and authentication boundary are live, not that a physical
-member has sent successfully. All57server contracts passed, including exact
+member has sent successfully. All 57 server contracts passed, including exact
 multiline acknowledgement/feed and legacy-break regressions.
 
-The signed+6artifact from run37195651590 remains the same; no mobile runtime or
-Android build input changed for this server correction. Hosted/installed+5 is
-unchanged. Install+6when the phone returns before testing the composer. The SAME
+The signed +6 artifact from run 37195651590 remains the same; no mobile runtime or
+Android build input changed for this server correction. Hosted/installed +5 is
+unchanged. Install +6 when the phone returns before testing the composer. The SAME
 group-feed retest and all previously open physical gates remain OPEN.

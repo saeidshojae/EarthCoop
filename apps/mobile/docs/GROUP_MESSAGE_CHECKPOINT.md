@@ -20,10 +20,10 @@ the input widget during refresh cannot lose it. Group detail requests
 keeps chronological ordering, and projects HTML message/content into plain text.
 Older clients can continue requesting their existing delta cursor without `window`.
 
-No migration is introduced. Server PR192 was merged as 5115a8222b62bfebcdc342682ee6d52130949041 and
-deployed successfully in run37197422692. The new public route returned401
-unauthenticated/v1 after deployment (previously404). Mobile PR165 remains Draft;
-the hosted APK remains+5 and the existing signed+6artifact is the device candidate.
+No migration is introduced. Server PR #192 was merged as 5115a8222b62bfebcdc342682ee6d52130949041 and
+deployed successfully in run 37197422692. The new public route returned 401
+unauthenticated/v1 after deployment (previously 404). Mobile PR #165 remains Draft;
+the hosted APK remains +5 and the existing signed +6 artifact is the device candidate.
 Physical acceptance remains in DEVICE_ACCEPTANCE.md.
 
 ## Decisions and remaining limits
@@ -35,8 +35,8 @@ idempotency, membership, and web message authorization regressions accompany it.
 The canonical empty-string checks now preserve valid text `0`.
 
 Multiline spacing was fixed through one shared server projection. Both canonical
-`nl2br` and legacy break-only HTML preserve intentional line breaks; all57targeted
-contracts passed in run37197179299 after the regression first failed. No media/push/hardware acceptance is inferred
+`nl2br` and legacy break-only HTML preserve intentional line breaks; all 57 targeted
+contracts passed in run 37197179299 after the regression first failed. No media/push/hardware acceptance is inferred
 from deterministic tests. Group cache/read account scoping and broader lifecycle
 behavior remain separate pre-existing work.
 
