@@ -6,6 +6,7 @@ use App\Http\Controllers\API\V1\BootstrapController;
 use App\Http\Controllers\API\V1\DevicePushController;
 use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
+use App\Http\Controllers\API\V1\GroupAttachmentController;
 use App\Http\Controllers\API\V1\GroupFeedController;
 use App\Http\Controllers\API\V1\GroupMessageController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
@@ -66,6 +67,7 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
                 'api.v1.idempotency',
                 'group.chat.timing',
             ])->name('groups.messages.store');
+        Route::get('/groups/{group}/messages/{message}/attachment', [GroupAttachmentController::class, 'download'])->name('groups.messages.attachment');
         Route::post('/groups/{group}/read', [GroupFeedController::class, 'read'])->middleware('api.v1.idempotency')->name('groups.read');
 
         Route::get('/groups/{group}/elections/current', [ElectionController::class, 'current'])->name('elections.current');
