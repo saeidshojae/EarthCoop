@@ -40,14 +40,14 @@ class AuctionController extends Controller
         }
         if ($request->filled('start_time')) {
             try {
-                $greg = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $request->input('start_time'))->toCarbon();
+                $greg = $this->temporal->parseDateTime((string) $request->input('start_time'));
                 $request->merge(['start_time' => $greg->format('Y-m-d H:i:s')]);
             } catch (\Exception $e) {
             }
         }
         if ($request->filled('end_time')) {
             try {
-                $greg = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $request->input('end_time'))->toCarbon();
+                $greg = $this->temporal->parseDateTime((string) $request->input('end_time'));
                 $request->merge(['end_time' => $greg->format('Y-m-d H:i:s')]);
             } catch (\Exception $e) {
             }
@@ -195,8 +195,8 @@ class AuctionController extends Controller
             $df = $request->input('date_from');
             if (strpos($df, '/') !== false) {
                 try {
-                    $g = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $df)->toCarbon();
-                    $df = $g->format('Y-m-d') . ' 00:00:00';
+                    $g = $this->temporal->startOfDay($this->temporal->parseDate($df));
+                    $df = $g->format('Y-m-d H:i:s');
                 } catch (\Exception $e) {
                 }
             } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $df)) {
@@ -208,8 +208,8 @@ class AuctionController extends Controller
             $dt = $request->input('date_to');
             if (strpos($dt, '/') !== false) {
                 try {
-                    $g = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $dt)->toCarbon();
-                    $dt = $g->format('Y-m-d') . ' 23:59:59';
+                    $g = $this->temporal->endOfDay($this->temporal->parseDate($dt));
+                    $dt = $g->format('Y-m-d H:i:s');
                 } catch (\Exception $e) {
                 }
             } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt)) {
@@ -282,7 +282,7 @@ class AuctionController extends Controller
         $counts = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $monthLabel = \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m');
+            $monthLabel = substr($this->temporal->date($date, style: 'short'), 0, 7);
             $monthAuctions = $auctions->filter(fn($auction) => $auction->start_time && $auction->start_time->format('Y-m') === $date->format('Y-m'));
             $monthVolume = $monthAuctions->sum(fn($a) => $a->bids->sum('quantity'));
             $monthPrices = $monthAuctions->flatMap(fn($auction) => $auction->bids->pluck('price')->filter());
@@ -465,7 +465,7 @@ class AuctionController extends Controller
             $notificationService->notifyMany(
                 $users,
                 'حراج جدید شروع شد',
-                "حراج #{$auction->id} شروع شد. فرصت پیشنهاد دادن تا " . \Morilog\Jalali\Jalalian::fromCarbon($auction->ends_at)->format('Y/m/d H:i') . ' است.',
+                "حراج #{$auction->id} شروع شد. فرصت پیشنهاد دادن تا " . $this->temporal->dateTime($auction->ends_at, style: 'short') . ' است.',
                 route('auction.show', $auction),
                 'success',
                 ['auction_id' => $auction->id]
