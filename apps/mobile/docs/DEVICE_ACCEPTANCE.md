@@ -153,3 +153,21 @@ The signed +6 artifact from run 37195651590 remains the same; no mobile runtime 
 Android build input changed for this server correction. Hosted/installed +5 is
 unchanged. Install +6 when the phone returns before testing the composer. The SAME
 group-feed retest and all previously open physical gates remain OPEN.
+
+## Push/session follow-up — 2026-10-04
+
+Candidate +7 supersedes +6 for the pending device checks. It adds recovery after a
+failed push registration, session-owned provider lifetime, captured bearer/device
+credentials, and bootstrap-gated foreground retries. See PUSH_SESSION_CHECKPOINT.md
+for the automated test and signed-build receipt (run 37201824043: 167 tests,
+formatting, analysis, and stable-signed Android +7 build all passed).
+The hosted +5 installation and
+accepted 81-group count are unchanged.
+
+**OPEN when the phone returns:** install +7 over the previous stable UAT-signed
+installation, verify the real text-message acknowledgement and same-group activity
+feed, then verify provider registration/recovery across background/foreground,
+account change, and logout. A real server notification is required for delivery
+and link-navigation acceptance; a group with no activity is not evidence of failure.
+Provider application configuration and notification permission remain prerequisites
+for delivery. No hardware row is marked PASS by this follow-up.

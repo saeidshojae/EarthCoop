@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../device/device_context.dart';
 import 'session_models.dart';
 import 'session_repository.dart';
@@ -19,18 +21,23 @@ class SessionState {
   final NativeSession? session;
 }
 
+typedef SessionAuthenticatedHook = Future<void> Function(NativeSession session);
+
 typedef SessionCleanupHook = Future<void> Function();
 
 class SessionController {
   SessionController({
     required SessionRepository repository,
     SessionCleanupHook? disablePush,
+    SessionAuthenticatedHook? onAuthenticated,
     SessionCleanupHook? clearUserScopedLocalState,
   })  : _repository = repository,
+        _onAuthenticated = onAuthenticated,
         _disablePush = disablePush ?? _noop,
         _clearUserScopedLocalState = clearUserScopedLocalState ?? _noop;
 
   final SessionRepository _repository;
+  final SessionAuthenticatedHook? _onAuthenticated;
   final SessionCleanupHook _disablePush;
   final SessionCleanupHook _clearUserScopedLocalState;
 
@@ -43,6 +50,7 @@ class SessionController {
       state = session == null
           ? const SessionState.unauthenticated()
           : SessionState.authenticated(session);
+      if (session != null) _notifyAuthenticated(session);
     } catch (_) {
       state = const SessionState.unauthenticated();
       rethrow;
@@ -60,11 +68,23 @@ class SessionController {
       device: device,
     );
     state = SessionState.authenticated(session);
+    _notifyAuthenticated(session);
   }
 
   Future<void> rotate() async {
     final session = await _repository.rotateCurrent();
     state = SessionState.authenticated(session);
+    _notifyAuthenticated(session);
+  }
+
+  void _notifyAuthenticated(NativeSession session) {
+    final hook = _onAuthenticated;
+    if (hook == null) return;
+    try {
+      unawaited(hook(session).catchError((Object _) {}));
+    } catch (_) {
+      // Optional provider setup cannot prevent an authenticated session.
+    }
   }
 
   Future<void> logout() async {

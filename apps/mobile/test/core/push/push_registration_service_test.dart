@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/core/api/api_client.dart';
+import 'package:earthcoop_mobile/core/api/retry_policy.dart';
 import 'package:earthcoop_mobile/core/logging/diagnostics.dart';
 import 'package:earthcoop_mobile/core/push/push_provider_selector.dart';
 import 'package:earthcoop_mobile/core/push/push_registration_service.dart';
@@ -12,6 +13,117 @@ import 'package:earthcoop_mobile/core/push/push_token_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('foreground retry obtains a token when initial provider result is empty',
+      () async {
+    var attempts = 0;
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm,
+        initialToken: null,
+        initializeToken: () async => attempts++ == 0 ? null : 'recovered');
+    final adapter = SequenceHttpAdapter(
+        [jsonResponse(200, successData(pushData(provider: 'fcm')))]);
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    expect(await service.initialize(), PushRegistrationStatus.awaitingToken);
+    expect(await service.initialize(), PushRegistrationStatus.registered);
+    expect(adapter.requests, hasLength(1));
+    expect(source.initializeCalls, 2);
+    await service.dispose();
+  });
+
+  test(
+      'latest rotation during provider initialization wins over stale initial token',
+      () async {
+    final pending = Completer<String?>();
+    final entered = Completer<void>();
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm,
+        initialToken: null,
+        initializeToken: () {
+          entered.complete();
+          return pending.future;
+        });
+    final adapter = SequenceHttpAdapter(
+        [jsonResponse(200, successData(pushData(provider: 'fcm')))]);
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    final initialization = service.initialize();
+    await entered.future;
+    source.emit('newest');
+    await adapter.waitForRequestCount(1).timeout(const Duration(seconds: 5));
+    await source.flush();
+    pending.complete('stale-initial');
+    expect(await initialization, PushRegistrationStatus.registered);
+    expect(adapter.requests, hasLength(1));
+    expect(
+        adapter.requests.single.data, {'provider': 'fcm', 'token': 'newest'});
+    await service.dispose();
+  });
+
+  test('initial registration can recover after a failed HTTP attempt',
+      () async {
+    final adapter = SequenceHttpAdapter([
+      jsonResponse(503, {
+        'status': 'error',
+        'data': null,
+        'error': {
+          'code': 'unavailable',
+          'message': 'Try later',
+          'retryable': true,
+        },
+        'meta': {'api_version': 'v1'},
+        'request_id': 'req-push-failure'
+      }),
+      jsonResponse(200, successData(pushData(provider: 'fcm'))),
+    ]);
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm, initialToken: 'retry-token');
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    await expectLater(service.initialize(), throwsA(anything));
+    expect(await service.initialize(), PushRegistrationStatus.registered);
+    expect(adapter.requests, hasLength(2));
+    expect(source.initializeCalls, 1);
+  });
+
+  test('failed token rotation is contained and next rotation registers',
+      () async {
+    final adapter = SequenceHttpAdapter([
+      jsonResponse(200, successData(pushData(provider: 'fcm'))),
+      jsonResponse(503, {
+        'status': 'error',
+        'data': null,
+        'error': {
+          'code': 'unavailable',
+          'message': 'Try later',
+          'retryable': true,
+        },
+        'meta': {'api_version': 'v1'},
+        'request_id': 'req-push-failure'
+      }),
+      jsonResponse(200, successData(pushData(provider: 'fcm'))),
+    ]);
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm, initialToken: 'token-a');
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    await service.initialize();
+    source.emit('token-b');
+    await adapter.waitForRequestCount(2).timeout(const Duration(seconds: 5));
+    await source.flush();
+    source.emit('token-c');
+    await adapter.waitForRequestCount(3).timeout(const Duration(seconds: 5));
+    expect(adapter.requests.last.data, {'provider': 'fcm', 'token': 'token-c'});
+  });
+
   test('initial token registers once and repeated initialization is idempotent',
       () async {
     final adapter = SequenceHttpAdapter([
@@ -144,6 +256,7 @@ ApiClient buildClient(
     deviceIdProvider: () async => 'device-bound',
     requestIdFactory: () => 'req-push',
     retryDelay: (_) async {},
+    retryPolicy: const RetryPolicy(maxAttempts: 1),
     diagnostics: diagnostics,
   );
 }
@@ -214,11 +327,13 @@ class FakePushTokenSource implements PushTokenSource {
   FakePushTokenSource({
     required this.provider,
     required this.initialToken,
+    this.initializeToken,
   });
 
   @override
   final PushProvider provider;
   final String? initialToken;
+  final Future<String?> Function()? initializeToken;
   final StreamController<String> _controller =
       StreamController<String>.broadcast();
 
@@ -228,7 +343,7 @@ class FakePushTokenSource implements PushTokenSource {
   @override
   Future<String?> initialize() async {
     initializeCalls += 1;
-    return initialToken;
+    return initializeToken == null ? initialToken : await initializeToken!();
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,7 +21,21 @@ class MobileAppRuntime {
     this.groupsBuilder,
     this.groupDetailBuilder,
     this.notificationsBuilder,
+    this.onForeground,
+    this.onDispose,
   });
+
+  final Future<void> Function()? onForeground;
+  final Future<void> Function()? onDispose;
+  bool _disposed = false;
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _router?.dispose();
+    final cleanup = onDispose;
+    if (cleanup != null) unawaited(cleanup().catchError((Object _) {}));
+  }
 
   final BootstrapState bootstrap;
   final SessionController sessionController;

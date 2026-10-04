@@ -23,7 +23,8 @@ Older clients can continue requesting their existing delta cursor without `windo
 No migration is introduced. Server PR #192 was merged as 5115a8222b62bfebcdc342682ee6d52130949041 and
 deployed successfully in run 37197422692. The new public route returned 401
 unauthenticated/v1 after deployment (previously 404). Mobile PR #165 remains Draft;
-the hosted APK remains +5 and the existing signed +6 artifact is the device candidate.
+the hosted APK remains +5. The subsequent push/session correction advances the
+device candidate to +7; see PUSH_SESSION_CHECKPOINT.md for its build receipt.
 Physical acceptance remains in DEVICE_ACCEPTANCE.md.
 
 ## Decisions and remaining limits

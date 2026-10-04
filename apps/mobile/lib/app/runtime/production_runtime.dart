@@ -15,6 +15,11 @@ import '../../core/auth/session_controller.dart';
 import '../../core/auth/session_repository.dart';
 import '../../core/deep_links/semantic_link.dart';
 import '../../core/device/device_context.dart';
+import '../../core/push/push_provider_selector.dart';
+import '../../core/push/session_push_binding.dart';
+import '../../core/push/push_token_source.dart';
+import '../../core/push/fcm_push_token_source.dart';
+import '../../core/push/hms_push_token_source.dart';
 import '../../core/device/device_timezone.dart';
 import '../../core/local/app_database.dart';
 import '../../features/auth/login_controller.dart';
@@ -30,6 +35,7 @@ import '../../features/notifications/notification_sync_service.dart';
 import '../../features/notifications/notifications_controller.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../bootstrap/app_bootstrap_service.dart';
+import '../bootstrap/bootstrap_state.dart';
 import '../bootstrap/bootstrap_snapshot_store.dart';
 import 'mobile_app_runtime.dart';
 import 'notification_account_storage.dart';
@@ -78,8 +84,30 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   final notificationStorage = NotificationAccountStorage();
   var notificationEpoch = 0;
   late final SessionController sessionController;
+  BootstrapState? pushBootstrap;
+  var pushBootstrapEpoch = 0;
+  final pushCoordinator = createSessionPushCoordinator(
+      dio: dio,
+      sessionState: () => sessionController.state,
+      canRegister: () => pushBootstrap?.allowsProtectedNetwork == true,
+      requestIdFactory: () =>
+          'push-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+      retryDelay: Future<void>.delayed,
+      tokenSourceFactory: () async {
+        final provider = await const PushProviderSelector(
+                capabilities: PlatformPushRuntimeCapabilities())
+            .select();
+        final PushTokenSource? source = switch (provider) {
+          PushProvider.fcm => const FcmPushTokenSource(),
+          PushProvider.hms => const HmsPushTokenSource(),
+          null => null,
+        };
+        return source;
+      });
   sessionController = SessionController(
     repository: sessionRepository,
+    onAuthenticated: pushCoordinator.activate,
+    disablePush: pushCoordinator.disable,
     clearUserScopedLocalState: () async {
       notificationEpoch++;
       final session = sessionController.state.session;
@@ -107,8 +135,12 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     clock: DateTime.now,
   );
   final bootstrap = await bootstrapService.start();
+  pushBootstrap = bootstrap;
   if (sessionController.state.phase == SessionPhase.authenticated) {
     await bootstrapSnapshotStore.markAuthenticatedSessionObserved();
+    if (bootstrap.allowsProtectedNetwork) {
+      unawaited(pushCoordinator.activate(sessionController.state.session!));
+    }
   }
 
   final loginController = LoginController(
@@ -216,6 +248,24 @@ Future<MobileAppRuntime> createProductionRuntime() async {
 
   return MobileAppRuntime(
     bootstrap: bootstrap,
+    onForeground: () async {
+      final epoch = ++pushBootstrapEpoch;
+      pushBootstrap = null;
+      final refreshed = await bootstrapService.start();
+      if (epoch != pushBootstrapEpoch) return;
+      pushBootstrap = refreshed;
+      final session = sessionController.state.session;
+      if (session != null && pushBootstrap!.allowsProtectedNetwork) {
+        await pushCoordinator.activate(session);
+      } else {
+        await pushCoordinator.suspend();
+      }
+    },
+    onDispose: () async {
+      pushBootstrapEpoch++;
+      pushBootstrap = null;
+      await pushCoordinator.dispose();
+    },
     sessionController: sessionController,
     loginController: loginController,
     groupsBuilder: (context, openGroup) =>
