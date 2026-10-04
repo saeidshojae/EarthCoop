@@ -152,11 +152,11 @@ class MessageController extends Controller
         $hasVoiceMessage = $request->hasFile('voice_message');
         $hasAttachment = $request->hasFile('file');
 
-        if (empty($messageText) && ! $hasVoiceMessage && ! $hasAttachment) {
+        if ($messageText === '' && ! $hasVoiceMessage && ! $hasAttachment) {
             return response()->json(['An error occurred. Please try again.'], 422);
         }
 
-            if (! empty($messageText)) {
+            if ($messageText !== '') {
                 $messageText = $this->formatMessageHtmlWithMentions($messageText, $group);
             }
 
@@ -179,7 +179,7 @@ class MessageController extends Controller
         $messageData = [
             'user_id' => $user->id,
             'group_id' => $group->id,
-            'message' => $messageText ?: ($hasVoiceMessage ? 'Voice message' : ''),
+            'message' => $messageText !== '' ? $messageText : ($hasVoiceMessage ? 'Voice message' : ''),
             'parent_id' => $request->parent_id,
             'client_message_id' => $clientMessageId !== '' ? $clientMessageId : null,
         ];
