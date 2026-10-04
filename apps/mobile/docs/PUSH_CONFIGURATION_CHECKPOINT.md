@@ -67,3 +67,12 @@ expires 2026-11-03. Artifact ZIP digest (not APK digest):
 `df5f02847e86bbff86ea76b5770d490ebe60032de57fb1a7ac16eb47d3dba36e`.
 Build output explicitly reported FCM client configuration unavailable. No real
 push delivery or device result is claimed. The hosted/installed +5 is unchanged.
+
+
+## Android HMS contract audit follow-up
+
+HUAWEI_PUSH_AUDIT.md records a confirmed mismatch between the Android huawei_push
+client and the server's HarmonyOS V3/JWT adapter. The documented Android HMS
+contract uses V1/client ID and OAuth client credentials. No adapter correction or
+provider activation is claimed. One app remains; HMS is an optional service path.
+Candidate +9 and its existing APK remain unchanged by this documentation audit.
