@@ -11,13 +11,13 @@ class GroupViewFailure {
   const GroupViewFailure._(this.kind, this.message);
 
   const GroupViewFailure.retryable(String message)
-      : this._(GroupViewFailureKind.retryable, message);
+    : this._(GroupViewFailureKind.retryable, message);
 
   const GroupViewFailure.forbidden(String message)
-      : this._(GroupViewFailureKind.forbidden, message);
+    : this._(GroupViewFailureKind.forbidden, message);
 
   const GroupViewFailure.nonRetryable(String message)
-      : this._(GroupViewFailureKind.nonRetryable, message);
+    : this._(GroupViewFailureKind.nonRetryable, message);
 
   final GroupViewFailureKind kind;
   final String message;
@@ -40,14 +40,14 @@ class GroupsState {
   const GroupsState.empty() : this._(phase: GroupsPhase.empty);
 
   GroupsState.ready(List<GroupDto> items, {bool isStale = false})
-      : this._(
-          phase: GroupsPhase.ready,
-          items: List<GroupDto>.unmodifiable(items),
-          isStale: isStale,
-        );
+    : this._(
+        phase: GroupsPhase.ready,
+        items: List<GroupDto>.unmodifiable(items),
+        isStale: isStale,
+      );
 
   const GroupsState.failure(GroupViewFailure failure)
-      : this._(phase: GroupsPhase.failure, failure: failure);
+    : this._(phase: GroupsPhase.failure, failure: failure);
 
   final GroupsPhase phase;
   final List<GroupDto> items;
@@ -77,16 +77,16 @@ class GroupDetailState {
     List<GroupFeedEvent> activity = const <GroupFeedEvent>[],
     String? activityFailure,
   }) : this._(
-          phase: GroupDetailPhase.ready,
-          group: group,
-          isStale: isStale,
-          unreadCount: unreadCount,
-          activity: activity,
-          activityFailure: activityFailure,
-        );
+         phase: GroupDetailPhase.ready,
+         group: group,
+         isStale: isStale,
+         unreadCount: unreadCount,
+         activity: activity,
+         activityFailure: activityFailure,
+       );
 
   const GroupDetailState.failure(GroupViewFailure failure)
-      : this._(phase: GroupDetailPhase.failure, failure: failure);
+    : this._(phase: GroupDetailPhase.failure, failure: failure);
 
   final GroupDetailPhase phase;
   final GroupDto? group;
@@ -131,11 +131,24 @@ class GroupDetailController extends ChangeNotifier {
 
   GroupDetailState state = const GroupDetailState.loading();
 
+  bool _disposed = false;
+  int _loadEpoch = 0;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _loadEpoch++;
+    super.dispose();
+  }
+
   Future<void> load() async {
+    if (_disposed) return;
+    final epoch = ++_loadEpoch;
     state = const GroupDetailState.loading();
     notifyListeners();
     try {
       final result = await _repository.find(groupId);
+      if (_disposed || epoch != _loadEpoch) return;
       if (result.isStale) {
         state = GroupDetailState.ready(
           result.value,
@@ -175,6 +188,7 @@ class GroupDetailController extends ChangeNotifier {
         activityFailure = 'فعالیت‌های گروه فعلاً دریافت نشد.';
       }
 
+      if (_disposed || epoch != _loadEpoch) return;
       state = GroupDetailState.ready(
         result.value,
         unreadCount: unreadCount,
@@ -188,7 +202,7 @@ class GroupDetailController extends ChangeNotifier {
         GroupViewFailure.nonRetryable('امکان دریافت این گروه وجود ندارد.'),
       );
     }
-    notifyListeners();
+    if (!_disposed && epoch == _loadEpoch) notifyListeners();
   }
 }
 
@@ -198,8 +212,10 @@ GroupViewFailure _mapFailure(ApiFailure failure) {
   }
   if (failure.retryable) {
     return const GroupViewFailure.retryable(
-        'ارتباط برقرار نشد. دوباره تلاش کنید.');
+      'ارتباط برقرار نشد. دوباره تلاش کنید.',
+    );
   }
   return const GroupViewFailure.nonRetryable(
-      'امکان دریافت اطلاعات وجود ندارد.');
+    'امکان دریافت اطلاعات وجود ندارد.',
+  );
 }

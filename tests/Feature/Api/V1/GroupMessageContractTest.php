@@ -88,6 +88,26 @@ class GroupMessageContractTest extends TestCase
         $this->assertSame(0, Message::where('group_id', $other->id)->count());
     }
 
+    public function test_revoked_membership_cannot_replay_a_previous_success(): void
+    {
+        $this->send(['message' => 'hello'])->assertCreated();
+        GroupUser::where('group_id', $this->group->id)->where('user_id', $this->member->id)->delete();
+        $this->send(['message' => 'hello'])->assertForbidden();
+        $this->assertSame(1, Message::count());
+    }
+
+    public function test_a_throttled_intent_can_retry_after_the_limit_clears(): void
+    {
+        $key = 'send-message:'.$this->member->id.':'.$this->group->id;
+        for ($i = 0; $i < 10; $i++) {
+            \Illuminate\Support\Facades\RateLimiter::hit($key, 60);
+        }
+        $this->send(['message' => 'later'])->assertStatus(429)->assertJsonPath('error.retryable', true);
+        \Illuminate\Support\Facades\RateLimiter::clear($key);
+        $this->send(['message' => 'later'])->assertCreated();
+        $this->assertSame(1, Message::count());
+    }
+
     public function test_body_group_cannot_override_route_and_unsupported_uploads_are_rejected(): void
     {
         $this->send(['message' => 'hello', 'group_id' => 99999])->assertCreated()->assertJsonPath('data.group_id', $this->group->id);

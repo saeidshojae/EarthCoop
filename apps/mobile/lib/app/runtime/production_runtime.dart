@@ -21,6 +21,8 @@ import '../../features/auth/login_controller.dart';
 import '../../features/groups/group_cache.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/group_repository.dart';
+import '../../features/groups/group_message_repository.dart';
+import '../../features/groups/group_message_composer_controller.dart';
 import '../../features/groups/groups_controller.dart';
 import '../../features/groups/groups_screen.dart';
 import '../../features/notifications/notification_repository.dart';
@@ -83,7 +85,9 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       final session = sessionController.state.session;
       if (session != null) {
         await notificationStorage.clear(
-            userId: session.user.id, deviceId: session.device.id);
+          userId: session.user.id,
+          deviceId: session.device.id,
+        );
       }
       await DriftGroupProjectionCache(database).writeAll([]);
     },
@@ -153,7 +157,9 @@ Future<MobileAppRuntime> createProductionRuntime() async {
 
     final scope = '${session.user.id}:${session.device.id}';
     final scopedDatabase = await notificationStorage.database(
-        userId: session.user.id, deviceId: session.device.id);
+      userId: session.user.id,
+      deviceId: session.device.id,
+    );
     checkSession();
     // Capture this session's credentials: an old view can never send as a new account.
     final scopedApi = ApiClient(
@@ -185,8 +191,10 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     );
     final sync = NotificationSyncService(
       source: repository,
-      store: DriftNotificationProjectionStore(scopedDatabase,
-          isCurrentSession: isCurrent),
+      store: DriftNotificationProjectionStore(
+        scopedDatabase,
+        isCurrentSession: isCurrent,
+      ),
       beforeSync: () async {
         checkSession();
         replayBootstrap = await bootstrapService.start();
@@ -212,8 +220,31 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     loginController: loginController,
     groupsBuilder: (context, openGroup) =>
         _GroupsRuntimeView(repository: groupRepository, onOpenGroup: openGroup),
-    groupDetailBuilder: (context, groupId) =>
-        _GroupDetailRuntimeView(repository: groupRepository, groupId: groupId),
+    groupDetailBuilder: (context, groupId) {
+      final session = sessionController.state.session!;
+      final epoch = notificationEpoch;
+      final sender = GroupMessageRepository(
+        apiClient: ApiClient(
+          dio: dio,
+          bearerTokenProvider: () async => session.token,
+          deviceIdProvider: () async => session.device.id,
+          requestIdFactory: () =>
+              'message-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+          retryDelay: Future<void>.delayed,
+        ),
+        isCurrentSession: () =>
+            notificationEpoch == epoch &&
+            sessionController.state.phase == SessionPhase.authenticated &&
+            sessionController.state.session?.token == session.token &&
+            sessionController.state.session?.user.id == session.user.id &&
+            sessionController.state.session?.device.id == session.device.id,
+      );
+      return _GroupDetailRuntimeView(
+        repository: groupRepository,
+        groupId: groupId,
+        sender: sender,
+      );
+    },
     notificationsBuilder: (context, openLink) => _NotificationsRuntimeLoader(
       createController: createNotificationsController,
       onOpenLink: openLink,
@@ -257,20 +288,22 @@ class _GroupsRuntimeViewState extends State<_GroupsRuntimeView> {
 
   @override
   Widget build(BuildContext context) => GroupsScreen(
-        state: _controller.state,
-        onOpenGroup: widget.onOpenGroup,
-        onRetry: _controller.load,
-      );
+    state: _controller.state,
+    onOpenGroup: widget.onOpenGroup,
+    onRetry: _controller.load,
+  );
 }
 
 class _GroupDetailRuntimeView extends StatefulWidget {
   const _GroupDetailRuntimeView({
     required this.repository,
     required this.groupId,
+    required this.sender,
   });
 
   final GroupRepository repository;
   final int groupId;
+  final GroupMessageSender sender;
 
   @override
   State<_GroupDetailRuntimeView> createState() =>
@@ -283,6 +316,12 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
     widget.groupId,
   );
 
+  late final GroupMessageComposerController _composer =
+      GroupMessageComposerController(
+        groupId: widget.groupId,
+        sender: widget.sender,
+      );
+
   @override
   void initState() {
     super.initState();
@@ -294,6 +333,7 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
   void dispose() {
     _controller.removeListener(_refresh);
     _controller.dispose();
+    _composer.dispose();
     super.dispose();
   }
 
@@ -302,8 +342,11 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      GroupDetailScreen(state: _controller.state, onRetry: _controller.load);
+  Widget build(BuildContext context) => GroupDetailScreen(
+    state: _controller.state,
+    onRetry: _controller.load,
+    composer: _composer,
+  );
 }
 
 class _NotificationsRuntimeLoader extends StatefulWidget {
@@ -323,31 +366,30 @@ class _NotificationsRuntimeLoaderState
   late Future<NotificationsController> _controller = widget.createController();
   @override
   Widget build(BuildContext context) => FutureBuilder<NotificationsController>(
-        future: _controller,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => setState(() {
-                    _controller = widget.createController();
-                  }),
-                  child: const Text('دریافت اعلان‌ها ممکن نشد. تلاش دوباره'),
-                ),
-              ),
-            );
-          }
-          final controller = snapshot.data;
-          if (controller == null) {
-            return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
-          }
-          return _NotificationsRuntimeView(
-            controller: controller,
-            onOpenLink: widget.onOpenLink,
-          );
-        },
+    future: _controller,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => setState(() {
+                _controller = widget.createController();
+              }),
+              child: const Text('دریافت اعلان‌ها ممکن نشد. تلاش دوباره'),
+            ),
+          ),
+        );
+      }
+      final controller = snapshot.data;
+      if (controller == null) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return _NotificationsRuntimeView(
+        controller: controller,
+        onOpenLink: widget.onOpenLink,
       );
+    },
+  );
 }
 
 class _NotificationsRuntimeView extends StatefulWidget {
@@ -393,11 +435,11 @@ class _NotificationsRuntimeViewState extends State<_NotificationsRuntimeView>
 
   @override
   Widget build(BuildContext context) => NotificationsScreen(
-        state: widget.controller.state,
-        onMarkRead: (notification) {
-          unawaited(widget.controller.markRead(notification.id));
-        },
-        onOpenLink: widget.onOpenLink,
-        onRetry: widget.controller.load,
-      );
+    state: widget.controller.state,
+    onMarkRead: (notification) {
+      unawaited(widget.controller.markRead(notification.id));
+    },
+    onOpenLink: widget.onOpenLink,
+    onRetry: widget.controller.load,
+  );
 }

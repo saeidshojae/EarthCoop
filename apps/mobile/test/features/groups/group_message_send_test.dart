@@ -63,6 +63,19 @@ void main() {
     composer.dispose();
   });
 
+  test('expired session never starts a mutation', () async {
+    final adapter = fixtures.RecordingAdapter([]);
+    final repository = GroupMessageRepository(
+      apiClient: fixtures.buildClient(adapter),
+      isCurrentSession: () => false,
+    );
+    await expectLater(
+      repository.send(groupId: 42, text: 'hello', idempotencyKey: 'key-123456'),
+      throwsA(isA<ApiFailure>()),
+    );
+    expect(adapter.requests, isEmpty);
+  });
+
   test('blank text never reaches the server', () async {
     final sender = FakeSender();
     final composer = GroupMessageComposerController(
@@ -85,12 +98,13 @@ class FakeSender implements GroupMessageSender {
     required String idempotencyKey,
   }) async {
     keys.add(idempotencyKey);
-    if (keys.length == 1)
+    if (keys.length == 1) {
       throw const ApiFailure(
         code: 'network_error',
         message: '',
         retryable: true,
       );
+    }
     return SentGroupMessage(id: 19, groupId: groupId, text: text);
   }
 }
