@@ -32,7 +32,7 @@ class AuctionController extends Controller
             $visible = $field . '_visible';
             if ($request->filled($visible) && !$request->filled($field)) {
                 try {
-                    $dt = \Morilog\Jalali\CalendarUtils::createCarbonFromFormat('Y/m/d H:i', $request->input($visible));
+                    $dt = $this->temporal->parseDateTime((string) $request->input($visible));
                     $request->merge([$field => $dt->format('Y-m-d H:i:s')]);
                 } catch (\Exception $e) {
                 }
@@ -401,7 +401,7 @@ class AuctionController extends Controller
             $visible = $field . '_visible';
             if ($request->filled($visible) && !$request->filled($field)) {
                 try {
-                    $dt = \Morilog\Jalali\CalendarUtils::createCarbonFromFormat('Y/m/d H:i', $request->input($visible));
+                    $dt = $this->temporal->parseDateTime((string) $request->input($visible));
                     $request->merge([$field => $dt->format('Y-m-d H:i:s')]);
                 } catch (\Exception $e) {
                 }
