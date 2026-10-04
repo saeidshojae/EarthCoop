@@ -15,9 +15,11 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: Validate Firebase configuration materialization
+        run: python -m unittest discover -s tests/mobile -p 'test_firebase_configuration.py'
       - run: flutter pub get
         working-directory: apps/mobile
-      - run: flutter test test/core/push/fcm_push_token_source_test.dart
+      - run: flutter test
         working-directory: apps/mobile
       - run: dart format --output=none --set-exit-if-changed lib test
         working-directory: apps/mobile

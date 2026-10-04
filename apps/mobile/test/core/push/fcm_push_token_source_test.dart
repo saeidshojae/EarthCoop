@@ -1,11 +1,92 @@
+import 'dart:async';
+
 import 'package:earthcoop_mobile/core/push/fcm_push_token_source.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+const options = FirebaseOptions(
+    apiKey: 'synthetic-client-key',
+    appId: '1:123:android:a',
+    messagingSenderId: '123',
+    projectId: 'earthcoop-test');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('FCM token changes can be observed before Firebase initialization', () {
+  test('FCM token changes can be observed before Firebase initialization',
+      () async {
     final source = FcmPushTokenSource();
     expect(() => source.tokenChanges, returnsNormally);
+    await source.dispose();
   });
+
+  test(
+      'SDK initializes before its refresh stream is accessed and rotations arrive',
+      () async {
+    final runtime = FakeRuntime();
+    final source = FcmPushTokenSource(options: options, runtime: runtime);
+    final next = source.tokenChanges.first;
+    expect(await source.initialize(), 'initial');
+    runtime.changes.add('rotated');
+    expect(await next, 'rotated');
+    await source.dispose();
+    await runtime.changes.close();
+  });
+
+  test('failed SDK setup can be retried without a cached failed future',
+      () async {
+    final runtime = FakeRuntime()..failOnce = true;
+    final source = FcmPushTokenSource(options: options, runtime: runtime);
+    await expectLater(source.initialize(), throwsStateError);
+    expect(await source.initialize(), 'initial');
+    await source.dispose();
+    await runtime.changes.close();
+  });
+
+  test('disposal during SDK setup prevents late token acquisition', () async {
+    final entered = Completer<void>();
+    final pending = Completer<void>();
+    final runtime = FakeRuntime()
+      ..initializeHook = () {
+        entered.complete();
+        return pending.future;
+      }
+      ..tokenHook =
+          () => throw StateError('disposed source must not acquire a token');
+    final source = FcmPushTokenSource(options: options, runtime: runtime);
+    final initialization = source.initialize();
+    await entered.future;
+    await source.dispose();
+    pending.complete();
+    expect(await initialization, isNull);
+    await runtime.changes.close();
+  });
+}
+
+class FakeRuntime implements FcmTokenRuntime {
+  final changes = StreamController<String>.broadcast();
+  bool ready = false;
+  bool failOnce = false;
+  Future<void> Function()? initializeHook;
+  Future<String?> Function()? tokenHook;
+
+  @override
+  Future<void> initialize(FirebaseOptions options) async {
+    if (failOnce) {
+      failOnce = false;
+      throw StateError('temporary SDK failure');
+    }
+    await initializeHook?.call();
+    ready = true;
+  }
+
+  @override
+  Stream<String> get tokenChanges {
+    if (!ready) throw StateError('SDK not initialized');
+    return changes.stream;
+  }
+
+  @override
+  Future<String?> token() async =>
+      tokenHook == null ? 'initial' : await tokenHook!();
 }

@@ -19,6 +19,7 @@ import '../../core/push/push_provider_selector.dart';
 import '../../core/push/session_push_binding.dart';
 import '../../core/push/push_token_source.dart';
 import '../../core/push/fcm_push_token_source.dart';
+import '../../core/push/fcm_client_configuration.dart';
 import '../../core/push/hms_push_token_source.dart';
 import '../../core/device/device_timezone.dart';
 import '../../core/local/app_database.dart';
@@ -98,7 +99,8 @@ Future<MobileAppRuntime> createProductionRuntime() async {
                 capabilities: PlatformPushRuntimeCapabilities())
             .select();
         final PushTokenSource? source = switch (provider) {
-          PushProvider.fcm => const FcmPushTokenSource(),
+          PushProvider.fcm =>
+            fcmOptionsFromEnvironment() == null ? null : FcmPushTokenSource(),
           PushProvider.hms => const HmsPushTokenSource(),
           null => null,
         };
