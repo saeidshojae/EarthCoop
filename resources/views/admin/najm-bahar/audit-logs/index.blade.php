@@ -162,7 +162,7 @@
 
                         <tr>
 
-                            <td class="px-4 py-2">{{ \Morilog\Jalali\Jalalian::fromCarbon($log->created_at)->format('Y/m/d H:i') }}</td>
+                            <td class="px-4 py-2"><x-temporal.date-time :value="$log->created_at" style="short" /></td>
 
                             <td class="px-4 py-2">{{ $log->group_id ?? '-' }}</td>
 
