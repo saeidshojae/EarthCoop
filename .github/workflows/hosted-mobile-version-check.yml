@@ -1,0 +1,20 @@
+name: Hosted mobile version check
+on:
+  push:
+    branches: [agent/hosted-mobile-version-check-20261004]
+permissions:
+  contents: read
+jobs:
+  hosted-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          python - <<'PY'
+          import json, urllib.request
+          for host in ['earthcoop.ir', 'earthcoop.net']:
+              url = 'https://' + host + '/downloads/mobile/build.json'
+              with urllib.request.urlopen(url, timeout=20) as response:
+                  d = json.load(response)
+              print(json.dumps({'host': host, 'version': d.get('version'), 'git_sha': d.get('git_sha'), 'signing_mode': d.get('signing_mode')}))
+          PY
