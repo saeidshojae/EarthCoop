@@ -10,8 +10,11 @@ class GroupMessageComposerController extends ChangeNotifier {
     required this.groupId,
     required GroupMessageSender sender,
     String Function()? keyFactory,
+    VoidCallback? onSent,
   })  : _sender = sender,
-        _keyFactory = keyFactory ?? _newKey;
+        _keyFactory = keyFactory ?? _newKey,
+        _onSent = onSent;
+  final VoidCallback? _onSent;
   final int groupId;
   final GroupMessageSender _sender;
   final String Function() _keyFactory;
@@ -46,6 +49,7 @@ class GroupMessageComposerController extends ChangeNotifier {
     isSending = true;
     error = null;
     notifyListeners();
+    var acknowledged = false;
     try {
       final result = await _sender.send(
         groupId: groupId,
@@ -57,6 +61,7 @@ class GroupMessageComposerController extends ChangeNotifier {
       draft = '';
       _pendingKey = null;
       _pendingText = null;
+      acknowledged = true;
     } on ApiFailure catch (failure) {
       if (_disposed) return;
       if (failure.httpStatus == 401) {
@@ -77,6 +82,7 @@ class GroupMessageComposerController extends ChangeNotifier {
       isSending = false;
       if (!_disposed) notifyListeners();
     }
+    if (acknowledged && !_disposed) _onSent?.call();
   }
 
   @override

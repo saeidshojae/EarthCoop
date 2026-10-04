@@ -6,10 +6,8 @@ class GroupMessageComposer extends StatefulWidget {
   const GroupMessageComposer({
     super.key,
     required this.controller,
-    required this.onSent,
   });
   final GroupMessageComposerController controller;
-  final VoidCallback onSent;
   @override
   State<GroupMessageComposer> createState() => _GroupMessageComposerState();
 }
@@ -32,70 +30,77 @@ class _GroupMessageComposerState extends State<GroupMessageComposer> {
       _text.clear();
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('پیام ارسال شد.')));
-      widget.onSent();
     }
   }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: widget.controller,
-        builder: (context, child) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            12,
-            8,
-            12,
-            8 + MediaQuery.viewInsetsOf(context).bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.controller.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    widget.controller.error!,
-                    key: const Key('group-message-error'),
-                  ),
-                ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const Key('group-message-draft'),
-                      controller: _text,
-                      enabled: !widget.controller.isSending,
-                      minLines: 1,
-                      maxLines: 4,
-                      maxLength: 2000,
-                      onChanged: widget.controller.updateDraft,
-                      decoration: const InputDecoration(
-                        hintText: 'پیام خود را بنویسید',
-                        border: OutlineInputBorder(),
-                        counterText: '',
-                      ),
+        builder: (context, child) {
+          if (_text.text != widget.controller.draft) {
+            _text.value = TextEditingValue(
+                text: widget.controller.draft,
+                selection: TextSelection.collapsed(
+                    offset: widget.controller.draft.length));
+          }
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              12,
+              8,
+              12,
+              8 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.controller.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      widget.controller.error!,
+                      key: const Key('group-message-error'),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    key: const Key('group-message-send'),
-                    tooltip: 'ارسال پیام',
-                    onPressed: widget.controller.isSending ||
-                            widget.controller.draft.trim().isEmpty
-                        ? null
-                        : _send,
-                    icon: widget.controller.isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: const Key('group-message-draft'),
+                        controller: _text,
+                        enabled: !widget.controller.isSending,
+                        minLines: 1,
+                        maxLines: 4,
+                        maxLength: 2000,
+                        onChanged: widget.controller.updateDraft,
+                        decoration: const InputDecoration(
+                          hintText: 'پیام خود را بنویسید',
+                          border: OutlineInputBorder(),
+                          counterText: '',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      key: const Key('group-message-send'),
+                      tooltip: 'ارسال پیام',
+                      onPressed: widget.controller.isSending ||
+                              widget.controller.draft.trim().isEmpty
+                          ? null
+                          : _send,
+                      icon: widget.controller.isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       );
 }

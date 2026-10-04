@@ -196,8 +196,10 @@ class GroupDetailController extends ChangeNotifier {
         activityFailure: activityFailure,
       );
     } on ApiFailure catch (failure) {
+      if (_disposed || epoch != _loadEpoch) return;
       state = GroupDetailState.failure(_mapFailure(failure));
     } catch (_) {
+      if (_disposed || epoch != _loadEpoch) return;
       state = const GroupDetailState.failure(
         GroupViewFailure.nonRetryable('امکان دریافت این گروه وجود ندارد.'),
       );

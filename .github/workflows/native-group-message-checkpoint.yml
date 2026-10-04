@@ -58,7 +58,7 @@ jobs:
       - name: Group message and authorization contracts
         run: |
           php artisan migrate:fresh --force
-          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/GroupMessageContractTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/GroupMessageContractTest.php tests/Feature/Api/V1/GroupContractTest.php tests/Feature/Api/V1/NativeSessionTest.php tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/GroupChat/MessageAuthorizationTest.php tests/Feature/GroupChat/MembershipParticipationGateContractTest.php
   native:
     runs-on: ubuntu-latest
     steps:
@@ -70,5 +70,58 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/mobile
-      - run: flutter test test/features/groups/group_message_composer_test.dart test/features/groups/group_detail_controller_test.dart
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
         working-directory: apps/mobile
+      - name: Analyze
+        run: flutter analyze
+        working-directory: apps/mobile
+      - run: flutter test
+        working-directory: apps/mobile
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare Android UAT signing
+        shell: bash
+        env:
+          ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
+          ANDROID_UAT_KEY_ALIAS: ${{ secrets.ANDROID_UAT_KEY_ALIAS }}
+          ANDROID_UAT_STORE_PASSWORD: ${{ secrets.ANDROID_UAT_STORE_PASSWORD }}
+          ANDROID_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          configured=0
+          test -n "$ANDROID_UAT_KEYSTORE_BASE64" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_ALIAS" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_STORE_PASSWORD" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_PASSWORD" && configured=$((configured + 1))
+
+          if [ "$configured" -ne 4 ]; then
+            echo "::error::Published UAT APKs require all four stable UAT signing secrets."
+            exit 1
+          fi
+
+          UAT_KEYSTORE_PATH="$RUNNER_TEMP/earthcoop-uat.jks"
+          printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$UAT_KEYSTORE_PATH"
+          test -s "$UAT_KEYSTORE_PATH" || { echo "::error::Decoded UAT keystore is empty"; exit 1; }
+
+          {
+            echo "EARTHCOOP_UAT_KEYSTORE_PATH=$UAT_KEYSTORE_PATH"
+            echo "EARTHCOOP_UAT_KEY_ALIAS=$ANDROID_UAT_KEY_ALIAS"
+            echo "EARTHCOOP_UAT_STORE_PASSWORD=$ANDROID_UAT_STORE_PASSWORD"
+            echo "EARTHCOOP_UAT_KEY_PASSWORD=$ANDROID_UAT_KEY_PASSWORD"
+            echo "EARTHCOOP_UAT_SIGNING_MODE=stable-uat"
+          } >> "$GITHUB_ENV"
+
+      - name: Android stable UAT compile
+        run: flutter build apk --debug
+        working-directory: apps/mobile
+      - name: Retain signed candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-1.0.0+6-${{ github.sha }}
+          path: apps/mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

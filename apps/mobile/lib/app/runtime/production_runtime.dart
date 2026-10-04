@@ -320,6 +320,7 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
       GroupMessageComposerController(
     groupId: widget.groupId,
     sender: widget.sender,
+    onSent: () => unawaited(_controller.load()),
   );
 
   @override

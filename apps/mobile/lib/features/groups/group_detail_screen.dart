@@ -40,7 +40,6 @@ class GroupDetailScreen extends StatelessWidget {
           ? SafeArea(
               child: GroupMessageComposer(
                 controller: composer!,
-                onSent: () => onRetry?.call(),
               ),
             )
           : null,

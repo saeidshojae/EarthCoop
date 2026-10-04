@@ -114,3 +114,26 @@ disconnect, mark it read, reconnect, and reopen/foreground Notifications. Confir
 the server read state persists after refreshing. Cold offline startup, real push
 delivery, and media upload remain separate unaccepted gates. This checkpoint does
 not claim those capabilities are complete.
+
+## Native group messages — candidate +6 (2026-10-04)
+
+Candidate source now includes text composition in a live group, acknowledgement,
+same-intent retry without duplicates, and refresh of the latest 20 activities.
+The backend must deploy `POST /api/v1/groups/{group}/messages` and the additive
+`window=latest` feed query before this candidate can send/display recent messages.
+A missing endpoint retains the draft and reports that this server version cannot send.
+Content is not queued for automatic offline submission.
+
+**OPEN when phone returns:** use an ordinary eligible member in an open group;
+send a short message, confirm acknowledgement and the refreshed feed, then check
+from another approved member. Confirm an observer cannot send. Disconnect before
+an explicit send and confirm draft retention; reconnect and retry the unchanged
+text, checking that only one message appears. Refresh during a pending send and
+confirm the eventual acknowledgement clears the visible draft and refreshes the feed.
+The previously accepted +5 installation and 81-group checks need not be repeated.
+
+Media attachments and real push remain OPEN. Media currently has no
+`group.message` purpose, opaque attachment association, authenticated native
+retrieval, or completed scan/privacy pipeline. Push token primitives exist, but
+production session lifecycle wiring and Firebase/Huawei app configuration are
+still absent. Neither is represented as completed by this text checkpoint.

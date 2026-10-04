@@ -14,14 +14,14 @@ void main() {
       'visible composer preserves failed text and refreshes only after acknowledgement',
       (tester) async {
     final sender = send.FakeSender();
-    final controller =
-        GroupMessageComposerController(groupId: 42, sender: sender);
     var refreshed = 0;
+    final controller = GroupMessageComposerController(
+        groupId: 42, sender: sender, onSent: () => refreshed++);
     await tester.pumpWidget(MaterialApp(
         home: GroupDetailScreen(
       state: GroupDetailState.ready(detail.sampleGroup()),
       composer: controller,
-      onRetry: () => refreshed++,
+      onRetry: () {},
     )));
     await tester.enterText(
         find.byKey(const Key('group-message-draft')), 'سلام');
