@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Group\MessageController;
 use App\Http\Support\Api\V1\ApiResponse;
+use App\Http\Support\Api\V1\GroupTextProjection;
 use App\Models\Group;
 use App\Models\Message;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -57,7 +58,7 @@ final class GroupMessageController extends Controller
 
     private function projection(int $id, Group $group, string $html): JsonResponse
     {
-        $text = html_entity_decode(strip_tags(preg_replace('/<br\s*\/?\s*>/i', "\n", $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = GroupTextProjection::fromHtml($html);
         return ApiResponse::success(['id' => $id, 'group_id' => (int) $group->id, 'message' => $text], 201);
     }
 }
