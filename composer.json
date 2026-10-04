@@ -10,6 +10,7 @@
   "require": {
     "php": "^8.2",
     "carbonphp/carbon-doctrine-types": "1.0",
+    "google/auth": "^1.55",
     "guzzlehttp/guzzle": "^7.2",
     "hekmatinasser/verta": "^8.5",
     "laravel/framework": "^12.0",
