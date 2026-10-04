@@ -72,7 +72,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     {
         return [
             'app/Modules/Stock/Controllers/AuctionController.php: CalendarUtils::',
-            'app/Modules/Stock/Controllers/AuctionController.php: Jalalian::',
             'app/Modules/Stock/Controllers/AuctionController.php: Morilog\\Jalali',
             'app/Services/NajmHoda/NajmHodaGroupAssistantService.php: verta(',
             'resources/views/Stock/admin_holdings_show.blade.php: Jalalian::',
