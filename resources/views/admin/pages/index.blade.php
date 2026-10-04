@@ -1778,7 +1778,7 @@
 
 
 
-                                @php
+                                @if($page->created_at)
 
 
 
@@ -1788,7 +1788,7 @@
 
 
 
-                                    try {
+                                    <x-temporal.date :value="$page->created_at" />
 
 
 
@@ -1798,7 +1798,7 @@
 
 
 
-                                        $date = isset($page->created_at) ? \Carbon\Carbon::parse($page->created_at) : null;
+                                @else
 
 
 
@@ -1808,7 +1808,7 @@
 
 
 
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d') : '-';
+                                    -
 
 
 
@@ -1818,37 +1818,7 @@
 
 
 
-                                    } catch (\Exception $e) {
-
-
-
-
-
-
-
-
-
-                                        echo '-';
-
-
-
-
-
-
-
-
-
-                                    }
-
-
-
-
-
-
-
-
-
-                                @endphp
+                                @endif
 
 
 
