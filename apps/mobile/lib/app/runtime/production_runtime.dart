@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/api/api_error.dart';
+import '../../core/offline/offline_queue_repository.dart';
+import '../../core/offline/offline_operation_registry.dart';
+import '../../core/offline/offline_replay_engine.dart';
 import '../../core/api/app_environment.dart';
 import '../../core/auth/secure_session_store.dart';
 import '../../core/auth/session_controller.dart';
@@ -68,7 +72,28 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     apiClient: apiClient,
     secureStore: secureStore,
   );
-  final sessionController = SessionController(repository: sessionRepository);
+  final notificationDatabases = <String, Future<AppDatabase>>{};
+  var notificationEpoch = 0;
+  late final SessionController sessionController;
+  sessionController = SessionController(
+    repository: sessionRepository,
+    clearUserScopedLocalState: () async {
+      notificationEpoch++;
+      final session = sessionController.state.session;
+      if (session != null) {
+        final scopedDatabase =
+            notificationDatabases['${session.user.id}:${session.device.id}'];
+        if (scopedDatabase != null) {
+          final db = await scopedDatabase;
+          await DriftOfflineQueueRepository(db).clearAll();
+          final projection = DriftNotificationProjectionStore(db);
+          await projection.replaceAll([]);
+          await projection.writeNextCursor(null);
+        }
+      }
+      await DriftGroupProjectionCache(database).writeAll([]);
+    },
+  );
   try {
     await sessionController.restore();
   } catch (_) {
@@ -104,25 +129,101 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     apiClient: apiClient,
     cache: DriftGroupProjectionCache(database),
   );
-  final notificationSyncService = NotificationSyncService(
-    source: NotificationRepository(apiClient: apiClient),
-    store: DriftNotificationProjectionStore(database),
-  );
+  Future<NotificationsController> createNotificationsController() async {
+    final session = sessionController.state.session;
+    if (session == null)
+      throw const ApiFailure(
+        code: 'unauthenticated',
+        message: '',
+        retryable: false,
+        httpStatus: 401,
+      );
+    final epoch = notificationEpoch;
+    bool isCurrent() =>
+        notificationEpoch == epoch &&
+        sessionController.state.phase == SessionPhase.authenticated &&
+        sessionController.state.session?.token == session.token &&
+        sessionController.state.session?.user.id == session.user.id &&
+        sessionController.state.session?.device.id == session.device.id;
+    void checkSession() {
+      if (!isCurrent())
+        throw const ApiFailure(
+          code: 'session_changed',
+          message: '',
+          retryable: false,
+          httpStatus: 401,
+        );
+    }
+
+    final scope = '${session.user.id}:${session.device.id}';
+    final scopedDatabase = await notificationDatabases.putIfAbsent(
+      scope,
+      () => AppDatabase.openForAccount(
+        userId: session.user.id,
+        deviceId: session.device.id,
+      ),
+    );
+    checkSession();
+    // Capture this session's credentials: an old view can never send as a new account.
+    final scopedApi = ApiClient(
+      dio: dio,
+      bearerTokenProvider: () async => session.token,
+      deviceIdProvider: () async => session.device.id,
+      requestIdFactory: () =>
+          'notification-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+      retryDelay: Future<void>.delayed,
+    );
+    final queue = ScopedOfflineQueueRepository(
+      DriftOfflineQueueRepository(scopedDatabase),
+      scope: scope,
+      isCurrent: isCurrent,
+    );
+    final repository = NotificationRepository(
+      apiClient: scopedApi,
+      offlineQueue: queue,
+      isCurrentSession: isCurrent,
+    );
+    var replayBootstrap = bootstrap;
+    final replay = OfflineReplayEngine(
+      queue: queue,
+      registry: OfflineOperationRegistry.notificationReadOnly(
+        markNotificationRead: repository.replayMarkRead,
+      ),
+      bootstrapState: () => replayBootstrap,
+      sessionState: () => sessionController.state,
+    );
+    final sync = NotificationSyncService(
+      source: repository,
+      store: DriftNotificationProjectionStore(scopedDatabase),
+      beforeSync: () async {
+        checkSession();
+        replayBootstrap = await bootstrapService.start();
+        checkSession();
+        if (!replayBootstrap.allowsProtectedNetwork) {
+          throw ApiFailure(
+            code: 'bootstrap_blocked',
+            message: '',
+            retryable: replayBootstrap.requiresFreshBootstrap,
+          );
+        }
+        await bootstrapSnapshotStore.markAuthenticatedSessionObserved();
+        await replay.replayEligible();
+        checkSession();
+      },
+    );
+    return NotificationsController(sync);
+  }
 
   return MobileAppRuntime(
     bootstrap: bootstrap,
     sessionController: sessionController,
     loginController: loginController,
-    groupsBuilder: (context, openGroup) => _GroupsRuntimeView(
-      repository: groupRepository,
-      onOpenGroup: openGroup,
-    ),
-    groupDetailBuilder: (context, groupId) => _GroupDetailRuntimeView(
-      repository: groupRepository,
-      groupId: groupId,
-    ),
-    notificationsBuilder: (context, openLink) => _NotificationsRuntimeView(
-      controller: NotificationsController(notificationSyncService),
+    groupsBuilder: (context, openGroup) =>
+        _GroupsRuntimeView(repository: groupRepository, onOpenGroup: openGroup),
+    groupDetailBuilder: (context, groupId) =>
+        _GroupDetailRuntimeView(repository: groupRepository, groupId: groupId),
+    notificationsBuilder: (context, openLink) => _NotificationsRuntimeLoader(
+      createController: createNotificationsController,
       onOpenLink: openLink,
     ),
   );
@@ -185,8 +286,10 @@ class _GroupDetailRuntimeView extends StatefulWidget {
 }
 
 class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
-  late final GroupDetailController _controller =
-      GroupDetailController(widget.repository, widget.groupId);
+  late final GroupDetailController _controller = GroupDetailController(
+    widget.repository,
+    widget.groupId,
+  );
 
   @override
   void initState() {
@@ -207,9 +310,49 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
   }
 
   @override
-  Widget build(BuildContext context) => GroupDetailScreen(
-        state: _controller.state,
-        onRetry: _controller.load,
+  Widget build(BuildContext context) =>
+      GroupDetailScreen(state: _controller.state, onRetry: _controller.load);
+}
+
+class _NotificationsRuntimeLoader extends StatefulWidget {
+  const _NotificationsRuntimeLoader({
+    required this.createController,
+    required this.onOpenLink,
+  });
+  final Future<NotificationsController> Function() createController;
+  final ValueChanged<SemanticLink> onOpenLink;
+  @override
+  State<_NotificationsRuntimeLoader> createState() =>
+      _NotificationsRuntimeLoaderState();
+}
+
+class _NotificationsRuntimeLoaderState
+    extends State<_NotificationsRuntimeLoader> {
+  late Future<NotificationsController> _controller = widget.createController();
+  @override
+  Widget build(BuildContext context) => FutureBuilder<NotificationsController>(
+        future: _controller,
+        builder: (context, snapshot) {
+          if (snapshot.hasError)
+            return Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _controller = widget.createController();
+                  }),
+                  child: const Text('دریافت اعلان‌ها ممکن نشد. تلاش دوباره'),
+                ),
+              ),
+            );
+          final controller = snapshot.data;
+          if (controller == null)
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
+          return _NotificationsRuntimeView(
+            controller: controller,
+            onOpenLink: widget.onOpenLink,
+          );
+        },
       );
 }
 
@@ -227,19 +370,27 @@ class _NotificationsRuntimeView extends StatefulWidget {
       _NotificationsRuntimeViewState();
 }
 
-class _NotificationsRuntimeViewState extends State<_NotificationsRuntimeView> {
+class _NotificationsRuntimeViewState extends State<_NotificationsRuntimeView>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.controller.addListener(_refresh);
     unawaited(widget.controller.load());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.controller.removeListener(_refresh);
     widget.controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(widget.controller.load());
   }
 
   void _refresh() {

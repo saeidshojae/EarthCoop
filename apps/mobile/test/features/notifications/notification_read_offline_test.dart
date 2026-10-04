@@ -143,24 +143,24 @@ ApiClient buildClient(RecordingAdapter adapter) {
 }
 
 Map<String, Object?> notificationJson(String id, {required bool read}) => {
-  'id': id,
-  'type': 'group.notice',
-  'title': 'عنوان',
-  'message': 'متن',
-  'link': null,
-  'context': <String, Object?>{},
-  'read': read,
-  'read_at': read ? '2026-09-29T01:00:00.000Z' : null,
-  'created_at': '2026-09-29T00:00:00.000Z',
-};
+      'id': id,
+      'type': 'group.notice',
+      'title': 'عنوان',
+      'message': 'متن',
+      'link': null,
+      'context': <String, Object?>{},
+      'read': read,
+      'read_at': read ? '2026-09-29T01:00:00.000Z' : null,
+      'created_at': '2026-09-29T00:00:00.000Z',
+    };
 
 Map<String, Object?> successEnvelope(Object? data) => {
-  'status': 'success',
-  'data': data,
-  'error': null,
-  'meta': {'api_version': 'v1'},
-  'request_id': 'req-server',
-};
+      'status': 'success',
+      'data': data,
+      'error': null,
+      'meta': {'api_version': 'v1'},
+      'request_id': 'req-server',
+    };
 
 ResponseBody jsonResponse(int status, Map<String, Object?> body) =>
     ResponseBody.fromString(
@@ -173,7 +173,7 @@ ResponseBody jsonResponse(int status, Map<String, Object?> body) =>
 
 class RecordingAdapter implements HttpClientAdapter {
   RecordingAdapter(Iterable<ResponseBody> responses)
-    : _responses = Queue<ResponseBody>.of(responses);
+      : _responses = Queue<ResponseBody>.of(responses);
 
   final Queue<ResponseBody> _responses;
   final List<RequestOptions> requests = [];

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../local/app_database.dart';
+import '../api/api_error.dart';
 import 'offline_operation.dart';
 
 abstract interface class OfflineQueueRepository {
@@ -14,11 +15,90 @@ abstract interface class OfflineQueueRepository {
     OfflineOperation operation,
     String errorCode,
   );
-  Future<void> markBlocked(
+  Future<void> markBlocked(OfflineOperation operation, String errorCode);
+  Future<void> clearAll();
+}
+
+/// Persistent ownership is encoded in the resource, never in credentials.
+class ScopedOfflineQueueRepository implements OfflineQueueRepository {
+  ScopedOfflineQueueRepository(
+    this._delegate, {
+    required String scope,
+    required bool Function() isCurrent,
+  })  : _prefix = 'owner:${base64Url.encode(utf8.encode(scope))}:',
+        _isCurrent = isCurrent;
+  final OfflineQueueRepository _delegate;
+  final String _prefix;
+  final bool Function() _isCurrent;
+
+  void _checkCurrent() {
+    if (!_isCurrent())
+      throw const ApiFailure(
+        code: 'session_changed',
+        message: 'Session changed.',
+        retryable: false,
+        httpStatus: 401,
+      );
+  }
+
+  bool _owns(OfflineOperation operation) =>
+      operation.resource.startsWith(_prefix);
+
+  @override
+  Future<OfflineOperation> enqueue(OfflineOperation operation) async {
+    _checkCurrent();
+    final stored = await _delegate.enqueue(
+      OfflineOperation(
+        idempotencyKey: operation.idempotencyKey,
+        createdAt: operation.createdAt,
+        resource: '$_prefix${operation.resource}',
+        operation: operation.operation,
+        payload: operation.payload,
+        payloadHash: operation.payloadHash,
+        clientSequence: operation.clientSequence,
+        state: operation.state,
+        attemptCount: operation.attemptCount,
+        lastErrorCode: operation.lastErrorCode,
+      ),
+    );
+    if (!_isCurrent()) {
+      await _delegate.remove(stored);
+      _checkCurrent();
+    }
+    return stored;
+  }
+
+  @override
+  Future<List<OfflineOperation>> pending() async =>
+      (await _delegate.pending()).where(_owns).toList(growable: false);
+  @override
+  Future<List<OfflineOperation>> all() async =>
+      (await _delegate.all()).where(_owns).toList(growable: false);
+  @override
+  Future<void> remove(OfflineOperation operation) async {
+    if (_owns(operation)) await _delegate.remove(operation);
+  }
+
+  @override
+  Future<void> markRetryableFailure(
     OfflineOperation operation,
     String errorCode,
-  );
-  Future<void> clearAll();
+  ) async {
+    if (_owns(operation))
+      await _delegate.markRetryableFailure(operation, errorCode);
+  }
+
+  @override
+  Future<void> markBlocked(OfflineOperation operation, String errorCode) async {
+    if (_owns(operation)) await _delegate.markBlocked(operation, errorCode);
+  }
+
+  @override
+  Future<void> clearAll() async {
+    for (final operation in await all()) {
+      await _delegate.remove(operation);
+    }
+  }
 }
 
 class MemoryOfflineQueueRepository implements OfflineQueueRepository {
@@ -79,10 +159,7 @@ class MemoryOfflineQueueRepository implements OfflineQueueRepository {
   }
 
   @override
-  Future<void> markBlocked(
-    OfflineOperation operation,
-    String errorCode,
-  ) async {
+  Future<void> markBlocked(OfflineOperation operation, String errorCode) async {
     _replace(
       operation,
       operation.copyWith(
@@ -184,10 +261,7 @@ class DriftOfflineQueueRepository implements OfflineQueueRepository {
       _updateFailure(operation, errorCode, OfflineOperationState.pending);
 
   @override
-  Future<void> markBlocked(
-    OfflineOperation operation,
-    String errorCode,
-  ) =>
+  Future<void> markBlocked(OfflineOperation operation, String errorCode) =>
       _updateFailure(operation, errorCode, OfflineOperationState.blocked);
 
   @override

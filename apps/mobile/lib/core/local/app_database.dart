@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -64,6 +65,22 @@ class AppDatabase extends GeneratedDatabase {
   static Future<AppDatabase> openDefault() async {
     final directory = await getApplicationSupportDirectory();
     return AppDatabase.file(File(p.join(directory.path, 'earthcoop.sqlite')));
+  }
+
+  static Future<AppDatabase> openForAccount({
+    required int userId,
+    required String deviceId,
+  }) async {
+    final directory = await getApplicationSupportDirectory();
+    final device = base64Url.encode(utf8.encode(deviceId));
+    return AppDatabase.file(
+      File(
+        p.join(
+          directory.path,
+          'earthcoop-notifications-$userId-$device.sqlite',
+        ),
+      ),
+    );
   }
 
   @override

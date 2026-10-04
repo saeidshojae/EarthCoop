@@ -240,23 +240,23 @@ void main() {
 }
 
 OfflineOperation readOperation() => OfflineOperation.notificationRead(
-  notificationId: 'n-1',
-  idempotencyKey: 'idem-1',
-  createdAt: DateTime.utc(2026, 9, 29),
-);
+      notificationId: 'n-1',
+      idempotencyKey: 'idem-1',
+      createdAt: DateTime.utc(2026, 9, 29),
+    );
 
 SessionState authenticatedSession() => SessionState.authenticated(
-  NativeSession(
-    token: 'secret-token',
-    expiresAt: DateTime.utc(2026, 10, 29),
-    user: const SessionUser(id: 7, firstName: 'کاربر', lastName: 'آزمایشی'),
-    device: const SessionDevice(
-      id: 'device-1',
-      platform: 'android',
-      appVersion: '0.1.0',
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      pushCapable: true,
-    ),
-  ),
-);
+      NativeSession(
+        token: 'secret-token',
+        expiresAt: DateTime.utc(2026, 10, 29),
+        user: const SessionUser(id: 7, firstName: 'کاربر', lastName: 'آزمایشی'),
+        device: const SessionDevice(
+          id: 'device-1',
+          platform: 'android',
+          appVersion: '0.1.0',
+          locale: 'fa',
+          timezone: 'Asia/Tehran',
+          pushCapable: true,
+        ),
+      ),
+    );

@@ -56,30 +56,48 @@ class NotificationsController extends ChangeNotifier {
   NotificationsController(this._syncService);
 
   final NotificationSyncService _syncService;
+  bool _disposed = false;
+  int _loadSequence = 0;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
   NotificationsState state = const NotificationsState.loading();
 
   Future<void> load() async {
+    if (_disposed) return;
+    final sequence = ++_loadSequence;
     state = const NotificationsState.loading();
-    notifyListeners();
+    _notify();
     try {
       final items = await _syncService.syncOnResume();
+      if (_disposed || sequence != _loadSequence) return;
       state = items.isEmpty
           ? const NotificationsState.empty()
           : NotificationsState.ready(items);
     } on ApiFailure catch (failure) {
+      if (_disposed || sequence != _loadSequence) return;
       state = NotificationsState.failure(_mapFailure(failure));
     } catch (_) {
+      if (_disposed || sequence != _loadSequence) return;
       state = const NotificationsState.failure(
         NotificationViewFailure.nonRetryable(
           'امکان دریافت اعلان‌ها وجود ندارد.',
         ),
       );
     }
-    notifyListeners();
+    _notify();
   }
 
   Future<void> markRead(String notificationId) async {
-    if (state.phase != NotificationsPhase.ready) return;
+    if (_disposed || state.phase != NotificationsPhase.ready) return;
 
     var changed = false;
     final markedAt = DateTime.now().toUtc();
@@ -92,7 +110,7 @@ class NotificationsController extends ChangeNotifier {
     if (!changed) return;
 
     state = NotificationsState.ready(updated);
-    notifyListeners();
+    _notify();
 
     try {
       await _syncService.markRead(notificationId);

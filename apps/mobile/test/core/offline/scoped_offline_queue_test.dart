@@ -55,10 +55,10 @@ void main() {
 }
 
 OfflineOperation operation(String key) => OfflineOperation.notificationRead(
-  notificationId: 'n-1',
-  idempotencyKey: key,
-  createdAt: DateTime.utc(2026),
-);
+      notificationId: 'n-1',
+      idempotencyKey: key,
+      createdAt: DateTime.utc(2026),
+    );
 
 class DelayedQueue extends MemoryOfflineQueueRepository {
   final started = Completer<void>();

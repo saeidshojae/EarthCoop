@@ -36,9 +36,11 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
         )
         .get();
     return rows
-        .map((row) => NotificationDto.fromJson(
-              jsonDecode(row.read<String>('payload_json')),
-            ))
+        .map(
+          (row) => NotificationDto.fromJson(
+            jsonDecode(row.read<String>('payload_json')),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -46,8 +48,9 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
   Future<void> replaceAll(List<NotificationDto> values) async {
     await _ensureSchema();
     await _database.transaction(() async {
-      await _database
-          .customStatement('DELETE FROM notification_projection_cache');
+      await _database.customStatement(
+        'DELETE FROM notification_projection_cache',
+      );
       for (var index = 0; index < values.length; index += 1) {
         final value = values[index];
         await _database.customInsert(
@@ -81,10 +84,7 @@ class DriftNotificationProjectionStore implements NotificationProjectionStore {
     await _database.customInsert(
       'INSERT OR REPLACE INTO notification_sync_state '
       '(singleton_id, next_cursor) VALUES (?, ?)',
-      variables: [
-        Variable.withInt(1),
-        Variable<String>(cursor),
-      ],
+      variables: [Variable.withInt(1), Variable<String>(cursor)],
     );
   }
 }
@@ -93,11 +93,14 @@ class NotificationSyncService {
   NotificationSyncService({
     required NotificationPageSource source,
     required NotificationProjectionStore store,
+    Future<void> Function()? beforeSync,
   })  : _source = source,
-        _store = store;
+        _store = store,
+        _beforeSync = beforeSync;
 
   final NotificationPageSource _source;
   final NotificationProjectionStore _store;
+  final Future<void> Function()? _beforeSync;
   Future<List<NotificationDto>>? _activeSync;
 
   Future<List<NotificationDto>> syncOnResume() {
@@ -106,9 +109,17 @@ class NotificationSyncService {
 
     final run = _runAuthoritativeSweep();
     _activeSync = run;
-    unawaited(run.whenComplete(() {
+    void clear() {
       if (identical(_activeSync, run)) _activeSync = null;
-    }));
+    }
+
+    // Handle the cleanup future's error as well as the returned sync future.
+    unawaited(
+      run.then<void>(
+        (_) => clear(),
+        onError: (Object _, StackTrace __) => clear(),
+      ),
+    );
     return run;
   }
 
@@ -171,6 +182,7 @@ class NotificationSyncService {
   }
 
   Future<List<NotificationDto>> _runAuthoritativeSweep() async {
+    await _beforeSync?.call();
     var cursor = null as String?;
     var restartedAfterInvalidCursor = false;
     final byId = <String, NotificationDto>{};
@@ -208,7 +220,8 @@ class NotificationSyncService {
       final nextCursor = page.nextCursor;
       if (nextCursor == null || nextCursor.isEmpty) {
         throw const FormatException(
-            'notification continuation cursor is missing');
+          'notification continuation cursor is missing',
+        );
       }
       cursor = nextCursor;
       await _store.writeNextCursor(cursor);

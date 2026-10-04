@@ -106,7 +106,9 @@ void main() {
     },
   );
 
-  test('duplicate and out-of-order resume hints coalesce into one authoritative sweep', () async {
+  test(
+      'duplicate and out-of-order resume hints coalesce into one authoritative sweep',
+      () async {
     final gate = Completer<void>();
     final source = SingleBlockingSource(gate);
     final store = MemoryNotificationProjectionStore();
@@ -201,36 +203,39 @@ NotificationPage page(
   String? nextCursor,
   bool hasMore = false,
   bool read = false,
-}) => NotificationPage(
-  items: ids
-      .map((id) => NotificationDto.fromJson(notificationJson(id, read: read)))
-      .toList(growable: false),
-  nextCursor: nextCursor,
-  hasMore: hasMore,
-);
+}) =>
+    NotificationPage(
+      items: ids
+          .map((id) =>
+              NotificationDto.fromJson(notificationJson(id, read: read)))
+          .toList(growable: false),
+      nextCursor: nextCursor,
+      hasMore: hasMore,
+    );
 
 Map<String, Object?> notificationJson(
   String id, {
   bool read = false,
   bool extra = false,
-}) => {
-  'id': id,
-  'type': 'group.notice',
-  'title': 'عنوان اعلان',
-  'message': 'متن اعلان',
-  'url': '/legacy/$id',
-  'link': {
-    'version': 1,
-    'route': 'group.detail',
-    'params': {'group_id': 42},
-    'fallback_url': 'https://earthcoop.ir/groups/42',
-  },
-  'context': {'group_id': 42},
-  'read': read,
-  'read_at': read ? '2026-09-29T01:00:00.000Z' : null,
-  'created_at': '2026-09-29T00:00:00.000Z',
-  if (extra) 'future_field': true,
-};
+}) =>
+    {
+      'id': id,
+      'type': 'group.notice',
+      'title': 'عنوان اعلان',
+      'message': 'متن اعلان',
+      'url': '/legacy/$id',
+      'link': {
+        'version': 1,
+        'route': 'group.detail',
+        'params': {'group_id': 42},
+        'fallback_url': 'https://earthcoop.ir/groups/42',
+      },
+      'context': {'group_id': 42},
+      'read': read,
+      'read_at': read ? '2026-09-29T01:00:00.000Z' : null,
+      'created_at': '2026-09-29T00:00:00.000Z',
+      if (extra) 'future_field': true,
+    };
 
 class FakeNotificationPageSource implements NotificationPageSource {
   FakeNotificationPageSource(List<Object> responses) : _responses = responses;
@@ -282,7 +287,7 @@ class SingleBlockingSource implements NotificationPageSource {
 
 class MemoryNotificationProjectionStore implements NotificationProjectionStore {
   MemoryNotificationProjectionStore({List<NotificationDto>? items})
-    : items = items ?? <NotificationDto>[];
+      : items = items ?? <NotificationDto>[];
 
   List<NotificationDto> items;
   String? nextCursor;
