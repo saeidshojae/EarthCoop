@@ -10,7 +10,7 @@ return [
     'center' => [
         'id' => 'center',
         'label_key' => 'langWelcome.docs_footer_center',
-        'href' => "{$docsBaseUrl}/",
+        'href' => "{$docsBaseUrl}/home/",
     ],
 
     'publication_policy' => [
