@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/core/api/api_client.dart';
+import 'package:earthcoop_mobile/core/api/retry_policy.dart';
 import 'package:earthcoop_mobile/core/logging/diagnostics.dart';
 import 'package:earthcoop_mobile/core/push/push_provider_selector.dart';
 import 'package:earthcoop_mobile/core/push/push_registration_service.dart';
@@ -12,6 +13,33 @@ import 'package:earthcoop_mobile/core/push/push_token_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('initial registration can recover after a failed HTTP attempt',
+      () async {
+    final adapter = SequenceHttpAdapter([
+      jsonResponse(503, {
+        'status': 'error',
+        'data': null,
+        'error': {
+          'code': 'unavailable',
+          'message': 'Try later',
+          'retryable': true,
+        },
+        'meta': {'api_version': 'v1'}
+      }),
+      jsonResponse(200, successData(pushData(provider: 'fcm'))),
+    ]);
+    final source = FakePushTokenSource(
+        provider: PushProvider.fcm, initialToken: 'retry-token');
+    final service = PushRegistrationService(
+        apiClient: buildClient(adapter),
+        deviceId: 'device-1',
+        tokenSource: source);
+    await expectLater(service.initialize(), throwsA(anything));
+    expect(await service.initialize(), PushRegistrationStatus.registered);
+    expect(adapter.requests, hasLength(2));
+    expect(source.initializeCalls, 1);
+  });
+
   test('initial token registers once and repeated initialization is idempotent',
       () async {
     final adapter = SequenceHttpAdapter([
@@ -144,6 +172,7 @@ ApiClient buildClient(
     deviceIdProvider: () async => 'device-bound',
     requestIdFactory: () => 'req-push',
     retryDelay: (_) async {},
+    retryPolicy: const RetryPolicy(maxAttempts: 1),
     diagnostics: diagnostics,
   );
 }
