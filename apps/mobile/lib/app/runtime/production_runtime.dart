@@ -288,10 +288,10 @@ class _GroupsRuntimeViewState extends State<_GroupsRuntimeView> {
 
   @override
   Widget build(BuildContext context) => GroupsScreen(
-    state: _controller.state,
-    onOpenGroup: widget.onOpenGroup,
-    onRetry: _controller.load,
-  );
+        state: _controller.state,
+        onOpenGroup: widget.onOpenGroup,
+        onRetry: _controller.load,
+      );
 }
 
 class _GroupDetailRuntimeView extends StatefulWidget {
@@ -318,9 +318,9 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
 
   late final GroupMessageComposerController _composer =
       GroupMessageComposerController(
-        groupId: widget.groupId,
-        sender: widget.sender,
-      );
+    groupId: widget.groupId,
+    sender: widget.sender,
+  );
 
   @override
   void initState() {
@@ -343,10 +343,10 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
 
   @override
   Widget build(BuildContext context) => GroupDetailScreen(
-    state: _controller.state,
-    onRetry: _controller.load,
-    composer: _composer,
-  );
+        state: _controller.state,
+        onRetry: _controller.load,
+        composer: _composer,
+      );
 }
 
 class _NotificationsRuntimeLoader extends StatefulWidget {
@@ -366,30 +366,31 @@ class _NotificationsRuntimeLoaderState
   late Future<NotificationsController> _controller = widget.createController();
   @override
   Widget build(BuildContext context) => FutureBuilder<NotificationsController>(
-    future: _controller,
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        return Scaffold(
-          body: Center(
-            child: TextButton(
-              onPressed: () => setState(() {
-                _controller = widget.createController();
-              }),
-              child: const Text('دریافت اعلان‌ها ممکن نشد. تلاش دوباره'),
-            ),
-          ),
-        );
-      }
-      final controller = snapshot.data;
-      if (controller == null) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
-      return _NotificationsRuntimeView(
-        controller: controller,
-        onOpenLink: widget.onOpenLink,
+        future: _controller,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _controller = widget.createController();
+                  }),
+                  child: const Text('دریافت اعلان‌ها ممکن نشد. تلاش دوباره'),
+                ),
+              ),
+            );
+          }
+          final controller = snapshot.data;
+          if (controller == null) {
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
+          }
+          return _NotificationsRuntimeView(
+            controller: controller,
+            onOpenLink: widget.onOpenLink,
+          );
+        },
       );
-    },
-  );
 }
 
 class _NotificationsRuntimeView extends StatefulWidget {
@@ -435,11 +436,11 @@ class _NotificationsRuntimeViewState extends State<_NotificationsRuntimeView>
 
   @override
   Widget build(BuildContext context) => NotificationsScreen(
-    state: widget.controller.state,
-    onMarkRead: (notification) {
-      unawaited(widget.controller.markRead(notification.id));
-    },
-    onOpenLink: widget.onOpenLink,
-    onRetry: widget.controller.load,
-  );
+        state: widget.controller.state,
+        onMarkRead: (notification) {
+          unawaited(widget.controller.markRead(notification.id));
+        },
+        onOpenLink: widget.onOpenLink,
+        onRetry: widget.controller.load,
+      );
 }

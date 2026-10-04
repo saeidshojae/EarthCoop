@@ -15,7 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('GroupRepository', () {
-    test('list decodes canonical projection, ignores additive fields and caches it', () async {
+    test(
+        'list decodes canonical projection, ignores additive fields and caches it',
+        () async {
       final adapter = RecordingAdapter([
         jsonResponse(200, successEnvelope([groupJson(extra: true)])),
       ]);
@@ -272,46 +274,48 @@ Map<String, Object?> groupJson({
   int id = 42,
   String name = 'مجمع عمومی محله نمونه',
   bool extra = false,
-}) => {
-  'id': id,
-  'name': name,
-  'identity': {
-    'governance_area_id': 7,
-    'dimension_key': 'public',
-    'dimension_value_key': 'assembly',
-  },
-  'membership': {'role': 1, 'role_label': 'فعال', 'status': 1},
-  'members_count': 12,
-  'last_activity_at': '2026-09-29T00:00:00Z',
-  if (extra) 'future_additive_field': {'ignored': true},
-};
+}) =>
+    {
+      'id': id,
+      'name': name,
+      'identity': {
+        'governance_area_id': 7,
+        'dimension_key': 'public',
+        'dimension_value_key': 'assembly',
+      },
+      'membership': {'role': 1, 'role_label': 'فعال', 'status': 1},
+      'members_count': 12,
+      'last_activity_at': '2026-09-29T00:00:00Z',
+      if (extra) 'future_additive_field': {'ignored': true},
+    };
 
 Map<String, Object?> cachedGroupJson() => groupJson(name: 'نسخه ذخیره‌شده');
 
 Map<String, Object?> successEnvelope(Object? data) => {
-  'status': 'success',
-  'data': data,
-  'error': null,
-  'meta': {'api_version': 'v1'},
-  'request_id': 'req-groups-server',
-};
+      'status': 'success',
+      'data': data,
+      'error': null,
+      'meta': {'api_version': 'v1'},
+      'request_id': 'req-groups-server',
+    };
 
 Map<String, Object?> errorEnvelope(
   String code, {
   required bool retryable,
   required int status,
-}) => {
-  'status': 'error',
-  'data': null,
-  'error': {
-    'code': code,
-    'message': code,
-    'details': <String, Object?>{},
-    'retryable': retryable,
-  },
-  'meta': {'api_version': 'v1', 'http_status': status},
-  'request_id': 'req-groups-error',
-};
+}) =>
+    {
+      'status': 'error',
+      'data': null,
+      'error': {
+        'code': code,
+        'message': code,
+        'details': <String, Object?>{},
+        'retryable': retryable,
+      },
+      'meta': {'api_version': 'v1', 'http_status': status},
+      'request_id': 'req-groups-error',
+    };
 
 ResponseBody jsonResponse(int status, Map<String, Object?> body) =>
     ResponseBody.fromString(
@@ -324,7 +328,7 @@ ResponseBody jsonResponse(int status, Map<String, Object?> body) =>
 
 class RecordingAdapter implements HttpClientAdapter {
   RecordingAdapter(Iterable<ResponseBody> responses)
-    : _responses = Queue<ResponseBody>.of(responses);
+      : _responses = Queue<ResponseBody>.of(responses);
 
   final Queue<ResponseBody> _responses;
   final List<RequestOptions> requests = [];
@@ -345,7 +349,7 @@ class RecordingAdapter implements HttpClientAdapter {
 
 class MemoryGroupCache implements GroupProjectionCache {
   MemoryGroupCache({List<Map<String, Object?>>? items})
-    : items = items ?? <Map<String, Object?>>[];
+      : items = items ?? <Map<String, Object?>>[];
 
   List<Map<String, Object?>> items;
 

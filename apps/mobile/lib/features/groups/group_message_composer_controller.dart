@@ -10,8 +10,8 @@ class GroupMessageComposerController extends ChangeNotifier {
     required this.groupId,
     required GroupMessageSender sender,
     String Function()? keyFactory,
-  }) : _sender = sender,
-       _keyFactory = keyFactory ?? _newKey;
+  })  : _sender = sender,
+        _keyFactory = keyFactory ?? _newKey;
   final int groupId;
   final GroupMessageSender _sender;
   final String Function() _keyFactory;

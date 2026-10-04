@@ -25,8 +25,8 @@ class GroupMessageRepository implements GroupMessageSender {
   GroupMessageRepository({
     required ApiClient apiClient,
     required bool Function() isCurrentSession,
-  }) : _apiClient = apiClient,
-       _isCurrentSession = isCurrentSession;
+  })  : _apiClient = apiClient,
+        _isCurrentSession = isCurrentSession;
   final ApiClient _apiClient;
   final bool Function() _isCurrentSession;
 

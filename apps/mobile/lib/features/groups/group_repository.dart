@@ -77,6 +77,7 @@ class GroupRepository {
       '/groups/$id/feed/delta',
       queryParameters: {
         'after_sequence': 0,
+        'window': 'latest',
         'limit': boundedLimit,
       },
       decodeData: GroupFeedPage.fromJson,

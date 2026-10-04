@@ -32,8 +32,7 @@ class GroupDetailScreen extends StatelessWidget {
             ),
         ],
       ),
-      bottomNavigationBar:
-          state.phase == GroupDetailPhase.ready &&
+      bottomNavigationBar: state.phase == GroupDetailPhase.ready &&
               !state.isStale &&
               state.group!.membership.role != 0 &&
               state.group!.membership.status == 1 &&

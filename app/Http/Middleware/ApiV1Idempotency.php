@@ -100,7 +100,8 @@ class ApiV1Idempotency
         try {
             $response = $next($request);
 
-            if ($response instanceof JsonResponse && $response->getStatusCode() < 500) {
+            // A temporary throttle must not permanently poison an unchanged retry intent.
+            if ($response instanceof JsonResponse && $response->getStatusCode() < 500 && $response->getStatusCode() !== 429) {
                 DB::table('api_v1_idempotency_keys')
                     ->where('actor_key', $actorKey)
                     ->where('scope', $scope)

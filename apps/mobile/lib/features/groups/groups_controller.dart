@@ -11,13 +11,13 @@ class GroupViewFailure {
   const GroupViewFailure._(this.kind, this.message);
 
   const GroupViewFailure.retryable(String message)
-    : this._(GroupViewFailureKind.retryable, message);
+      : this._(GroupViewFailureKind.retryable, message);
 
   const GroupViewFailure.forbidden(String message)
-    : this._(GroupViewFailureKind.forbidden, message);
+      : this._(GroupViewFailureKind.forbidden, message);
 
   const GroupViewFailure.nonRetryable(String message)
-    : this._(GroupViewFailureKind.nonRetryable, message);
+      : this._(GroupViewFailureKind.nonRetryable, message);
 
   final GroupViewFailureKind kind;
   final String message;
@@ -40,14 +40,14 @@ class GroupsState {
   const GroupsState.empty() : this._(phase: GroupsPhase.empty);
 
   GroupsState.ready(List<GroupDto> items, {bool isStale = false})
-    : this._(
-        phase: GroupsPhase.ready,
-        items: List<GroupDto>.unmodifiable(items),
-        isStale: isStale,
-      );
+      : this._(
+          phase: GroupsPhase.ready,
+          items: List<GroupDto>.unmodifiable(items),
+          isStale: isStale,
+        );
 
   const GroupsState.failure(GroupViewFailure failure)
-    : this._(phase: GroupsPhase.failure, failure: failure);
+      : this._(phase: GroupsPhase.failure, failure: failure);
 
   final GroupsPhase phase;
   final List<GroupDto> items;
@@ -77,16 +77,16 @@ class GroupDetailState {
     List<GroupFeedEvent> activity = const <GroupFeedEvent>[],
     String? activityFailure,
   }) : this._(
-         phase: GroupDetailPhase.ready,
-         group: group,
-         isStale: isStale,
-         unreadCount: unreadCount,
-         activity: activity,
-         activityFailure: activityFailure,
-       );
+          phase: GroupDetailPhase.ready,
+          group: group,
+          isStale: isStale,
+          unreadCount: unreadCount,
+          activity: activity,
+          activityFailure: activityFailure,
+        );
 
   const GroupDetailState.failure(GroupViewFailure failure)
-    : this._(phase: GroupDetailPhase.failure, failure: failure);
+      : this._(phase: GroupDetailPhase.failure, failure: failure);
 
   final GroupDetailPhase phase;
   final GroupDto? group;

@@ -28,7 +28,9 @@ void main() {
     expect(adapter.requests.single.data, {'message': 'سلام'});
   });
 
-  test('failed explicit send retains draft and key for retry, then clears on success', () async {
+  test(
+      'failed explicit send retains draft and key for retry, then clears on success',
+      () async {
     final sender = FakeSender();
     var keys = 0;
     final composer = GroupMessageComposerController(
