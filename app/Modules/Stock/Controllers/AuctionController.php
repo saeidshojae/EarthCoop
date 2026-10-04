@@ -3,11 +3,16 @@ namespace App\Modules\Stock\Controllers;
 
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 class AuctionController extends Controller
 {
+    public function __construct(private readonly TemporalService $temporal)
+    {
+    }
+
     public function index()
     {
         $auctions = Auction::orderByDesc('id')->get();
@@ -556,8 +561,8 @@ class AuctionController extends Controller
                 $auction->shares_count,
                 $auction->base_price,
                 $auction->status,
-                $auction->start_time ? verta($auction->start_time)->format('Y/m/d H:i') : '',
-                $auction->ends_at ? verta($auction->ends_at)->format('Y/m/d H:i') : '',
+                $auction->start_time ? $this->temporal->dateTime($auction->start_time, style: 'short') : '',
+                $auction->ends_at ? $this->temporal->dateTime($auction->ends_at, style: 'short') : '',
             ]);
             fputcsv($handle, []);
             fputcsv($handle, ['BID_ID', 'USER_ID', 'PRICE', 'QUANTITY', 'STATUS', 'CREATED_AT']);
@@ -576,7 +581,7 @@ class AuctionController extends Controller
                     $b->price,
                     $b->quantity,
                     $b->status,
-                    $b->created_at ? verta($b->created_at)->format('Y/m/d H:i') : '',
+                    $b->created_at ? $this->temporal->dateTime($b->created_at, style: 'short') : '',
                 ]);
             }
             fclose($handle);
