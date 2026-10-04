@@ -27,11 +27,12 @@ class GroupMessageContractTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['broadcasting.default' => 'null', 'group-chat.features.feed_sequence_v1' => true,
+        config(['broadcasting.default' => 'null', 'group-chat.features.feed_sequence_v1' => true, 'group-chat.features.delta_sync_v1' => true,
             'group-chat.features.transactional_outbox_v1' => false]);
         Event::fake([\App\Events\MessageCreated::class]);
         $this->member = User::factory()->create(['status' => 'active', 'is_system' => false, 'password' => Hash::make('message-password')]);
-        $this->group = Group::create(['name' => 'Native messages', 'group_type' => 'test', 'is_open' => true]);
+        $area = \App\Models\GovernanceArea::create(['key' => 'native-message-test', 'country_code' => 'IR', 'governance_type' => 'city', 'area_kind' => 'official', 'canonical_name' => 'Test', 'rank' => 7, 'status' => 'active']);
+        $this->group = Group::create(['name' => 'Native messages', 'group_type' => 'test', 'is_open' => true, 'governance_area_id' => $area->id, 'dimension_key' => 'public', 'dimension_value_key' => 'all']);
         GroupUser::create(['group_id' => $this->group->id, 'user_id' => $this->member->id, 'role' => 1, 'status' => 1]);
         $this->mock(MembershipParticipationEligibilityService::class)->shouldReceive('status')->andReturn(MembershipParticipationEligibilityService::ELIGIBLE);
         $login = $this->postJson('/api/v1/auth/session', ['email' => $this->member->email, 'password' => 'message-password',
@@ -56,6 +57,20 @@ class GroupMessageContractTest extends TestCase
         $this->assertSame(1, Message::where('group_id', $this->group->id)->count());
         $this->assertStringNotContainsString('<script>', Message::first()->message);
         $this->assertDatabaseHas('group_feed_items', ['group_id' => $this->group->id, 'content_id' => $first->json('data.id')]);
+    }
+
+    public function test_latest_feed_window_includes_new_messages_after_a_long_history(): void
+    {
+        $feed = app(\App\Services\GroupChat\GroupFeedService::class);
+        for ($i = 1; $i <= 25; $i++) {
+            $message = Message::create(['group_id' => $this->group->id, 'user_id' => $this->member->id, 'message' => 'message-'.$i]);
+            $feed->record($this->group->id, 'message', $message->id, $this->member->id, now());
+        }
+        Auth::forgetGuards();
+        $this->withToken($this->token)->withHeaders(['X-Device-ID' => $this->device])
+            ->getJson('/api/v1/groups/'.$this->group->id.'/feed/delta?window=latest&limit=20')
+            ->assertOk()->assertJsonCount(20, 'data.events')->assertJsonPath('data.latest_sequence', 25)
+            ->assertJsonPath('data.events.0.sequence', 6)->assertJsonPath('data.has_more', false);
     }
 
     public function test_observer_cannot_send_even_in_open_group(): void
