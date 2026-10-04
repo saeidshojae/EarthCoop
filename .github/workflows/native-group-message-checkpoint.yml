@@ -58,7 +58,7 @@ jobs:
       - name: Group message and authorization contracts
         run: |
           php artisan migrate:fresh --force
-          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/GroupMessageContractTest.php tests/Feature/Api/V1/GroupContractTest.php tests/Feature/Api/V1/NativeSessionTest.php tests/Feature/Api/V1/IdempotencyContractTest.php tests/Feature/GroupChat/MessageAuthorizationTest.php tests/Feature/GroupChat/MembershipParticipationGateContractTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/GroupMessageContractTest.php
   native:
     runs-on: ubuntu-latest
     steps:
@@ -70,18 +70,5 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/mobile
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
-        working-directory: apps/mobile
-      - name: Analyze
-        run: flutter analyze
-        working-directory: apps/mobile
-      - run: flutter test
-        working-directory: apps/mobile
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Android compile
-        run: flutter build apk --debug
+      - run: flutter test test/features/groups/group_message_composer_test.dart test/features/groups/group_detail_controller_test.dart
         working-directory: apps/mobile

@@ -73,6 +73,12 @@ class GroupMessageContractTest extends TestCase
             ->assertJsonPath('data.events.0.sequence', 6)->assertJsonPath('data.has_more', false);
     }
 
+    public function test_zero_is_a_valid_non_empty_text_message(): void
+    {
+        $this->send(['message' => '0'])->assertCreated()->assertJsonPath('data.message', '0');
+        $this->assertSame(1, Message::count());
+    }
+
     public function test_observer_cannot_send_even_in_open_group(): void
     {
         GroupUser::where('group_id', $this->group->id)->where('user_id', $this->member->id)->update(['role' => 0]);
