@@ -168,7 +168,7 @@
 
                             <td class="px-4 py-2 text-slate-600 dark:text-slate-400">
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($log->created_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$log->created_at" style="short" />
 
                             </td>
 
