@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -66,6 +67,22 @@ class AppDatabase extends GeneratedDatabase {
     return AppDatabase.file(File(p.join(directory.path, 'earthcoop.sqlite')));
   }
 
+  static Future<AppDatabase> openForAccount({
+    required int userId,
+    required String deviceId,
+  }) async {
+    final directory = await getApplicationSupportDirectory();
+    final device = base64Url.encode(utf8.encode(deviceId));
+    return AppDatabase.file(
+      File(
+        p.join(
+          directory.path,
+          'earthcoop-notifications-$userId-$device.sqlite',
+        ),
+      ),
+    );
+  }
+
   @override
   int get schemaVersion => 1;
 
@@ -98,7 +115,9 @@ class AppDatabase extends GeneratedDatabase {
       'SELECT payload_json, fetched_at_ms, had_authenticated_session '
       'FROM app_bootstrap_snapshot WHERE singleton_id = 1 LIMIT 1',
     ).getSingleOrNull();
-    if (row == null) return null;
+    if (row == null) {
+      return null;
+    }
 
     return BootstrapSnapshotRecord(
       payloadJson: row.read<String>('payload_json'),

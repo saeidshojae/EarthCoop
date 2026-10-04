@@ -23,7 +23,9 @@ class OfflineReplayEngine {
   bool _running = false;
 
   Future<void> replayEligible() async {
-    if (_running) return;
+    if (_running) {
+      return;
+    }
     final bootstrap = _bootstrapState();
     final session = _sessionState();
     if (!bootstrap.canReplayQueuedMutations ||
@@ -35,6 +37,14 @@ class OfflineReplayEngine {
     try {
       final items = await _queue.pending();
       for (final operation in items) {
+        final current = _sessionState();
+        if (!_bootstrapState().canReplayQueuedMutations ||
+            current.phase != SessionPhase.authenticated ||
+            current.session?.user.id != session.session?.user.id ||
+            current.session?.device.id != session.session?.device.id ||
+            current.session?.token != session.session?.token) {
+          break;
+        }
         try {
           final executor = _registry.executorFor(operation);
           await executor(operation);

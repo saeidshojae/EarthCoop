@@ -5,10 +5,14 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/core/api/api_client.dart';
+import 'package:earthcoop_mobile/core/api/api_error.dart';
 import 'package:earthcoop_mobile/core/api/retry_policy.dart';
 import 'package:earthcoop_mobile/core/offline/offline_queue_repository.dart';
 import 'package:earthcoop_mobile/features/notifications/notification_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earthcoop_mobile/features/notifications/notification_dto.dart';
+import 'package:earthcoop_mobile/features/notifications/notification_sync_service.dart';
+import 'notification_sync_service_test.dart' as fixtures;
 
 void main() {
   test('offline read queues once and applies optimistic local state', () async {
@@ -39,6 +43,100 @@ void main() {
     expect(pending.single.idempotencyKey, 'idem-read-1');
   });
 
+  test(
+    'failed online read retains intent and original key for reconnect',
+    () async {
+      final adapter = RecordingAdapter([
+        jsonResponse(503, {
+          'status': 'error',
+          'data': null,
+          'error': {
+            'code': 'temporarily_unavailable',
+            'message': 'retry',
+            'retryable': true,
+          },
+          'meta': {'api_version': 'v1'},
+          'request_id': 'req-server',
+        }),
+      ]);
+      final queue = MemoryOfflineQueueRepository();
+      final repository = NotificationRepository(
+        apiClient: buildClient(adapter),
+        offlineQueue: queue,
+      );
+
+      final result = await repository.markRead(
+        'n-1',
+        idempotencyKey: 'original-key',
+        networkAllowed: true,
+      );
+
+      expect(result, isNull);
+      final pending = await queue.pending();
+      expect(pending, hasLength(1));
+      expect(pending.single.idempotencyKey, 'original-key');
+      expect(pending.single.payload['notification_id'], 'n-1');
+    },
+  );
+
+  test('forbidden online read is never queued for retry', () async {
+    final adapter = RecordingAdapter([
+      jsonResponse(403, {
+        'status': 'error',
+        'data': null,
+        'error': {
+          'code': 'forbidden',
+          'message': 'forbidden',
+          'retryable': false,
+        },
+        'meta': {'api_version': 'v1'},
+        'request_id': 'req-server',
+      }),
+    ]);
+    final queue = MemoryOfflineQueueRepository();
+    final repository = NotificationRepository(
+      apiClient: buildClient(adapter),
+      offlineQueue: queue,
+    );
+    await expectLater(
+      repository.markRead('n-1', idempotencyKey: 'key', networkAllowed: true),
+      throwsA(isA<ApiFailure>()),
+    );
+    expect(await queue.all(), isEmpty);
+  });
+
+  for (final read in [false, true]) {
+    test(
+        'delayed ${read ? "read" : "page"} response cannot restore projection after logout',
+        () async {
+      final body = successEnvelope(read
+          ? notificationJson('n-1', read: true)
+          : [notificationJson('n-1', read: false)]);
+      if (!read) {
+        body['meta'] = <String, Object?>{
+          'api_version': 'v1',
+          'pagination': {'has_more': false, 'next_cursor': null}
+        };
+      }
+      final adapter = DelayedAdapter([jsonResponse(200, body)]);
+      var current = true;
+      final repository = NotificationRepository(
+          apiClient: buildClient(adapter), isCurrentSession: () => current);
+      final store = fixtures.MemoryNotificationProjectionStore(items: [
+        NotificationDto.fromJson(notificationJson('n-1', read: false))
+      ]);
+      final service = NotificationSyncService(source: repository, store: store);
+      final request = read ? service.markRead('n-1') : service.syncOnResume();
+      await adapter.started.future;
+      current = false;
+      await store.replaceAll([]);
+      final assertion = expectLater(request, throwsA(isA<ApiFailure>()));
+      adapter.release.complete();
+      await assertion;
+      expect(await store.readAll(), isEmpty);
+    });
+  }
+
   test('replay read posts with the original idempotency key', () async {
     final adapter = RecordingAdapter([
       jsonResponse(200, successEnvelope(notificationJson('n-1', read: true))),
@@ -61,7 +159,9 @@ void main() {
     expect(adapter.requests.single.method, 'POST');
     expect(adapter.requests.single.path, '/notifications/n-1/read');
     expect(
-        adapter.requests.single.headers['Idempotency-Key'], 'idem-preserved');
+      adapter.requests.single.headers['Idempotency-Key'],
+      'idem-preserved',
+    );
   });
 }
 
@@ -125,4 +225,17 @@ class RecordingAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+class DelayedAdapter extends RecordingAdapter {
+  DelayedAdapter(super.responses);
+  final started = Completer<void>();
+  final release = Completer<void>();
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    started.complete();
+    await release.future;
+    return super.fetch(options, requestStream, cancelFuture);
+  }
 }

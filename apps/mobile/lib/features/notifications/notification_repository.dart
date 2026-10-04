@@ -1,4 +1,5 @@
 import '../../core/api/api_client.dart';
+import '../../core/api/api_error.dart';
 import '../../core/api/request_context.dart';
 import '../../core/offline/offline_operation.dart';
 import '../../core/offline/offline_queue_repository.dart';
@@ -37,17 +38,33 @@ class NotificationRepository
   NotificationRepository({
     required ApiClient apiClient,
     OfflineQueueRepository? offlineQueue,
+    bool Function()? isCurrentSession,
     OptimisticNotificationRead? optimisticMarkRead,
   })  : _apiClient = apiClient,
         _offlineQueue = offlineQueue,
+        _isCurrentSession = isCurrentSession ?? (() => true),
         _optimisticMarkRead = optimisticMarkRead;
 
   final ApiClient _apiClient;
   final OfflineQueueRepository? _offlineQueue;
+  final bool Function() _isCurrentSession;
+
+  void _checkSession() {
+    if (!_isCurrentSession()) {
+      throw const ApiFailure(
+        code: 'session_changed',
+        message: 'Session changed.',
+        retryable: false,
+        httpStatus: 401,
+      );
+    }
+  }
+
   final OptimisticNotificationRead? _optimisticMarkRead;
 
   @override
   Future<NotificationPage> fetchPage({String? cursor, int limit = 20}) async {
+    _checkSession();
     if (limit < 1 || limit > 50) {
       throw ArgumentError.value(limit, 'limit', 'must be between 1 and 50');
     }
@@ -61,6 +78,7 @@ class NotificationRepository
       decodeData: _decodeItems,
     );
 
+    _checkSession();
     final paginationRaw = response.meta['pagination'];
     if (paginationRaw is! Map) {
       throw const FormatException(
@@ -94,6 +112,7 @@ class NotificationRepository
     required String idempotencyKey,
     required bool networkAllowed,
   }) async {
+    _checkSession();
     if (notificationId.isEmpty) {
       throw ArgumentError.value(notificationId, 'notificationId');
     }
@@ -117,12 +136,27 @@ class NotificationRepository
       return null;
     }
 
-    final notification = await _postMarkRead(
-      notificationId,
-      idempotencyKey: idempotencyKey,
-    );
-    await _optimisticMarkRead?.call(notificationId);
-    return notification;
+    try {
+      final notification = await _postMarkRead(
+        notificationId,
+        idempotencyKey: idempotencyKey,
+      );
+      await _optimisticMarkRead?.call(notificationId);
+      return notification;
+    } on ApiFailure catch (failure) {
+      if (!failure.retryable ||
+          _offlineQueue == null ||
+          failure.httpStatus == 401 ||
+          failure.httpStatus == 403) {
+        rethrow;
+      }
+      await markRead(
+        notificationId,
+        idempotencyKey: idempotencyKey,
+        networkAllowed: false,
+      );
+      return null;
+    }
   }
 
   Future<void> replayMarkRead(OfflineOperation operation) async {
@@ -133,9 +167,7 @@ class NotificationRepository
     }
     final notificationId = operation.payload['notification_id'];
     if (notificationId is! String || notificationId.isEmpty) {
-      throw const FormatException(
-        'notification.mark_read payload is invalid',
-      );
+      throw const FormatException('notification.mark_read payload is invalid');
     }
     await _postMarkRead(
       notificationId,
@@ -148,11 +180,13 @@ class NotificationRepository
     String notificationId, {
     required String idempotencyKey,
   }) async {
+    _checkSession();
     final response = await _apiClient.post<NotificationDto>(
       '/notifications/$notificationId/read',
       context: RequestContext(idempotencyKey: idempotencyKey),
       decodeData: NotificationDto.fromJson,
     );
+    _checkSession();
     return response.data;
   }
 

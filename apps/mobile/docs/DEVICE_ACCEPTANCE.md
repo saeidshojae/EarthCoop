@@ -87,3 +87,30 @@ On a macOS runner with supported Xcode, build the iOS target from the exact cand
 ### Physical delivery gate
 
 When device/signing access exists, repeat the relevant session, APNs delivery, notification recovery/deep-link, token rotation, and logout/revocation checks. Until then this gate stays NOT EXECUTED; it must never be inferred from Android results.
+
+
+## Pending user checks — 2026-10-04
+
+Confirmed on installed `1.0.0+5`: update over the previous APK without uninstall,
+81 groups including pending cards, and opening group details. Do not repeat these
+checks without a new regression reason.
+
+**OPEN: group activity retest.** User enabled
+`GROUP_CHAT_FEATURE_FEED_SEQUENCE_V1=true` and
+`GROUP_CHAT_FEATURE_DELTA_SYNC_V1=true`, then cleared caches. Phone is temporarily
+unavailable. Reopen the same group when it is available; the previous message was
+an error (“فعالیت‌های گروه فعلاً دریافت نشد”), not a verified empty feed.
+Do not mark this issue resolved until that check.
+
+The next candidate is `1.0.0+6`. Its notification-read queue is connected to the
+production screen, persists per account/device, retains retryable failed reads,
+and replays after a fresh bootstrap on opening Notifications, retrying that
+screen, or returning to the foreground while that screen is open. A sender's own
+activity does not provide a recipient notification; use another approved member
+when testing real notification navigation.
+
+For the offline-read device check, load an unread notification while online,
+disconnect, mark it read, reconnect, and reopen/foreground Notifications. Confirm
+the server read state persists after refreshing. Cold offline startup, real push
+delivery, and media upload remain separate unaccepted gates. This checkpoint does
+not claim those capabilities are complete.
