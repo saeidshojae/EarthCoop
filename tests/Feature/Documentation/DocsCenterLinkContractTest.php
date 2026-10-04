@@ -11,7 +11,7 @@ class DocsCenterLinkContractTest extends TestCase
         $links = require config_path('docs-links.php');
 
         $this->assertSame('https://docs.earthcoop.ir', $links['base_url']);
-        $this->assertSame('https://docs.earthcoop.ir/', $links['center']['href']);
+        $this->assertSame('https://docs.earthcoop.ir/home/', $links['center']['href']);
         $this->assertSame('https://docs.earthcoop.ir/documents/', $links['foundational_index']['href']);
         $this->assertSame('https://docs.earthcoop.ir/documents/publication-policy/', $links['publication_policy']['href']);
         $this->assertSame('https://github.com/saeidshojae/EarthCoop-docs', $links['github']['href']);
