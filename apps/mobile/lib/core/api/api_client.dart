@@ -84,7 +84,10 @@ class ApiClient {
       }
       final bytes = BytesBuilder(copy: false);
       await for (final chunk in body.stream) {
-        cancelToken.throwIfCancellationRequested();
+        if (cancelToken.isCancelled) {
+          throw const ApiFailure(
+              code: 'cancelled', message: '', retryable: false);
+        }
         if (bytes.length + chunk.length > maxBytes) {
           throw const ApiFailure(
               code: 'attachment_too_large', message: '', retryable: false);
@@ -94,7 +97,10 @@ class ApiClient {
             ? (bytes.length / total).clamp(0.0, 1.0)
             : null);
       }
-      cancelToken.throwIfCancellationRequested();
+      if (cancelToken.isCancelled) {
+        throw const ApiFailure(
+            code: 'cancelled', message: '', retryable: false);
+      }
       if (total != null && total >= 0 && bytes.length != total) {
         throw const ApiFailure(
             code: 'attachment_incomplete', message: '', retryable: true);
