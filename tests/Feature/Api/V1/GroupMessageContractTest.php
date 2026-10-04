@@ -59,6 +59,26 @@ class GroupMessageContractTest extends TestCase
         $this->assertDatabaseHas('group_feed_items', ['group_id' => $this->group->id, 'content_id' => $first->json('data.id')]);
     }
 
+    public function test_multiline_text_keeps_exact_line_breaks_in_acknowledgement_and_feed(): void
+    {
+        $text = "first\n\nsecond & <literal>";
+        $this->send(['message' => $text])->assertCreated()->assertJsonPath('data.message', $text);
+        Auth::forgetGuards();
+        $this->withToken($this->token)->withHeader('X-Device-ID', $this->device)
+            ->getJson('/api/v1/groups/'.$this->group->id.'/feed/delta?window=latest')
+            ->assertOk()->assertJsonPath('data.events.0.payload.message', $text);
+    }
+
+    public function test_legacy_break_only_html_keeps_one_line_break_in_native_feed(): void
+    {
+        $message = Message::create(['group_id' => $this->group->id, 'user_id' => $this->member->id, 'message' => 'first<br />second']);
+        app(\App\Services\GroupChat\GroupFeedService::class)->record($this->group->id, 'message', $message->id, $this->member->id, now());
+        Auth::forgetGuards();
+        $this->withToken($this->token)->withHeader('X-Device-ID', $this->device)
+            ->getJson('/api/v1/groups/'.$this->group->id.'/feed/delta?window=latest')
+            ->assertOk()->assertJsonPath('data.events.0.payload.message', "first\nsecond");
+    }
+
     public function test_latest_feed_window_includes_new_messages_after_a_long_history(): void
     {
         $feed = app(\App\Services\GroupChat\GroupFeedService::class);
