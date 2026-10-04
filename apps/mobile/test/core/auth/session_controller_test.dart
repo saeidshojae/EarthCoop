@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:earthcoop_mobile/core/auth/session_controller.dart';
 import 'package:earthcoop_mobile/core/auth/session_models.dart';
 import 'package:earthcoop_mobile/core/auth/session_repository.dart';
@@ -6,6 +8,40 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SessionController', () {
+    test('authenticated hook follows restore login and credential rotation',
+        () async {
+      final seen = <String>[];
+      final repository = FakeSessionRepository(
+        restored: sampleSession(token: 'restored'),
+        loginResult: sampleSession(token: 'login'),
+        rotateResult: sampleSession(token: 'rotated'),
+      );
+      final controller = SessionController(
+          repository: repository,
+          onAuthenticated: (session) async => seen.add(session.token));
+      await controller.restore();
+      await controller.login(
+          email: 'member@example.test',
+          password: 'secret',
+          device: sampleDeviceContext());
+      await controller.rotate();
+      expect(seen, ['restored', 'login', 'rotated']);
+    });
+
+    test('pending or failed push hook cannot delay or reject authentication',
+        () async {
+      final pending = Completer<void>();
+      final controller = SessionController(
+        repository: FakeSessionRepository(restored: sampleSession()),
+        onAuthenticated: (_) => pending.future,
+      );
+      await controller.restore().timeout(const Duration(seconds: 1));
+      expect(controller.state.phase, SessionPhase.authenticated);
+      pending.completeError(StateError('provider unavailable'));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.state.phase, SessionPhase.authenticated);
+    });
+
     test(
         'restore validates stored credentials before entering authenticated state',
         () async {

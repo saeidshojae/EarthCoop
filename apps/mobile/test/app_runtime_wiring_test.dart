@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:earthcoop_mobile/app/app.dart';
@@ -12,6 +13,76 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('runtime is retained across rebuild and disposed with app',
+      (tester) async {
+    var created = 0;
+    var disposed = 0;
+    var foreground = 0;
+    final session = SessionController(repository: _FakeSessionRepository())
+      ..state = const SessionState.unauthenticated();
+    final runtime = MobileAppRuntime(
+        bootstrap: const BootstrapState.compatible(),
+        sessionController: session,
+        loginController: LoginController(
+            sessionController: session,
+            deviceContext: () => const DeviceContext(
+                platform: 'android',
+                appVersion: '1',
+                locale: 'fa',
+                timezone: 'Asia/Tehran',
+                pushCapable: true)),
+        onForeground: () async {
+          foreground++;
+        },
+        onDispose: () async {
+          disposed++;
+        });
+    Future<MobileAppRuntime> factory() async {
+      created++;
+      return runtime;
+    }
+
+    await tester.pumpWidget(EarthCoopApp(runtimeFactory: factory));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(EarthCoopApp(runtimeFactory: factory));
+    await tester.pumpAndSettle();
+    expect(created, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(foreground, 1);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(disposed, 1);
+  });
+
+  testWidgets(
+      'late runtime completion after app removal disposes its resources',
+      (tester) async {
+    var disposed = 0;
+    final pending = Completer<MobileAppRuntime>();
+    final session = SessionController(repository: _FakeSessionRepository())
+      ..state = const SessionState.unauthenticated();
+    await tester.pumpWidget(EarthCoopApp(runtimeFactory: () => pending.future));
+    await tester.pumpWidget(const SizedBox());
+    pending.complete(MobileAppRuntime(
+        bootstrap: const BootstrapState.compatible(),
+        sessionController: session,
+        loginController: LoginController(
+            sessionController: session,
+            deviceContext: () => const DeviceContext(
+                platform: 'android',
+                appVersion: '1',
+                locale: 'fa',
+                timezone: 'Asia/Tehran',
+                pushCapable: true)),
+        onDispose: () async {
+          disposed++;
+        }));
+    await tester.pump();
+    expect(disposed, 1);
+  });
+
   test('production runtime derives version from installed package metadata',
       () {
     final source = File(
