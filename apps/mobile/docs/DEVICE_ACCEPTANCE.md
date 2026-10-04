@@ -193,3 +193,24 @@ See PUSH_CONFIGURATION_CHECKPOINT.md and GROUP_ATTACHMENT_READ_CHECKPOINT.md.
 Automated +8 receipt: run 37204210736 passed 174 Flutter tests, 62 server contracts,
 5 configuration tests and stable-signed APK build. Artifact 11304436534 is retained
 until 2026-11-03. FCM configuration was unavailable during this build.
+
+
+## Current candidate +9 — existing attachment download
+
++9 supersedes +8 for the next phone test. Group file activities show filename and
+an authenticated bounded download action, progress/cancellation and the Android
+save destination chooser. See GROUP_ATTACHMENT_DOWNLOAD_CHECKPOINT.md for scope
+and the exact pending steps. Do not retest earlier candidates separately.
+
+The server API was merged independently through PR #193; its deployment receipt
+will be recorded after the deployment run completes. No migrations are added.
+New attachment uploads and real provider delivery remain open. Previously pending
+composer, same-group feed and notification-read checks remain pending.
+
+
++9 receipt: run 37210614102 passed 187 Flutter tests, formatting (112 files),
+analyzer and stable-signed APK build. Artifact 11306372747 expires 2026-11-03.
+PR #193 production deployment 37210355865 passed Safety, Strict Readiness and FTP.
+The workspace's anonymous route probe returned 502 and did not prove live API
+reachability; authorized device download acceptance stays OPEN. No migration is
+required. FCM client configuration remains unavailable in this candidate.

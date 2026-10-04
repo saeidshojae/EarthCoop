@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -37,6 +38,82 @@ class ApiClient {
   final RetryDelay _retryDelay;
   final RetryPolicy _retryPolicy;
   final DiagnosticsSink _diagnostics;
+
+  Future<Uint8List> downloadAttachment(
+    String path, {
+    required CancelToken cancelToken,
+    void Function(double?)? onProgress,
+    int maxBytes = 20 * 1024 * 1024,
+  }) async {
+    if (!RegExp(r'^/groups/[1-9][0-9]*/messages/[1-9][0-9]*/attachment$')
+        .hasMatch(path)) {
+      throw ArgumentError('Invalid attachment endpoint');
+    }
+    final request = await _requestMetadata(null);
+    if (request.headers['Authorization'] == null ||
+        request.headers['X-Device-ID'] == null) {
+      throw const ApiFailure(
+          code: 'unauthenticated',
+          message: '',
+          retryable: false,
+          httpStatus: 401);
+    }
+    try {
+      final response = await _dio.get<ResponseBody>(path,
+          cancelToken: cancelToken,
+          options: Options(
+              responseType: ResponseType.stream,
+              followRedirects: false,
+              validateStatus: (_) => true,
+              headers: {
+                ...request.headers,
+                'Accept': 'application/octet-stream'
+              }));
+      final body = response.data!;
+      final total = int.tryParse(
+          response.headers.value(Headers.contentLengthHeader) ?? '');
+      if (response.statusCode != 200 || (total != null && total > maxBytes)) {
+        await body.stream.listen((_) {}).cancel();
+        throw ApiFailure(
+            code: total != null && total > maxBytes
+                ? 'attachment_too_large'
+                : 'attachment_unavailable',
+            message: '',
+            retryable: false,
+            httpStatus: response.statusCode);
+      }
+      final bytes = BytesBuilder(copy: false);
+      await for (final chunk in body.stream) {
+        if (cancelToken.isCancelled) {
+          throw const ApiFailure(
+              code: 'cancelled', message: '', retryable: false);
+        }
+        if (bytes.length + chunk.length > maxBytes) {
+          throw const ApiFailure(
+              code: 'attachment_too_large', message: '', retryable: false);
+        }
+        bytes.add(chunk);
+        onProgress?.call(total != null && total > 0
+            ? (bytes.length / total).clamp(0.0, 1.0)
+            : null);
+      }
+      if (cancelToken.isCancelled) {
+        throw const ApiFailure(
+            code: 'cancelled', message: '', retryable: false);
+      }
+      if (total != null && total >= 0 && bytes.length != total) {
+        throw const ApiFailure(
+            code: 'attachment_incomplete', message: '', retryable: true);
+      }
+      return bytes.takeBytes();
+    } on DioException catch (error) {
+      throw ApiFailure(
+          code: CancelToken.isCancel(error) ? 'cancelled' : 'network_error',
+          message: '',
+          retryable: !CancelToken.isCancel(error),
+          httpStatus: error.response?.statusCode);
+    }
+  }
 
   Future<ApiSuccess<T>> get<T>(
     String path, {

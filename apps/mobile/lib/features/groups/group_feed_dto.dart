@@ -1,9 +1,12 @@
+import 'group_attachment.dart';
+
 enum GroupFeedKind { message, file, voice, post, poll, comment, unknown }
 
 class GroupFeedEvent {
   const GroupFeedEvent({
     required this.sequence,
     required this.kind,
+    this.attachment,
     this.sender,
     this.message,
     this.title,
@@ -45,6 +48,7 @@ class GroupFeedEvent {
           options: options,
         );
 
+  final GroupAttachment? attachment;
   final int sequence;
   final GroupFeedKind kind;
   final String? sender;
@@ -72,6 +76,7 @@ class GroupFeedEvent {
         return GroupFeedEvent(
           sequence: sequence,
           kind: GroupFeedKind.file,
+          attachment: GroupAttachment.fromJson(payload['attachment']),
           sender: _nullableString(payload['sender']),
           message: _nullableString(payload['message']),
         );

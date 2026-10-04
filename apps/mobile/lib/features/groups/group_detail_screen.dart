@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'group_feed_dto.dart';
+import 'group_attachment.dart';
+import 'group_attachment_button.dart';
 import 'group_message_composer.dart';
 import 'group_message_composer_controller.dart';
 import 'groups_controller.dart';
@@ -11,8 +13,10 @@ class GroupDetailScreen extends StatelessWidget {
     required this.state,
     this.onRetry,
     this.composer,
+    this.downloadAttachment,
   });
 
+  final AttachmentDownload? downloadAttachment;
   final GroupDetailState state;
   final VoidCallback? onRetry;
   final GroupMessageComposerController? composer;
@@ -121,7 +125,9 @@ class GroupDetailScreen extends StatelessWidget {
               ...state.activity.map(
                 (event) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: _ActivityCard(event: event),
+                  child: _ActivityCard(
+                      event: event,
+                      download: state.isStale ? null : downloadAttachment),
                 ),
               ),
           ],
@@ -140,7 +146,9 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _ActivityCard extends StatelessWidget {
-  const _ActivityCard({required this.event});
+  const _ActivityCard({required this.event, this.download});
+
+  final AttachmentDownload? download;
 
   final GroupFeedEvent event;
 
@@ -163,6 +171,16 @@ class _ActivityCard extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge,
         );
         _appendText(children, event.message ?? 'فایل ارسال شد.');
+        final attachment = event.attachment;
+        if (attachment != null) {
+          children.add(Text(attachment.fileName));
+          if (download != null) {
+            children.add(GroupAttachmentButton(
+                key: ValueKey(attachment.path),
+                attachment: attachment,
+                download: download!));
+          }
+        }
         break;
       case GroupFeedKind.voice:
         _appendText(

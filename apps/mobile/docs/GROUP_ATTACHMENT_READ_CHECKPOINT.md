@@ -49,3 +49,11 @@ expires 2026-11-03. Artifact ZIP digest (not APK digest):
 `df5f02847e86bbff86ea76b5770d490ebe60032de57fb1a7ac16eb47d3dba36e`.
 Build output explicitly reported FCM client configuration unavailable. No real
 push delivery or device result is claimed. The hosted/installed +5 is unchanged.
+
+
+## Superseding follow-up
+
+The API has now been independently merged through PR #193 and deployment
+37210355865 passed. Candidate +9 adds Flutter download and Android document export;
+see GROUP_ATTACHMENT_DOWNLOAD_CHECKPOINT.md for current scope and pending device
+acceptance. Earlier statements that the API is undeployed/UI missing describe +8.
