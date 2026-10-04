@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Support\Api\V1\GroupTextProjection;
 use App\Models\Group;
 use App\Models\GroupFeedItem;
 use App\Services\Group\Api\CanonicalGroupQueryService;
@@ -38,7 +39,7 @@ final class GroupFeedController extends Controller
         foreach ($page['events'] as &$event) {
             foreach (['message', 'content'] as $field) {
                 if (isset($event['payload'][$field]) && is_string($event['payload'][$field])) {
-                    $event['payload'][$field] = html_entity_decode(strip_tags(preg_replace('/<br\\s*\\/?\\s*>/i', "\n", $event['payload'][$field])), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $event['payload'][$field] = GroupTextProjection::fromHtml($event['payload'][$field]);
                 }
             }
         }
