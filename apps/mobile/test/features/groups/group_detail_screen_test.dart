@@ -9,11 +9,18 @@ void main() {
   testWidgets('file activity displays its attachment name', (tester) async {
     final event = GroupFeedEvent.fromJson({
       'sequence': 1,
-      'payload': {'content_type': 'file', 'content_id': 12,
-        'attachment': {'file_name': 'guide.pdf', 'mime_type': 'application/pdf',
-          'download_path': '/groups/1/messages/12/attachment'}}
+      'payload': {
+        'content_type': 'file',
+        'content_id': 12,
+        'attachment': {
+          'file_name': 'guide.pdf',
+          'mime_type': 'application/pdf',
+          'download_path': '/groups/1/messages/12/attachment'
+        }
+      }
     });
-    await tester.pumpWidget(MaterialApp(home: GroupDetailScreen(
+    await tester.pumpWidget(MaterialApp(
+        home: GroupDetailScreen(
       state: GroupDetailState.ready(sampleGroup(), activity: [event]),
     )));
     expect(find.text('guide.pdf'), findsOneWidget);

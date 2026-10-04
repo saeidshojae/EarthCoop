@@ -28,6 +28,7 @@ import '../../features/groups/group_cache.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/group_repository.dart';
 import '../../features/groups/group_message_repository.dart';
+import '../../features/groups/group_attachment.dart';
 import '../../features/groups/group_message_composer_controller.dart';
 import '../../features/groups/groups_controller.dart';
 import '../../features/groups/groups_screen.dart';
@@ -275,26 +276,33 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     groupDetailBuilder: (context, groupId) {
       final session = sessionController.state.session!;
       final epoch = notificationEpoch;
-      final sender = GroupMessageRepository(
-        apiClient: ApiClient(
-          dio: dio,
-          bearerTokenProvider: () async => session.token,
-          deviceIdProvider: () async => session.device.id,
-          requestIdFactory: () =>
-              'message-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
-          retryDelay: Future<void>.delayed,
-        ),
-        isCurrentSession: () =>
-            notificationEpoch == epoch &&
-            sessionController.state.phase == SessionPhase.authenticated &&
-            sessionController.state.session?.token == session.token &&
-            sessionController.state.session?.user.id == session.user.id &&
-            sessionController.state.session?.device.id == session.device.id,
+      final scopedGroupApi = ApiClient(
+        dio: dio,
+        bearerTokenProvider: () async => session.token,
+        deviceIdProvider: () async => session.device.id,
+        requestIdFactory: () =>
+            'message-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+        retryDelay: Future<void>.delayed,
       );
+      bool isCurrentGroupSession() =>
+          notificationEpoch == epoch &&
+          sessionController.state.phase == SessionPhase.authenticated &&
+          sessionController.state.session?.token == session.token &&
+          sessionController.state.session?.user.id == session.user.id &&
+          sessionController.state.session?.device.id == session.device.id;
+      final sender = GroupMessageRepository(
+          apiClient: scopedGroupApi, isCurrentSession: isCurrentGroupSession);
+      final attachments = GroupAttachmentDownloader(
+          api: scopedGroupApi,
+          groupId: groupId,
+          isCurrentSession: () =>
+              isCurrentGroupSession() &&
+              pushBootstrap?.allowsProtectedNetwork == true);
       return _GroupDetailRuntimeView(
         repository: groupRepository,
         groupId: groupId,
         sender: sender,
+        downloadAttachment: attachments.download,
       );
     },
     notificationsBuilder: (context, openLink) => _NotificationsRuntimeLoader(
@@ -351,11 +359,13 @@ class _GroupDetailRuntimeView extends StatefulWidget {
     required this.repository,
     required this.groupId,
     required this.sender,
+    required this.downloadAttachment,
   });
 
   final GroupRepository repository;
   final int groupId;
   final GroupMessageSender sender;
+  final AttachmentDownload downloadAttachment;
 
   @override
   State<_GroupDetailRuntimeView> createState() =>
@@ -399,6 +409,7 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
         state: _controller.state,
         onRetry: _controller.load,
         composer: _composer,
+        downloadAttachment: widget.downloadAttachment,
       );
 }
 
