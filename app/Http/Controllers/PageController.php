@@ -18,6 +18,7 @@ class PageController extends Controller
         $seoDescription = $page->translated_meta_description
             ?: $this->plainTextDescription((string) $page->translated_content);
         $seoCanonical = $canonicalUrl->to('/pages/'.$page->slug);
+        $seoRobots = 'index,follow';
 
         // Determine which template to use
         $template = $page->template ?? 'default';
@@ -38,7 +39,7 @@ class PageController extends Controller
             $template = 'default';
         }
 
-        $data = compact('page', 'seoTitle', 'seoDescription', 'seoCanonical');
+        $data = compact('page', 'seoTitle', 'seoDescription', 'seoCanonical', 'seoRobots');
 
         if ($template === 'faq') {
             $data['faqQuestions'] = \App\Models\FaqQuestion::published()->latest()->get();

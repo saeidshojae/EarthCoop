@@ -24,6 +24,7 @@ class SitemapTest extends TestCase
         $locations = array_map('strval', $xml->xpath('//*[local-name()="loc"]'));
         $this->assertSame(1, count(array_keys($locations, 'https://earthcoop.ir/')));
         $this->assertContains('https://earthcoop.ir/terms', $locations);
+        $this->assertContains('https://earthcoop.ir/privacy', $locations);
         $this->assertContains('https://earthcoop.ir/blog', $locations);
         foreach ($locations as $location) {
             $this->assertStringStartsWith('https://earthcoop.ir', $location);

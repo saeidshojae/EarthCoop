@@ -1,0 +1,61 @@
+query,normalized_query,entity_id,cluster_id,intent,relationship,stability_gate,target_type,proposed_target_url,earthcoop_fit,authority_potential,stability,intent_value,competition_opportunity,priority,competition_observation,source_of_query,notes
+ارثکوپ,ارثکوپ,EC-BRAND,brand-earthcoop,navigational,exact,pass,home,/,5,5,5,5,5,25,low/brand-owned,project+SERP,Persian brand spelling must appear explicitly.
+EarthCoop,earthcoop,EC-BRAND,brand-earthcoop,branded,exact,pass,home,/,5,5,5,5,5,25,low/brand-owned,project+SERP,Reinforce association with Persian entity.
+تعاونی جهانی,تعاونی جهانی,EC-GLOBAL-COOP,global-cooperation,informational,exact,pass,pillar,/cooperative/global/,5,4,4,5,4,22,medium,SERP,"Explain concept first, EarthCoop second."
+تعاون جهانی,تعاون جهانی,EC-GLOBAL-COOP,global-cooperation,informational,exact,pass,pillar,/cooperative/global/,5,4,4,4,4,21,medium,SERP,Same intent family unless later data splits it.
+تعاونی دیجیتال,تعاونی دیجیتال,EC-DIGITAL-COOP,digital-cooperative,informational,adjacent,pass,pillar,/cooperative/digital/,4,4,4,4,4,20,medium/ambiguous,SERP,Current Persian SERP partly uses phrase for specific investment products.
+تعاونی پلتفرمی,تعاونی پلتفرمی,EXT-PLATFORM-COOP,platform-cooperative,informational,comparison,pass,blog,/blog/,4,4,5,4,4,21,low-medium,SERP,Strong comparison opportunity; not synonym.
+اقتصاد آزاد مردمی,اقتصاد آزاد مردمی,EC-PEOPLES-FREE-ECONOMY,peoples-free-economy,branded,exact,pass,pillar,/economy/,5,5,4,5,5,24,very low/proprietary,project,Primary named economic model.
+اقتصاد مردمی,اقتصاد مردمی,EC-PEOPLES-ECONOMY,peoples-economy,informational,adjacent,pass,pillar,/economy/people/,5,4,5,5,3,22,medium-high,SERP,Established Persian discourse; often linked to cooperation and participation.
+مردمی سازی اقتصاد,مردمی سازی اقتصاد,EC-PEOPLES-ECONOMY,peoples-economy,solution-model,adjacent,pass,blog,/blog/,4,4,5,4,3,20,medium-high,SERP,"Use globally framed content, not country-specific rhetoric."
+اقتصاد تعاونی,اقتصاد تعاونی,EC-PEOPLES-ECONOMY,cooperative-economy,informational,adjacent,pass,blog,/blog/,4,4,5,5,3,21,medium-high,SERP,Explainer/comparison feeding /economy/.
+اقتصاد شیشه ای,اقتصاد شیشه‌ای,EC-GLASS-ECONOMY,glass-economy,branded,exact,pass,pillar,/economy/glass/,5,5,4,5,5,24,very low/proprietary,project,Build semantic ownership around transparent+secure definition.
+اقتصاد شفاف,اقتصاد شفاف,EC-GLASS-ECONOMY,economic-transparency,informational,adjacent,pass,pillar,/economy/glass/,5,4,5,5,4,23,medium,SERP,Generic bridge to Glass Economy.
+شفافیت اقتصادی,شفافیت اقتصادی,EC-GLASS-ECONOMY,economic-transparency,informational,adjacent,pass,pillar,/economy/glass/,5,4,5,5,3,22,medium-high,SERP,Primary generic supporting query.
+شفافیت مالی,شفافیت مالی,EC-GLASS-ECONOMY,financial-transparency,informational,adjacent,pass,blog,/blog/,5,4,5,5,3,22,high,SERP,Supporting article.
+بانکداری شفاف,بانکداری شفاف,EC-GLASS-ECONOMY,financial-transparency,informational,adjacent,pass,blog,/blog/,4,4,5,4,4,21,medium-low,SERP,Do not describe Najm-Bahar as a licensed bank.
+شفافیت مالی و حریم خصوصی,شفافیت مالی و حریم خصوصی,EC-GLASS-ECONOMY,transparency-privacy,problem,exact,pass,blog,/blog/,5,5,5,5,5,25,low-medium combined,project+SERP,Distinctive high-value problem/solution topic.
+امنیت مالی و شفافیت,امنیت مالی و شفافیت,EC-GLASS-ECONOMY,transparency-security,problem,exact,pass,blog,/blog/,5,5,5,5,5,25,low combined,project+SERP,Core Glass Economy differentiation.
+مالکیت همگانی,مالکیت همگانی,EC-COMMON-RIGHT-EARTH,common-rights-resources,informational,exact,pass,pillar,/commons/,5,5,5,5,4,24,medium,project+SERP,Core philosophical/economic concept.
+منابع مشترک,منابع مشترک,EXT-COMMONS,commons-resources,informational,adjacent,pass,pillar,/commons/,5,4,5,5,4,23,medium,SERP,Strong bridge to land/resource framework.
+حق مالکانه همگانی,حق مالکانه همگانی,EC-COMMON-OWNERSHIP-RIGHT,common-ownership-entitlement,branded,exact,pass-core-only,pillar,/economy/ownership/,5,5,4,5,5,24,very low/proprietary,project,Core concept; rates/formulas remain gated.
+مالکیت خصوصی و منابع مشترک,مالکیت خصوصی و منابع مشترک,EC-PRIVATE-LABOR-OWNERSHIP,private-vs-common,comparative,exact,pass,blog,/blog/,5,5,5,5,5,25,low combined,project+SERP,Distinctive explainer.
+مالکیت خصوصی بر دسترنج,مالکیت خصوصی بر دسترنج,EC-PRIVATE-LABOR-OWNERSHIP,private-labor-ownership,informational,exact,pass,blog,/blog/,5,5,5,4,5,24,low,project,Clarifies EarthCoop is not anti-private-property.
+حکمرانی مشارکتی,حکمرانی مشارکتی,EC-DEMOCRATIC-GOVERNANCE,participatory-governance,informational,exact,pass,pillar,/governance/,5,4,4,5,3,21,medium-high,SERP,"Results consistently associate with participation, transparency and accountability."
+حاکمیت مشارکتی,حاکمیت مشارکتی,EC-DEMOCRATIC-GOVERNANCE,participatory-governance,informational,adjacent,pass,pillar,/governance/,4,4,4,4,3,19,medium,SERP,Variant; current evidence favors حکمرانی terminology.
+حکمرانی دموکراتیک,حکمرانی دموکراتیک,EC-DEMOCRATIC-GOVERNANCE,democratic-governance,informational,exact,pass,pillar,/governance/,5,4,4,4,4,21,medium,SERP,Secondary pillar query.
+دموکراسی مشارکتی,دموکراسی مشارکتی,EC-DEMOCRATIC-GOVERNANCE,participatory-democracy,informational,adjacent,pass,blog,/blog/,4,4,5,5,3,21,medium-high,SERP,"Comparison/explainer, not a full synonym."
+انتخابات دائمی,انتخابات دائمی,EC-CONTINUOUS-ELECTIONS,continuous-elections,informational,exact,pass-core-only,pillar,/governance/elections/,5,5,4,5,5,24,low-medium,project,Formal EarthCoop term.
+انتخابات مستمر,انتخابات مستمر,EC-CONTINUOUS-ELECTIONS,continuous-elections,informational,exact,pass-core-only,pillar,/governance/elections/,5,5,4,5,5,24,low-medium,project+SERP,Likely same intent as دائمی.
+انتخابات پویا,انتخابات پویا,EC-CONTINUOUS-ELECTIONS,continuous-elections,informational,adjacent,pass-core-only,pillar,/governance/elections/,4,4,4,4,5,21,low/ambiguous,SERP+inference,"Use as variant, not official label."
+انتخابات بدون نامزد,انتخابات بدون نامزد,EC-CONTINUOUS-ELECTIONS,candidate-less-elections,informational,exact,pass-core-only,pillar,/governance/elections/,5,5,4,5,5,24,low,project,Distinctive exact mechanic.
+رای قابل تغییر,رأی قابل تغییر,EC-CONTINUOUS-ELECTIONS,dynamic-vote,informational,adjacent,pass-core-only,blog,/blog/,4,4,4,4,4,20,low,project+inference,Detailed mechanic must be verified before copy.
+پس گرفتن رای,پس گرفتن رأی,EC-CONTINUOUS-ELECTIONS,dynamic-vote,problem,adjacent,pass-core-only,blog,/blog/,4,4,4,4,4,20,low,project+inference,Natural-language query; verify rule details.
+دموکراسی سیال,دموکراسی سیال,EXT-LIQUID-DEMOCRACY,liquid-democracy,informational,comparison,pass,blog,/blog/,4,5,5,5,4,23,medium-low,SERP,Comparison only; not synonym.
+روش های نوین انتخاباتی,روش‌های نوین انتخاباتی,EC-CONTINUOUS-ELECTIONS,electoral-innovation,informational,adjacent,pass-core-only,blog,/blog/,4,4,4,5,4,21,medium,SERP,Broad discovery article.
+خودگردانی محلی,خودگردانی محلی,EC-LOCAL-TO-GLOBAL,local-self-governance,informational,exact,pass-core-only,pillar,/governance/local-to-global/,5,4,4,5,4,22,medium,project+SERP,Explain EarthCoop scope carefully; term has political meanings.
+حکمرانی محلی,حکمرانی محلی,EC-LOCAL-TO-GLOBAL,local-governance,informational,adjacent,pass-core-only,pillar,/governance/local-to-global/,5,4,4,5,3,21,medium-high,SERP,Strong generic bridge.
+حکمرانی از پایین به بالا,حکمرانی از پایین به بالا,EC-LOCAL-TO-GLOBAL,bottom-up-governance,informational,adjacent,pass-core-only,blog,/blog/,5,4,4,4,4,21,low-medium,project+inference,"Good explanatory phrase, not formal document label."
+حکمرانی دیجیتال,حکمرانی دیجیتال,EC-DIGITAL-GOVERNANCE,digital-governance,informational,exact,pass-core-only,pillar,/technology/,5,4,4,5,3,21,medium-high,SERP,Established Persian phrase.
+حکمرانی هوشمند,حکمرانی هوشمند,EC-DIGITAL-GOVERNANCE,smart-governance,informational,adjacent,pass-core-only,blog,/blog/,4,4,4,4,3,19,medium-high,SERP,Often tied to city/data governance; adjacent.
+فناوری مدنی,فناوری مدنی,EXT-CIVIC-TECH,civic-tech,informational,adjacent,pass,blog,/blog/,4,4,5,4,5,22,low Persian competition,SERP,Potential authority opportunity.
+نجم هدا,نجم هدا,EC-NAJM-HODA,najm-hoda,branded,exact,pass-core-only,pillar,/technology/najm-hoda/,5,5,4,5,5,24,brand-owned,project,Only documented/implemented capabilities.
+نجم بهار,نجم‌بهار,EC-NAJM-BAHAR,najm-bahar,branded,exact,pass-core-only,pillar,/economy/najm-bahar/,5,5,4,5,5,24,brand-owned,project,Potential pillar after stability review.
+پول بهار,پول بهار,EC-BAHAR,bahar,branded,exact,pass-core-only,pillar,/economy/bahar/,5,5,4,5,5,24,brand-owned,project,Use branded phrase to disambiguate generic بهار.
+بهار ارثکوپ,بهار ارثکوپ,EC-BAHAR,bahar,branded,exact,pass-core-only,pillar,/economy/bahar/,5,5,4,5,5,24,brand-owned,project,Preferred discovery variant for entity ownership.
+پول مکمل,پول مکمل,EXT-COMPLEMENTARY-CURRENCY,alternative-money,informational,comparison,pass,blog,/blog/,3,4,5,5,3,20,medium/noisy,SERP,Comparison only; query has supplement noise.
+ارز مکمل,ارز مکمل,EXT-COMPLEMENTARY-CURRENCY,alternative-money,informational,comparison,pass,blog,/blog/,3,4,5,4,4,20,low-medium,SERP,Comparison only.
+پول محلی,پول محلی,EXT-COMMUNITY-CURRENCY,alternative-money,informational,comparison,pass,blog,/blog/,3,4,5,5,3,20,high ambiguity,SERP,Clarify community/local-currency sense.
+پول های نوین,پول‌های نوین,EC-BAHAR,alternative-money,informational,adjacent,pass-core-only,blog,/blog/,4,4,4,4,3,19,medium broad,SERP,Avoid crypto conflation.
+تامین مالی جمعی,تأمین مالی جمعی,EC-PARTICIPATORY-INVESTMENT,crowdfunding,informational,comparison,pass,blog,/blog/,3,4,5,5,2,19,high/commercial-regulated,SERP,Do not equate EarthCoop mechanism unless criteria match.
+سرمایه گذاری مردمی,سرمایه‌گذاری مردمی,EC-PARTICIPATORY-INVESTMENT,participatory-investment,solution-model,exact,pass-core-only,pillar,/economy/investment/,5,4,4,5,4,22,medium,project+SERP,Strong broad phrase for project finance.
+عدالت اقتصادی,عدالت اقتصادی,EC-JUSTICE,economic-justice,informational,exact,pass,pillar,/justice/,5,4,5,5,2,21,high,project+SERP,Competitive; distinctive EarthCoop framework is key.
+عدالت و مالکیت,عدالت و مالکیت,EC-JUSTICE,justice-ownership,comparative,exact,pass,blog,/blog/,5,5,5,5,4,24,medium,project+SERP,Distinctive bridge topic.
+حقوق طبیعی,حقوق طبیعی,EXT-NATURAL-RIGHTS,natural-rights,informational,comparison,pass,blog,/blog/,4,5,5,5,3,22,medium academic/legal,SERP,Compare with EarthCoop foundational rights.
+حقوق ذاتی انسان,حقوق ذاتی انسان,EXT-NATURAL-RIGHTS,natural-rights,informational,comparison,pass,blog,/blog/,4,5,5,5,4,23,medium,SERP,Bridge to dignity/fundamental rights.
+حقوق بنیادین,حقوق بنیادین,EC-FUNDAMENTAL-RIGHTS,fundamental-rights,informational,exact,pass,pillar,/shared-rights/,5,4,5,5,3,22,high legal,project+SERP,Distinctive when tied to Earth/resources.
+کرامت انسانی,کرامت انسانی,EC-DIGNITY,human-dignity,informational,exact,pass,blog,/blog/,5,4,5,5,2,21,high,project+SERP,Support article rather than generic pillar.
+آزادی مسئولانه,آزادی مسئولانه,EC-RESPONSIBLE-FREEDOM,responsible-freedom,informational,exact,pass,blog,/blog/,5,5,5,5,4,24,low-medium,project+SERP,Distinctive long-tail opportunity.
+آزادی عادلانه,آزادی عادلانه,EC-RESPONSIBLE-FREEDOM,responsible-freedom,informational,adjacent,pass,blog,/blog/,5,5,5,4,5,24,low/proprietary,project,EarthCoop explanatory wording.
+برابری بنیادین,برابری بنیادین,EC-FUNDAMENTAL-EQUALITY,foundational-equality,informational,exact,pass,blog,/blog/,5,5,5,5,4,24,low-medium,project+SERP,Distinctive concept.
+برابری عادلانه,برابری عادلانه,EC-FUNDAMENTAL-EQUALITY,foundational-equality,informational,adjacent,pass,blog,/blog/,5,5,5,4,5,24,low/proprietary,project,Explain difference from equality of outcomes.
