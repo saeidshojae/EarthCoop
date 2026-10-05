@@ -53,7 +53,9 @@ class MobileAppRuntime {
     if (_disposed ||
         sessionController.state.phase != SessionPhase.authenticated ||
         !currentBootstrap.allowsProductShell ||
-        !currentBootstrap.allowsProtectedNetwork) return false;
+        !currentBootstrap.allowsProtectedNetwork) {
+      return false;
+    }
     final resolution = registry.resolve(link);
     if (!resolution.isAllowed) return false;
     router.go(resolution.location);

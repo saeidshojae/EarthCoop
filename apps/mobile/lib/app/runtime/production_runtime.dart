@@ -37,7 +37,7 @@ import '../../features/groups/groups_screen.dart';
 import '../../features/notifications/notification_repository.dart';
 import '../../features/notifications/notification_sync_service.dart';
 import '../../features/notifications/notifications_controller.dart';
-import '../../features/notifications/notifications_screen.dart';
+import '../../features/notifications/notifications_runtime_view.dart';
 import '../bootstrap/app_bootstrap_service.dart';
 import '../bootstrap/bootstrap_state.dart';
 import '../bootstrap/bootstrap_snapshot_store.dart';
@@ -293,7 +293,9 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   Object? activePushScope() {
     final session = sessionController.state.session;
     if (messagesDisposed || session == null ||
-        sessionController.state.phase != SessionPhase.authenticated) return null;
+        sessionController.state.phase != SessionPhase.authenticated) {
+      return null;
+    }
     return (notificationEpoch, session.user.id, session.device.id, session.token);
   }
 
@@ -542,7 +544,7 @@ class _NotificationsRuntimeLoaderState
             return const Scaffold(
                 body: Center(child: CircularProgressIndicator()));
           }
-          return _NotificationsRuntimeView(
+          return NotificationsRuntimeView(
             controller: controller,
             onOpenLink: widget.onOpenLink,
           );
@@ -550,54 +552,3 @@ class _NotificationsRuntimeLoaderState
       );
 }
 
-class _NotificationsRuntimeView extends StatefulWidget {
-  const _NotificationsRuntimeView({
-    required this.controller,
-    required this.onOpenLink,
-  });
-
-  final NotificationsController controller;
-  final ValueChanged<SemanticLink> onOpenLink;
-
-  @override
-  State<_NotificationsRuntimeView> createState() =>
-      _NotificationsRuntimeViewState();
-}
-
-class _NotificationsRuntimeViewState extends State<_NotificationsRuntimeView>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    widget.controller.addListener(_refresh);
-    unawaited(widget.controller.load());
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    widget.controller.removeListener(_refresh);
-    widget.controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(widget.controller.load());
-  }
-
-  void _refresh() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) => NotificationsScreen(
-        state: widget.controller.state,
-        onMarkRead: (notification) {
-          unawaited(widget.controller.markRead(notification.id));
-        },
-        onOpenLink: widget.onOpenLink,
-        onRetry: widget.controller.load,
-      );
-}

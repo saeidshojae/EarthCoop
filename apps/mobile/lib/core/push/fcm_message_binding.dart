@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -44,12 +43,14 @@ class FcmMessageBinding {
     required this.runtime,
     required this.onOpen,
     required this.onForeground,
+    this.activeScope,
   });
 
   final FcmMessageRuntime runtime;
+  final Object? Function()? activeScope;
   final Future<bool> Function(Map<String, Object?> data) onOpen;
   final Future<void> Function(Map<String, Object?> data) onForeground;
-  final _seen = LinkedHashSet<String>();
+  final _seen = <String>{};
   final _buffer = <(FcmMessageEvent, bool)>[];
   StreamSubscription<FcmMessageEvent>? _opens;
   StreamSubscription<FcmMessageEvent>? _foregrounds;

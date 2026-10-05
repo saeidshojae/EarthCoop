@@ -12,7 +12,7 @@ const authoritativeLink = SemanticLink(
   params: {'group_id': 42},
 );
 
-NotificationDto notice() => NotificationDto(
+NotificationDto notice() => const NotificationDto(
       id: notificationId,
       type: 'group.notice',
       title: null,
