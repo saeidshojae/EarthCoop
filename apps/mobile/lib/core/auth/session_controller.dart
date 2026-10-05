@@ -42,6 +42,8 @@ class SessionController {
   final SessionCleanupHook _clearUserScopedLocalState;
 
   SessionState state = const SessionState.checking();
+  Future<void>? _logoutInFlight;
+  NativeSession? _logoutOwner;
 
   Future<void> restore() async {
     state = const SessionState.checking();
@@ -87,7 +89,14 @@ class SessionController {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout() => _logoutInFlight ??= _logoutOnce().whenComplete(() {
+        _logoutInFlight = null;
+      });
+
+  Future<void> _logoutOnce() async {
+    _logoutOwner ??= state.session;
+    // Retain identity for cleanup only; scoped APIs reject checking phase.
+    state = SessionState._(SessionPhase.checking, _logoutOwner);
     try {
       await _repository.revokeCurrent();
     } catch (_) {
@@ -107,6 +116,7 @@ class SessionController {
         state = const SessionState.unauthenticated();
       }
     }
+    _logoutOwner = null;
   }
 }
 

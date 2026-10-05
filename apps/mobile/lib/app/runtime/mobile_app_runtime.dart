@@ -71,7 +71,14 @@ class MobileAppRuntime {
         groupsBuilder: groupsBuilder,
         groupDetailBuilder: groupDetailBuilder,
         notificationsBuilder: notificationsBuilder,
+        onLogout: logout,
       ).router;
+
+  Future<void> logout() async {
+    if (_disposed) return;
+    await sessionController.logout();
+    if (!_disposed) router.go('/login');
+  }
 
   Widget _buildLogin(BuildContext context) => LoginScreen(
         onSubmit: ({required email, required password}) async {

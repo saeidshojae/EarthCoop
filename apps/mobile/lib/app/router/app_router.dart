@@ -31,6 +31,7 @@ class AppRouter {
     GroupsRouteBuilder? groupsBuilder,
     GroupDetailRouteBuilder? groupDetailBuilder,
     NotificationsRouteBuilder? notificationsBuilder,
+    Future<void> Function()? onLogout,
   }) : router = GoRouter(
           initialLocation: _initialLocation(
             bootstrap: bootstrap,
@@ -44,6 +45,7 @@ class AppRouter {
               builder: (context, state) => HomeScreen(
                 onOpenGroups: () => context.push('/groups'),
                 onOpenNotifications: () => context.push('/notifications'),
+                onLogout: onLogout,
               ),
             ),
             GoRoute(
