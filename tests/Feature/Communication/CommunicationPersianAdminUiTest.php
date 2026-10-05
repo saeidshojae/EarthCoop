@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Communication;
 
+use App\Models\CommunicationSenderIdentity;
 use App\Models\CommunicationTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RecursiveDirectoryIterator;
@@ -31,6 +32,17 @@ final class CommunicationPersianAdminUiTest extends TestCase
         $this->assertSame('تست زمان‌بندی مرکز ارتباطات', $version->subject);
         $this->assertStringContainsString('تست سلامت زمان‌بندی و صف ارتباطات', $version->body);
         $this->assertSame('management', $version->senderIdentity?->key);
+    }
+
+    public function test_builtin_sender_metadata_is_persian_for_admin_forms(): void
+    {
+        $support = CommunicationSenderIdentity::query()->where('key', 'support')->firstOrFail();
+        $management = CommunicationSenderIdentity::query()->where('key', 'management')->firstOrFail();
+
+        $this->assertSame('تیم پشتیبانی EarthCoop', $support->display_name);
+        $this->assertSame('ارتباطات پشتیبانی و خدمات', $support->purpose);
+        $this->assertSame('مدیریت EarthCoop', $management->display_name);
+        $this->assertSame('ارتباطات مدیریتی و اداری', $management->purpose);
     }
 
     public function test_admin_communication_views_use_persian_user_facing_terms(): void
