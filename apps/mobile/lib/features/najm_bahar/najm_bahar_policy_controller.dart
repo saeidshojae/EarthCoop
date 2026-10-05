@@ -35,7 +35,7 @@ class NajmBaharPolicyController extends ChangeNotifier {
   } catch(error) {
    if(_disposed || generation!=state._generation) { return; }
    state.failure=error is ApiFailure?error:const ApiFailure(code:'malformed_response',message:'',retryable:false);
-   if(state.failure!.httpStatus==401 || state.failure!.code=='session_changed' || state.failure!.code=='unauthenticated') { invalidateSession(); }
+   if(state.failure!.code=='session_changed' || state.failure!.code=='unauthenticated') { invalidateSession(); }
   } finally {
    if(!_disposed && generation==state._generation) { state.loading=false; _publish(); }
   }

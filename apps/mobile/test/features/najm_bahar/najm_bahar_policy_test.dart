@@ -79,7 +79,7 @@ void main() {
  test('malformed HTTP 401 at $origin clears all financial sections', () async {
   var expired=false;
   final lateFee=Completer<Map<String,Object?>>();
-  final adapter=f.BoundaryAdapter((r)=>expired && r.path.endsWith('membership-fee') ? lateFee.future : expired && r.path.endsWith(origin)
+  final adapter=f.BoundaryAdapter((r) async =>expired && r.path.endsWith('membership-fee') ? await lateFee.future : expired && r.path.endsWith(origin)
    ? <String,Object?>{'unexpected':'expired'}
    : f.envelope(r.path.endsWith('eligibility')?eligibility():r.path.endsWith('membership-fee')?fee():r.path.endsWith('account')?f.accountJson():[]),
    statusFor:(r)=>expired && r.path.endsWith(origin)?401:200);
