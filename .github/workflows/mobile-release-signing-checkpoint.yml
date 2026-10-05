@@ -61,9 +61,7 @@ jobs:
         run: flutter pub get
 
       - name: Reject unsafe release signing
-        run: |
-          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_ROOT" "$ANDROID_HOME" > apps/mobile/android/local.properties
-          bash scripts/mobile/test_release_signing_gate.sh
+        run: bash scripts/mobile/test_release_signing_gate.sh
 
       - name: Verify formatting and analyze
         working-directory: apps/mobile

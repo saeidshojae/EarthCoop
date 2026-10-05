@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-cd "$(dirname "$0")/../../apps/mobile/android"
+cd "$(dirname "$0")/../../apps/mobile"
 logs="$(mktemp -d)"
 trap 'rm -rf "$logs"' EXIT
 expect_blocked() {
@@ -12,7 +12,7 @@ expect_blocked() {
     -u EARTHCOOP_UAT_STORE_PASSWORD -u EARTHCOOP_UAT_KEY_PASSWORD \
     -u EARTHCOOP_PRODUCTION_KEYSTORE_PATH -u EARTHCOOP_PRODUCTION_KEY_ALIAS \
     -u EARTHCOOP_PRODUCTION_STORE_PASSWORD -u EARTHCOOP_PRODUCTION_KEY_PASSWORD \
-    "$@" ./gradlew :app:assembleRelease --dry-run > "$logs/$label.log" 2>&1; then
+    "$@" flutter build apk --release > "$logs/$label.log" 2>&1; then
     echo "FAIL: release task was accepted without valid signing policy ($label)."
     exit 1
   fi

@@ -2,6 +2,25 @@
 
 This checklist records the hardware-dependent acceptance gates for the Flutter native foundation. A row may be marked PASS only after execution on the stated device. Never commit provider credentials, bearer tokens, raw push tokens, service-account files, or other secrets as evidence.
 
+## Consolidated next phone run — latest verified integrated +14
+
+Historical candidate sections below are receipts, not separate installation tasks. Use the latest verified integrated +14 artifact referenced in MOBILE_INTEGRATION_CHECKPOINT_20261005.md. Do not repeat the already accepted 81-group count unless a new regression appears.
+
+| Flow | Required observation | Status |
+| --- | --- | --- |
+| Upgrade and login | Upgrade with stable UAT signature, open and restore/login to an existing approved account | NOT EXECUTED on latest candidate |
+| Same-group activity and text | Refresh the previously affected group, send as an eligible ordinary member, verify acknowledgement and visibility from a second approved member | NOT EXECUTED |
+| Message retry | Network failure retains the draft; explicit retry of the unchanged intent yields one message | NOT EXECUTED |
+| Existing attachment | Authorized file download, Android destination chooser, save and open the selected file | NOT EXECUTED |
+| Logout/account boundary | Logout returns to login; Back cannot restore protected Home; login to a second account exposes only its groups/cache/notifications | NOT EXECUTED |
+| Read queue | Load unread online, mark read offline, reconnect, reopen Notifications and verify authoritative read state after fresh bootstrap | NOT EXECUTED |
+| FCM registration and foreground | Check permission allow/deny and registration; a real approved server notification refreshes the open inbox | NOT EXECUTED |
+| FCM delivery/open | Background and cold/warm tap reach the authorized destination; queued old-account tap cannot open after logout/account change | NOT EXECUTED |
+
+FCM delivery steps require the separate controlled provider activation and approved sender/recipient setup. Host validate-only readiness is already PASS; it does not prove delivery. Keep the delivery driver disabled until that device test is arranged. Never record passwords, bearer tokens, raw push tokens or provider credential files in evidence.
+
+This is Android UAT for existing accounts, not a general production/store release. Production signing/distribution policy, iOS signing/provider configuration and HMS configuration/device acceptance remain separate gates. Google/network resilience is deferred to final app completion at the user's request.
+
 ## Current status
 
 | Gate | Status | Notes |
