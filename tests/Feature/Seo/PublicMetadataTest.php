@@ -28,6 +28,19 @@ class PublicMetadataTest extends TestCase
         $this->assertSame(['Organization', 'WebSite'], $types);
     }
 
+    public function test_home_is_a_concise_semantic_hub_for_core_earthcoop_topics(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('ارث‌کوپ', $html);
+        $this->assertStringContainsString('اقتصاد آزاد مردمی', $html);
+        $this->assertStringContainsString('حکمرانی مشارکتی', $html);
+        $this->assertStringContainsString('href="/cooperative"', $html);
+        $this->assertStringContainsString('href="/economy"', $html);
+        $this->assertStringContainsString('href="/governance"', $html);
+        $this->assertStringContainsString('href="/justice"', $html);
+    }
+
     public function test_published_page_prefers_translated_meta_values_and_is_indexable(): void
     {
         $page = $this->page([
