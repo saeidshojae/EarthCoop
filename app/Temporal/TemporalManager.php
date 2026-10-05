@@ -98,6 +98,14 @@ final class TemporalManager implements TemporalService
         return $this->shapeDigits($formatted, $context);
     }
 
+    public function year(DateTimeInterface|LocalDate|string $value, ?TemporalContext $context = null): int
+    {
+        $context ??= $this->contexts->defaultContext();
+        $date = $this->toLocalDate($value, $context);
+
+        return $this->adapter($context)->year($date);
+    }
+
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate
     {
         $context ??= $this->contexts->defaultContext();
