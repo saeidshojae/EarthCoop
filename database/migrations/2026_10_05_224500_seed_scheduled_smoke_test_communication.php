@@ -9,6 +9,22 @@ return new class extends Migration
     {
         $now = now();
 
+        DB::table('communication_sender_identities')
+            ->where('key', 'support')
+            ->update([
+                'display_name' => 'تیم پشتیبانی EarthCoop',
+                'purpose' => 'ارتباطات پشتیبانی و خدمات',
+                'updated_at' => $now,
+            ]);
+
+        DB::table('communication_sender_identities')
+            ->where('key', 'management')
+            ->update([
+                'display_name' => 'مدیریت EarthCoop',
+                'purpose' => 'ارتباطات مدیریتی و اداری',
+                'updated_at' => $now,
+            ]);
+
         $senderId = DB::table('communication_sender_identities')
             ->where('key', 'management')
             ->value('id');
@@ -19,7 +35,7 @@ return new class extends Migration
                 'email' => 'management@earthcoop.ir',
                 'display_name' => 'مدیریت EarthCoop',
                 'reply_to' => 'management@earthcoop.ir',
-                'purpose' => 'Administrative communications',
+                'purpose' => 'ارتباطات مدیریتی و اداری',
                 'system_identity_key' => 'management',
                 'is_active' => true,
                 'is_default' => true,
