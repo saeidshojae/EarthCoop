@@ -1,4 +1,4 @@
-@extends('layouts.master')
+@extends('layouts.unified')
 
 @section('title', 'سیاست حریم خصوصی ارث‌کوپ')
 @section('meta_description', 'نحوه جمع‌آوری، استفاده، نگهداری و حذف اطلاعات کاربران در ارث‌کوپ و داده‌های ورود با حساب گوگل.')
