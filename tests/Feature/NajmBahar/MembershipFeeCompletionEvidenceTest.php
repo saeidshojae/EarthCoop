@@ -72,4 +72,23 @@ class MembershipFeeCompletionEvidenceTest extends TestCase
         $this->assertSame(300,(int)$account->balance_active); $this->assertSame(100,(int)$account->balance_faded);
         $this->assertSame(200,(int)$account->committed_dim); $this->assertSame(600,(int)$account->balance);
     }
+    public function test_active_subaccount_payment_does_not_debit_main_local_balance(): void {
+        $this->policy(); [$user,$main]=$this->member();
+        app(MonetaryService::class)->activateDim($main,1500,'Fund own subaccount',['type'=>'test'],'completion-fund-active',false);
+        $sub=app(\App\Modules\NajmBahar\Services\SubAccountService::class)->createSubAccount($main->id,'Own payment source');
+        app(\App\Modules\NajmBahar\Services\InternalAccountTransferService::class)->mainToSub($main,$sub,1500,'active','Fund source','completion-main-to-sub');
+        $main->refresh(); $before=(int)$main->balance; $dim=(int)$main->balance_faded;
+        app(NajmBaharMembershipFeeApplicationService::class)->pay($user,'active',$sub->id);
+        $this->assertSame($before,(int)$main->fresh()->balance);
+        $this->assertSame($dim,(int)$main->fresh()->balance_faded);
+        $this->assertSame(300,(int)$sub->fresh()->balance_active);
+    }
+    public function test_system_credit_preserves_receiver_committed_dim(): void {
+        $sender=\App\Modules\NajmBahar\Models\Account::create(['account_number'=>'9800000001','name'=>'Sender','type'=>'system','balance'=>1000,'balance_active'=>1000,'balance_faded'=>0,'status'=>1]);
+        $receiver=\App\Modules\NajmBahar\Models\Account::create(['account_number'=>'9800000002','name'=>'Receiver','type'=>'user','balance'=>300,'balance_active'=>0,'balance_faded'=>100,'committed_dim'=>200,'status'=>1]);
+        app(\App\Modules\NajmBahar\Services\TransactionService::class)->transfer($sender->account_number,$receiver->account_number,100,'Preserve committed receiver',['system_operation'=>true],'completion-receiver-committed','active');
+        $this->assertSame(400,(int)$receiver->fresh()->balance);
+        $this->assertSame(200,(int)$receiver->fresh()->committed_dim);
+    }
+
 }
