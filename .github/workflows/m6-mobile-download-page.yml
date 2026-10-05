@@ -1,0 +1,58 @@
+name: M6 Mobile Download Page
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+      - main
+    paths:
+      - 'tests/Feature/MobileDownloadPageTest.php'
+      - 'app/Providers/RouteServiceProvider.php'
+      - 'routes/mobile-download.php'
+      - 'resources/views/mobile/app-download.blade.php'
+      - '.github/workflows/m6-mobile-download-page.yml'
+  pull_request:
+    paths:
+      - 'tests/Feature/MobileDownloadPageTest.php'
+      - 'app/Providers/RouteServiceProvider.php'
+      - 'routes/mobile-download.php'
+      - 'resources/views/mobile/app-download.blade.php'
+      - '.github/workflows/m6-mobile-download-page.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download-page-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_sqlite
+          coverage: none
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          DB_CONNECTION=sqlite
+          DB_DATABASE=:memory:
+          EOF
+          php artisan key:generate --force
+      - name: Run mobile download page contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/MobileDownloadPageTest.php

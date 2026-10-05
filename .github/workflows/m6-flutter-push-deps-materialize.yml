@@ -1,0 +1,48 @@
+name: M6 Flutter Push Dependencies Materialize
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - '.github/workflows/m6-flutter-push-deps-materialize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Materialize provider dependencies
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub add 'firebase_core:^4.15.0' 'firebase_messaging:^16.7.0' 'huawei_push:^6.15.0+300'
+          flutter pub get
+          grep -Eq 'minSdk = +24' android/app/build.gradle.kts
+          test "$(grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/Runner.xcodeproj/project.pbxproj)" -ge 3
+          git diff -- pubspec.yaml pubspec.lock
+          git diff --exit-code -- . ':!pubspec.yaml' ':!pubspec.lock'
+      - name: Commit dependency lock
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- apps/mobile/pubspec.yaml apps/mobile/pubspec.lock; then
+            echo 'Push dependencies already materialized.'
+            exit 0
+          fi
+          git config user.name 'earthcoop-m6-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add apps/mobile/pubspec.yaml apps/mobile/pubspec.lock
+          git commit -m 'build(mobile): add push provider dependencies'
+          git pull --rebase origin agent/flutter-native-client-foundation-20260929
+          git push origin HEAD:agent/flutter-native-client-foundation-20260929

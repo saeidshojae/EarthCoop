@@ -1,0 +1,56 @@
+name: M6 Flutter Task 9 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/lib/core/media/**'
+      - 'apps/mobile/lib/core/api/api_client.dart'
+      - 'apps/mobile/test/core/media/**'
+      - 'apps/mobile/integration_test/media_upload_test.dart'
+      - '.github/workflows/m6-flutter-task9.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/core/media integration_test/media_upload_test.dart)
+          [ ! -d lib/core/media ] || scopes+=(lib/core/media)
+          scopes+=(lib/core/api/api_client.dart)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
+      - name: Analyze media scope
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/core/media integration_test/media_upload_test.dart)
+          [ ! -d lib/core/media ] || scopes+=(lib/core/media)
+          scopes+=(lib/core/api/api_client.dart)
+          flutter analyze "${scopes[@]}"
+      - name: Run Task 9 unit media contracts
+        working-directory: apps/mobile
+        run: flutter test test/core/media
+      - name: Record controlled-device integration requirement
+        run: |
+          echo 'integration_test/media_upload_test.dart is compiled/analyzed here.'
+          echo 'It is executed only by the M6 device acceptance gate with an Android/iOS device plus explicit staging dart-defines.'

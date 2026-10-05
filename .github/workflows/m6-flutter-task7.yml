@@ -1,0 +1,51 @@
+name: M6 Flutter Task 7 TDD
+
+on:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - 'apps/mobile/lib/features/notifications/**'
+      - 'apps/mobile/lib/core/local/app_database.dart'
+      - 'apps/mobile/test/features/notifications/**'
+      - '.github/workflows/m6-flutter-task7.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Check formatting
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/features/notifications)
+          [ ! -d lib/features/notifications ] || scopes+=(lib/features/notifications)
+          scopes+=(lib/core/local/app_database.dart)
+          dart format "${scopes[@]}"
+          git diff -- "${scopes[@]}"
+          git diff --exit-code -- "${scopes[@]}"
+      - name: Analyze notification scope
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          scopes=(test/features/notifications)
+          [ ! -d lib/features/notifications ] || scopes+=(lib/features/notifications)
+          scopes+=(lib/core/local/app_database.dart)
+          flutter analyze "${scopes[@]}"
+      - name: Run Task 7 notification contracts
+        working-directory: apps/mobile
+        run: flutter test test/features/notifications

@@ -4,14 +4,18 @@ on:
   push:
     branches:
       - agent/m0-api-constitution-mobile-readiness-20260927
+      - agent/flutter-native-client-foundation-20260929
     paths:
       - 'app/**'
+      - 'config/**'
+      - 'database/migrations/**'
       - 'routes/**'
       - 'tests/Feature/Api/V1/**'
       - 'tests/Feature/LocationGovernance/**'
       - 'tests/Feature/GroupChat/**'
       - 'tests/Feature/Elections/**'
       - '.github/workflows/m1-api-v1-targeted.yml'
+      - '.github/workflows/flutter-mobile-targeted.yml'
       - 'composer.json'
       - 'composer.lock'
 
@@ -73,11 +77,23 @@ jobs:
           EOF
           php artisan key:generate --force
           mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
-          cp phpunit.xml.dist phpunit.m1.xml
-          sed -i 's/name="DB_CONNECTION" value="mysql" force="true"/name="DB_CONNECTION" value="sqlite" force="true"/' phpunit.m1.xml
-          sed -i 's/name="DB_DATABASE" value="newearthcoop-test" force="true"/name="DB_DATABASE" value=":memory:" force="true"/' phpunit.m1.xml
       - name: Run fast M1 API v1 contracts
-        run: vendor/bin/phpunit -c phpunit.m1.xml --exclude-group mysql-location --exclude-group mysql-group --exclude-group mysql-core-journeys --exclude-group mysql-core-journey tests/Feature/Api/V1
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist \
+            --exclude-group mysql-location \
+            --exclude-group mysql-group \
+            --exclude-group mysql-core-journeys \
+            --exclude-group mysql-core-journey \
+            --log-junit storage/logs/m1-api-v1-junit.xml \
+            tests/Feature/Api/V1
+      - name: Upload fast M1 API diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-api-v1-fast-junit
+          path: storage/logs/m1-api-v1-junit.xml
+          if-no-files-found: error
+          retention-days: 7
       - name: Run Location/Governance v1 and canonical parity contracts
         run: |
           vendor/bin/phpunit -c phpunit.xml.dist \
