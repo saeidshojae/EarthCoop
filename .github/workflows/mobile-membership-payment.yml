@@ -62,3 +62,5 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/MembershipFeeCompletionEvidenceTest.php
       - name: Existing financial safety checks
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/MembershipFeePaymentTest.php tests/Feature/NajmBahar/MembershipFeePolicyIntegrityTest.php tests/Feature/NajmBahar/TransactionReservationProtectionTest.php tests/Feature/NajmBahar/ActiveReservationCommittedDimInvariantTest.php tests/Feature/NajmBahar/TransactionIdempotencyHardeningTest.php
+      - name: Membership consent contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharMembershipConsentContractTest.php tests/Feature/Api/V1/NajmBaharMembershipFeeContractTest.php tests/Feature/Api/V1/NajmBaharMobileJourneyTest.php tests/Feature/Api/V1/IdempotencyContractTest.php
