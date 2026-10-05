@@ -4,11 +4,12 @@ import 'najm_bahar_dto.dart';
 import 'najm_bahar_repository.dart';
 
 class NajmBaharController extends ChangeNotifier {
-  NajmBaharController(this._repository, {Listenable? sessionChanges})
-      : _sessionChanges = sessionChanges {
+  NajmBaharController(this._repository, {Listenable? sessionChanges, VoidCallback? onSessionInvalidated})
+      : _sessionChanges = sessionChanges, _onSessionInvalidated = onSessionInvalidated {
     _sessionChanges?.addListener(_sessionChanged);
   }
   final Listenable? _sessionChanges;
+  final VoidCallback? _onSessionInvalidated;
   bool _sessionInvalid = false;
   void _sessionChanged() {
     if (!_repository.isCurrentSession) {
@@ -33,6 +34,7 @@ class NajmBaharController extends ChangeNotifier {
     accountFailure = failure;
     historyFailure = failure;
     _publish();
+    _onSessionInvalidated?.call();
   }
 
   final NajmBaharRepository _repository;

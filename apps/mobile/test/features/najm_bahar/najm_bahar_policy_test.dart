@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:earthcoop_mobile/core/api/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_policy_controller.dart';
+import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_controller.dart';
 import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_policy_sections.dart';
 import 'najm_bahar_repository_test.dart' as f;
 
@@ -32,8 +34,8 @@ void main() {
   final api=f.repository(f.BoundaryAdapter((r)=>f.envelope(r.path.endsWith('eligibility')
    ? {...eligibility(),'conversion_ratio_points_per_gol':0}
    : {...fee(),'fee_gol':1201})));
-  await expectLater(api.activationEligibility(),throwsA(anything));
-  await expectLater(api.membershipFee(),throwsA(anything));
+  await expectLater(api.activationEligibility(),throwsA(isA<ApiFailure>().having((e)=>e.code,'code','malformed_response')));
+  await expectLater(api.membershipFee(),throwsA(isA<ApiFailure>().having((e)=>e.code,'code','malformed_response')));
  });
  test('disabled activation does not hide successful membership fee', () async {
   final adapter=f.BoundaryAdapter((r)=>r.path.endsWith('eligibility')?disabled():f.envelope(fee()),statusFor:(r)=>r.path.endsWith('eligibility')?403:200);
@@ -54,11 +56,28 @@ void main() {
   addTearDown(c.dispose); final result=c.load(); current=false; pending.complete(f.envelope(fee())); await result;
   expect(c.activation.value,isNull); expect(c.membership.value,isNull); expect(c.membership.failure?.code,'session_changed');
  });
+
+ test('authentication failure invalidates wallet and policies together', () async {
+  var expired=false;
+  final adapter=f.BoundaryAdapter((r)=>expired && r.path.endsWith('eligibility')
+   ? {...disabled(), 'error': {'code':'unauthenticated','message':'expired','retryable':false}}
+   : f.envelope(r.path.endsWith('eligibility')?eligibility():r.path.endsWith('membership-fee')?fee():r.path.endsWith('account')?f.accountJson():[]),
+   statusFor:(r)=>expired && r.path.endsWith('eligibility')?401:200);
+  final api=f.repository(adapter);
+  late final NajmBaharPolicyController policies;
+  final wallet=NajmBaharController(api,onSessionInvalidated:()=>policies.invalidateSession());
+  policies=NajmBaharPolicyController(api,onSessionInvalidated:wallet.invalidateSession);
+  addTearDown(() { wallet.dispose(); policies.dispose(); });
+  await wallet.load(); await policies.load(); expired=true;
+  await policies.refreshActivation();
+  expect(wallet.account,isNull); expect(policies.membership.value,isNull);
+  final requests=adapter.requests.length; await wallet.load(); await policies.load();
+  expect(adapter.requests.length,requests);
+ });
  testWidgets('policy sections show server units and membership year without mutation buttons',(tester) async {
   final c=NajmBaharPolicyController(f.repository(f.BoundaryAdapter((r)=>f.envelope(r.path.endsWith('eligibility')?eligibility():fee()))));
   addTearDown(c.dispose); await tester.runAsync(()=>c.load());
   await tester.pumpWidget(MaterialApp(home:Scaffold(body:SingleChildScrollView(child:NajmBaharPolicySections(controller:c)))));
-  expect(find.text('۱۰۰ امتیاز برای هر گل'),findsNothing);
   expect(find.text('100 امتیاز برای هر گل'),findsOneWidget);
   expect(find.text('حداکثر قابل فعال‌سازی: 3 گل'),findsOneWidget);
   expect(find.text('دورهٔ عضویت: 2025 (میلادی)'),findsOneWidget);

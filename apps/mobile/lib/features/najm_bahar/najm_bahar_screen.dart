@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_error.dart';
 import 'najm_bahar_controller.dart';
 import 'najm_bahar_dto.dart';
+import 'najm_bahar_policy_controller.dart';
+import 'najm_bahar_policy_sections.dart';
 
 class NajmBaharScreen extends StatefulWidget {
-  const NajmBaharScreen({super.key, required this.controller});
+  const NajmBaharScreen({super.key, required this.controller, this.policyController});
   final NajmBaharController controller;
+  final NajmBaharPolicyController? policyController;
   @override
   State<NajmBaharScreen> createState() => _NajmBaharScreenState();
 }
@@ -122,6 +125,8 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
                                   ? null
                                   : () => unawaited(c.loadMore()),
                               child: const Text('تراکنش‌های بیشتر')),
+                        if (widget.policyController != null)
+                          NajmBaharPolicySections(controller: widget.policyController!),
                       ]))),
         ));
   }

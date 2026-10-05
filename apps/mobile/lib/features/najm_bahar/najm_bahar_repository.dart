@@ -2,6 +2,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
 import '../../core/api/api_envelope.dart';
 import 'najm_bahar_dto.dart';
+import 'najm_bahar_policy_dto.dart';
 
 class NajmBaharRepository {
   NajmBaharRepository(
@@ -33,6 +34,16 @@ class NajmBaharRepository {
     }
   }
 
+
+  Future<T> _policy<T>(String path,T Function(Object?) decode) async {
+    _guard();
+    try {
+      final response=await _api.get<T>(path,decodeData:decode);
+      _guard(); return response.data;
+    } catch (_) { _guardSession(); rethrow; }
+  }
+  Future<NajmBaharActivationEligibility> activationEligibility() => _policy('/najm-bahar/activation/eligibility',NajmBaharActivationEligibility.fromJson);
+  Future<NajmBaharMembershipFee> membershipFee() => _policy('/najm-bahar/membership-fee',NajmBaharMembershipFee.fromJson);
   Future<NajmBaharAccount> account() async {
     _guard();
     try {

@@ -27,6 +27,7 @@ import '../../core/device/device_timezone.dart';
 import '../../core/local/app_database.dart';
 import '../../features/auth/login_controller.dart';
 import '../../features/najm_bahar/najm_bahar_controller.dart';
+import '../../features/najm_bahar/najm_bahar_policy_controller.dart';
 import '../../features/najm_bahar/najm_bahar_repository.dart';
 import '../../features/najm_bahar/najm_bahar_screen.dart';
 import '../../features/groups/group_cache.dart';
@@ -617,20 +618,26 @@ class _NajmBaharRuntimeView extends StatefulWidget {
 class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
   late final NajmBaharController _controller = NajmBaharController(
       widget.repository,
-      sessionChanges: widget.sessionChanges);
+      sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: () => _policies.invalidateSession());
+  late final NajmBaharPolicyController _policies = NajmBaharPolicyController(
+      widget.repository, sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: _controller.invalidateSession);
   @override
   void initState() {
     super.initState();
     unawaited(_controller.load());
+    unawaited(_policies.load());
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _policies.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) =>
-      NajmBaharScreen(controller: _controller);
+      NajmBaharScreen(controller: _controller, policyController: _policies);
 }
