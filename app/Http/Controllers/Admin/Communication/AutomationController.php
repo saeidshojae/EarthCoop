@@ -160,6 +160,16 @@ final class AutomationController extends Controller
             ->with('success', 'قاعده ارتباطی ایجاد شد.');
     }
 
+    public function deactivate(CommunicationRule $rule): RedirectResponse
+    {
+        if ($rule->is_active) {
+            $rule->forceFill(['is_active' => false])->save();
+        }
+
+        return redirect()->route('admin.communications.automations.index')
+            ->with('success', 'قاعده ارتباطی غیرفعال شد.');
+    }
+
     private function invalid(Request $request, string $field, string $message): RedirectResponse|JsonResponse
     {
         if ($request->expectsJson()) {
