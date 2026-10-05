@@ -20,6 +20,9 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/mobile
-      - name: Run module tests
-        run: flutter test test/features/najm_bahar
+      - name: Run repository tests
+        run: flutter test test/features/najm_bahar/najm_bahar_repository_test.dart
+        working-directory: apps/mobile
+      - name: Run controller tests
+        run: flutter test test/features/najm_bahar/najm_bahar_controller_test.dart
         working-directory: apps/mobile

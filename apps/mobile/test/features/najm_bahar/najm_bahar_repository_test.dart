@@ -77,7 +77,7 @@ void main() {
     expect(page.items.single.counterparty?.name,'عضو');
     expect(page.nextCursor,'opaque-next');
     expect(page.hasMore,true);
-    expect(adapter.requests.single.queryParameters,{'limit':20,'cursor':'opaque-start'});
+    expect(adapter.requests.single.queryParameters,{'page[limit]':20,'page[cursor]':'opaque-start'});
   });
   test('empty valid history remains empty', () async {
     final page=await repository(BoundaryAdapter((_)=>envelope([]))).history();
