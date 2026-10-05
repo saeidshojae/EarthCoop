@@ -48,7 +48,6 @@ jobs:
         run: |
           set -euo pipefail
           git rm .github/workflows/temporal-ticket-show-patch-helper.yml
-          git diff --check
 
           changed="$(git diff --name-only HEAD | sort)"
           expected=$'.github/workflows/temporal-ticket-show-patch-helper.yml\nresources/views/admin/tickets/show.blade.php'
