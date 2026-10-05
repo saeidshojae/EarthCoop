@@ -16,6 +16,7 @@ use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\TreasuryService;
 use App\Services\MembershipFeeStatusService;
+use App\Services\MembershipFeePaymentEvidence;
 use App\Services\ReputationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -175,7 +176,7 @@ class NajmBaharMembershipFeeApplicationService
                 $policyVersionId,
             );
 
-            if (! $this->status->hasPaidCurrentMembershipFee($user)) {
+            if (! app(MembershipFeePaymentEvidence::class)->hasCompletePaymentEvidence((int) $user->id, $paymentYear)) {
                 throw new NajmBaharMembershipFeeException('membership_fee_incomplete', 'Membership payment evidence is incomplete.');
             }
 
@@ -190,7 +191,7 @@ class NajmBaharMembershipFeeApplicationService
 
         return [
             'account' => $account,
-            'has_paid' => $this->status->hasPaidCurrentMembershipFee($user),
+            'has_paid' => app(MembershipFeePaymentEvidence::class)->hasCompletePaymentEvidence((int) $user->id, $paymentYear),
             'payment_year' => $paymentYear,
             'fee_gol' => $fee,
             'payment_source' => $paymentSource,
