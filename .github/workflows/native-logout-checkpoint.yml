@@ -1,0 +1,24 @@
+name: Native logout checkpoint
+on:
+  push:
+    branches: [agent/native-logout-20261005]
+permissions:
+  contents: read
+concurrency:
+  group: native-logout-checkpoint
+  cancel-in-progress: true
+jobs:
+  logout-red:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - working-directory: apps/mobile
+        run: flutter pub get
+      - working-directory: apps/mobile
+        run: flutter test test/core/auth/session_controller_test.dart test/app_runtime_wiring_test.dart

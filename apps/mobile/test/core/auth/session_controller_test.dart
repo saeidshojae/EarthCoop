@@ -88,6 +88,41 @@ void main() {
       expect(repository.calls, ['login', 'rotate']);
     });
 
+    test('pending logout closes authorization immediately and retains cleanup identity', () async {
+      final repository = PendingRevokeRepository();
+      NativeSession? cleanupSession;
+      late final SessionController controller;
+      controller = SessionController(
+        repository: repository,
+        clearUserScopedLocalState: () async {
+          cleanupSession = controller.state.session;
+        },
+      );
+      controller.state = SessionState.authenticated(sampleSession());
+      final loggingOut = controller.logout();
+      expect(controller.state.phase, isNot(SessionPhase.authenticated));
+      expect(controller.state.session?.user.id, 42);
+      repository.release.complete();
+      await loggingOut;
+      expect(cleanupSession?.user.id, 42);
+      expect(controller.state.session, isNull);
+    });
+
+    test('repeated logout during revoke shares one cleanup', () async {
+      final repository = PendingRevokeRepository();
+      var clears = 0;
+      final controller = SessionController(
+        repository: repository,
+        clearUserScopedLocalState: () async { clears++; },
+      )..state = SessionState.authenticated(sampleSession());
+      final first = controller.logout();
+      final second = controller.logout();
+      repository.release.complete();
+      await Future.wait([first, second]);
+      expect(repository.revokeCalls, 1);
+      expect(clears, 1);
+    });
+
     test('logout preserves cleanup ordering when server revoke succeeds',
         () async {
       final events = <String>[];
@@ -217,3 +252,13 @@ NativeSession sampleSession({String token = 'token'}) => NativeSession(
         pushCapable: true,
       ),
     );
+
+class PendingRevokeRepository extends FakeSessionRepository {
+  final release = Completer<void>();
+  int revokeCalls = 0;
+  @override
+  Future<void> revokeCurrent() async {
+    revokeCalls++;
+    await release.future;
+  }
+}

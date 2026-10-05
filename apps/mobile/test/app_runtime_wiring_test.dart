@@ -133,6 +133,40 @@ void main() {
         isFalse);
   });
 
+  testWidgets('native logout blocks pending push opens and returns to login after offline revoke',
+      (tester) async {
+    final repository = _PendingRevokeRepository();
+    final session = SessionController(repository: repository)
+      ..state = SessionState.authenticated(_session());
+    final runtime = MobileAppRuntime(
+      bootstrap: const BootstrapState.compatible(),
+      sessionController: session,
+      loginController: LoginController(
+        sessionController: session,
+        deviceContext: () => const DeviceContext(
+          platform: 'android', appVersion: '1', locale: 'fa',
+          timezone: 'Asia/Tehran', pushCapable: true)),
+    );
+    await tester.pumpWidget(EarthCoopApp(runtimeFactory: () async => runtime));
+    await tester.pumpAndSettle();
+    final logout = find.byKey(const Key('home-logout-action'));
+    expect(logout, findsOneWidget);
+    await tester.tap(logout);
+    await tester.pump();
+    expect(repository.revokeCalls, 1);
+    expect(tester.widget<FilledButton>(find.byKey(const Key('home-groups-action'))).onPressed, isNull);
+    expect(runtime.openSemanticLink(const SemanticLink(
+      version: 1, route: 'group.detail', params: {'group_id': 42}),
+      currentBootstrap: const BootstrapState.compatible()), isFalse);
+    repository.release.completeError(StateError('server unreachable'));
+    await tester.pumpAndSettle();
+    expect(repository.cleared, isTrue);
+    expect(find.byKey(const Key('login-submit')), findsOneWidget);
+    expect(runtime.router.canPop(), isFalse);
+    expect(find.byKey(const Key('home-route-screen')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   test('production runtime derives version from installed package metadata',
       () {
     final source = File(
@@ -272,3 +306,16 @@ NativeSession _session() => NativeSession(
         pushCapable: true,
       ),
     );
+
+class _PendingRevokeRepository extends _FakeSessionRepository {
+  final release = Completer<void>();
+  int revokeCalls = 0;
+  bool cleared = false;
+  @override
+  Future<void> revokeCurrent() async {
+    revokeCalls++;
+    await release.future;
+  }
+  @override
+  Future<void> clearLocalCredentials() async { cleared = true; }
+}
