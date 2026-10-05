@@ -259,8 +259,21 @@ GROUP_ACCOUNT_ISOLATION_CHECKPOINT.md and
 
 Phone unavailable: physical permission allow/deny, token registration, foreground inbox refresh, background delivery, cold/warm tap and account-change safety are NOT EXECUTED. Keep the existing composer/feed, offline read/cache/logout and Android attachment save/open checks pending. Previously accepted 81-group count remains accepted. Test only the latest verified stable-signed candidate once the artifact receipt below is recorded. No +13 host download-page publication is performed.
 
-Server diagnostic PR196 was separately deployed in run 37248899603; the console operation fcm_readiness can validate credentials/OAuth/FCM permission without delivery. Its actual execution on the configured host remains pending. Server push driver stays disabled.
+Server diagnostic PR196 was separately deployed in run 37248899603; the console operation fcm_readiness can validate credentials/OAuth/FCM permission without delivery. Its configured-host execution PASSED on 2026-10-05: ready true / fcm_validation_ready / exit 0. Server push driver stays disabled.
 
 Verified Android 1.0.0+13 source 5c6e125b55df530d819dda231e7c1f083cd364b4: https://github.com/saeidshojae/EarthCoop/actions/runs/37307643684 completed successfully. Canonical and strict formatter: 123 files / 0 changed; analyzer no issues; all 208 mobile tests passed, including three behavioral review regressions. Required FCM client configuration ready, stable UAT signing, Android APK build and staged metadata verified.
 
 Artifact https://github.com/saeidshojae/EarthCoop/actions/runs/37307643684/artifacts/11344029983 . Archive size 95184967 bytes; archive SHA256 94558ddf326046bb74c5e14e3039f98e49b46c8b33040b1616e38e765e0baaae; expires 2026-11-04T12:17:11Z. This is the ZIP digest, not the inner APK digest. +13 supersedes +12 for one consolidated phone acceptance. No FTP APK publication and no real-device delivery/tap acceptance performed.
+
+## Native logout follow-up — +14
+
+When the latest +14 artifact is verified, it supersedes +13 for the single consolidated phone run. Home now has a native logout action. Test successful logout/login, protected route history removal, old-account cache isolation and late notification tap rejection. While logout waits, Home actions must stay disabled and duplicate taps must not repeat cleanup. If local cleanup fails, the retry must stay on Home with protected actions disabled until cleanup succeeds; unread/push/media checks from earlier checkpoints remain pending. Phone unavailable: these physical checks are NOT EXECUTED. Host FCM readiness already PASSED on 2026-10-05; no driver activation or APK host publication accompanies this checkpoint.
+
+User priority: Google/provider filtering, international/total internet loss and their resilience work are deferred to final app completion; see docs/MOBILE_REMAINING_WORK_20261005.md in the repository root. Continue required M6 development now.
+
+
+## Verified +14 receipt
+
+Android 1.0.0+14 source 5fc4c7536ad323335982c753d3a9a33dea929592: https://github.com/saeidshojae/EarthCoop/actions/runs/37316990396 completed successfully. Formatter 123 files / 0 changed, analyzer no issues, all 212 mobile tests passed. Required Firebase client configuration, stable UAT signing, APK build and staged publication verification succeeded. Independent review found no Critical/Important findings.
+
+Artifact: https://github.com/saeidshojae/EarthCoop/actions/runs/37316990396/artifacts/11349465458 . ZIP size 95187420 bytes; ZIP SHA256 f7dae1de413ebd40aba14b9bba87fbb909d094366d7e8cf8f7954e983d5af19b; expires 2026-11-04T13:33:44Z. Digest refers to ZIP, not inner APK. +14 supersedes +13 for one consolidated physical acceptance. Phone tests remain NOT EXECUTED. No APK FTP publication, production merge or push-driver activation. Host FCM readiness passed separately. Google/network resilience remains deferred to final app completion.
