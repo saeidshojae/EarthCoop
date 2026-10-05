@@ -150,6 +150,10 @@ class NajmBaharMembershipFeeApplicationService
                 $policyVersionId,
             );
 
+            if (! $this->status->hasPaidCurrentMembershipFee($user)) {
+                throw new NajmBaharMembershipFeeException('membership_fee_incomplete', 'Membership payment evidence is incomplete.');
+            }
+
             $this->awardParticipation($user, $paymentYear, $paymentSource, $policyVersionId);
         });
 
@@ -294,6 +298,13 @@ class NajmBaharMembershipFeeApplicationService
                 'پرداخت حق عضویت سالانه EarthCoop',
                 [
                     'type' => 'membership_fee',
+                    'trusted_canonical_subaccount_transfer' => true,
+                    'membership_fee_total_gol' => array_sum($split),
+                    'expected_breakdown_gol' => [
+                        TreasuryService::OPERATIONS_SALARY.'_gol' => $split[TreasuryService::OPERATIONS_SALARY],
+                        TreasuryService::CENTRAL_INSURANCE.'_gol' => $split[TreasuryService::CENTRAL_INSURANCE],
+                        TreasuryService::MONEY_DESTRUCTION.'_gol' => $split[TreasuryService::MONEY_DESTRUCTION],
+                    ],
                     'user_id' => $userId,
                     'split' => $code,
                     'user_initiated' => true,

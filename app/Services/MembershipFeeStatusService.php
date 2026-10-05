@@ -19,11 +19,19 @@ class MembershipFeeStatusService
     {
         $paymentYear = $this->membershipPaymentYear($user);
 
+        if (app(MembershipFeePaymentEvidence::class)->hasCompletePaymentEvidence((int) $user->id, $paymentYear)) {
+            return true;
+        }
+
         $actual = NajmTransaction::query()
             ->where('metadata->type', 'membership_fee')
             ->where('metadata->user_id', $user->id)
             ->where('metadata->payment_year', $paymentYear)
+            ->where('status', 'completed')
             ->pluck('metadata')
+            ->filter(fn ($metadata) => is_array($metadata)
+                && ! array_key_exists('expected_breakdown_gol', $metadata)
+                && ! array_key_exists('membership_fee_total_gol', $metadata))
             ->map(fn ($metadata) => $metadata['split'] ?? null)
             ->filter()
             ->unique()

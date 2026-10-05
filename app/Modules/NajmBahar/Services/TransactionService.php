@@ -211,7 +211,7 @@ class TransactionService
                     // only update active/faded, NOT the total balance field
                     // This keeps the parent's total balance constant during internal redistribution
                     if (! ($isInternalOwnTransfer && $fromAcc->type === 'user')) {
-                        $fromAcc->balance = intval($fromAcc->balance_active ?? 0) + intval($fromAcc->balance_faded ?? 0);
+                        $fromAcc->balance = app(AccountBalanceService::class)->expectedStoredLocalTotal($fromAcc);
                     }
                     if ($fromSubAccount) {
                         // ALWAYS ensure subaccount balance = active + faded (never leave it corrupted)
@@ -220,7 +220,7 @@ class TransactionService
                 } else {
                     // balanceType === 'balance', so recalculate total from active+faded  
                     if (! ($isInternalOwnTransfer && $fromAcc->type === 'user')) {
-                        $fromAcc->balance = intval($fromAcc->balance_active ?? 0) + intval($fromAcc->balance_faded ?? 0);
+                        $fromAcc->balance = app(AccountBalanceService::class)->expectedStoredLocalTotal($fromAcc);
                     }
                     if ($fromSubAccount) {
                         // ALWAYS ensure subaccount balance = active + faded (never leave it corrupted)
@@ -251,7 +251,7 @@ class TransactionService
 
             if ($balanceType !== 'balance') {
                 if (! ($isInternalOwnTransfer && $toAcc->type === 'user')) {
-                    $toAcc->balance = intval($toAcc->balance_active ?? 0) + intval($toAcc->balance_faded ?? 0);
+                    $toAcc->balance = app(AccountBalanceService::class)->expectedStoredLocalTotal($toAcc);
                 }
                 if ($toSubAccount) {
                     // ALWAYS ensure subaccount balance = active + faded (never leave it corrupted)
@@ -260,7 +260,7 @@ class TransactionService
             } else {
                 // balanceType === 'balance', so recalculate total from active+faded
                 if (! ($isInternalOwnTransfer && $toAcc->type === 'user')) {
-                    $toAcc->balance = intval($toAcc->balance_active ?? 0) + intval($toAcc->balance_faded ?? 0);
+                    $toAcc->balance = app(AccountBalanceService::class)->expectedStoredLocalTotal($toAcc);
                 }
                 if ($toSubAccount) {
                     // ALWAYS ensure subaccount balance = active + faded (never leave it corrupted)
