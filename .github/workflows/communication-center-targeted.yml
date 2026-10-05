@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/communication-center-implementation-20260930
+      - agent/communication-scheduled-specific-user-20261005
     paths:
       - 'app/Enums/Communication/**'
       - 'app/Models/Communication*.php'
