@@ -1,7 +1,7 @@
 name: Mobile membership payment
 on:
   push:
-    branches: [agent/mobile-membership-payment-20261005, agent/mobile-membership-native-20261005]
+    branches: [agent/mobile-membership-payment-20261005]
 permissions:
   contents: read
 concurrency:
