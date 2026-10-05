@@ -55,6 +55,8 @@ final class AutomationController extends Controller
             'trigger_type' => ['required', Rule::in(['event', 'scheduled', 'conditional'])],
             'event_key' => ['nullable', 'string', 'max:160'],
             'audience_key' => ['required', 'string', 'max:160'],
+            'user_ids' => ['nullable', 'array'],
+            'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
             'condition_key' => ['nullable', 'string', 'max:160'],
             'communication_template_id' => ['required', 'integer', 'exists:communication_templates,id'],
             'communication_sender_identity_id' => ['nullable', 'integer', 'exists:communication_sender_identities,id'],
@@ -93,12 +95,26 @@ final class AutomationController extends Controller
             }
         }
 
+        $audienceKey = (string) $validated['audience_key'];
+        $userIds = array_values(array_filter(
+            array_unique(array_map('intval', (array) ($validated['user_ids'] ?? []))),
+            static fn (int $id): bool => $id > 0,
+        ));
+        if ($audienceKey === 'specific.user' && $userIds === []) {
+            return $this->invalid($request, 'user_ids', 'برای مخاطب مشخص، حداقل یک کاربر لازم است.');
+        }
+
         $actorId = $request->user()?->id;
 
-        DB::transaction(function () use ($validated, $triggerType, $actorId): void {
+        DB::transaction(function () use ($validated, $triggerType, $actorId, $audienceKey, $userIds): void {
             $conditionDefinition = null;
             if ($triggerType === 'conditional') {
                 $conditionDefinition = ['key' => (string) $validated['condition_key']];
+            }
+
+            $audienceDefinition = ['key' => $audienceKey];
+            if ($audienceKey === 'specific.user') {
+                $audienceDefinition['user_ids'] = $userIds;
             }
 
             $rule = CommunicationRule::query()->create([
@@ -107,7 +123,7 @@ final class AutomationController extends Controller
                 'trigger_type' => $triggerType,
                 'event_key' => $triggerType === 'event' ? $validated['event_key'] : null,
                 'condition_definition' => $conditionDefinition,
-                'audience_definition' => ['key' => (string) $validated['audience_key']],
+                'audience_definition' => $audienceDefinition,
                 'communication_template_id' => $validated['communication_template_id'],
                 'communication_sender_identity_id' => $validated['communication_sender_identity_id'] ?? null,
                 'classification' => $validated['classification'],
