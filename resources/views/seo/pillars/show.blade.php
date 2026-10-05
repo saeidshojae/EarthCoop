@@ -61,6 +61,17 @@
         @endforeach
     </article>
 
+    @if(!empty($supportingArticles))
+        <aside class="seo-pillar-links" aria-label="مقالات مرتبط">
+            <h2 class="h5 fw-bold mb-3">مقالات مرتبط</h2>
+            <div class="seo-pillar-link-grid">
+                @foreach($supportingArticles as $article)
+                    <a class="seo-pillar-link" href="{{ $article['path'] }}">{{ $article['label'] }}</a>
+                @endforeach
+            </div>
+        </aside>
+    @endif
+
     <aside class="seo-pillar-links" aria-label="مطالعه بیشتر">
         <h2 class="h5 fw-bold mb-3">مطالعه مرتبط</h2>
         <div class="seo-pillar-link-grid">
