@@ -62,6 +62,36 @@ void main() {
     await runtime.changes.close();
   });
 
+  test('permission granted after denial can acquire a token on retry', () async {
+    final runtime = FakeRuntime()..permissionGranted = false;
+    final source = FcmPushTokenSource(options: options, runtime: runtime);
+    expect(await source.initialize(), isNull);
+    runtime.permissionGranted = true;
+    expect(await source.initialize(), 'initial');
+    expect(runtime.tokenCalls, 1);
+    await source.dispose();
+    await runtime.changes.close();
+  });
+
+  test('disposal during permission prompt prevents late token acquisition',
+      () async {
+    final entered = Completer<void>();
+    final pending = Completer<bool>();
+    final runtime = FakeRuntime()
+      ..permissionHook = () {
+        entered.complete();
+        return pending.future;
+      };
+    final source = FcmPushTokenSource(options: options, runtime: runtime);
+    final initialization = source.initialize();
+    await entered.future;
+    await source.dispose();
+    pending.complete(true);
+    expect(await initialization, isNull);
+    expect(runtime.tokenCalls, 0);
+    await runtime.changes.close();
+  });
+
   test('disposal during SDK setup prevents late token acquisition', () async {
     final entered = Completer<void>();
     final pending = Completer<void>();
@@ -90,6 +120,7 @@ class FakeRuntime implements FcmTokenRuntime {
   bool permissionGranted = true;
   int tokenCalls = 0;
   Future<void> Function()? initializeHook;
+  Future<bool> Function()? permissionHook;
   Future<String?> Function()? tokenHook;
 
   @override
@@ -108,10 +139,11 @@ class FakeRuntime implements FcmTokenRuntime {
     return changes.stream;
   }
 
+  @override
   Future<bool> requestNotificationPermission() async {
     if (!ready) throw StateError('SDK not initialized');
     permissionRequested = true;
-    return permissionGranted;
+    return permissionHook == null ? permissionGranted : await permissionHook!();
   }
 
   @override

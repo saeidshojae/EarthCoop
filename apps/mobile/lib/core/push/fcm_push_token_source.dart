@@ -9,6 +9,7 @@ import 'push_token_source.dart';
 
 abstract interface class FcmTokenRuntime {
   Future<void> initialize(FirebaseOptions options);
+  Future<bool> requestNotificationPermission();
   Stream<String> get tokenChanges;
   Future<String?> token();
 }
@@ -28,6 +29,13 @@ class FirebaseFcmTokenRuntime implements FcmTokenRuntime {
             'Firebase client configuration does not match initialized app');
       }
     }
+  }
+
+  @override
+  Future<bool> requestNotificationPermission() async {
+    final settings = await FirebaseMessaging.instance.requestPermission();
+    return settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
   }
 
   @override
@@ -66,6 +74,8 @@ class FcmPushTokenSource implements PushTokenSource {
     if (_disposed || options == null) return null;
     await _runtime.initialize(options);
     if (_disposed) return null;
+    final allowed = await _runtime.requestNotificationPermission();
+    if (_disposed || !allowed) return null;
     _subscription ??= _runtime.tokenChanges.listen((token) {
       if (!_disposed) _changes.add(token);
     }, onError: (Object error, StackTrace stack) {
