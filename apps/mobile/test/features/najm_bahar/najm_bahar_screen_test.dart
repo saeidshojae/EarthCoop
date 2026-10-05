@@ -6,7 +6,8 @@ import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_screen.dart';
 import 'najm_bahar_repository_test.dart' as fixtures;
 
 void main() {
-  testWidgets('history refresh retry requests first page despite retained cursor', (tester) async {
+  for (final pagination in [false, true]) {
+  testWidgets('history ${pagination ? 'pagination' : 'refresh'} retry requests correct cursor', (tester) async {
     var phase = 0;
     final retry = Completer<void>();
     final adapter = fixtures.BoundaryAdapter((r) {
@@ -18,21 +19,24 @@ void main() {
     });
     final controller = NajmBaharController(fixtures.repository(adapter));
     addTearDown(controller.dispose);
+    print("NB_RETRY_LOAD_START");
     await tester.runAsync(() => controller.load());
+    print("NB_RETRY_LOAD_DONE");
     phase = 1;
-    await tester.runAsync(() => controller.refreshHistory());
+    await tester.runAsync(() => pagination ? controller.loadMore() : controller.refreshHistory());
     await tester.pumpWidget(MaterialApp(home: NajmBaharScreen(controller: controller)));
     await tester.scrollUntilVisible(find.text('تلاش دوباره'), 300, scrollable: find.byType(Scrollable).first);
     phase = 2;
     await tester.runAsync(() async {
       await tester.tap(find.text('تلاش دوباره'));
-      await retry.future;
+      await retry.future.timeout(const Duration(seconds: 5));
     });
     await tester.pumpAndSettle();
-    expect(adapter.requests.last.queryParameters.containsKey('page[cursor]'), false);
-    expect(controller.transactions.map((t) => t.id), [10]);
+    expect(adapter.requests.last.queryParameters['page[cursor]'], pagination ? 'next' : null);
+    expect(controller.transactions.map((t) => t.id), pagination ? [9, 10] : [10]);
   }, timeout: const Timeout(Duration(seconds: 20)));
 
+  }
   testWidgets('wallet distinguishes main and aggregate balances and history',
       (tester) async {
     final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
