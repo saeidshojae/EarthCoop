@@ -74,4 +74,11 @@ final class JalaliCalendarAdapter implements CalendarAdapter
             default => throw new InvalidArgumentException("Unsupported Jalali date style: {$style}"),
         };
     }
+
+    public function year(LocalDate $date): int
+    {
+        [$year] = CalendarUtils::toJalali($date->year(), $date->month(), $date->day());
+
+        return $year;
+    }
 }
