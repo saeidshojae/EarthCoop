@@ -13,7 +13,9 @@ void main() {
             : [fixtures.transactionJson(9)]));
     final controller = NajmBaharController(fixtures.repository(adapter));
     addTearDown(controller.dispose);
+    debugPrint('NB_UI_BEFORE_LOAD');
     await controller.load();
+    debugPrint('NB_UI_AFTER_LOAD');
     await tester
         .pumpWidget(MaterialApp(home: NajmBaharScreen(controller: controller)));
     expect(find.text('حساب اصلی'), findsOneWidget);
@@ -29,7 +31,9 @@ void main() {
         fixtures.BoundaryAdapter((r) => fixtures.envelope(
             r.path.endsWith('/account') ? fixtures.accountJson() : []))));
     addTearDown(controller.dispose);
+    debugPrint('NB_UI_BEFORE_LOAD');
     await controller.load();
+    debugPrint('NB_UI_AFTER_LOAD');
     await tester
         .pumpWidget(MaterialApp(home: NajmBaharScreen(controller: controller)));
     await tester.scrollUntilVisible(find.text('تراکنشی یافت نشد.'), 300);

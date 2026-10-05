@@ -37,7 +37,7 @@ jobs:
         run: flutter test test/features/najm_bahar/najm_bahar_controller_test.dart
         working-directory: apps/mobile
       - name: Run wallet interface tests
-        run: flutter test test/features/najm_bahar/najm_bahar_screen_test.dart test/features/najm_bahar/najm_bahar_navigation_test.dart
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_screen_test.dart test/features/najm_bahar/najm_bahar_navigation_test.dart
         working-directory: apps/mobile
       - name: Run complete mobile suite
         run: flutter test
