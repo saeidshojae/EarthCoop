@@ -31,8 +31,8 @@ Files: app/Services/Push/FcmReadinessCheck.php; app/Console/Commands/FcmReadines
 
 Interface: FcmReadinessCheck(FcmAccessTokenProvider $tokens, ?string $projectId, ?string $credentialsPath)::check(): array with ready bool and categorical code string. Command deployment:fcm-readiness returns 0 only for a successful validation; no arbitrary arguments.
 
-- [ ] Write tests for accepted validate-only request, absent credentials, mismatched project, unsafe token URI, malformed JSON, OAuth failure, provider 401/403/429/5xx and network exception; assert sanitized result and no requests on preflight failure.
-- [ ] Run focused PHPUnit in isolated remote CI; expect missing diagnostic class/operation before implementation.
-- [ ] Implement service, command and fixed console entry, with bounded OAuth HTTP handler.
-- [ ] Run existing push and deployment-console contracts plus new tests; expect all pass and Pint on changed PHP files.
+- [x] Write tests for accepted validate-only request, absent credentials, mismatched project, unsafe token URI, malformed JSON, OAuth failure, provider 401/403/429/5xx and network exception; assert sanitized result and no requests on preflight failure.
+- [x] Run focused PHPUnit in isolated remote CI; expect missing diagnostic class/operation before implementation.
+- [x] Implement service, command and fixed console entry, with bounded OAuth HTTP handler.
+- [x] Run existing push and deployment-console contracts plus new tests; expect all pass and Pint on changed PHP files.
 - [ ] Review whole diff, fix material findings, record receipts and create main-based PR. Deploy only verified server changes; actual host diagnostic acceptance remains separate.

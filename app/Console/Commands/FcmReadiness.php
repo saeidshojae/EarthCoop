@@ -22,6 +22,7 @@ class FcmReadiness extends Command
             is_string($path) ? $path : null,
         ))->check();
         $this->line(json_encode($result, JSON_THROW_ON_ERROR));
+
         return $result['ready'] ? self::SUCCESS : self::FAILURE;
     }
 }

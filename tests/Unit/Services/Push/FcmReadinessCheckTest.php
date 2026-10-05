@@ -5,9 +5,9 @@ namespace Tests\Unit\Services\Push;
 use App\Services\Push\FcmAccessTokenProvider;
 use App\Services\Push\FcmReadinessCheck;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
+use RuntimeException;
 use Tests\TestCase;
 
 class FcmReadinessCheckTest extends TestCase
@@ -53,8 +53,12 @@ class FcmReadinessCheckTest extends TestCase
     {
         Http::fake();
         foreach ([['project_id' => 'other-project'], ['client_email' => 'sender@other-project.iam.gserviceaccount.com'], ['token_uri' => 'https://untrusted.example/token'], ['type' => 'authorized_user'], ['private_key' => '']] as $change) {
-            $provider = new class extends FcmAccessTokenProvider {
-                public function token(): ?string { throw new RuntimeException('preflight must not call OAuth'); }
+            $provider = new class extends FcmAccessTokenProvider
+            {
+                public function token(): ?string
+                {
+                    throw new RuntimeException('preflight must not call OAuth');
+                }
             };
             $result = (new FcmReadinessCheck($provider, 'project-123', $this->file(json_encode(array_replace($this->credentials(), $change)))))->check();
             $this->assertSame(['ready' => false, 'code' => 'fcm_credentials_invalid'], $result);
@@ -105,8 +109,12 @@ class FcmReadinessCheckTest extends TestCase
     public function test_oauth_exception_never_discloses_secret_text(): void
     {
         Http::fake();
-        $provider = new class extends FcmAccessTokenProvider {
-            public function token(): ?string { throw new RuntimeException('synthetic-private-secret'); }
+        $provider = new class extends FcmAccessTokenProvider
+        {
+            public function token(): ?string
+            {
+                throw new RuntimeException('synthetic-private-secret');
+            }
         };
         $result = (new FcmReadinessCheck($provider, 'project-123', $this->file(json_encode($this->credentials()))))->check();
         $this->assertSame(['ready' => false, 'code' => 'fcm_oauth_failed'], $result);
@@ -149,9 +157,14 @@ class FcmReadinessCheckTest extends TestCase
 
     private function tokens(?string $token = 'access-secret'): FcmAccessTokenProvider
     {
-        return new class($token) extends FcmAccessTokenProvider {
+        return new class($token) extends FcmAccessTokenProvider
+        {
             public function __construct(private readonly ?string $value) {}
-            public function token(): ?string { return $this->value; }
+
+            public function token(): ?string
+            {
+                return $this->value;
+            }
         };
     }
 
@@ -165,6 +178,7 @@ class FcmReadinessCheckTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'fcm-readiness-');
         file_put_contents($path, $contents);
         $this->files[] = $path;
+
         return $path;
     }
 }

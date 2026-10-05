@@ -50,6 +50,7 @@ final readonly class FcmReadinessCheck
         } catch (Throwable) {
             // Never expose provider bodies, exception messages or bearer tokens.
         }
+
         return $this->failure('fcm_validation_failed');
     }
 
@@ -78,6 +79,7 @@ final readonly class FcmReadinessCheck
                 return false;
             }
             $key = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
+
             return is_array($key)
                 && ($key['type'] ?? null) === 'service_account'
                 && ($key['project_id'] ?? null) === $project
@@ -108,6 +110,7 @@ final readonly class FcmReadinessCheck
                 $parts[] = $part;
             }
         }
+
         return DIRECTORY_SEPARATOR.implode(DIRECTORY_SEPARATOR, $parts);
     }
 }
