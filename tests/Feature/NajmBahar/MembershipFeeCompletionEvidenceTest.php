@@ -91,4 +91,27 @@ class MembershipFeeCompletionEvidenceTest extends TestCase
         $this->assertSame(200,(int)$receiver->fresh()->committed_dim);
     }
 
+    public function test_receipt_and_completion_remain_bound_to_frozen_period_at_anniversary(): void
+    {
+        $this->policy(); [$user] = $this->member();
+        $user->forceFill(['created_at' => now()->subYear()->addMinute()])->save();
+        $year = app(MembershipFeeStatusService::class)->membershipPaymentYear($user);
+        $active = true;
+        Transaction::created(function ($transaction) use (&$active) {
+            if ($active && ($transaction->metadata['type'] ?? null) === 'membership_fee'
+                && ($transaction->metadata['split'] ?? null) === 'money_destruction') {
+                $this->travel(2)->minutes();
+            }
+        });
+        try {
+            $result = app(NajmBaharMembershipFeeApplicationService::class)->pay($user, 'dim');
+        } finally {
+            $active = false;
+        }
+        $this->assertTrue($result['has_paid']);
+        $this->assertSame($year, $result['payment_year']);
+        $this->assertFalse(app(MembershipFeeStatusService::class)->hasPaidCurrentMembershipFee($user));
+        $this->assertSame(3, Transaction::where('metadata->type', 'membership_fee')->count());
+    }
+
 }

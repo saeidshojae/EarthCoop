@@ -75,11 +75,13 @@ class NajmBaharMembershipConsentContractTest extends TestCase
             $stale=$expected;
             if($field==='breakdown') { $stale[$field]['central_insurance_gol']--; $stale[$field]['operations_salary_gol']++; }
             else { $stale[$field]++; if ($field === 'fee_gol') { $stale['breakdown']['money_destruction_gol']++; } }
-            $balance=(int)$main->fresh()->balance; $transactions=Transaction::count();
+            $balance=(int)$main->fresh()->balance; $transactions=Transaction::count(); $ledgers=\App\Modules\NajmBahar\Models\LedgerEntry::count(); $points=\App\Models\UserPointTransaction::count();
             $this->submit($stale,'dim',null,'consent-stale-'.$index)->assertStatus(409)
                 ->assertJsonPath('error.code','membership_fee_terms_changed');
             $this->assertSame($balance,(int)$main->fresh()->balance);
             $this->assertSame($transactions,Transaction::count());
+            $this->assertSame($ledgers,\App\Modules\NajmBahar\Models\LedgerEntry::count());
+            $this->assertSame($points,\App\Models\UserPointTransaction::count());
         }
     }
 
