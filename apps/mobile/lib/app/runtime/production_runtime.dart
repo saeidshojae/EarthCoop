@@ -397,8 +397,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
           sessionController.state.phase == SessionPhase.authenticated &&
           sessionController.state.session?.token == session.token &&
           sessionController.state.session?.user.id == session.user.id &&
-          sessionController.state.session?.device.id == session.device.id &&
-          pushBootstrap?.allowsProtectedNetwork == true;
+          sessionController.state.session?.device.id == session.device.id;
       final scopedApi = ApiClient(
         dio: dio,
         bearerTokenProvider: () async => session.token,
@@ -410,7 +409,9 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       return _NajmBaharRuntimeView(
           sessionChanges: sessionController,
           repository: NajmBaharRepository(
-              apiClient: scopedApi, isCurrentSession: current));
+              apiClient: scopedApi,
+              isCurrentSession: current,
+              isNetworkAllowed: () => pushBootstrap?.allowsProtectedNetwork == true));
     },
     groupsBuilder: (context, openGroup) => _GroupsRuntimeView(
         repository: createGroupRepository(), onOpenGroup: openGroup),

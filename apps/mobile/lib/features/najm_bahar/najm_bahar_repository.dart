@@ -5,19 +5,30 @@ import 'najm_bahar_dto.dart';
 
 class NajmBaharRepository {
   NajmBaharRepository(
-      {required ApiClient apiClient, required bool Function() isCurrentSession})
+      {required ApiClient apiClient,
+       required bool Function() isCurrentSession,
+       bool Function()? isNetworkAllowed})
       : _api = apiClient,
-        _current = isCurrentSession;
+        _current = isCurrentSession,
+        _networkAllowed = isNetworkAllowed ?? (() => true);
   final ApiClient _api;
   final bool Function() _current;
+  final bool Function() _networkAllowed;
   bool get isCurrentSession => _current();
-  void _guard() {
+  void _guardSession() {
     if (!_current()) {
       throw const ApiFailure(
           code: 'session_changed',
           message: '',
           retryable: false,
           httpStatus: 401);
+    }
+  }
+
+  void _guard() {
+    _guardSession();
+    if (!_networkAllowed()) {
+      throw const ApiFailure(code: 'bootstrap_unavailable', message: '', retryable: true);
     }
   }
 
@@ -29,7 +40,7 @@ class NajmBaharRepository {
       _guard();
       return result.data;
     } catch (_) {
-      _guard();
+      _guardSession();
       rethrow;
     }
   }
@@ -63,7 +74,7 @@ class NajmBaharRepository {
           nextCursor: next,
           hasMore: more);
     } catch (_) {
-      _guard();
+      _guardSession();
       rethrow;
     }
   }

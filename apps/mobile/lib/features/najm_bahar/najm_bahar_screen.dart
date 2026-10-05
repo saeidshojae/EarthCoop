@@ -134,6 +134,8 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
       'unauthenticated' ||
       'session_changed' =>
         'برای مشاهده، دوباره وارد حساب شوید.',
+      'bootstrap_unavailable' =>
+        'اتصال فعلاً آماده نیست. پس از بازیابی، دوباره تلاش کنید.',
       'malformed_response' => 'پاسخ قابل نمایش نیست. دوباره تلاش کنید.',
       _ => 'دریافت اطلاعات کامل نشد. دوباره تلاش کنید.',
     };
