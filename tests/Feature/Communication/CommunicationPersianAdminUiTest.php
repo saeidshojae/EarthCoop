@@ -4,6 +4,9 @@ namespace Tests\Feature\Communication;
 
 use App\Models\CommunicationTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use Tests\TestCase;
 
 final class CommunicationPersianAdminUiTest extends TestCase
@@ -32,16 +35,19 @@ final class CommunicationPersianAdminUiTest extends TestCase
 
     public function test_admin_communication_views_use_persian_user_facing_terms(): void
     {
-        $createAutomation = file_get_contents(resource_path('views/admin/communications/automations/create.blade.php'));
-        $indexAutomation = file_get_contents(resource_path('views/admin/communications/automations/index.blade.php'));
-        $campaignCreate = file_get_contents(resource_path('views/admin/communications/campaigns/create.blade.php'));
-        $campaignPreview = file_get_contents(resource_path('views/admin/communications/campaigns/preview.blade.php'));
-        $senderCreate = file_get_contents(resource_path('views/admin/communications/senders/create.blade.php'));
-        $senderEdit = file_get_contents(resource_path('views/admin/communications/senders/edit.blade.php'));
-        $templateIndex = file_get_contents(resource_path('views/admin/communications/templates/index.blade.php'));
-        $templateShow = file_get_contents(resource_path('views/admin/communications/templates/show.blade.php'));
-        $dashboard = file_get_contents(resource_path('views/admin/communications/dashboard.blade.php'));
-        $failures = file_get_contents(resource_path('views/admin/communications/failures.blade.php'));
+        $sources = $this->viewSources();
+        $createAutomation = $sources['automations/create.blade.php'];
+        $indexAutomation = $sources['automations/index.blade.php'];
+        $campaignCreate = $sources['campaigns/create.blade.php'];
+        $campaignIndex = $sources['campaigns/index.blade.php'];
+        $campaignPreview = $sources['campaigns/preview.blade.php'];
+        $senderCreate = $sources['senders/create.blade.php'];
+        $senderEdit = $sources['senders/edit.blade.php'];
+        $templateIndex = $sources['templates/index.blade.php'];
+        $templateShow = $sources['templates/show.blade.php'];
+        $dashboard = $sources['dashboard.blade.php'];
+        $history = $sources['history.blade.php'];
+        $failures = $sources['failures.blade.php'];
 
         foreach ([
             'نوع اجرا', 'مخاطبان', 'شرط اجرا', 'رویدادمحور', 'زمان‌بندی‌شده', 'شرطی',
@@ -59,6 +65,7 @@ final class CommunicationPersianAdminUiTest extends TestCase
             $this->assertStringContainsString($term, $campaignCreate);
         }
 
+        $this->assertStringContainsString('وضعیت کمپین', $campaignIndex);
         foreach (['منطبق', 'مجاز به دریافت', 'عدم ارسال', 'نامعتبر'] as $term) {
             $this->assertStringContainsString($term, $campaignPreview);
         }
@@ -71,20 +78,42 @@ final class CommunicationPersianAdminUiTest extends TestCase
         $this->assertStringContainsString('قالب‌های مرجع', $templateIndex);
         $this->assertStringContainsString('ساختار متغیرها', $templateShow);
         $this->assertStringContainsString('پردازشگر صف', $dashboard);
+        $this->assertStringContainsString('وضعیت تحویل', $history);
         $this->assertStringContainsString('تلاش مجدد', $failures);
 
+        $all = implode("\n", $sources);
         foreach ([
             'نوع Trigger', '>event</option>', '>scheduled</option>', '>conditional</option>',
             '>required</option>', '>operational</option>', '>optional</option>',
             '>weekly</option>', '>daily</option>', '>hourly</option>',
             '>Matched<', '>Eligible<', '>Suppressed<', '>Invalid<',
             'Reply-To', 'کلید System Identity', 'Schema متغیرها', 'قالب‌های canonical',
+            'Audience</label>', 'Condition</label>', 'Event key</label>',
         ] as $forbidden) {
-            $all = implode("\n", [
-                $createAutomation, $indexAutomation, $campaignCreate, $campaignPreview,
-                $senderCreate, $senderEdit, $templateIndex, $templateShow, $dashboard, $failures,
-            ]);
             $this->assertStringNotContainsString($forbidden, $all);
         }
+    }
+
+    /** @return array<string,string> */
+    private function viewSources(): array
+    {
+        $root = resource_path('views/admin/communications');
+        $sources = [];
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+
+        /** @var SplFileInfo $file */
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            $relative = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1));
+            $sources[$relative] = (string) file_get_contents($file->getPathname());
+        }
+
+        ksort($sources);
+        $this->assertCount(13, $sources, 'تمام ویوهای فعلی مرکز ارتباطات باید زیر قرارداد فارسی‌سازی باشند.');
+
+        return $sources;
     }
 }
