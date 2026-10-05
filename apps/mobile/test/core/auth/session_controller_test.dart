@@ -123,6 +123,24 @@ void main() {
       expect(clears, 1);
     });
 
+    test('cleanup retry retains the outgoing account after a local failure', () async {
+      final identities = <int?>[];
+      var clears = 0;
+      late final SessionController controller;
+      controller = SessionController(
+        repository: FakeSessionRepository(),
+        clearUserScopedLocalState: () async {
+          identities.add(controller.state.session?.user.id);
+          if (++clears == 1) throw StateError('local storage unavailable');
+        },
+      )..state = SessionState.authenticated(sampleSession());
+      await expectLater(controller.logout(), throwsStateError);
+      expect(controller.state.phase, SessionPhase.unauthenticated);
+      await controller.logout();
+      expect(identities, [42, 42]);
+      expect(controller.state.session, isNull);
+    });
+
     test('logout preserves cleanup ordering when server revoke succeeds',
         () async {
       final events = <String>[];
