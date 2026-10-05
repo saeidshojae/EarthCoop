@@ -411,7 +411,8 @@ Future<MobileAppRuntime> createProductionRuntime() async {
           repository: NajmBaharRepository(
               apiClient: scopedApi,
               isCurrentSession: current,
-              isNetworkAllowed: () => pushBootstrap?.allowsProtectedNetwork == true));
+              isNetworkAllowed: () =>
+                  pushBootstrap?.allowsProtectedNetwork == true));
     },
     groupsBuilder: (context, openGroup) => _GroupsRuntimeView(
         repository: createGroupRepository(), onOpenGroup: openGroup),

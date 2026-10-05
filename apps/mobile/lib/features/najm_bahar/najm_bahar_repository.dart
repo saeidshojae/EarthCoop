@@ -6,8 +6,8 @@ import 'najm_bahar_dto.dart';
 class NajmBaharRepository {
   NajmBaharRepository(
       {required ApiClient apiClient,
-       required bool Function() isCurrentSession,
-       bool Function()? isNetworkAllowed})
+      required bool Function() isCurrentSession,
+      bool Function()? isNetworkAllowed})
       : _api = apiClient,
         _current = isCurrentSession,
         _networkAllowed = isNetworkAllowed ?? (() => true);
@@ -28,7 +28,8 @@ class NajmBaharRepository {
   void _guard() {
     _guardSession();
     if (!_networkAllowed()) {
-      throw const ApiFailure(code: 'bootstrap_unavailable', message: '', retryable: true);
+      throw const ApiFailure(
+          code: 'bootstrap_unavailable', message: '', retryable: true);
     }
   }
 
