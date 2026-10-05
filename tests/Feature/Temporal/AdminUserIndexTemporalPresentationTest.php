@@ -11,8 +11,8 @@ class AdminUserIndexTemporalPresentationTest extends TestCase
         $path = 'resources/views/admin/user/index.blade.php';
         $contents = file_get_contents(base_path($path));
 
-        $this->assertStringContainsString('<x-temporal.date :value="$createdAt"', $contents);
-        $this->assertStringContainsString('<x-temporal.time :value="$createdAt"', $contents);
+        $this->assertStringContainsString('<x-temporal.date :value="$createdAt" />', $contents);
+        $this->assertStringContainsString('<x-temporal.time :value="$createdAt" />', $contents);
         $this->assertStringNotContainsString('Morilog\\Jalali', $contents);
         $this->assertStringNotContainsString('Jalalian::', $contents);
     }
