@@ -74,7 +74,7 @@ class NajmBaharMembershipConsentContractTest extends TestCase
         foreach (['payment_year','fee_gol','policy_version_id','breakdown'] as $index=>$field) {
             $stale=$expected;
             if($field==='breakdown') { $stale[$field]['central_insurance_gol']--; $stale[$field]['operations_salary_gol']++; }
-            else { $stale[$field]++; }
+            else { $stale[$field]++; if ($field === 'fee_gol') { $stale['breakdown']['money_destruction_gol']++; } }
             $balance=(int)$main->fresh()->balance; $transactions=Transaction::count();
             $this->submit($stale,'dim',null,'consent-stale-'.$index)->assertStatus(409)
                 ->assertJsonPath('error.code','membership_fee_terms_changed');

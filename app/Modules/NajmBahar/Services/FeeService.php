@@ -18,7 +18,7 @@ class FeeService
      * explicitly declares a positive annual membership fee. Legacy settings /
      * fee-table fallbacks stay intact when no versioned policy is active.
      */
-    public function getMembershipFee(): int
+    public function getMembershipFee(?array $policySnapshot = null): int
     {
         $context = [
             'scope' => 'economy:najm-bahar',
@@ -27,7 +27,7 @@ class FeeService
         $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.requested', $context);
 
         try {
-            $policy = app(MonetaryPolicyService::class)->current();
+            $policy = $policySnapshot ?? app(MonetaryPolicyService::class)->current();
             $policyAmount = (int) data_get($policy, 'parameters.membership_fee_gol', 0);
             if (($policy['source'] ?? null) === 'versioned_policy' && $policyAmount > 0) {
                 $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.succeeded', array_merge($context, [
