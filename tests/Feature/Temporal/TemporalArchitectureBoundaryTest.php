@@ -112,8 +112,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'resources/views/profile/profile.blade.php: verta(',
             'resources/views/user/support-chat/index.blade.php: Jalalian::',
             'resources/views/user/support-chat/index.blade.php: Morilog\\Jalali',
-            'resources/views/user/tickets/show.blade.php: Jalalian::',
-            'resources/views/user/tickets/show.blade.php: Morilog\\Jalali',
             'routes/web.php: verta(',
         ];
     }
