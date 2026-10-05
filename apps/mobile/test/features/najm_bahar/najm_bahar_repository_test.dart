@@ -62,9 +62,11 @@ class BoundaryAdapter implements HttpClientAdapter {
       Future<void>? cancel) async {
     requests.add(options);
     final body = await respond(options);
-    return ResponseBody.fromString(jsonEncode(body), statusFor?.call(options) ?? status, headers: {
-      'content-type': ['application/json']
-    });
+    return ResponseBody.fromString(
+        jsonEncode(body), statusFor?.call(options) ?? status,
+        headers: {
+          'content-type': ['application/json']
+        });
   }
 
   @override
@@ -185,7 +187,9 @@ void main() {
 }
 
 Map<String, Object?> missingAccountEnvelope() => {
-  'status': 'error', 'data': null, 'request_id': 'nb-missing',
-  'meta': {'api_version': 'v1'},
-  'error': {'code': 'not_found', 'message': 'missing', 'retryable': false},
-};
+      'status': 'error',
+      'data': null,
+      'request_id': 'nb-missing',
+      'meta': {'api_version': 'v1'},
+      'error': {'code': 'not_found', 'message': 'missing', 'retryable': false},
+    };

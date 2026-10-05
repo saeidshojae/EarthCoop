@@ -105,18 +105,42 @@ void main() {
     expect(controller.accountFailure, isNotNull);
   });
   test('failed next page retains rows and cursor for explicit retry', () async {
-    final adapter=fixtures.BoundaryAdapter((r)=>fixtures.envelope(r.queryParameters['page[cursor]']==null?[fixtures.transactionJson(9)]:null,cursor:'next',more:true));
-    final controller=NajmBaharController(fixtures.repository(adapter));addTearDown(controller.dispose);
-    await controller.refreshHistory();await controller.loadMore();
-    expect(controller.transactions.map((t)=>t.id),[9]);expect(controller.nextCursor,'next');expect(controller.historyFailure,isNotNull);
+    final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
+        r.queryParameters['page[cursor]'] == null
+            ? [fixtures.transactionJson(9)]
+            : null,
+        cursor: 'next',
+        more: true));
+    final controller = NajmBaharController(fixtures.repository(adapter));
+    addTearDown(controller.dispose);
+    await controller.refreshHistory();
+    await controller.loadMore();
+    expect(controller.transactions.map((t) => t.id), [9]);
+    expect(controller.nextCursor, 'next');
+    expect(controller.historyFailure, isNotNull);
   });
-  test('account change clears previous wallet and ledger on late response', () async {
-    var active=true;var pending=false;final response=Completer<Map<String,Object?>>();
-    final adapter=fixtures.BoundaryAdapter((r) {if(pending)return response.future;return fixtures.envelope(r.path.endsWith('/account')?fixtures.accountJson():[fixtures.transactionJson(9)]);});
-    final controller=NajmBaharController(fixtures.repository(adapter,current:()=>active));addTearDown(controller.dispose);
-    await controller.load();pending=true;final refresh=controller.refreshAccount();active=false;
-    response.complete(fixtures.envelope(fixtures.accountJson()));await refresh;
-    expect(controller.account,null);expect(controller.transactions,isEmpty);expect(controller.receivedAt,null);
+  test('account change clears previous wallet and ledger on late response',
+      () async {
+    var active = true;
+    var pending = false;
+    final response = Completer<Map<String, Object?>>();
+    final adapter = fixtures.BoundaryAdapter((r) {
+      if (pending) return response.future;
+      return fixtures.envelope(r.path.endsWith('/account')
+          ? fixtures.accountJson()
+          : [fixtures.transactionJson(9)]);
+    });
+    final controller = NajmBaharController(
+        fixtures.repository(adapter, current: () => active));
+    addTearDown(controller.dispose);
+    await controller.load();
+    pending = true;
+    final refresh = controller.refreshAccount();
+    active = false;
+    response.complete(fixtures.envelope(fixtures.accountJson()));
+    await refresh;
+    expect(controller.account, null);
+    expect(controller.transactions, isEmpty);
+    expect(controller.receivedAt, null);
   });
-
 }
