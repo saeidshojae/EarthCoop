@@ -11,4 +11,6 @@ interface CalendarAdapter
     public function parseDate(string $value): LocalDate;
 
     public function formatDate(LocalDate $date, string $style, string $locale): string;
+
+    public function year(LocalDate $date): int;
 }
