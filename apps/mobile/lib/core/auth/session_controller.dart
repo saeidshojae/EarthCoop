@@ -48,6 +48,7 @@ class SessionController extends ChangeNotifier {
     _state = value;
     notifyListeners();
   }
+
   Future<void>? _logoutInFlight;
   NativeSession? _logoutOwner;
 

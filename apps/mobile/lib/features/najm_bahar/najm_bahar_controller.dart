@@ -15,6 +15,7 @@ class NajmBaharController extends ChangeNotifier {
       invalidateSession();
     }
   }
+
   void invalidateSession() {
     if (_disposed || _sessionInvalid) return;
     _sessionInvalid = true;
@@ -27,11 +28,13 @@ class NajmBaharController extends ChangeNotifier {
     receivedAt = null;
     accountLoading = false;
     historyLoading = false;
-    const failure = ApiFailure(code: 'session_changed', message: '', retryable: false);
+    const failure =
+        ApiFailure(code: 'session_changed', message: '', retryable: false);
     accountFailure = failure;
     historyFailure = failure;
     _publish();
   }
+
   final NajmBaharRepository _repository;
   NajmBaharAccount? account;
   ApiFailure? accountFailure, historyFailure;
@@ -109,7 +112,13 @@ class NajmBaharController extends ChangeNotifier {
   }
 
   Future<void> loadMore() async {
-    if (_disposed || _sessionInvalid || historyLoading || !hasMore || nextCursor == null) return;
+    if (_disposed ||
+        _sessionInvalid ||
+        historyLoading ||
+        !hasMore ||
+        nextCursor == null) {
+      return;
+    }
     final generation = _historyGeneration;
     final cursor = nextCursor;
     historyLoading = true;

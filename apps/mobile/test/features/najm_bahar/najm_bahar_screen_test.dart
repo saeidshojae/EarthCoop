@@ -9,65 +9,98 @@ import 'najm_bahar_repository_test.dart' as fixtures;
 
 void main() {
   for (final logout in [false, true]) {
-  testWidgets('idle ${logout ? 'logout' : 'session change'} immediately removes financial data', (tester) async {
-    final auth = sessions.PendingRevokeRepository();
-    final scope = SessionController(repository: auth)
-      ..state = SessionState.authenticated(sessions.sampleSession(token: 'a'));
-    final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
-        r.path.endsWith('/account') ? fixtures.accountJson() : [fixtures.transactionJson(9)]));
-    final controller = NajmBaharController(fixtures.repository(adapter, current: () => scope.state.phase == SessionPhase.authenticated && scope.state.session?.token == 'a'), sessionChanges: scope);
-    addTearDown(() { controller.dispose(); scope.dispose(); });
-    await tester.runAsync(() => controller.load());
-    await tester.pumpWidget(MaterialApp(home: NajmBaharScreen(controller: controller)));
-    expect(find.text('NB-7'), findsOneWidget);
-    final requests = adapter.requests.length;
-    Future<void>? ending;
-    if (logout) {
-      ending = scope.logout();
-    } else {
-      scope.state = SessionState.authenticated(sessions.sampleSession(token: 'b'));
-    }
-    await tester.pump();
-    expect(find.text('NB-7'), findsNothing);
-    expect(find.text('T-9'), findsNothing);
-    expect(controller.account, isNull);
-    expect(controller.transactions, isEmpty);
-    expect(adapter.requests.length, requests);
-    if (ending != null) {
-      auth.release.complete();
-      await tester.runAsync(() => ending);
-    }
-  }, timeout: const Timeout(Duration(seconds: 20)));
+    testWidgets(
+        'idle ${logout ? 'logout' : 'session change'} immediately removes financial data',
+        (tester) async {
+      final auth = sessions.PendingRevokeRepository();
+      final scope = SessionController(repository: auth)
+        ..state =
+            SessionState.authenticated(sessions.sampleSession(token: 'a'));
+      final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
+          r.path.endsWith('/account')
+              ? fixtures.accountJson()
+              : [fixtures.transactionJson(9)]));
+      final controller = NajmBaharController(
+          fixtures.repository(adapter,
+              current: () =>
+                  scope.state.phase == SessionPhase.authenticated &&
+                  scope.state.session?.token == 'a'),
+          sessionChanges: scope);
+      addTearDown(() {
+        controller.dispose();
+        scope.dispose();
+      });
+      await tester.runAsync(() => controller.load());
+      await tester.pumpWidget(
+          MaterialApp(home: NajmBaharScreen(controller: controller)));
+      expect(find.text('NB-7'), findsOneWidget);
+      final requests = adapter.requests.length;
+      Future<void>? ending;
+      if (logout) {
+        ending = scope.logout();
+      } else {
+        scope.state =
+            SessionState.authenticated(sessions.sampleSession(token: 'b'));
+      }
+      await tester.pump();
+      expect(find.text('NB-7'), findsNothing);
+      expect(find.text('T-9'), findsNothing);
+      expect(controller.account, isNull);
+      expect(controller.transactions, isEmpty);
+      expect(adapter.requests.length, requests);
+      if (ending != null) {
+        auth.release.complete();
+        final completion = ending;
+        await tester.runAsync(() => completion);
+      }
+    }, timeout: const Timeout(Duration(seconds: 20)));
   }
   for (final pagination in [false, true]) {
-  testWidgets('history ${pagination ? 'pagination' : 'refresh'} retry requests correct cursor', (tester) async {
-    var phase = 0;
-    Completer<void>? retry;
-    final adapter = fixtures.BoundaryAdapter((r) {
-      if (r.path.endsWith('/account')) { return fixtures.envelope(fixtures.accountJson()); }
-      if (phase == 0) { return fixtures.envelope([fixtures.transactionJson(9)], cursor: 'next', more: true); }
-      if (phase == 1) { return fixtures.envelope(null); }
-      if (retry != null && !retry!.isCompleted) { retry!.complete(); }
-      return fixtures.envelope([fixtures.transactionJson(10)]);
-    });
-    final controller = NajmBaharController(fixtures.repository(adapter));
-    addTearDown(controller.dispose);
-    await tester.runAsync(() => controller.load());
-    phase = 1;
-    await tester.runAsync(() => pagination ? controller.loadMore() : controller.refreshHistory());
-    await tester.pumpWidget(MaterialApp(home: NajmBaharScreen(controller: controller)));
-    await tester.scrollUntilVisible(find.text('تلاش دوباره'), 300, scrollable: find.byType(Scrollable).first);
-    phase = 2;
-    await tester.runAsync(() async {
-      retry = Completer<void>();
-      tester.widget<TextButton>(find.widgetWithText(TextButton, 'تلاش دوباره')).onPressed!();
-      await retry!.future.timeout(const Duration(seconds: 5));
-    });
-    await tester.pumpAndSettle();
-    expect(adapter.requests.last.queryParameters['page[cursor]'], pagination ? 'next' : null);
-    expect(controller.transactions.map((t) => t.id), pagination ? [9, 10] : [10]);
-  }, timeout: const Timeout(Duration(seconds: 20)));
-
+    testWidgets(
+        'history ${pagination ? 'pagination' : 'refresh'} retry requests correct cursor',
+        (tester) async {
+      var phase = 0;
+      Completer<void>? retry;
+      final adapter = fixtures.BoundaryAdapter((r) {
+        if (r.path.endsWith('/account')) {
+          return fixtures.envelope(fixtures.accountJson());
+        }
+        if (phase == 0) {
+          return fixtures.envelope([fixtures.transactionJson(9)],
+              cursor: 'next', more: true);
+        }
+        if (phase == 1) {
+          return fixtures.envelope(null);
+        }
+        if (retry != null && !retry!.isCompleted) {
+          retry!.complete();
+        }
+        return fixtures.envelope([fixtures.transactionJson(10)]);
+      });
+      final controller = NajmBaharController(fixtures.repository(adapter));
+      addTearDown(controller.dispose);
+      await tester.runAsync(() => controller.load());
+      phase = 1;
+      await tester.runAsync(() =>
+          pagination ? controller.loadMore() : controller.refreshHistory());
+      await tester.pumpWidget(
+          MaterialApp(home: NajmBaharScreen(controller: controller)));
+      await tester.scrollUntilVisible(find.text('تلاش دوباره'), 300,
+          scrollable: find.byType(Scrollable).first);
+      phase = 2;
+      await tester.runAsync(() async {
+        retry = Completer<void>();
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'تلاش دوباره'))
+            .onPressed!();
+        await retry!.future.timeout(const Duration(seconds: 5));
+      });
+      await tester.pumpAndSettle();
+      expect(adapter.requests.last.queryParameters['page[cursor]'],
+          pagination ? 'next' : null);
+      expect(controller.transactions.map((t) => t.id),
+          pagination ? [9, 10] : [10]);
+    }, timeout: const Timeout(Duration(seconds: 20)));
   }
   testWidgets('wallet distinguishes main and aggregate balances and history',
       (tester) async {

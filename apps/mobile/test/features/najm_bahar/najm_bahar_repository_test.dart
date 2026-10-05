@@ -97,7 +97,8 @@ void main() {
   });
   test('formats native integer boundaries exactly', () {
     expect(formatGol(0x7fffffffffffffff), '92233720368547758 بهار و 7 گل');
-    expect(formatGol(-0x7fffffffffffffff - 1), '-92233720368547758 بهار و 8 گل');
+    expect(
+        formatGol(-0x7fffffffffffffff - 1), '-92233720368547758 بهار و 8 گل');
     expect(formatGol(-1), '-1 گل');
   });
   test('preserves distinct local and aggregate integer balances', () async {

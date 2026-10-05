@@ -604,7 +604,8 @@ class _NotificationsRuntimeLoaderState
 }
 
 class _NajmBaharRuntimeView extends StatefulWidget {
-  const _NajmBaharRuntimeView({required this.repository, required this.sessionChanges});
+  const _NajmBaharRuntimeView(
+      {required this.repository, required this.sessionChanges});
   final Listenable sessionChanges;
   final NajmBaharRepository repository;
   @override
@@ -612,8 +613,9 @@ class _NajmBaharRuntimeView extends StatefulWidget {
 }
 
 class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
-  late final NajmBaharController _controller =
-      NajmBaharController(widget.repository, sessionChanges: widget.sessionChanges);
+  late final NajmBaharController _controller = NajmBaharController(
+      widget.repository,
+      sessionChanges: widget.sessionChanges);
   @override
   void initState() {
     super.initState();
