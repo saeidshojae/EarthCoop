@@ -4,11 +4,39 @@ import 'najm_bahar_dto.dart';
 import 'najm_bahar_repository.dart';
 
 class NajmBaharController extends ChangeNotifier {
-  NajmBaharController(this._repository);
+  NajmBaharController(this._repository, {Listenable? sessionChanges})
+      : _sessionChanges = sessionChanges {
+    _sessionChanges?.addListener(_sessionChanged);
+  }
+  final Listenable? _sessionChanges;
+  bool _sessionInvalid = false;
+  void _sessionChanged() {
+    if (!_repository.isCurrentSession) {
+      invalidateSession();
+    }
+  }
+  void invalidateSession() {
+    if (_disposed || _sessionInvalid) return;
+    _sessionInvalid = true;
+    _accountGeneration++;
+    _historyGeneration++;
+    account = null;
+    transactions = const [];
+    nextCursor = null;
+    hasMore = false;
+    receivedAt = null;
+    accountLoading = false;
+    historyLoading = false;
+    const failure = ApiFailure(code: 'session_changed', message: '', retryable: false);
+    accountFailure = failure;
+    historyFailure = failure;
+    _publish();
+  }
   final NajmBaharRepository _repository;
   NajmBaharAccount? account;
   ApiFailure? accountFailure, historyFailure;
   bool accountLoading = false, historyLoading = false;
+  bool historyFailureFromPagination = false;
   List<NajmBaharTransaction> transactions = const [];
   String? nextCursor;
   bool hasMore = false;
@@ -26,11 +54,7 @@ class NajmBaharController extends ChangeNotifier {
   void _clearIfSessionChanged(ApiFailure failure) {
     if (failure.code == 'session_changed' ||
         failure.code == 'unauthenticated') {
-      account = null;
-      transactions = const [];
-      nextCursor = null;
-      hasMore = false;
-      receivedAt = null;
+      invalidateSession();
     }
   }
 
@@ -39,7 +63,7 @@ class NajmBaharController extends ChangeNotifier {
   }
 
   Future<void> refreshAccount() async {
-    if (_disposed) return;
+    if (_disposed || _sessionInvalid) return;
     final generation = ++_accountGeneration;
     accountLoading = true;
     accountFailure = null;
@@ -62,10 +86,11 @@ class NajmBaharController extends ChangeNotifier {
   }
 
   Future<void> refreshHistory() async {
-    if (_disposed) return;
+    if (_disposed || _sessionInvalid) return;
     final generation = ++_historyGeneration;
     historyLoading = true;
     historyFailure = null;
+    historyFailureFromPagination = false;
     _publish();
     try {
       final page = await _repository.history();
@@ -84,11 +109,12 @@ class NajmBaharController extends ChangeNotifier {
   }
 
   Future<void> loadMore() async {
-    if (_disposed || historyLoading || !hasMore || nextCursor == null) return;
+    if (_disposed || _sessionInvalid || historyLoading || !hasMore || nextCursor == null) return;
     final generation = _historyGeneration;
     final cursor = nextCursor;
     historyLoading = true;
     historyFailure = null;
+    historyFailureFromPagination = false;
     _publish();
     try {
       final page = await _repository.history(cursor: cursor);
@@ -97,6 +123,7 @@ class NajmBaharController extends ChangeNotifier {
     } catch (error) {
       if (_disposed || generation != _historyGeneration) return;
       historyFailure = _failure(error);
+      historyFailureFromPagination = true;
       _clearIfSessionChanged(historyFailure!);
     } finally {
       if (!_disposed && generation == _historyGeneration) {
@@ -121,6 +148,7 @@ class NajmBaharController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _sessionChanges?.removeListener(_sessionChanged);
     _disposed = true;
     _accountGeneration++;
     _historyGeneration++;

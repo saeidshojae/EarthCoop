@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import '../device/device_context.dart';
 import 'session_models.dart';
@@ -25,7 +26,7 @@ typedef SessionAuthenticatedHook = Future<void> Function(NativeSession session);
 
 typedef SessionCleanupHook = Future<void> Function();
 
-class SessionController {
+class SessionController extends ChangeNotifier {
   SessionController({
     required SessionRepository repository,
     SessionCleanupHook? disablePush,
@@ -41,7 +42,12 @@ class SessionController {
   final SessionCleanupHook _disablePush;
   final SessionCleanupHook _clearUserScopedLocalState;
 
-  SessionState state = const SessionState.checking();
+  SessionState _state = const SessionState.checking();
+  SessionState get state => _state;
+  set state(SessionState value) {
+    _state = value;
+    notifyListeners();
+  }
   Future<void>? _logoutInFlight;
   NativeSession? _logoutOwner;
 

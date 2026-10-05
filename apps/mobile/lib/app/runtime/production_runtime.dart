@@ -408,6 +408,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
         retryDelay: Future<void>.delayed,
       );
       return _NajmBaharRuntimeView(
+          sessionChanges: sessionController,
           repository: NajmBaharRepository(
               apiClient: scopedApi, isCurrentSession: current));
     },
@@ -603,7 +604,8 @@ class _NotificationsRuntimeLoaderState
 }
 
 class _NajmBaharRuntimeView extends StatefulWidget {
-  const _NajmBaharRuntimeView({required this.repository});
+  const _NajmBaharRuntimeView({required this.repository, required this.sessionChanges});
+  final Listenable sessionChanges;
   final NajmBaharRepository repository;
   @override
   State<_NajmBaharRuntimeView> createState() => _NajmBaharRuntimeViewState();
@@ -611,7 +613,7 @@ class _NajmBaharRuntimeView extends StatefulWidget {
 
 class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
   late final NajmBaharController _controller =
-      NajmBaharController(widget.repository);
+      NajmBaharController(widget.repository, sessionChanges: widget.sessionChanges);
   @override
   void initState() {
     super.initState();

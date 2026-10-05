@@ -10,6 +10,7 @@ class NajmBaharRepository {
         _current = isCurrentSession;
   final ApiClient _api;
   final bool Function() _current;
+  bool get isCurrentSession => _current();
   void _guard() {
     if (!_current()) {
       throw const ApiFailure(

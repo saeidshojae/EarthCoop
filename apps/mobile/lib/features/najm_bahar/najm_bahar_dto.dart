@@ -23,12 +23,12 @@ String? _nullableString(Map<String, Object?> raw, String key) {
 }
 
 String formatGol(int amount) {
-  final absolute = amount.abs();
-  final bahar = absolute ~/ 100;
-  final gol = absolute % 100;
+  final absolute = BigInt.from(amount).abs();
+  final bahar = absolute ~/ BigInt.from(100);
+  final gol = absolute % BigInt.from(100);
   final parts = <String>[
-    if (bahar > 0) '$bahar بهار',
-    if (gol > 0 || bahar == 0) '$gol گل'
+    if (bahar > BigInt.zero) '$bahar بهار',
+    if (gol > BigInt.zero || bahar == BigInt.zero) '$gol گل'
   ];
   return '${amount < 0 ? '-' : ''}${parts.join(' و ')}';
 }
