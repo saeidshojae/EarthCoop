@@ -56,6 +56,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Stable public semantic destinations for the Persian SEO topic-cluster
+            // architecture. They are isolated from generic managed pages so the
+            // canonical hierarchy remains explicit and version-controlled.
+            Route::middleware('web')
+                ->group(base_path('routes/seo-pillars.php'));
+
             // Communication Center observability stays isolated from the legacy
             // email CRUD surface. Task 8 is intentionally read-only and protected
             // by the same administrator boundary as the rest of the admin panel.
