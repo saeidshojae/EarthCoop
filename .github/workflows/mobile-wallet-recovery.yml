@@ -30,6 +30,36 @@ jobs:
       - name: Analyze
         run: flutter analyze
         working-directory: apps/mobile
+      - name: Verify regression catches omitted bootstrap guard
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=lib/features/najm_bahar/najm_bahar_repository.dart
+          cp "$target" "$RUNNER_TEMP/wallet-repository.dart"
+          trap 'cp "$RUNNER_TEMP/wallet-repository.dart" "$target"' EXIT
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('lib/features/najm_bahar/najm_bahar_repository.dart')
+          source = p.read_text()
+          assert source.count('if (!_networkAllowed())') == 1
+          p.write_text(source.replace('if (!_networkAllowed())', 'if (false && !_networkAllowed())'))
+          PY
+          set +e
+          flutter test --reporter expanded test/features/najm_bahar/najm_bahar_repository_test.dart > "$RUNNER_TEMP/wallet-negative-control.log" 2>&1
+          result=$?
+          set -e
+          cat "$RUNNER_TEMP/wallet-negative-control.log"
+          test "$result" -ne 0
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          log = (Path(os.environ['RUNNER_TEMP']) / 'wallet-negative-control.log').read_text()
+          assert 'bootstrap blockage sends no request and remains recoverable [E]' in log
+          assert 'bootstrap blockage rejects an overlapping response without changing identity [E]' in log
+          assert 'Compilation failed' not in log
+          print('PASS: both bootstrap regressions fail behaviorally when the guard is omitted.')
+          PY
       - name: Run repository tests
         run: flutter test test/features/najm_bahar/najm_bahar_repository_test.dart
         working-directory: apps/mobile

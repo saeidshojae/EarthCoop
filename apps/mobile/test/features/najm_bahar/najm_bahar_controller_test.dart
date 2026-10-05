@@ -4,11 +4,16 @@ import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_controller.dart'
 import 'najm_bahar_repository_test.dart' as fixtures;
 
 void main() {
-  test('temporary bootstrap failure preserves dated values and permits recovery', () async {
+  test(
+      'temporary bootstrap failure preserves dated values and permits recovery',
+      () async {
     var allowed = true;
     final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
-        r.path.endsWith('/account') ? fixtures.accountJson() : [fixtures.transactionJson(9)]));
-    final controller = NajmBaharController(fixtures.repository(adapter, allowed: () => allowed));
+        r.path.endsWith('/account')
+            ? fixtures.accountJson()
+            : [fixtures.transactionJson(9)]));
+    final controller = NajmBaharController(
+        fixtures.repository(adapter, allowed: () => allowed));
     addTearDown(controller.dispose);
     await controller.load();
     final date = controller.receivedAt;
