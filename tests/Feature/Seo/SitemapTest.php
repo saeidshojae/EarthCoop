@@ -31,6 +31,24 @@ class SitemapTest extends TestCase
         }
     }
 
+    public function test_first_wave_pillars_are_each_present_once(): void
+    {
+        $xml = simplexml_load_string($this->get('/sitemap.xml')->assertOk()->getContent());
+        $this->assertNotFalse($xml);
+        $locations = array_map('strval', $xml->xpath('//*[local-name()="loc"]'));
+
+        foreach ([
+            'https://earthcoop.ir/economy',
+            'https://earthcoop.ir/economy/glass',
+            'https://earthcoop.ir/governance',
+            'https://earthcoop.ir/governance/elections',
+            'https://earthcoop.ir/justice',
+            'https://earthcoop.ir/commons',
+        ] as $pillar) {
+            $this->assertSame(1, count(array_keys($locations, $pillar)), $pillar.' must appear exactly once.');
+        }
+    }
+
     public function test_only_published_pages_and_posts_are_included_with_lastmod(): void
     {
         $publishedPage = $this->page('public-page', true);
