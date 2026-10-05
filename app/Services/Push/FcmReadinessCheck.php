@@ -15,7 +15,12 @@ final readonly class FcmReadinessCheck
 
     public function check(): array
     {
-        if (! $this->validCredentials()) {
+        try {
+            $valid = $this->validCredentials();
+        } catch (Throwable) {
+            $valid = false;
+        }
+        if (! $valid) {
             return $this->failure('fcm_credentials_invalid');
         }
 
@@ -53,13 +58,18 @@ final readonly class FcmReadinessCheck
         $path = $this->credentialsPath;
         $project = $this->projectId;
         if (! is_string($project) || ! preg_match('/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/', $project)
-            || ! is_string($path) || ! is_file($path) || ! is_readable($path)) {
+            || ! is_string($path) || ! str_starts_with($path, DIRECTORY_SEPARATOR)
+            || ! @is_file($path) || ! @is_readable($path)) {
             return false;
         }
-        $resolved = realpath($path);
-        $public = realpath(public_path());
-        if ($resolved === false || ($public !== false && (str_starts_with($resolved, $public.DIRECTORY_SEPARATOR)
-            || str_starts_with($path, $public.DIRECTORY_SEPARATOR))) || ((fileperms($resolved) & 0077) !== 0)) {
+        $resolved = @realpath($path);
+        $public = @realpath(public_path());
+        $lexical = $this->normalizeAbsolutePath($path);
+        $lexicalPublic = $this->normalizeAbsolutePath(public_path());
+        $permissions = $resolved === false ? false : @fileperms($resolved);
+        if ($resolved === false || ! is_int($permissions) || ($permissions & 0077) !== 0
+            || str_starts_with($lexical, $lexicalPublic.DIRECTORY_SEPARATOR)
+            || ($public !== false && str_starts_with($resolved, $public.DIRECTORY_SEPARATOR))) {
             return false;
         }
         try {
@@ -83,5 +93,21 @@ final readonly class FcmReadinessCheck
     private function failure(string $code): array
     {
         return ['ready' => false, 'code' => $code];
+    }
+
+    private function normalizeAbsolutePath(string $path): string
+    {
+        $parts = [];
+        foreach (explode(DIRECTORY_SEPARATOR, $path) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                array_pop($parts);
+            } else {
+                $parts[] = $part;
+            }
+        }
+        return DIRECTORY_SEPARATOR.implode(DIRECTORY_SEPARATOR, $parts);
     }
 }
