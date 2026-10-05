@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seo;
 
 use App\Http\Controllers\Controller;
 use App\Support\Seo\CanonicalUrl;
+use App\Support\Seo\PillarArticleRegistry;
 use App\Support\Seo\PillarRegistry;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -54,6 +55,7 @@ final class PillarController extends Controller
 
         return view('seo.pillars.show', [
             'pillar' => $pillar,
+            'supportingArticles' => PillarArticleRegistry::for($key),
             'seoTitle' => $pillar['meta_title'],
             'seoDescription' => $pillar['description'],
             'seoCanonical' => $canonical,
