@@ -216,7 +216,7 @@
 
                             <span class="text-slate-900 dark:text-white font-medium mr-2">
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$ticket->created_at" />
 
                             </span>
 
@@ -230,7 +230,7 @@
 
                                 <span class="text-slate-900 dark:text-white font-medium mr-2">
 
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->updated_at)->format('Y/m/d H:i') }}
+                                    <x-temporal.date-time :value="$ticket->updated_at" />
 
                                 </span>
 
@@ -286,7 +286,7 @@
 
                                         <div class="text-xs text-slate-500 dark:text-slate-400">
 
-                                            {{ \Morilog\Jalali\Jalalian::fromCarbon($comment->created_at)->format('Y/m/d H:i') }}
+                                            <x-temporal.date-time :value="$comment->created_at" />
 
                                         </div>
 
@@ -664,7 +664,7 @@
 
                         <span class="text-slate-900 dark:text-white font-medium">
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('Y/m/d') }}
+                            <x-temporal.date :value="$ticket->created_at" />
 
                         </span>
 
@@ -676,7 +676,7 @@
 
                         <span class="text-slate-900 dark:text-white font-medium">
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('H:i') }}
+                            <x-temporal.time :value="$ticket->created_at" />
 
                         </span>
 
