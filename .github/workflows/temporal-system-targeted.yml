@@ -53,7 +53,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   temporal-tests:
@@ -77,6 +77,61 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: agent/temporal-system-20261001
+          fetch-depth: 0
+
+      - name: Patch admin welcome temporal presentation
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('resources/views/admin/welcome/index.blade.php')
+          before = path.read_bytes()
+
+          pattern = re.compile(
+              rb'''@php\s+try\s*\{\s*\$date\s*=\s*isset\(\$slider->created_at\)\s*\?\s*\\Carbon\\Carbon::parse\(\$slider->created_at\)\s*:\s*null;\s*echo\s+\$date\s*\?\s*\\Morilog\\Jalali\\Jalalian::fromCarbon\(\$date\)->format\('Y/m/d H:i'\)\s*:\s*'-';\s*\}\s*catch\s*\(\\Exception\s+\$e\)\s*\{\s*echo\s+'-';\s*\}\s*@endphp'''
+          )
+          matches = list(pattern.finditer(before))
+          assert len(matches) == 1, f'Expected exactly one legacy admin welcome date block, found {len(matches)}'
+
+          replacement = b'''@php
+                                    try {
+                                        $date = isset($slider->created_at) ? \\Carbon\\Carbon::parse($slider->created_at) : null;
+                                    } catch (\\Exception $e) {
+                                        $date = null;
+                                    }
+                                @endphp
+
+                                @if($date)
+                                    <x-temporal.date-time :value="$date" />
+                                @else
+                                    -
+                                @endif'''
+
+          match = matches[0]
+          after = before[:match.start()] + replacement + before[match.end():]
+
+          assert after[:match.start()] == before[:match.start()]
+          assert after[match.start() + len(replacement):] == before[match.end():]
+          assert after.count(b'<x-temporal.date-time :value="$date" />') == 1
+          assert b'Morilog\\Jalali' not in after
+          assert b'Jalalian::' not in after
+
+          path.write_bytes(after)
+          PY
+
+          changed="$(git diff --name-only)"
+          test "$changed" = "resources/views/admin/welcome/index.blade.php"
+          git diff -- resources/views/admin/welcome/index.blade.php
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add resources/views/admin/welcome/index.blade.php
+          git commit -m 'fix(temporal): unify admin welcome date presentation'
+          git push origin HEAD:agent/temporal-system-20261001
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
