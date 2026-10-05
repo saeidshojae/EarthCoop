@@ -101,6 +101,14 @@ jobs:
         working-directory: apps/mobile
         run: EARTHCOOP_RELEASE_CHANNEL=uat flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/firebase-defines.json"
 
+      - name: Retain built APK for verification diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-release-diagnostic-${{ github.sha }}
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Verify Android UAT release package
         run: bash scripts/mobile/verify_android_uat_release.sh apps/mobile/build/app/outputs/flutter-apk/app-release.apk
 
