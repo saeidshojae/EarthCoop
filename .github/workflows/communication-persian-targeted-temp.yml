@@ -64,4 +64,6 @@ jobs:
           php artisan key:generate --force
           php artisan migrate:fresh --force
       - name: Run communication targeted tests
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Communication
