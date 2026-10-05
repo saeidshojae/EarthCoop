@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: mobile-module-checkpoint
+  group: mobile-module-checkpoint-bounded
   cancel-in-progress: true
 jobs:
   tests:
