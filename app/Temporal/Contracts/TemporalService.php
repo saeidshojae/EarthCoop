@@ -17,6 +17,8 @@ interface TemporalService
 
     public function relative(DateTimeInterface|string $value, ?TemporalContext $context = null): string;
 
+    public function year(DateTimeInterface|LocalDate|string $value, ?TemporalContext $context = null): int;
+
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate;
 
     public function parseDateTime(string $value, ?TemporalContext $context = null): DateTimeImmutable;
