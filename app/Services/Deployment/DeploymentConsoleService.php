@@ -147,6 +147,15 @@ class DeploymentConsoleService
             'write' => true,
             'confirmation' => 'APPLY-GROUP-POLICY',
         ],
+        'persian_seo_blog_publish' => [
+            'command' => 'db:seed',
+            'arguments' => [
+                '--class' => 'PersianSeoBlogSeeder',
+                '--force' => true,
+            ],
+            'write' => true,
+            'confirmation' => 'PUBLISH-PERSIAN-SEO-BLOG',
+        ],
         'reference_apply' => [
             'command' => 'location:reference-import',
             'arguments' => [
