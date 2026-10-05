@@ -48,12 +48,19 @@ jobs:
 
           changed="$(git diff --name-only HEAD | sort)"
           expected=$'.github/workflows/temporal-user-ticket-show-patch-helper.yml\nresources/views/user/tickets/show.blade.php'
-          test "$changed" = "$expected"
+          ticket_count="$(grep -F -c '<x-temporal.date-time :value="$ticket->created_at" />' resources/views/user/tickets/show.blade.php || true)"
+          comment_count="$(grep -F -c '<x-temporal.date-time :value="$comment->created_at" />' resources/views/user/tickets/show.blade.php || true)"
+          jalalian_count="$(grep -F -c 'Jalalian::' resources/views/user/tickets/show.blade.php || true)"
+          morilog_count="$(grep -F -c 'Morilog\\Jalali' resources/views/user/tickets/show.blade.php || true)"
 
-          test "$(grep -F -c '<x-temporal.date-time :value="$ticket->created_at" />' resources/views/user/tickets/show.blade.php)" -eq 1
-          test "$(grep -F -c '<x-temporal.date-time :value="$comment->created_at" />' resources/views/user/tickets/show.blade.php)" -eq 1
-          test "$(grep -F -c 'Jalalian::' resources/views/user/tickets/show.blade.php || true)" -eq 0
-          test "$(grep -F -c 'Morilog\\Jalali' resources/views/user/tickets/show.blade.php || true)" -eq 0
+          printf 'changed files:\n%s\n' "$changed"
+          printf 'ticket_component=%s comment_component=%s jalalian=%s morilog=%s\n' "$ticket_count" "$comment_count" "$jalalian_count" "$morilog_count"
+
+          test "$changed" = "$expected"
+          test "$ticket_count" -eq 1
+          test "$comment_count" -eq 1
+          test "$jalalian_count" -eq 0
+          test "$morilog_count" -eq 0
 
           git config user.name 'earthcoop-temporal-helper'
           git config user.email 'actions@users.noreply.github.com'
