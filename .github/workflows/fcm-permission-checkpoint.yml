@@ -1,0 +1,21 @@
+name: FCM notification permission checkpoint
+on:
+  push:
+    branches: [agent/fcm-permission-20261005]
+permissions:
+  contents: read
+jobs:
+  permission-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - working-directory: apps/mobile
+        run: flutter pub get
+      - working-directory: apps/mobile
+        run: flutter test test/core/push/fcm_push_token_source_test.dart
