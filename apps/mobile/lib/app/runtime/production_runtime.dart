@@ -416,7 +416,6 @@ class _GroupsRuntimeView extends StatefulWidget {
 
   @override
   State<_GroupsRuntimeView> createState() => _GroupsRuntimeViewState();
-  return runtime;
 }
 
 class _GroupsRuntimeViewState extends State<_GroupsRuntimeView> {
