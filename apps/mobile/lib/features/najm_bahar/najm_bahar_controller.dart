@@ -57,7 +57,7 @@ class NajmBaharController extends ChangeNotifier {
       : const ApiFailure(
           code: 'malformed_response', message: '', retryable: false);
   void _clearIfSessionChanged(ApiFailure failure) {
-    if (failure.code == 'session_changed' ||
+    if (failure.httpStatus == 401 || failure.code == 'session_changed' ||
         failure.code == 'unauthenticated') {
       invalidateSession();
     }
