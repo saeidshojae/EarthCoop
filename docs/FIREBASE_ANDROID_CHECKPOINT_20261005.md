@@ -27,3 +27,7 @@ Client follow-up must bind actual FCM SDK open events, including cold start, to 
 Android +12 supersedes +11 for subsequent phone UAT. Artifact https://github.com/saeidshojae/EarthCoop/actions/runs/37246188450/artifacts/11319222557 , archive size 95185174 bytes, archive SHA256 59de21215a253ed2307f6f667ab073043204c10d0156ad06eca1f5d306d6783a, expires 2026-11-04T00:13:37Z. No FTP publication or phone test was performed. Source receipt commit only adds documentation after this verified source, avoiding a duplicate full build.
 
 Python Firebase materialization regression suite: python -m unittest discover -s tests/mobile -p test_firebase_configuration.py, 5 tests passed locally. This validates the script, not host credentials. An initial discovery in scripts/mobile found zero tests; the actual test directory was then used. No local Flutter test success is claimed.
+
+## Server follow-up now deployed
+
+PR196 adds the non-delivering FCM readiness diagnostic. Merge cfb921b1b3f843438bec5222aaa75eaaf81f9977 deployed successfully in run 37248899603. This supersedes the earlier statement that the console has no FCM diagnostic. Host execution of fcm_readiness is still pending and must not be inferred from deployment or optimize_clear. Keep PUSH_DELIVERY_DRIVER disabled until provider readiness and client acceptance are known. Native SDK open integration is in progress on agent/fcm-open-20261005; +12 remains the last verified artifact until the +13 receipt is recorded.

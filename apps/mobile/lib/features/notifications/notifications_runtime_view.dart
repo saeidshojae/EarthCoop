@@ -24,17 +24,22 @@ class NotificationsRuntimeView extends StatefulWidget {
 
 class NotificationsRuntimeViewState extends State<NotificationsRuntimeView>
     with WidgetsBindingObserver {
+  StreamSubscription<void>? _refreshSubscription;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.controller.addListener(_refresh);
+    _refreshSubscription = widget.refreshEvents?.listen((_) {
+      unawaited(widget.controller.load());
+    }, onError: (Object _) {});
     unawaited(widget.controller.load());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_refreshSubscription?.cancel());
     widget.controller.removeListener(_refresh);
     widget.controller.dispose();
     super.dispose();

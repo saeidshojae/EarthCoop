@@ -51,7 +51,9 @@ class FcmMessageBinding {
   final Future<bool> Function(Map<String, Object?> data) onOpen;
   final Future<void> Function(Map<String, Object?> data) onForeground;
   final _seen = <String>{};
-  final _buffer = <(FcmMessageEvent, bool)>[];
+  final _buffer = <(FcmMessageEvent, bool, Object?)>[];
+  static const _defaultScope = Object();
+  Object? _scope() => activeScope == null ? _defaultScope : activeScope!();
   StreamSubscription<FcmMessageEvent>? _opens;
   StreamSubscription<FcmMessageEvent>? _foregrounds;
   Future<void>? _starting;
@@ -64,6 +66,7 @@ class FcmMessageBinding {
 
   Future<void> _start() async {
     if (_disposed) return;
+    final initialScope = _scope();
     try {
       _opens = runtime.opened.listen((event) => _receive(event, true),
           onError: (Object _) {});
@@ -75,9 +78,9 @@ class FcmMessageBinding {
       } catch (_) {}
       if (_disposed) return;
       _ready = true;
-      if (initial != null) _enqueue(initial, true);
-      for (final (event, open) in _buffer) {
-        _enqueue(event, open);
+      if (initial != null) _enqueue(initial, true, initialScope);
+      for (final (event, open, scope) in _buffer) {
+        _enqueue(event, open, scope);
       }
       _buffer.clear();
       await _tail;
@@ -91,20 +94,22 @@ class FcmMessageBinding {
 
   void _receive(FcmMessageEvent event, bool open) {
     if (_disposed) return;
+    final scope = _scope();
+    if (scope == null) return;
     if (!_ready) {
       if (_buffer.length == 128) _buffer.removeAt(0);
-      _buffer.add((event, open));
+      _buffer.add((event, open, scope));
     } else {
-      _enqueue(event, open);
+      _enqueue(event, open, scope);
     }
   }
 
-  void _enqueue(FcmMessageEvent event, bool open) {
+  void _enqueue(FcmMessageEvent event, bool open, Object? scope) {
     if (_queued == 128) return;
     _queued++;
     _tail = _tail.then((_) async {
       try {
-        if (_disposed) return;
+        if (_disposed || scope == null || _scope() != scope) return;
         final id = event.messageId;
         final key = id == null || id.isEmpty
             ? null

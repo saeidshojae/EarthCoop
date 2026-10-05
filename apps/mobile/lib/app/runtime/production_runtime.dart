@@ -90,11 +90,20 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   late final SessionController sessionController;
   BootstrapState? pushBootstrap;
   var pushBootstrapEpoch = 0;
+  final notificationRefresh = StreamController<void>.broadcast();
   FcmMessageBinding? fcmMessages;
   var messagesDisposed = false;
   late final MobileAppRuntime runtime;
   late final Future<bool> Function(Map<String, Object?>) handlePushOpen;
   late final Future<void> Function(Map<String, Object?>) handleForegroundPush;
+  Object? activePushScope() {
+    final session = sessionController.state.session;
+    if (messagesDisposed || session == null ||
+        sessionController.state.phase != SessionPhase.authenticated) {
+      return null;
+    }
+    return (notificationEpoch, session.user.id, session.device.id, session.token);
+  }
   final pushCoordinator = createSessionPushCoordinator(
       dio: dio,
       sessionState: () => sessionController.state,
@@ -113,6 +122,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
                 if (messagesDisposed) return;
                 fcmMessages ??= FcmMessageBinding(
                   runtime: const FirebaseFcmMessageRuntime(),
+                  activeScope: () => activePushScope(),
                   onOpen: (data) => handlePushOpen(data),
                   onForeground: (data) => handleForegroundPush(data),
                 );
@@ -290,14 +300,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     return NotificationsController(sync);
   }
 
-  Object? activePushScope() {
-    final session = sessionController.state.session;
-    if (messagesDisposed || session == null ||
-        sessionController.state.phase != SessionPhase.authenticated) {
-      return null;
-    }
-    return (notificationEpoch, session.user.id, session.device.id, session.token);
-  }
+
 
   handlePushOpen = (payload) async {
     BootstrapState? refreshed;
@@ -333,6 +336,10 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   };
   handleForegroundPush = (_) async {
     if (activePushScope() == null) return;
+    if (notificationRefresh.hasListener) {
+      notificationRefresh.add(null);
+      return;
+    }
     final controller = await createNotificationsController();
     try {
       await controller.load();
@@ -361,6 +368,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       pushBootstrapEpoch++;
       pushBootstrap = null;
       await fcmMessages?.dispose();
+      await notificationRefresh.close();
       await pushCoordinator.dispose();
     },
     sessionController: sessionController,
@@ -401,6 +409,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     },
     notificationsBuilder: (context, openLink) => _NotificationsRuntimeLoader(
       createController: createNotificationsController,
+      refreshEvents: notificationRefresh.stream,
       onOpenLink: openLink,
     ),
   );
@@ -511,9 +520,11 @@ class _GroupDetailRuntimeViewState extends State<_GroupDetailRuntimeView> {
 class _NotificationsRuntimeLoader extends StatefulWidget {
   const _NotificationsRuntimeLoader({
     required this.createController,
+    required this.refreshEvents,
     required this.onOpenLink,
   });
   final Future<NotificationsController> Function() createController;
+  final Stream<void> refreshEvents;
   final ValueChanged<SemanticLink> onOpenLink;
   @override
   State<_NotificationsRuntimeLoader> createState() =>
@@ -546,9 +557,9 @@ class _NotificationsRuntimeLoaderState
           }
           return NotificationsRuntimeView(
             controller: controller,
+            refreshEvents: widget.refreshEvents,
             onOpenLink: widget.onOpenLink,
           );
         },
       );
 }
-
