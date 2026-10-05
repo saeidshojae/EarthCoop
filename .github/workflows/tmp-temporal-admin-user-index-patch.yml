@@ -1,17 +1,18 @@
 name: Temporary Temporal Admin User Index Patch
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/temporal-system-20261001
-    paths:
-      - .github/workflows/tmp-temporal-admin-user-index-patch.yml
+      - main
+    types:
+      - ready_for_review
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.event.pull_request.head.ref == 'agent/temporal-system-20261001'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
