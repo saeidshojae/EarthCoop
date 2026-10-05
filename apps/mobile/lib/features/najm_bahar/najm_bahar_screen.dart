@@ -7,7 +7,8 @@ import 'najm_bahar_policy_controller.dart';
 import 'najm_bahar_policy_sections.dart';
 
 class NajmBaharScreen extends StatefulWidget {
-  const NajmBaharScreen({super.key, required this.controller, this.policyController});
+  const NajmBaharScreen(
+      {super.key, required this.controller, this.policyController});
   final NajmBaharController controller;
   final NajmBaharPolicyController? policyController;
   @override
@@ -126,7 +127,8 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
                                   : () => unawaited(c.loadMore()),
                               child: const Text('تراکنش‌های بیشتر')),
                         if (widget.policyController != null)
-                          NajmBaharPolicySections(controller: widget.policyController!),
+                          NajmBaharPolicySections(
+                              controller: widget.policyController!),
                       ]))),
         ));
   }

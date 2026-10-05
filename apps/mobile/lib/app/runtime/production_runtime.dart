@@ -621,7 +621,8 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
       sessionChanges: widget.sessionChanges,
       onSessionInvalidated: () => _policies.invalidateSession());
   late final NajmBaharPolicyController _policies = NajmBaharPolicyController(
-      widget.repository, sessionChanges: widget.sessionChanges,
+      widget.repository,
+      sessionChanges: widget.sessionChanges,
       onSessionInvalidated: _controller.invalidateSession);
   @override
   void initState() {

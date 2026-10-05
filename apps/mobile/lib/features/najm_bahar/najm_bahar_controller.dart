@@ -4,8 +4,10 @@ import 'najm_bahar_dto.dart';
 import 'najm_bahar_repository.dart';
 
 class NajmBaharController extends ChangeNotifier {
-  NajmBaharController(this._repository, {Listenable? sessionChanges, VoidCallback? onSessionInvalidated})
-      : _sessionChanges = sessionChanges, _onSessionInvalidated = onSessionInvalidated {
+  NajmBaharController(this._repository,
+      {Listenable? sessionChanges, VoidCallback? onSessionInvalidated})
+      : _sessionChanges = sessionChanges,
+        _onSessionInvalidated = onSessionInvalidated {
     _sessionChanges?.addListener(_sessionChanged);
   }
   final Listenable? _sessionChanges;
@@ -57,7 +59,8 @@ class NajmBaharController extends ChangeNotifier {
       : const ApiFailure(
           code: 'malformed_response', message: '', retryable: false);
   void _clearIfSessionChanged(ApiFailure failure) {
-    if (failure.httpStatus == 401 || failure.code == 'session_changed' ||
+    if (failure.httpStatus == 401 ||
+        failure.code == 'session_changed' ||
         failure.code == 'unauthenticated') {
       invalidateSession();
     }
