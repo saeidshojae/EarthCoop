@@ -21,6 +21,15 @@
             ['label' => __('navigation.footer_contact'), 'url' => route('pages.show', 'contact')],
         ];
 
+    if ($isWelcomeFooter && app()->getLocale() === 'fa') {
+        $quickLinks = array_merge($quickLinks, [
+            ['label' => 'تعاون نوین', 'url' => '/cooperative'],
+            ['label' => 'اقتصاد آزاد مردمی', 'url' => '/economy'],
+            ['label' => 'حکمرانی مشارکتی', 'url' => '/governance'],
+            ['label' => 'عدالت و حقوق بنیادین', 'url' => '/justice'],
+        ]);
+    }
+
     $supportLinks = [
         ['label' => $isWelcomeFooter ? __('langWelcome.footer_faq') : __('navigation.footer_faq'), 'url' => route('pages.show', 'faq')],
         ['label' => $isWelcomeFooter ? __('langWelcome.footer_terms') : __('navigation.charter'), 'url' => route('terms')],

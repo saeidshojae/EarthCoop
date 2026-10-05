@@ -31,7 +31,7 @@ class SitemapTest extends TestCase
         }
     }
 
-    public function test_first_wave_pillars_are_each_present_once(): void
+    public function test_published_pillars_are_each_present_once(): void
     {
         $xml = simplexml_load_string($this->get('/sitemap.xml')->assertOk()->getContent());
         $this->assertNotFalse($xml);
@@ -44,6 +44,11 @@ class SitemapTest extends TestCase
             'https://earthcoop.ir/governance/elections',
             'https://earthcoop.ir/justice',
             'https://earthcoop.ir/commons',
+            'https://earthcoop.ir/cooperative',
+            'https://earthcoop.ir/cooperative/global',
+            'https://earthcoop.ir/governance/local-to-global',
+            'https://earthcoop.ir/economy/ownership',
+            'https://earthcoop.ir/technology',
         ] as $pillar) {
             $this->assertSame(1, count(array_keys($locations, $pillar)), $pillar.' must appear exactly once.');
         }
