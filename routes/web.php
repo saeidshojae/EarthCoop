@@ -103,6 +103,12 @@ Route::get('/lang/current', [LocaleController::class, 'current'])->name('locale.
 date_default_timezone_set("Asia/tehran");
 
 Route::view('/terms', 'terms', ['seoRobots' => 'index,follow'])->name('terms');
+Route::view('/privacy', 'privacy', [
+    'seoTitle' => 'سیاست حریم خصوصی ارث‌کوپ',
+    'seoDescription' => 'سیاست حریم خصوصی ارث‌کوپ؛ نحوه جمع‌آوری، استفاده، نگهداری و حذف اطلاعات کاربران و داده‌های ورود با حساب گوگل.',
+    'seoCanonical' => rtrim(config('seo.canonical_origin'), '/') . '/privacy',
+    'seoRobots' => 'index,follow',
+])->name('privacy');
 Route::post('/terms', [TermController::class, 'store'])->name('terms.store');
 Route::get('/sitemap.xml', SitemapController::class)->name('seo.sitemap');
 
