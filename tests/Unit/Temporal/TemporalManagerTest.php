@@ -47,6 +47,15 @@ class TemporalManagerTest extends TestCase
         $this->assertSame('2026-10-01', $manager->date(LocalDate::fromCanonical('2026-10-01'), $en, 'short'));
     }
 
+    public function test_manager_exposes_year_in_context_calendar_without_formatting_round_trip(): void
+    {
+        [$manager, $resolver] = $this->manager();
+        $instant = new DateTimeImmutable('2026-10-01T12:00:00Z');
+
+        $this->assertSame(1405, $manager->year($instant, $resolver->forLocale('fa', 'Asia/Tehran')));
+        $this->assertSame(2026, $manager->year($instant, $resolver->forLocale('en', 'UTC')));
+    }
+
     public function test_manager_formats_time_only_in_context_timezone_and_numbering(): void
     {
         [$manager, $resolver] = $this->manager();
