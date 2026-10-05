@@ -33,11 +33,11 @@
 
 **Interfaces:** NajmBaharBalance.fromJson(Object?) with five integer fields; NajmBaharAccount.fromJson(Object?) with id/accountNumber/name/type/status/local/aggregate; NajmBaharTransaction.fromJson(Object?) with resource fields. NajmBaharHistoryPage holds items, nextCursor and hasMore. NajmBaharRepository({required ApiClient apiClient, required bool Function() isCurrentSession}) exposes Future<NajmBaharAccount> account() and Future<NajmBaharHistoryPage> history({String? cursor}). String formatGol(int amount) returns exact Persian Bahar/Gol display using integer division/remainder.
 
-- [ ] Write tests against canonical Resource fixtures. Assert formatGol(101) is 1 Bahar + 1 Gol, zero and negative amounts are exact, and 3_900_000_309 retains all digits. Reject fractional/noninteger financial fields and malformed balance/meta shapes.
-- [ ] Test GET account and GET transactions with limit=20, optional opaque cursor, bearer/device headers, and next_cursor/has_more from envelope meta. Verify 404 propagates and no POST occurs. Assert captured session change before or during a response rejects that response.
-- [ ] Run focused tests in a lightweight CI branch and observe missing implementation failures; local Dart runtime is unavailable. Do not build Android for this RED gate.
-- [ ] Implement interfaces with strict decoding, current-session checks before/after awaits, and no implicit account creation/cache. API failures retain their existing categorical codes.
-- [ ] Run focused tests; proceed only when they pass. Commit the repository deliverable.
+- [x] Write tests against canonical Resource fixtures. Assert formatGol(101) is 1 Bahar + 1 Gol, zero and negative amounts are exact, and 3_900_000_309 retains all digits. Reject fractional/noninteger financial fields and malformed balance/meta shapes.
+- [x] Test GET account and GET transactions with limit=20, optional opaque cursor, bearer/device headers, and next_cursor/has_more from envelope meta. Verify 404 propagates and no POST occurs. Assert captured session change before or during a response rejects that response.
+- [x] Run focused tests in a lightweight CI branch and observe missing implementation failures; local Dart runtime is unavailable. Do not build Android for this RED gate.
+- [x] Implement interfaces with strict decoding, current-session checks before/after awaits, and no implicit account creation/cache. API failures retain their existing categorical codes.
+- [x] Run focused tests; proceed only when they pass. Commit the repository deliverable.
 
 ### Task 2: Independent read states and race-safe pagination
 
@@ -45,10 +45,10 @@
 
 **Interfaces:** NajmBaharController(NajmBaharRepository repository) extends ChangeNotifier. Exposes account, accountFailure, accountLoading, transactions, historyFailure, historyLoading, nextCursor, hasMore, receivedAt; Future<void> load(), refreshAccount(), refreshHistory(), loadMore(). Dispose invalidates all pending updates. Generation counters invalidate old refresh/page responses; page cursor consumption is serialized.
 
-- [ ] Write tests for independent account/history success and failure, account 404 plus valid history, history empty, and page failure preserving existing rows.
-- [ ] Test duplicate loadMore calls make one request, repeated IDs are deduplicated in response order, refresh overtakes a pending old page, and stale responses never update receivedAt. Test disposal and account change with Completer-controlled responses.
-- [ ] Observe focused RED; implement controller using separate account/history generations and mounted/disposed checks. On failed account refresh retained data is visibly dated, never labeled fresh or replaced by zero.
-- [ ] Run focused tests and commit the controller deliverable.
+- [x] Write tests for independent account/history success and failure, account 404 plus valid history, history empty, and page failure preserving existing rows.
+- [x] Test duplicate loadMore calls make one request, repeated IDs are deduplicated in response order, refresh overtakes a pending old page, and stale responses never update receivedAt. Test disposal and account change with Completer-controlled responses.
+- [x] Observe focused RED; implement controller using separate account/history generations and mounted/disposed checks. On failed account refresh retained data is visibly dated, never labeled fresh or replaced by zero.
+- [x] Run focused tests and commit the controller deliverable.
 
 ### Task 3: Wallet page, Home entry and protected runtime integration
 
@@ -57,10 +57,10 @@
 **Interfaces:** NajmBaharScreen({required NajmBaharController controller}) listens to injected controller; runtime view owns creation/load/disposal. Add HomeScreen.onOpenNajmBahar, NajmBaharRouteBuilder = Widget Function(BuildContext), and optional najmBaharBuilder through MobileAppRuntime/AppRouter. Route /najm-bahar invokes builder only with live valid session and allowed protected-network bootstrap; otherwise redirects/shows the existing login/unavailable flow. Runtime constructs captured-token/device ApiClient and a live epoch/user/token/device/bootstrap guard. Preserve existing router behavior and semantic-link allowlist.
 
 - [ ] Write widget tests for loading, local and aggregate balance labels, all five balances, no account, empty history, account/history independent error/retry, next page and dated retained amounts after refresh failure. Verify text and behavior, not private implementation.
-- [ ] Write Home/router/runtime tests for entry navigation, unauthenticated/direct entry, required-update/network gate, logout in progress disabling entry, and account-switch response rejection. Observe focused RED before runtime integration.
-- [ ] Implement the page with RTL/accessibility and existing layout conventions. Add a runtime-owned controller/view. No transfer/activation/payment button is advertised until those flows exist.
-- [ ] Run dart format, flutter analyze and the complete mobile test suite in CI. Preserve dependency lock and platform configuration. Correct any failure by evidence before proceeding.
-- [ ] Obtain independent whole-change review after tests pass, covering the five Review Focus cases. Record findings and deferred limits explicitly.
+- [x] Write Home/router/runtime tests for entry navigation, unauthenticated/direct entry, required-update/network gate, logout in progress disabling entry, and account-switch response rejection. Observe focused RED before runtime integration.
+- [x] Implement the page with RTL/accessibility and existing layout conventions. Add a runtime-owned controller/view. No transfer/activation/payment button is advertised until those flows exist.
+- [x] Run dart format, flutter analyze and the complete mobile test suite in CI. Preserve dependency lock and platform configuration. Correct any failure by evidence before proceeding.
+- [x] Obtain independent whole-change review after tests pass, covering the five Review Focus cases. Record findings and deferred limits explicitly.
 - [ ] After successful tests/review only, bump to 1.0.0+16 and build one stable-UAT Release using the verified +15 signing/configuration pipeline without FTP. Verify actual APK package/version/permission/nondebuggable/certificate, retain APK and build metadata, and record source SHA/run/artifact digest.
 - [ ] Extend consolidated physical checklist with wallet/history compared to the same site account, missing account, pagination and account switch. Keep all earlier phone gates open. Commit receipt with skip-ci; avoid repeating the completed full server suite unless server files change.
 
@@ -68,4 +68,4 @@
 
 The plan covers the first-delivery spec: DTO units, server-authoritative balances, independent read failures, account guards, pagination races, UI wiring, software verification and deferred device acceptance. Later module rows are roadmap scope, not hidden work in this plan. No production code is changed by this document.
 
-Recommended execution: direct implementation in this session, then one independent whole-change review. Task interfaces are tightly coupled to the existing runtime; a separate implementer per task adds avoidable handoff cost. Plan review/choice remains pending; implementation has not started.
+Recommended execution: direct implementation in this session, then one independent whole-change review. Task interfaces are tightly coupled to the existing runtime; a separate implementer per task adds avoidable handoff cost. User approved direct execution. Implementation and independent review/fix-pass are complete; 243 mobile tests pass. Signed +16 packaging and final receipt remain in progress. Dedicated loading/complete balance accessibility assertions and physical UI acceptance remain open; existing widget tests cover wallet labels, dated balance, missing account/empty ledger, real idle session/logout boundaries and first-page/pagination retry callbacks.
