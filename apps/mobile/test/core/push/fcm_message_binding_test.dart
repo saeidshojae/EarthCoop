@@ -50,6 +50,57 @@ void main() {
     await runtime.dispose();
   });
 
+  test('queued tap captured before session replacement is dropped', () async {
+    Object? scope = 'epoch-1';
+    final runtime = FakeMessages()..initial.complete(null);
+    final entered = Completer<void>();
+    final release = Completer<void>();
+    final opened = <String>[];
+    final binding = FcmMessageBinding(
+      runtime: runtime,
+      activeScope: () => scope,
+      onOpen: (data) async {
+        opened.add(data['value'] as String);
+        entered.complete();
+        await release.future;
+        return true;
+      },
+      onForeground: (_) async {},
+    );
+    await binding.start();
+    runtime.opens.add(FcmMessageEvent('first', {'value': 'first'}));
+    await entered.future;
+    runtime.opens.add(FcmMessageEvent('second', {'value': 'second'}));
+    await Future<void>.delayed(Duration.zero);
+    scope = 'epoch-2';
+    release.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(opened, ['first']);
+    await binding.dispose();
+    await runtime.dispose();
+  });
+
+  test('initial and buffered taps cannot cross a startup session change', () async {
+    Object? scope = 'epoch-1';
+    final runtime = FakeMessages();
+    var opens = 0;
+    final binding = FcmMessageBinding(
+      runtime: runtime,
+      activeScope: () => scope,
+      onOpen: (_) async { opens++; return true; },
+      onForeground: (_) async {},
+    );
+    final starting = binding.start();
+    runtime.opens.add(FcmMessageEvent('buffered', {}));
+    await Future<void>.delayed(Duration.zero);
+    scope = 'epoch-2';
+    runtime.initial.complete(FcmMessageEvent('initial', {}));
+    await starting;
+    expect(opens, 0);
+    await binding.dispose();
+    await runtime.dispose();
+  });
+
   test('disposal during initial message read suppresses late navigation',
       () async {
     final runtime = FakeMessages();
