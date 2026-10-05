@@ -1,0 +1,47 @@
+name: Mobile wallet policy
+on:
+  push:
+    branches: [agent/mobile-wallet-policy-20261005]
+permissions:
+  contents: read
+concurrency:
+  group: mobile-wallet-policy
+  cancel-in-progress: true
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/mobile
+      - name: Normalize formatting and retain exact patch
+        working-directory: apps/mobile
+        run: |
+          dart format lib test integration_test
+          echo NB_FORMAT_PATCH_BEGIN
+          git diff --no-color -- lib test integration_test
+          echo NB_FORMAT_PATCH_END
+      - name: Run policy tests
+        run: flutter test --reporter expanded test/features/najm_bahar/najm_bahar_policy_test.dart
+        working-directory: apps/mobile
+      - name: Analyze
+        run: flutter analyze
+        working-directory: apps/mobile
+      - name: Run repository tests
+        run: flutter test test/features/najm_bahar/najm_bahar_repository_test.dart
+        working-directory: apps/mobile
+      - name: Run controller tests
+        run: flutter test test/features/najm_bahar/najm_bahar_controller_test.dart
+        working-directory: apps/mobile
+      - name: Run wallet interface tests
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_screen_test.dart test/features/najm_bahar/najm_bahar_navigation_test.dart
+        working-directory: apps/mobile
+      - name: Run complete mobile suite
+        run: flutter test
+        working-directory: apps/mobile
