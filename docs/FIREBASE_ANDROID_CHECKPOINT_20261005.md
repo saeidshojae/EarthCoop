@@ -31,3 +31,7 @@ Python Firebase materialization regression suite: python -m unittest discover -s
 ## Server follow-up now deployed
 
 PR196 adds the non-delivering FCM readiness diagnostic. Merge cfb921b1b3f843438bec5222aaa75eaaf81f9977 deployed successfully in run 37248899603. This supersedes the earlier statement that the console has no FCM diagnostic. Host execution of fcm_readiness is still pending and must not be inferred from deployment or optimize_clear. Keep PUSH_DELIVERY_DRIVER disabled until provider readiness and client acceptance are known. Native SDK open integration is in progress on agent/fcm-open-20261005; +12 remains the last verified artifact until the +13 receipt is recorded.
+
+Verified Android 1.0.0+13 source 5c6e125b55df530d819dda231e7c1f083cd364b4: https://github.com/saeidshojae/EarthCoop/actions/runs/37307643684 completed successfully. Canonical and strict formatter: 123 files / 0 changed; analyzer no issues; all 208 mobile tests passed, including three behavioral review regressions. Required FCM client configuration ready, stable UAT signing, Android APK build and staged metadata verified.
+
+Artifact https://github.com/saeidshojae/EarthCoop/actions/runs/37307643684/artifacts/11344029983 . Archive size 95184967 bytes; archive SHA256 94558ddf326046bb74c5e14e3039f98e49b46c8b33040b1616e38e765e0baaae; expires 2026-11-04T12:17:11Z. This is the ZIP digest, not the inner APK digest. +13 supersedes +12 for one consolidated phone acceptance. No FTP APK publication and no real-device delivery/tap acceptance performed.

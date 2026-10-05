@@ -252,3 +252,15 @@ was unavailable during the APK build; live push and the separate server vendor
 installation/configuration are still unverified. See
 GROUP_ACCOUNT_ISOLATION_CHECKPOINT.md and
 ../../../docs/NATIVE_PUSH_PROVIDER_SERVER_RELEASE_20261004.md.
+
+## FCM open follow-up — latest candidate +13
+
++13 introduces Firebase foreground refresh and cold/warm system-notification tap intake. The push link is ignored; the active account must authorize the notification read endpoint, and navigation uses only its returned typed group link. Captured session scope prevents buffered/queued old events and late replies from opening after logout/relogin; disposed runtime cannot navigate. Mounted inbox observes foreground recovery without a lifecycle resume.
+
+Phone unavailable: physical permission allow/deny, token registration, foreground inbox refresh, background delivery, cold/warm tap and account-change safety are NOT EXECUTED. Keep the existing composer/feed, offline read/cache/logout and Android attachment save/open checks pending. Previously accepted 81-group count remains accepted. Test only the latest verified stable-signed candidate once the artifact receipt below is recorded. No +13 host download-page publication is performed.
+
+Server diagnostic PR196 was separately deployed in run 37248899603; the console operation fcm_readiness can validate credentials/OAuth/FCM permission without delivery. Its actual execution on the configured host remains pending. Server push driver stays disabled.
+
+Verified Android 1.0.0+13 source 5c6e125b55df530d819dda231e7c1f083cd364b4: https://github.com/saeidshojae/EarthCoop/actions/runs/37307643684 completed successfully. Canonical and strict formatter: 123 files / 0 changed; analyzer no issues; all 208 mobile tests passed, including three behavioral review regressions. Required FCM client configuration ready, stable UAT signing, Android APK build and staged metadata verified.
+
+Artifact https://github.com/saeidshojae/EarthCoop/actions/runs/37307643684/artifacts/11344029983 . Archive size 95184967 bytes; archive SHA256 94558ddf326046bb74c5e14e3039f98e49b46c8b33040b1616e38e765e0baaae; expires 2026-11-04T12:17:11Z. This is the ZIP digest, not the inner APK digest. +13 supersedes +12 for one consolidated phone acceptance. No FTP APK publication and no real-device delivery/tap acceptance performed.
