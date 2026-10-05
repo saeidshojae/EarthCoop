@@ -1,5 +1,11 @@
 # Native mobile remaining work — 2026-10-05
 
+## Latest checkpoint: signed Android +17
+
+Read-only activation eligibility and membership-fee sections now extend the existing native wallet. Temporary bootstrap recovery and all-HTTP401 clearing are bundled into +17. Final source tests:256 PASS, analyzer no issues, run37355385308. Signed Release UAT build37355780177 verified package/version17/nondebuggable/Internet/stable certificate continuity with+16. Exact APK and retained-file verification receipt: MOBILE_NAJM_BAHAR_POLICY_CHECKPOINT_20261005.md. Use only the latest+17 for one consolidated physical run; all phone gates remain NOT EXECUTED. Historical sections below are development receipts, not additional installation tasks.
+
+Next bounded required work is a separately designed confirmed financial intent (membership payment/activation/transfer) with safe idempotency and ambiguous-result recovery. These client mutations are not implemented in+17. Hoda remains later with its persisted-message/failed-send recovery contract. Google/network resilience remains deferred to final app completion. No main merge, host FTP publication or push-driver activation. Current host+17 availability is not claimed; required distribution/platform/provider gates and prior unrelated Minor items remain open.
+
 User priority: continue required app development in the existing M6 plan. Google filtering/provider restriction, international/total network loss, independent foreground recovery, cold offline startup and infrastructure dependency audit are explicitly deferred to the final app-completion stage. Do not activate that resilience work now. Keep existing offline/session safety regressions intact.
 
 Verified candidate +13: 208 tests, run 37307643684. Host fcm_readiness accepted: ready true / fcm_validation_ready / exit 0. Physical phone acceptance remains open and must be performed only on the latest verified candidate.

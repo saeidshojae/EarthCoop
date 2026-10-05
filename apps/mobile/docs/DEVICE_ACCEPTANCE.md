@@ -2,9 +2,9 @@
 
 This checklist records the hardware-dependent acceptance gates for the Flutter native foundation. A row may be marked PASS only after execution on the stated device. Never commit provider credentials, bearer tokens, raw push tokens, service-account files, or other secrets as evidence.
 
-## Consolidated next phone run — latest verified Release UAT +16
+## Consolidated next phone run — latest verified Release UAT +17
 
-Historical candidate sections below are receipts, not separate installation tasks. Use the verified Release UAT +16 artifact referenced in docs/MOBILE_NAJM_BAHAR_READ_CHECKPOINT_20261005.md. Do not repeat the already accepted 81-group count unless a new regression appears.
+Historical candidate sections below are receipts, not separate installation tasks. Use the verified Release UAT +17 artifact referenced in docs/MOBILE_NAJM_BAHAR_POLICY_CHECKPOINT_20261005.md. Do not repeat the already accepted 81-group count unless a new regression appears.
 
 | Flow | Required observation | Status |
 | --- | --- | --- |
@@ -16,7 +16,9 @@ Historical candidate sections below are receipts, not separate installation task
 | Najm Bahar wallet | Compare main and aggregate balances, available/committed amounts and account number with the same site account; 100 Gol = 1 Bahar | NOT EXECUTED |
 | Najm Bahar history | Compare newest transactions; load next page without duplicate IDs; retry refresh and pagination after network failure | NOT EXECUTED |
 | Najm Bahar missing account | An approved account without a wallet shows missing account rather than fabricated zero; independently authorized history remains separate | NOT EXECUTED |
-| Najm Bahar account boundary | Loaded balances/history disappear immediately when logout starts or account credentials change; old responses cannot repopulate them | NOT EXECUTED |
+| Najm Bahar policy sections | Compare eligibility points/conversion/limits, server membership year, paid status and fee breakdown with the same site account; disabled activation leaves membership visible | NOT EXECUTED |
+| Najm Bahar bootstrap recovery | A temporary foreground bootstrap pause shows a recoverable error and dated prior values; explicit refresh succeeds after recovery without reopening the page | NOT EXECUTED |
+| Najm Bahar account boundary | Loaded wallet/history and policy data disappear when logout starts, credentials change or any endpoint returns 401; delayed responses cannot repopulate them | NOT EXECUTED |
 | Read queue | Load unread online, mark read offline, reconnect, reopen Notifications and verify authoritative read state after fresh bootstrap | NOT EXECUTED |
 | FCM registration and foreground | Check permission allow/deny and registration; a real approved server notification refreshes the open inbox | NOT EXECUTED |
 | FCM delivery/open | Background and cold/warm tap reach the authorized destination; queued old-account tap cannot open after logout/account change | NOT EXECUTED |
