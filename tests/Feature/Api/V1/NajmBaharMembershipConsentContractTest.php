@@ -125,6 +125,53 @@ class NajmBaharMembershipConsentContractTest extends TestCase
         $this->assertSame($before,Transaction::count());
     }
 
+    public function test_main_active_consent_and_available_reservation_limit(): void
+    {
+        [, $main, $expected] = $this->fixture();
+        $main->forceFill(['balance_active'=>1500,'balance_faded'=>0,'balance'=>1500])->save();
+        app(\App\Modules\NajmBahar\Services\ActiveBaharReservationService::class)
+            ->reserve($main->account_number,400,'consent-reservation','test',1);
+        $this->getJson('/api/v1/najm-bahar/membership-fee')->assertOk()
+            ->assertJsonPath('data.payment_sources.0.active_available_gol',1100)
+            ->assertJsonPath('data.payment_sources.0.can_pay_active',false);
+        $before=Transaction::count();
+        $this->submit($expected,'active')->assertStatus(409);
+        $this->assertSame($before,Transaction::count());
+        app(\App\Modules\NajmBahar\Services\ActiveBaharReservationService::class)
+            ->release('consent-reservation','consent-release');
+        $this->submit($expected,'active',null,'consent-main-after-release')->assertCreated()
+            ->assertJsonPath('data.payment_account_number',$main->account_number);
+        $this->assertSame(300,(int)$main->fresh()->balance_active);
+    }
+
+    public function test_foreign_disabled_and_mismatched_account_are_rejected(): void
+    {
+        [, $main, $expected] = $this->fixture();
+        $other=User::factory()->create(); $otherMain=$this->memberAccount($other);
+        foreach ([$main,$otherMain] as $index=>$parent) {
+            $sub=SubAccount::create(['account_id'=>$parent->id,'sub_account_code'=>$parent->account_number.'-086',
+                'name'=>'Unavailable','balance'=>2000,'balance_active'=>2000,'balance_faded'=>0,'status'=>$index]);
+            $e=$expected; $e['account_number']=$sub->sub_account_code;
+            $before=Transaction::count();
+            $this->submit($e,'active',$sub->id,'consent-owner-'.$index)->assertStatus(404);
+            $this->assertSame(2000,(int)$sub->fresh()->balance_active);
+            $this->assertSame($before,Transaction::count());
+        }
+        $e=$expected; $e['account_number']='unowned-account';
+        $this->submit($e,'dim',null,'consent-account-mismatch')->assertStatus(409);
+    }
+
+    public function test_anniversary_rollover_rejects_old_consent(): void
+    {
+        [$user,$main,$expected] = $this->fixture();
+        $user->forceFill(['created_at'=>now()->subYear()->addMinute()])->save();
+        $expected['payment_year']=now()->year-1;
+        $this->travel(2)->minutes();
+        $before=Transaction::count();
+        $this->submit($expected)->assertStatus(409)->assertJsonPath('error.code','membership_fee_terms_changed');
+        $this->assertSame($before,Transaction::count());
+    }
+
     private function memberAccount(User $user)
     {
         $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
