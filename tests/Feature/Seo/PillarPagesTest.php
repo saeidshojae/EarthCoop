@@ -159,4 +159,26 @@ class PillarPagesTest extends TestCase
         $this->assertStringContainsString('نجم هدا', $html);
         $this->assertStringContainsString('قابلیت‌های در حال توسعه', $html);
     }
+
+    /** @dataProvider supportingArticleProvider */
+    public function test_pillars_link_back_to_published_supporting_articles(string $pillarPath, string $articleSlug): void
+    {
+        $this->get($pillarPath)
+            ->assertOk()
+            ->assertSee('href="/blog/'.$articleSlug.'"', false);
+    }
+
+    public static function supportingArticleProvider(): array
+    {
+        return [
+            'economy people explainer' => ['/economy', 'people-economy-explained'],
+            'economy anti monopoly' => ['/economy', 'free-market-without-monopoly'],
+            'glass economy privacy' => ['/economy/glass', 'financial-transparency-and-privacy'],
+            'governance participation' => ['/governance', 'participatory-governance-beyond-voting'],
+            'continuous elections explainer' => ['/governance/elections', 'continuous-elections-explained'],
+            'platform cooperative comparison' => ['/cooperative', 'platform-cooperative-and-earthcoop'],
+            'earth justice explainer' => ['/justice', 'earth-in-earthcoop-justice'],
+            'ownership and commons' => ['/economy/ownership', 'private-property-and-common-resources'],
+        ];
+    }
 }
