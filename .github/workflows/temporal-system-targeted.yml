@@ -89,7 +89,8 @@ jobs:
           from pathlib import Path
 
           path = Path('resources/views/admin/user/show.blade.php')
-          data = path.read_bytes()
+          before = path.read_bytes()
+          data = before
 
           replacements = {
               b"{{ \\Morilog\\Jalali\\Jalalian::fromCarbon($createdAt)->format('Y/m/d H:i') }}": b'<x-temporal.date-time :value="$createdAt" />',
@@ -100,11 +101,16 @@ jobs:
               b"{{ \\Morilog\\Jalali\\Jalalian::fromCarbon($lastActivity)->format('Y/m/d H:i') }}": b'<x-temporal.date-time :value="$lastActivity" />',
           }
 
+          expected_delta = 0
           for old, new in replacements.items():
               count = data.count(old)
               assert count == 1, f'Expected exactly one occurrence of {old!r}, found {count}'
+              expected_delta += len(new) - len(old)
               data = data.replace(old, new, 1)
 
+          assert len(data) == len(before) + expected_delta
+          assert data.count(b'\r') == before.count(b'\r'), 'CR byte count changed unexpectedly'
+          assert data.count(b'\n') == before.count(b'\n'), 'LF byte count changed unexpectedly'
           assert b'Morilog\\Jalali' not in data
           assert b'Jalalian::' not in data
           for new in replacements.values():
@@ -113,10 +119,10 @@ jobs:
           path.write_bytes(data)
           PY
 
-          git diff --check
           changed="$(git diff --name-only)"
           test "$changed" = "resources/views/admin/user/show.blade.php"
-          git diff -- resources/views/admin/user/show.blade.php
+          git diff --numstat -- resources/views/admin/user/show.blade.php
+          git diff --ignore-space-at-eol -- resources/views/admin/user/show.blade.php
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add resources/views/admin/user/show.blade.php
