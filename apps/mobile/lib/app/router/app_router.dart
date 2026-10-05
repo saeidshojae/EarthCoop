@@ -48,7 +48,9 @@ class AppRouter {
             GoRoute(
               path: '/home',
               builder: (context, state) => HomeScreen(
-                onOpenNajmBahar: najmBaharBuilder == null ? null : () => context.push('/najm-bahar'),
+                onOpenNajmBahar: najmBaharBuilder == null
+                    ? null
+                    : () => context.push('/najm-bahar'),
                 onOpenGroups: () => context.push('/groups'),
                 onOpenNotifications: () => context.push('/notifications'),
                 onLogout: onLogout,
@@ -59,13 +61,23 @@ class AppRouter {
               redirect: (context, state) {
                 final liveSession = currentSession?.call() ?? session;
                 final liveBootstrap = currentBootstrap?.call() ?? bootstrap;
-                if (!liveBootstrap.allowsProductShell) return liveBootstrap.decision == BootstrapDecision.requiredUpdate ? '/update-required' : '/unavailable';
-                if (liveSession.phase != SessionPhase.authenticated) return '/login';
-                if (!liveBootstrap.allowsProtectedNetwork) return '/unavailable';
+                if (!liveBootstrap.allowsProductShell) {
+                  return liveBootstrap.decision ==
+                          BootstrapDecision.requiredUpdate
+                      ? '/update-required'
+                      : '/unavailable';
+                }
+                if (liveSession.phase != SessionPhase.authenticated) {
+                  return '/login';
+                }
+                if (!liveBootstrap.allowsProtectedNetwork) {
+                  return '/unavailable';
+                }
                 return null;
               },
               builder: (context, state) => najmBaharBuilder == null
-                  ? const _RouteMessageScreen(message: 'نجم بهار در حال حاضر در دسترس نیست.')
+                  ? const _RouteMessageScreen(
+                      message: 'نجم بهار در حال حاضر در دسترس نیست.')
                   : najmBaharBuilder(context),
             ),
             GoRoute(

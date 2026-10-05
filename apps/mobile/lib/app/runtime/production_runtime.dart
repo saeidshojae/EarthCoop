@@ -387,9 +387,13 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     currentBootstrap: () => pushBootstrap ?? const BootstrapState.unavailable(),
     najmBaharBuilder: (context) {
       final session = sessionController.state.session;
-      if (session == null) return const Scaffold(body: Center(child: Text('دوباره وارد حساب شوید.')));
+      if (session == null) {
+        return const Scaffold(
+            body: Center(child: Text('دوباره وارد حساب شوید.')));
+      }
       final epoch = notificationEpoch;
-      bool current() => notificationEpoch == epoch &&
+      bool current() =>
+          notificationEpoch == epoch &&
           sessionController.state.phase == SessionPhase.authenticated &&
           sessionController.state.session?.token == session.token &&
           sessionController.state.session?.user.id == session.user.id &&
@@ -399,10 +403,13 @@ Future<MobileAppRuntime> createProductionRuntime() async {
         dio: dio,
         bearerTokenProvider: () async => session.token,
         deviceIdProvider: () async => session.device.id,
-        requestIdFactory: () => 'wallet-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+        requestIdFactory: () =>
+            'wallet-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
         retryDelay: Future<void>.delayed,
       );
-      return _NajmBaharRuntimeView(repository: NajmBaharRepository(apiClient: scopedApi, isCurrentSession: current));
+      return _NajmBaharRuntimeView(
+          repository: NajmBaharRepository(
+              apiClient: scopedApi, isCurrentSession: current));
     },
     groupsBuilder: (context, openGroup) => _GroupsRuntimeView(
         repository: createGroupRepository(), onOpenGroup: openGroup),
@@ -598,11 +605,26 @@ class _NotificationsRuntimeLoaderState
 class _NajmBaharRuntimeView extends StatefulWidget {
   const _NajmBaharRuntimeView({required this.repository});
   final NajmBaharRepository repository;
-  @override State<_NajmBaharRuntimeView> createState() => _NajmBaharRuntimeViewState();
+  @override
+  State<_NajmBaharRuntimeView> createState() => _NajmBaharRuntimeViewState();
 }
+
 class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
-  late final NajmBaharController _controller = NajmBaharController(widget.repository);
-  @override void initState() {super.initState(); unawaited(_controller.load());}
-  @override void dispose() {_controller.dispose(); super.dispose();}
-  @override Widget build(BuildContext context) => NajmBaharScreen(controller: _controller);
+  late final NajmBaharController _controller =
+      NajmBaharController(widget.repository);
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_controller.load());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      NajmBaharScreen(controller: _controller);
 }
