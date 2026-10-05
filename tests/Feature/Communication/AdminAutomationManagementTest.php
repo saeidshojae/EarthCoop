@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Communication\CommunicationTemplateService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 final class AdminAutomationManagementTest extends TestCase
@@ -64,6 +65,32 @@ final class AdminAutomationManagementTest extends TestCase
         $this->assertNotNull($rule->schedule);
         $this->assertSame('weekly', $rule->schedule->frequency);
         $this->assertSame(1, $rule->schedule->schedule_definition['interval']);
+    }
+
+    public function test_specific_user_scheduled_automation_persists_target_user_ids(): void
+    {
+        $manager = $this->userWithPermissions([
+            'communications.view',
+            'communications.rules.manage',
+        ]);
+        [$template, $sender] = $this->templateAndSender();
+        $recipientA = User::factory()->create();
+        $recipientB = User::factory()->create();
+        $payload = $this->scheduledPayload($template, $sender);
+        $payload['key'] = 'task9.scheduled.specific-users';
+        $payload['audience_key'] = 'specific.user';
+        $payload['user_ids'] = [$recipientA->id, $recipientB->id];
+
+        $this->actingAs($manager)
+            ->post('/admin/communications/automations', $payload)
+            ->assertRedirect('/admin/communications/automations');
+
+        $rule = CommunicationRule::query()->where('key', 'task9.scheduled.specific-users')->firstOrFail();
+        $this->assertSame('specific.user', $rule->audience_definition['key']);
+        $this->assertSame(
+            [$recipientA->id, $recipientB->id],
+            $rule->audience_definition['user_ids'] ?? null,
+        );
     }
 
     public function test_automation_rejects_unregistered_audience_key(): void
