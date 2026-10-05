@@ -26,6 +26,9 @@ import '../../core/push/hms_push_token_source.dart';
 import '../../core/device/device_timezone.dart';
 import '../../core/local/app_database.dart';
 import '../../features/auth/login_controller.dart';
+import '../../features/najm_bahar/najm_bahar_controller.dart';
+import '../../features/najm_bahar/najm_bahar_repository.dart';
+import '../../features/najm_bahar/najm_bahar_screen.dart';
 import '../../features/groups/group_cache.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/group_repository.dart';
@@ -381,6 +384,26 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     },
     sessionController: sessionController,
     loginController: loginController,
+    currentBootstrap: () => pushBootstrap ?? const BootstrapState.unavailable(),
+    najmBaharBuilder: (context) {
+      final session = sessionController.state.session;
+      if (session == null) return const Scaffold(body: Center(child: Text('دوباره وارد حساب شوید.')));
+      final epoch = notificationEpoch;
+      bool current() => notificationEpoch == epoch &&
+          sessionController.state.phase == SessionPhase.authenticated &&
+          sessionController.state.session?.token == session.token &&
+          sessionController.state.session?.user.id == session.user.id &&
+          sessionController.state.session?.device.id == session.device.id &&
+          pushBootstrap?.allowsProtectedNetwork == true;
+      final scopedApi = ApiClient(
+        dio: dio,
+        bearerTokenProvider: () async => session.token,
+        deviceIdProvider: () async => session.device.id,
+        requestIdFactory: () => 'wallet-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+        retryDelay: Future<void>.delayed,
+      );
+      return _NajmBaharRuntimeView(repository: NajmBaharRepository(apiClient: scopedApi, isCurrentSession: current));
+    },
     groupsBuilder: (context, openGroup) => _GroupsRuntimeView(
         repository: createGroupRepository(), onOpenGroup: openGroup),
     groupDetailBuilder: (context, groupId) {
@@ -570,4 +593,16 @@ class _NotificationsRuntimeLoaderState
           );
         },
       );
+}
+
+class _NajmBaharRuntimeView extends StatefulWidget {
+  const _NajmBaharRuntimeView({required this.repository});
+  final NajmBaharRepository repository;
+  @override State<_NajmBaharRuntimeView> createState() => _NajmBaharRuntimeViewState();
+}
+class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
+  late final NajmBaharController _controller = NajmBaharController(widget.repository);
+  @override void initState() {super.initState(); unawaited(_controller.load());}
+  @override void dispose() {_controller.dispose(); super.dispose();}
+  @override Widget build(BuildContext context) => NajmBaharScreen(controller: _controller);
 }

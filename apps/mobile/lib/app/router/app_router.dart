@@ -7,6 +7,8 @@ import '../../core/deep_links/semantic_link.dart';
 import '../../features/home/home_screen.dart';
 import '../bootstrap/bootstrap_state.dart';
 
+typedef NajmBaharRouteBuilder = Widget Function(BuildContext context);
+
 typedef LoginRouteBuilder = Widget Function(BuildContext context);
 typedef GroupsRouteBuilder = Widget Function(
   BuildContext context,
@@ -31,6 +33,9 @@ class AppRouter {
     GroupsRouteBuilder? groupsBuilder,
     GroupDetailRouteBuilder? groupDetailBuilder,
     NotificationsRouteBuilder? notificationsBuilder,
+    NajmBaharRouteBuilder? najmBaharBuilder,
+    SessionState Function()? currentSession,
+    BootstrapState Function()? currentBootstrap,
     Future<void> Function()? onLogout,
   }) : router = GoRouter(
           initialLocation: _initialLocation(
@@ -43,10 +48,25 @@ class AppRouter {
             GoRoute(
               path: '/home',
               builder: (context, state) => HomeScreen(
+                onOpenNajmBahar: najmBaharBuilder == null ? null : () => context.push('/najm-bahar'),
                 onOpenGroups: () => context.push('/groups'),
                 onOpenNotifications: () => context.push('/notifications'),
                 onLogout: onLogout,
               ),
+            ),
+            GoRoute(
+              path: '/najm-bahar',
+              redirect: (context, state) {
+                final liveSession = currentSession?.call() ?? session;
+                final liveBootstrap = currentBootstrap?.call() ?? bootstrap;
+                if (!liveBootstrap.allowsProductShell) return liveBootstrap.decision == BootstrapDecision.requiredUpdate ? '/update-required' : '/unavailable';
+                if (liveSession.phase != SessionPhase.authenticated) return '/login';
+                if (!liveBootstrap.allowsProtectedNetwork) return '/unavailable';
+                return null;
+              },
+              builder: (context, state) => najmBaharBuilder == null
+                  ? const _RouteMessageScreen(message: 'نجم بهار در حال حاضر در دسترس نیست.')
+                  : najmBaharBuilder(context),
             ),
             GoRoute(
               path: '/login',

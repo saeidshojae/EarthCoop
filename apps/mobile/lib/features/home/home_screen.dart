@@ -4,11 +4,13 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.onOpenGroups,
+    this.onOpenNajmBahar,
     this.onOpenNotifications,
     this.onLogout,
   });
 
   final VoidCallback? onOpenGroups;
+  final VoidCallback? onOpenNajmBahar;
   final VoidCallback? onOpenNotifications;
   final Future<void> Function()? onLogout;
 
@@ -86,6 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: const Text('اعلان‌ها'),
                   ),
                 ),
+                if (widget.onOpenNajmBahar != null) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    key: const Key('home-najm-bahar-action'),
+                    onPressed: _leaving ? null : widget.onOpenNajmBahar,
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    label: const Text('نجم بهار'),
+                  ),
+                ],
                 if (widget.onLogout != null) ...[
                   const SizedBox(height: 24),
                   OutlinedButton.icon(

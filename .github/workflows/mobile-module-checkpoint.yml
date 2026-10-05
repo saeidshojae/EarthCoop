@@ -20,6 +20,16 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/mobile
+      - name: Normalize formatting and retain exact patch
+        working-directory: apps/mobile
+        run: |
+          dart format lib test integration_test
+          echo NB_FORMAT_PATCH_BEGIN
+          git diff --no-color -- lib test integration_test
+          echo NB_FORMAT_PATCH_END
+      - name: Analyze
+        run: flutter analyze
+        working-directory: apps/mobile
       - name: Run repository tests
         run: flutter test test/features/najm_bahar/najm_bahar_repository_test.dart
         working-directory: apps/mobile
@@ -28,4 +38,7 @@ jobs:
         working-directory: apps/mobile
       - name: Run wallet interface tests
         run: flutter test test/features/najm_bahar/najm_bahar_screen_test.dart test/features/najm_bahar/najm_bahar_navigation_test.dart
+        working-directory: apps/mobile
+      - name: Run complete mobile suite
+        run: flutter test
         working-directory: apps/mobile

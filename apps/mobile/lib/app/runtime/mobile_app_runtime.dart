@@ -21,6 +21,8 @@ class MobileAppRuntime {
     this.groupsBuilder,
     this.groupDetailBuilder,
     this.notificationsBuilder,
+    this.najmBaharBuilder,
+    this.currentBootstrap,
     this.onForeground,
     this.onDispose,
   });
@@ -45,6 +47,8 @@ class MobileAppRuntime {
   final GroupsRouteBuilder? groupsBuilder;
   final GroupDetailRouteBuilder? groupDetailBuilder;
   final NotificationsRouteBuilder? notificationsBuilder;
+  final NajmBaharRouteBuilder? najmBaharBuilder;
+  final BootstrapState Function()? currentBootstrap;
 
   GoRouter? _router;
 
@@ -71,6 +75,9 @@ class MobileAppRuntime {
         groupsBuilder: groupsBuilder,
         groupDetailBuilder: groupDetailBuilder,
         notificationsBuilder: notificationsBuilder,
+        najmBaharBuilder: najmBaharBuilder,
+        currentSession: () => sessionController.state,
+        currentBootstrap: currentBootstrap,
         onLogout: logout,
       ).router;
 
