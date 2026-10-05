@@ -95,6 +95,11 @@ void main() {
     expect(formatGol(-101), '-1 بهار و 1 گل');
     expect(formatGol(3900000309), '39000003 بهار و 9 گل');
   });
+  test('formats native integer boundaries exactly', () {
+    expect(formatGol(0x7fffffffffffffff), '92233720368547758 بهار و 7 گل');
+    expect(formatGol(-0x7fffffffffffffff - 1), '-92233720368547758 بهار و 8 گل');
+    expect(formatGol(-1), '-1 گل');
+  });
   test('preserves distinct local and aggregate integer balances', () async {
     final adapter = BoundaryAdapter((_) => envelope(accountJson()));
     final data = await repository(adapter).account();
