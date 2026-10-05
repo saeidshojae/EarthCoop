@@ -30,6 +30,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'app/Services/Communication/Context/WeeklyMemberReportContextBuilder.php',
             'app/Services/NajmHoda/NajmHodaGroupAssistantService.php',
             'app/Services/TicketSlaService.php',
+            'resources/views/Stock/admin_holdings_show.blade.php',
             'resources/views/admin/announcements/index.blade.php',
             'resources/views/admin/emails/index.blade.php',
             'resources/views/admin/najm-bahar/accounts/transactions.blade.php',
@@ -73,8 +74,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     private function knownLegacyDebt(): array
     {
         return [
-            'resources/views/Stock/admin_holdings_show.blade.php: Jalalian::',
-            'resources/views/Stock/admin_holdings_show.blade.php: Morilog\\Jalali',
             'resources/views/Stock/admin_wallet_show.blade.php: Jalalian::',
             'resources/views/Stock/admin_wallet_show.blade.php: Morilog\\Jalali',
             'resources/views/admin/content/index.blade.php: Jalalian::',
