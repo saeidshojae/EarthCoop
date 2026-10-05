@@ -60,6 +60,15 @@ jobs:
         working-directory: apps/mobile
         run: flutter pub get
 
+      - name: Prepare pinned Flutter Gradle wrapper
+        run: |
+          flutter precache --android
+          wrapper="$FLUTTER_ROOT/bin/cache/artifacts/gradle_wrapper"
+          cp "$wrapper/gradlew" apps/mobile/android/gradlew
+          cp "$wrapper/gradle/wrapper/gradle-wrapper.jar" apps/mobile/android/gradle/wrapper/gradle-wrapper.jar
+          chmod +x apps/mobile/android/gradlew
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_ROOT" "$ANDROID_HOME" > apps/mobile/android/local.properties
+
       - name: Reject unsafe release signing
         run: bash scripts/mobile/test_release_signing_gate.sh
 
