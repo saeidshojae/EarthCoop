@@ -62,8 +62,15 @@ final class ScheduledAutomationSafetyTest extends TestCase
             'approved_by' => $manager->id,
         ]);
 
+        $deactivatePath = '/admin/communications/automations/'.$rule->id.'/deactivate';
+
         $this->actingAs($manager)
-            ->post('/admin/communications/automations/'.$rule->id.'/deactivate')
+            ->get('/admin/communications/automations')
+            ->assertOk()
+            ->assertSee($deactivatePath, false);
+
+        $this->actingAs($manager)
+            ->post($deactivatePath)
             ->assertRedirect('/admin/communications/automations');
 
         $this->assertFalse($rule->fresh()->is_active);
