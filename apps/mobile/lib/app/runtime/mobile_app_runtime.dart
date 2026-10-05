@@ -48,6 +48,18 @@ class MobileAppRuntime {
 
   GoRouter? _router;
 
+  bool openSemanticLink(SemanticLink link,
+      {required BootstrapState currentBootstrap}) {
+    if (_disposed ||
+        sessionController.state.phase != SessionPhase.authenticated ||
+        !currentBootstrap.allowsProductShell ||
+        !currentBootstrap.allowsProtectedNetwork) return false;
+    final resolution = registry.resolve(link);
+    if (!resolution.isAllowed) return false;
+    router.go(resolution.location);
+    return true;
+  }
+
   GoRouter get router => _router ??= AppRouter(
         bootstrap: bootstrap,
         session: sessionController.state,

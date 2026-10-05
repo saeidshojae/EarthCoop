@@ -15,7 +15,9 @@ abstract interface class FcmTokenRuntime {
 }
 
 class FirebaseFcmTokenRuntime implements FcmTokenRuntime {
-  const FirebaseFcmTokenRuntime();
+  const FirebaseFcmTokenRuntime({this.onInitialized});
+
+  final void Function()? onInitialized;
 
   @override
   Future<void> initialize(FirebaseOptions options) async {
@@ -29,6 +31,7 @@ class FirebaseFcmTokenRuntime implements FcmTokenRuntime {
             'Firebase client configuration does not match initialized app');
       }
     }
+    onInitialized?.call();
   }
 
   @override

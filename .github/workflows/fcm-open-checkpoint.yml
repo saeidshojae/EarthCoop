@@ -2,20 +2,178 @@ name: FCM system notification open checkpoint
 on:
   push:
     branches: [agent/fcm-open-20261005]
+
 permissions:
   contents: read
+
+concurrency:
+  group: fcm-open-checkpoint
+  cancel-in-progress: true
+
 jobs:
-  open-tests:
+  build-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare Android UAT signing
+        shell: bash
+        env:
+          ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
+          ANDROID_UAT_KEY_ALIAS: ${{ secrets.ANDROID_UAT_KEY_ALIAS }}
+          ANDROID_UAT_STORE_PASSWORD: ${{ secrets.ANDROID_UAT_STORE_PASSWORD }}
+          ANDROID_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          configured=0
+          test -n "$ANDROID_UAT_KEYSTORE_BASE64" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_ALIAS" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_STORE_PASSWORD" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_PASSWORD" && configured=$((configured + 1))
+
+          if [ "$configured" -ne 4 ]; then
+            echo "::error::Published UAT APKs require all four stable UAT signing secrets."
+            exit 1
+          fi
+
+          UAT_KEYSTORE_PATH="$RUNNER_TEMP/earthcoop-uat.jks"
+          printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$UAT_KEYSTORE_PATH"
+          test -s "$UAT_KEYSTORE_PATH" || { echo "::error::Decoded UAT keystore is empty"; exit 1; }
+
+          {
+            echo "EARTHCOOP_UAT_KEYSTORE_PATH=$UAT_KEYSTORE_PATH"
+            echo "EARTHCOOP_UAT_KEY_ALIAS=$ANDROID_UAT_KEY_ALIAS"
+            echo "EARTHCOOP_UAT_STORE_PASSWORD=$ANDROID_UAT_STORE_PASSWORD"
+            echo "EARTHCOOP_UAT_KEY_PASSWORD=$ANDROID_UAT_KEY_PASSWORD"
+            echo "EARTHCOOP_UAT_SIGNING_MODE=stable-uat"
+          } >> "$GITHUB_ENV"
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
-      - working-directory: apps/mobile
+
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
         run: flutter pub get
-      - working-directory: apps/mobile
-        run: flutter test test/core/push/authorized_push_open_test.dart test/core/push/fcm_message_binding_test.dart
+
+      - name: Verify formatting and analyze
+        working-directory: apps/mobile
+        run: |
+          dart format lib test integration_test
+          git diff --no-ext-diff
+          dart format --output=none --set-exit-if-changed lib test integration_test
+          flutter analyze
+      - name: Run all deterministic mobile tests
+        working-directory: apps/mobile
+        run: flutter test
+
+      - name: Materialize Firebase Android client configuration
+        env:
+          EARTHCOOP_FIREBASE_ANDROID_JSON_BASE64: ${{ secrets.EARTHCOOP_FIREBASE_ANDROID_JSON_BASE64 }}
+          REQUIRE_FCM_CONFIGURATION: 'true'
+        run: |
+          arguments=()
+          if [ "$REQUIRE_FCM_CONFIGURATION" != "true" ]; then arguments+=(--allow-missing); fi
+          python scripts/mobile/firebase_configuration.py --output "$RUNNER_TEMP/firebase-defines.json" --android-resources apps/mobile/android/app/src/main/res/values/earthcoop_firebase.xml "${arguments[@]}"
+          if [ -n "$EARTHCOOP_FIREBASE_ANDROID_JSON_BASE64" ]; then
+            echo 'EARTHCOOP_FCM_CONFIGURED=true' >> "$GITHUB_ENV"
+          else
+            echo 'EARTHCOOP_FCM_CONFIGURED=false' >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Android UAT APK
+        working-directory: apps/mobile
+        run: flutter build apk --debug --dart-define-from-file="$RUNNER_TEMP/firebase-defines.json"
+
+      - name: Stage deployable APK, metadata, and download page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile-uat-dist
+          cp apps/mobile/build/app/outputs/flutter-apk/app-debug.apk mobile-uat-dist/earthcoop-android-uat.apk
+
+          VERSION="$(awk '/^version:/ {print $2; exit}' apps/mobile/pubspec.yaml)"
+          APK_SHA256="$(sha256sum mobile-uat-dist/earthcoop-android-uat.apk | awk '{print $1}')"
+          APK_SIZE_BYTES="$(stat -c%s mobile-uat-dist/earthcoop-android-uat.apk)"
+          BUILT_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          SIGNING_MODE="${EARTHCOOP_UAT_SIGNING_MODE}"
+
+          cat > mobile-uat-dist/build.json <<EOF
+          {
+            "channel": "uat",
+            "platform": "android",
+            "version": "${VERSION}",
+            "git_sha": "${GITHUB_SHA}",
+            "fcm_configured": ${EARTHCOOP_FCM_CONFIGURED},
+            "signing_mode": "${SIGNING_MODE}",
+            "apk_sha256": "${APK_SHA256}",
+            "apk_size_bytes": ${APK_SIZE_BYTES},
+            "built_at_utc": "${BUILT_AT_UTC}"
+          }
+          EOF
+
+          INSTALL_NOTE='این نسخه با امضای ثابت UAT ساخته شده است و نسخه‌های بعدی همین کانال باید بدون حذف برنامه روی آن نصب شوند.'
+
+          cat > mobile-uat-dist/index.html <<EOF
+          <!doctype html>
+          <html lang="fa" dir="rtl">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="robots" content="noindex,nofollow">
+            <title>دانلود نسخه آزمایشی EarthCoop</title>
+            <style>
+              *{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#17202a;font-family:Tahoma,Arial,sans-serif;min-height:100vh;display:grid;place-items:center;padding:22px}.card{width:min(100%,620px);background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:28px;box-shadow:0 16px 40px rgba(15,23,42,.08)}h1{margin:0 0 12px;font-size:1.7rem}.badge{display:inline-block;background:#fff3cd;color:#664d03;border-radius:999px;padding:6px 11px;margin-bottom:14px}.meta{background:#f8fafc;border-radius:12px;padding:14px 16px;line-height:1.9;margin:18px 0}.download{display:block;text-align:center;text-decoration:none;background:#155eef;color:#fff;font-weight:700;border-radius:12px;padding:15px 18px;margin:22px 0}.note{font-size:.92rem;line-height:1.9;color:#52606d;overflow-wrap:anywhere}ol{padding-right:22px;line-height:2}@media(prefers-color-scheme:dark){body{background:#0f172a;color:#e5e7eb}.card{background:#111827;border-color:#263244}.meta{background:#172033}.note{color:#b8c2cc}.badge{background:#4b3b07;color:#fff2b3}}
+            </style>
+          </head>
+          <body>
+            <main class="card">
+              <span class="badge">نسخه آزمایشی / UAT</span>
+              <h1>اپلیکیشن EarthCoop برای Android</h1>
+              <p>این فایل برای آزمون عملی نسخه موبایل EarthCoop روی دستگاه واقعی منتشر شده است و هنوز نسخه نهایی فروشگاهی نیست.</p>
+              <div class="meta">
+                <strong>نسخه:</strong> ${VERSION}<br>
+                <strong>حداقل Android:</strong> 7.0<br>
+                <strong>شناسه ساخت:</strong> ${GITHUB_SHA:0:12}
+              </div>
+              <a class="download" href="earthcoop-android-uat.apk?v=${GITHUB_SHA}" download>دانلود مستقیم APK</a>
+              <p class="note"><strong>SHA-256:</strong><br>${APK_SHA256}</p>
+              <p class="note">${INSTALL_NOTE}</p>
+              <h2>روش نصب</h2>
+              <ol>
+                <li>روی «دانلود مستقیم APK» بزنید.</li>
+                <li>پس از پایان دانلود، فایل را باز کنید.</li>
+                <li>در صورت درخواست Android، اجازه نصب از همین مرورگر یا File Manager را فعال کنید.</li>
+              </ol>
+            </main>
+          </body>
+          </html>
+          EOF
+
+      - name: Verify staged publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(awk '/^version:/ {print $2; exit}' apps/mobile/pubspec.yaml)"
+          test -s mobile-uat-dist/earthcoop-android-uat.apk
+          test -s mobile-uat-dist/build.json
+          test -s mobile-uat-dist/index.html
+          grep -F 'دانلود مستقیم APK' mobile-uat-dist/index.html >/dev/null
+          grep -F "\"version\": \"${VERSION}\"" mobile-uat-dist/build.json >/dev/null
+          grep -F "\"git_sha\": \"${GITHUB_SHA}\"" mobile-uat-dist/build.json >/dev/null
+          grep -F '"signing_mode": "stable-uat"' mobile-uat-dist/build.json >/dev/null
+
+      - name: Retain published APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-${{ github.sha }}
+          path: |
+            mobile-uat-dist/earthcoop-android-uat.apk
+            mobile-uat-dist/build.json
+            mobile-uat-dist/index.html
+          if-no-files-found: error
+          retention-days: 30

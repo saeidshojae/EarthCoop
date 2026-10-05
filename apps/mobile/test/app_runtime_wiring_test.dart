@@ -8,6 +8,7 @@ import 'package:earthcoop_mobile/core/auth/session_controller.dart';
 import 'package:earthcoop_mobile/core/auth/session_models.dart';
 import 'package:earthcoop_mobile/core/auth/session_repository.dart';
 import 'package:earthcoop_mobile/core/device/device_context.dart';
+import 'package:earthcoop_mobile/core/deep_links/semantic_link.dart';
 import 'package:earthcoop_mobile/features/auth/login_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,6 +82,41 @@ void main() {
         }));
     await tester.pump();
     expect(disposed, 1);
+  });
+
+  testWidgets('push navigation uses live login and fresh bootstrap guards',
+      (tester) async {
+    final session = SessionController(repository: _FakeSessionRepository())
+      ..state = const SessionState.unauthenticated();
+    final runtime = MobileAppRuntime(
+      bootstrap: const BootstrapState.compatible(),
+      sessionController: session,
+      loginController: LoginController(
+        sessionController: session,
+        deviceContext: () => const DeviceContext(
+          platform: 'android', appVersion: '1', locale: 'fa',
+          timezone: 'Asia/Tehran', pushCapable: true)),
+      groupDetailBuilder: (_, id) => _Marker('group-$id-live'),
+    );
+    const link = SemanticLink(version: 1, route: 'group.detail',
+        params: {'group_id': 42});
+    await tester.pumpWidget(EarthCoopApp(runtimeFactory: () async => runtime));
+    await tester.pumpAndSettle();
+    expect(runtime.openSemanticLink(link,
+        currentBootstrap: const BootstrapState.compatible()), isFalse);
+    session.state = SessionState.authenticated(_session());
+    expect(runtime.openSemanticLink(link,
+        currentBootstrap: const BootstrapState.degradedOffline()), isFalse);
+    expect(runtime.openSemanticLink(const SemanticLink(
+        version: 1, route: 'https://evil.example', params: {}),
+        currentBootstrap: const BootstrapState.compatible()), isFalse);
+    expect(runtime.openSemanticLink(link,
+        currentBootstrap: const BootstrapState.compatible()), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('group-42-live'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    expect(runtime.openSemanticLink(link,
+        currentBootstrap: const BootstrapState.compatible()), isFalse);
   });
 
   test('production runtime derives version from installed package metadata',

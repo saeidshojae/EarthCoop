@@ -19,6 +19,8 @@ import '../../core/push/push_provider_selector.dart';
 import '../../core/push/session_push_binding.dart';
 import '../../core/push/push_token_source.dart';
 import '../../core/push/fcm_push_token_source.dart';
+import '../../core/push/fcm_message_binding.dart';
+import '../../core/push/authorized_push_open.dart';
 import '../../core/push/fcm_client_configuration.dart';
 import '../../core/push/hms_push_token_source.dart';
 import '../../core/device/device_timezone.dart';
@@ -88,6 +90,11 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   late final SessionController sessionController;
   BootstrapState? pushBootstrap;
   var pushBootstrapEpoch = 0;
+  FcmMessageBinding? fcmMessages;
+  var messagesDisposed = false;
+  late final MobileAppRuntime runtime;
+  late final Future<bool> Function(Map<String, Object?>) handlePushOpen;
+  late final Future<void> Function(Map<String, Object?>) handleForegroundPush;
   final pushCoordinator = createSessionPushCoordinator(
       dio: dio,
       sessionState: () => sessionController.state,
@@ -101,7 +108,17 @@ Future<MobileAppRuntime> createProductionRuntime() async {
             .select();
         final PushTokenSource? source = switch (provider) {
           PushProvider.fcm =>
-            fcmOptionsFromEnvironment() == null ? null : FcmPushTokenSource(),
+            fcmOptionsFromEnvironment() == null ? null : FcmPushTokenSource(
+              runtime: FirebaseFcmTokenRuntime(onInitialized: () {
+                if (messagesDisposed) return;
+                fcmMessages ??= FcmMessageBinding(
+                  runtime: const FirebaseFcmMessageRuntime(),
+                  onOpen: (data) => handlePushOpen(data),
+                  onForeground: (data) => handleForegroundPush(data),
+                );
+                unawaited(fcmMessages!.start().catchError((Object _) {}));
+              }),
+            ),
           PushProvider.hms => const HmsPushTokenSource(),
           null => null,
         };
@@ -273,7 +290,56 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     return NotificationsController(sync);
   }
 
-  return MobileAppRuntime(
+  Object? activePushScope() {
+    final session = sessionController.state.session;
+    if (messagesDisposed || session == null ||
+        sessionController.state.phase != SessionPhase.authenticated) return null;
+    return (notificationEpoch, session.user.id, session.device.id, session.token);
+  }
+
+  handlePushOpen = (payload) async {
+    BootstrapState? refreshed;
+    return AuthorizedPushOpen(
+      activeScope: activePushScope,
+      readNotification: (id) async {
+        final scope = activePushScope();
+        final session = sessionController.state.session;
+        if (scope == null || session == null) return null;
+        bool isCurrent() => activePushScope() == scope;
+        refreshed = await bootstrapService.start();
+        if (!isCurrent() || !refreshed!.allowsProtectedNetwork) return null;
+        final scopedApi = ApiClient(
+          dio: dio,
+          bearerTokenProvider: () async => session.token,
+          deviceIdProvider: () async => session.device.id,
+          requestIdFactory: () =>
+              'push-open-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+          retryDelay: Future<void>.delayed,
+        );
+        return NotificationRepository(
+          apiClient: scopedApi,
+          isCurrentSession: isCurrent,
+        ).markRead(id,
+          idempotencyKey:
+              'push-open-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
+          networkAllowed: true,
+        );
+      },
+      openSemanticLink: (link) => refreshed != null &&
+          runtime.openSemanticLink(link, currentBootstrap: refreshed!),
+    ).handle(payload);
+  };
+  handleForegroundPush = (_) async {
+    if (activePushScope() == null) return;
+    final controller = await createNotificationsController();
+    try {
+      await controller.load();
+    } finally {
+      controller.dispose();
+    }
+  };
+
+  runtime = MobileAppRuntime(
     bootstrap: bootstrap,
     onForeground: () async {
       final epoch = ++pushBootstrapEpoch;
@@ -289,8 +355,10 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       }
     },
     onDispose: () async {
+      messagesDisposed = true;
       pushBootstrapEpoch++;
       pushBootstrap = null;
+      await fcmMessages?.dispose();
       await pushCoordinator.dispose();
     },
     sessionController: sessionController,
@@ -334,6 +402,7 @@ Future<MobileAppRuntime> createProductionRuntime() async {
       onOpenLink: openLink,
     ),
   );
+  return runtime;
 }
 
 class _GroupsRuntimeView extends StatefulWidget {
@@ -347,6 +416,7 @@ class _GroupsRuntimeView extends StatefulWidget {
 
   @override
   State<_GroupsRuntimeView> createState() => _GroupsRuntimeViewState();
+  return runtime;
 }
 
 class _GroupsRuntimeViewState extends State<_GroupsRuntimeView> {
