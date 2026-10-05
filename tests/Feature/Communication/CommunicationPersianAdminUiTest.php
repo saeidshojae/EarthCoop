@@ -68,10 +68,10 @@ final class CommunicationPersianAdminUiTest extends TestCase
             $this->assertStringContainsString($helperCall, $createAutomation);
         }
 
-        foreach (['trigger($rule->trigger_type)', "audience(data_get($rule->audience_definition, 'key'))", 'campaignStatus($campaign->status)'] as $helperCall) {
-            $haystack = $helperCall === 'campaignStatus($campaign->status)' ? $campaignIndex : $indexAutomation;
-            $this->assertStringContainsString($helperCall, $haystack);
+        foreach (['trigger($rule->trigger_type)', 'audience($audienceKey)', 'frequency($rule->schedule->frequency)'] as $helperCall) {
+            $this->assertStringContainsString($helperCall, $indexAutomation);
         }
+        $this->assertStringContainsString('campaignStatus($campaign->status)', $campaignIndex);
 
         $this->assertStringContainsString('مخاطبان', $campaignCreate);
         $this->assertStringContainsString('کاربر مشخص', $campaignCreate);
