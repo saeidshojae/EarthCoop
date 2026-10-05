@@ -17,6 +17,7 @@ final class SitemapController extends Controller
         $entries = [
             new SitemapEntry($canonicalUrl->to('/')),
             new SitemapEntry($canonicalUrl->to('/terms')),
+            new SitemapEntry($canonicalUrl->to('/privacy')),
             new SitemapEntry($canonicalUrl->to('/blog')),
         ];
 
