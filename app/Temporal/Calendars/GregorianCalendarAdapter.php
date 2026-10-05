@@ -35,4 +35,9 @@ final class GregorianCalendarAdapter implements CalendarAdapter
             default => throw new InvalidArgumentException("Unsupported Gregorian date style: {$style}"),
         };
     }
+
+    public function year(LocalDate $date): int
+    {
+        return $date->year();
+    }
 }
