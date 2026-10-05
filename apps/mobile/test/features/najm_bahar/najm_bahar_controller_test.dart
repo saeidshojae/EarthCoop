@@ -4,6 +4,30 @@ import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_controller.dart'
 import 'najm_bahar_repository_test.dart' as fixtures;
 
 void main() {
+  test('temporary bootstrap failure preserves dated values and permits recovery', () async {
+    var allowed = true;
+    final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
+        r.path.endsWith('/account') ? fixtures.accountJson() : [fixtures.transactionJson(9)]));
+    final controller = NajmBaharController(fixtures.repository(adapter, allowed: () => allowed));
+    addTearDown(controller.dispose);
+    await controller.load();
+    final date = controller.receivedAt;
+    final count = adapter.requests.length;
+    allowed = false;
+    await controller.load();
+    expect(controller.account?.accountNumber, 'NB-7');
+    expect(controller.receivedAt, date);
+    expect(controller.transactions.single.id, 9);
+    expect(controller.accountFailure?.code, 'bootstrap_unavailable');
+    expect(controller.historyFailure?.code, 'bootstrap_unavailable');
+    expect(adapter.requests.length, count);
+    allowed = true;
+    await controller.load();
+    expect(controller.accountFailure, isNull);
+    expect(controller.historyFailure, isNull);
+    expect(adapter.requests.length, count + 2);
+  });
+
   test('loads wallet and history independently', () async {
     final adapter = fixtures.BoundaryAdapter((r) => fixtures.envelope(
         r.path.endsWith('/account')

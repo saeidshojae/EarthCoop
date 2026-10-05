@@ -74,7 +74,7 @@ class BoundaryAdapter implements HttpClientAdapter {
 }
 
 NajmBaharRepository repository(BoundaryAdapter adapter,
-    {bool Function()? current}) {
+    {bool Function()? current, bool Function()? allowed}) {
   final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1'))
     ..httpClientAdapter = adapter;
   return NajmBaharRepository(
@@ -84,10 +84,35 @@ NajmBaharRepository repository(BoundaryAdapter adapter,
           deviceIdProvider: () async => 'device-a',
           requestIdFactory: () => 'request-a',
           retryDelay: (_) async {}),
-      isCurrentSession: current ?? () => true);
+      isCurrentSession: current ?? () => true,
+      isNetworkAllowed: allowed ?? () => true);
 }
 
 void main() {
+  test('bootstrap blockage sends no request and remains recoverable', () async {
+    final adapter = BoundaryAdapter((_) => envelope(accountJson()));
+    await expectLater(repository(adapter, allowed: () => false).account(),
+        throwsA(isA<ApiFailure>().having((e) => e.code, 'code', 'bootstrap_unavailable')
+          .having((e) => e.retryable, 'retryable', true)));
+    expect(adapter.requests, isEmpty);
+  });
+  test('bootstrap blockage rejects an overlapping response without changing identity', () async {
+    var allowed = true;
+    final response = Completer<Map<String, Object?>>();
+    final api = repository(BoundaryAdapter((_) => response.future), allowed: () => allowed);
+    final result = api.account();
+    allowed = false;
+    response.complete(envelope(accountJson()));
+    await expectLater(result, throwsA(isA<ApiFailure>().having((e) => e.code, 'code', 'bootstrap_unavailable')));
+    expect(api.isCurrentSession, true);
+  });
+  test('invalid identity takes precedence over blocked bootstrap', () async {
+    final adapter = BoundaryAdapter((_) => envelope(accountJson()));
+    await expectLater(repository(adapter, current: () => false, allowed: () => false).history(),
+        throwsA(isA<ApiFailure>().having((e) => e.code, 'code', 'session_changed')));
+    expect(adapter.requests, isEmpty);
+  });
+
   test('formats exact Gol without monetary rounding', () {
     expect(formatGol(0), '0 گل');
     expect(formatGol(100), '1 بهار');
