@@ -55,5 +55,13 @@ jobs:
           EOF
           php artisan key:generate --force
           mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
-      - name: FCM readiness regression
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Services/Push/FcmReadinessCheckTest.php tests/Feature/Admin/DeploymentFcmReadinessTest.php
+      - name: Normalize changed PHP and report exact patch
+        run: |
+          vendor/bin/pint app/Services/Push/FcmReadinessCheck.php app/Services/Push/FcmAccessTokenProvider.php app/Console/Commands/FcmReadiness.php app/Services/Deployment/DeploymentConsoleService.php routes/deployment-console.php tests/Unit/Services/Push/FcmReadinessCheckTest.php tests/Unit/Services/Push/FcmAccessTokenProviderTest.php tests/Feature/Admin/DeploymentFcmReadinessTest.php tests/Unit/Deployment/DeploymentConsoleServiceTest.php
+          git diff --no-ext-diff
+      - name: Provider and deployment-console regression
+        run: |
+          composer validate --no-check-publish
+          composer audit --no-dev --abandoned=report
+          php artisan migrate:fresh --force
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Services/Push tests/Unit/Push tests/Unit/Deployment tests/Architecture/DeploymentVendorPackageBoundaryTest.php tests/Feature/Admin/DeploymentConsoleSecurityTest.php tests/Feature/Admin/DeploymentConsoleExecutionTest.php tests/Feature/Admin/DeploymentConsoleSourceContractTest.php tests/Feature/Admin/DeploymentVendorPackageConsoleTest.php tests/Feature/Admin/DeploymentConsoleOptimizeClearTest.php tests/Feature/Admin/DeploymentFcmReadinessTest.php tests/Feature/Api/V1/PushProviderFailureIsolationTest.php tests/Feature/Api/V1/DevicePushContractTest.php tests/Feature/Api/V1/DevicePushReleaseTest.php

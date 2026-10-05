@@ -20,6 +20,7 @@ Route::post('/run/{operation}', [DeploymentConsoleController::class, 'run'])
         'iran_v2_topology_dry_run',
         'topology_dry_run',
         'readiness',
+        'fcm_readiness',
         'flag_status',
         'vendor_package_status',
         'vendor_package_install',

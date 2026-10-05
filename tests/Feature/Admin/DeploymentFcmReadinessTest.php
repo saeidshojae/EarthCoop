@@ -13,4 +13,13 @@ class DeploymentFcmReadinessTest extends TestCase
         $this->assertSame(['command' => 'deployment:fcm-readiness', 'arguments' => [], 'write' => false, 'confirmation' => null], $operation);
         $this->assertStringContainsString("'fcm_readiness'", file_get_contents(base_path('routes/deployment-console.php')));
     }
+
+    public function test_command_reports_safe_failure_when_configuration_is_absent(): void
+    {
+        config()->set('services.push.fcm.project_id', null);
+        config()->set('services.push.fcm.credentials', null);
+        $this->artisan('deployment:fcm-readiness')
+            ->expectsOutput('{"ready":false,"code":"fcm_credentials_invalid"}')
+            ->assertExitCode(1);
+    }
 }

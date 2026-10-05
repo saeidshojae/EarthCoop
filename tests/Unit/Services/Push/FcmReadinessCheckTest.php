@@ -83,6 +83,34 @@ class FcmReadinessCheckTest extends TestCase
         $this->assertSame(['ready' => false, 'code' => 'fcm_validation_failed'], $this->check()->check());
     }
 
+    public function test_public_or_nonprivate_and_oversized_credentials_are_rejected(): void
+    {
+        Http::fake();
+        $path = $this->file(json_encode($this->credentials()));
+        chmod($path, 0644);
+        clearstatcache(true, $path);
+        $this->assertFalse((new FcmReadinessCheck($this->tokens(), 'project-123', $path))->check()['ready']);
+        $oversized = $this->file(str_repeat(' ', 65537));
+        $this->assertFalse((new FcmReadinessCheck($this->tokens(), 'project-123', $oversized))->check()['ready']);
+        $public = public_path('fcm-readiness-synthetic.json');
+        file_put_contents($public, json_encode($this->credentials()));
+        chmod($public, 0600);
+        $this->files[] = $public;
+        $this->assertFalse((new FcmReadinessCheck($this->tokens(), 'project-123', $public))->check()['ready']);
+        Http::assertNothingSent();
+    }
+
+    public function test_oauth_exception_never_discloses_secret_text(): void
+    {
+        Http::fake();
+        $provider = new class extends FcmAccessTokenProvider {
+            public function token(): ?string { throw new RuntimeException('synthetic-private-secret'); }
+        };
+        $result = (new FcmReadinessCheck($provider, 'project-123', $this->file(json_encode($this->credentials()))))->check();
+        $this->assertSame(['ready' => false, 'code' => 'fcm_oauth_failed'], $result);
+        Http::assertNothingSent();
+    }
+
     private function check(?string $token = 'access-secret'): FcmReadinessCheck
     {
         return new FcmReadinessCheck($this->tokens($token), 'project-123', $this->file(json_encode($this->credentials())));
