@@ -1,0 +1,40 @@
+name: Mobile wallet policy retained APK receipt
+on:
+  push:
+    branches: [agent/mobile-wallet-policy-artifact-receipt-20261005]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify-retained:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: earthcoop-android-uat-faa0bcf2ddbca7fdc0341951cdce8e14d3b65685
+          run-id: 37355780177
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: retained
+      - name: Verify actual retained APK against build metadata
+        run: |
+          python - <<'PYCODE'
+          import hashlib, json
+          from pathlib import Path
+          folder = Path('retained')
+          metadata = json.loads((folder / 'build.json').read_text())
+          apk = folder / 'earthcoop-android-uat.apk'
+          digest = hashlib.file_digest(apk.open('rb'), 'sha256').hexdigest()
+          size = apk.stat().st_size
+          assert metadata['version'] == '1.0.0+17'
+          assert metadata['git_sha'] == 'faa0bcf2ddbca7fdc0341951cdce8e14d3b65685'
+          assert metadata['channel'] == 'uat' and metadata['build_type'] == 'release'
+          assert metadata['signing_mode'] == 'stable-uat' and metadata['fcm_configured'] is True
+          assert digest == metadata['apk_sha256']
+          assert size == metadata['apk_size_bytes']
+          assert digest == '0d9efad192a10f150e34e6ef4a24f3be91f572e5e828122ca61dc1cef4acef17'
+          assert size == 67591699
+          assert (folder / 'index.html').is_file()
+          print('RETAINED_APK_RECEIPT=' + json.dumps(metadata, sort_keys=True))
+          print('PASS: exact retained APK size/hash match verified builder metadata; no Flutter rebuild.')
+          PYCODE
