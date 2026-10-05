@@ -98,12 +98,19 @@ Future<MobileAppRuntime> createProductionRuntime() async {
   late final Future<void> Function(Map<String, Object?>) handleForegroundPush;
   Object? activePushScope() {
     final session = sessionController.state.session;
-    if (messagesDisposed || session == null ||
+    if (messagesDisposed ||
+        session == null ||
         sessionController.state.phase != SessionPhase.authenticated) {
       return null;
     }
-    return (notificationEpoch, session.user.id, session.device.id, session.token);
+    return (
+      notificationEpoch,
+      session.user.id,
+      session.device.id,
+      session.token
+    );
   }
+
   final pushCoordinator = createSessionPushCoordinator(
       dio: dio,
       sessionState: () => sessionController.state,
@@ -116,19 +123,20 @@ Future<MobileAppRuntime> createProductionRuntime() async {
                 capabilities: PlatformPushRuntimeCapabilities())
             .select();
         final PushTokenSource? source = switch (provider) {
-          PushProvider.fcm =>
-            fcmOptionsFromEnvironment() == null ? null : FcmPushTokenSource(
-              runtime: FirebaseFcmTokenRuntime(onInitialized: () {
-                if (messagesDisposed) return;
-                fcmMessages ??= FcmMessageBinding(
-                  runtime: const FirebaseFcmMessageRuntime(),
-                  activeScope: () => activePushScope(),
-                  onOpen: (data) => handlePushOpen(data),
-                  onForeground: (data) => handleForegroundPush(data),
-                );
-                unawaited(fcmMessages!.start().catchError((Object _) {}));
-              }),
-            ),
+          PushProvider.fcm => fcmOptionsFromEnvironment() == null
+              ? null
+              : FcmPushTokenSource(
+                  runtime: FirebaseFcmTokenRuntime(onInitialized: () {
+                    if (messagesDisposed) return;
+                    fcmMessages ??= FcmMessageBinding(
+                      runtime: const FirebaseFcmMessageRuntime(),
+                      activeScope: () => activePushScope(),
+                      onOpen: (data) => handlePushOpen(data),
+                      onForeground: (data) => handleForegroundPush(data),
+                    );
+                    unawaited(fcmMessages!.start().catchError((Object _) {}));
+                  }),
+                ),
           PushProvider.hms => const HmsPushTokenSource(),
           null => null,
         };
@@ -300,8 +308,6 @@ Future<MobileAppRuntime> createProductionRuntime() async {
     return NotificationsController(sync);
   }
 
-
-
   handlePushOpen = (payload) async {
     BootstrapState? refreshed;
     return AuthorizedPushOpen(
@@ -324,13 +330,15 @@ Future<MobileAppRuntime> createProductionRuntime() async {
         return NotificationRepository(
           apiClient: scopedApi,
           isCurrentSession: isCurrent,
-        ).markRead(id,
+        ).markRead(
+          id,
           idempotencyKey:
               'push-open-${DateTime.now().toUtc().microsecondsSinceEpoch}-${++requestSequence}',
           networkAllowed: true,
         );
       },
-      openSemanticLink: (link) => refreshed != null &&
+      openSemanticLink: (link) =>
+          refreshed != null &&
           runtime.openSemanticLink(link, currentBootstrap: refreshed!),
     ).handle(payload);
   };

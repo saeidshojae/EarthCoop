@@ -8,6 +8,7 @@ import 'notifications_screen.dart';
 
 class NotificationsRuntimeView extends StatefulWidget {
   const NotificationsRuntimeView({
+    super.key,
     required this.controller,
     required this.onOpenLink,
     this.refreshEvents,

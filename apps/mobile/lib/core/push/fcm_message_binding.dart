@@ -68,10 +68,10 @@ class FcmMessageBinding {
     if (_disposed) return;
     final initialScope = _scope();
     try {
-      _opens = runtime.opened.listen((event) => _receive(event, true),
-          onError: (Object _) {});
-      _foregrounds = runtime.foreground.listen((event) => _receive(event, false),
-          onError: (Object _) {});
+      _opens = runtime.opened
+          .listen((event) => _receive(event, true), onError: (Object _) {});
+      _foregrounds = runtime.foreground
+          .listen((event) => _receive(event, false), onError: (Object _) {});
       FcmMessageEvent? initial;
       try {
         initial = await runtime.initialMessage();

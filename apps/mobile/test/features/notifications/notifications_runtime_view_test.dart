@@ -6,16 +6,22 @@ import 'package:earthcoop_mobile/features/notifications/notification_sync_servic
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'notification_sync_service_test.dart' show FakeNotificationPageSource, MemoryNotificationProjectionStore, page;
+import 'notification_sync_service_test.dart'
+    show FakeNotificationPageSource, MemoryNotificationProjectionStore, page;
 
 void main() {
-  testWidgets('foreground signal refreshes mounted inbox without navigation', (tester) async {
+  testWidgets('foreground signal refreshes mounted inbox without navigation',
+      (tester) async {
     final events = StreamController<void>.broadcast();
     final controller = NotificationsController(NotificationSyncService(
-      source: FakeNotificationPageSource([page([]), page(['new-notice'])]),
+      source: FakeNotificationPageSource([
+        page([]),
+        page(['new-notice'])
+      ]),
       store: MemoryNotificationProjectionStore(),
     ));
-    await tester.pumpWidget(MaterialApp(home: NotificationsRuntimeView(
+    await tester.pumpWidget(MaterialApp(
+        home: NotificationsRuntimeView(
       controller: controller,
       onOpenLink: (_) => fail('foreground event must not navigate'),
       refreshEvents: events.stream,

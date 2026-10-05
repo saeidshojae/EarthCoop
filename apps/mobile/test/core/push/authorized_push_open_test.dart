@@ -17,7 +17,7 @@ NotificationDto notice() => const NotificationDto(
       type: 'group.notice',
       title: null,
       message: null,
-      context: const {},
+      context: {},
       read: true,
       createdAt: null,
       link: authoritativeLink,
@@ -70,25 +70,38 @@ void main() {
     expect(opened, 0);
   });
 
-  test('disposed scope and forbidden owner read leave navigation untouched', () async {
+  test('disposed scope and forbidden owner read leave navigation untouched',
+      () async {
     Object? scope = 'account-1';
     var opened = 0;
     final pending = Completer<NotificationDto?>();
     final intake = AuthorizedPushOpen(
       activeScope: () => scope,
       readNotification: (_) => pending.future,
-      openSemanticLink: (_) { opened++; return true; },
+      openSemanticLink: (_) {
+        opened++;
+        return true;
+      },
     );
-    final handling = intake.handle({'context': {'notification_id': notificationId}});
+    final handling = intake.handle({
+      'context': {'notification_id': notificationId}
+    });
     scope = null;
     pending.complete(notice());
     expect(await handling, isFalse);
     final forbidden = AuthorizedPushOpen(
       activeScope: () => 'account-1',
       readNotification: (_) async => throw StateError('forbidden'),
-      openSemanticLink: (_) { opened++; return true; },
+      openSemanticLink: (_) {
+        opened++;
+        return true;
+      },
     );
-    expect(await forbidden.handle({'context': {'notification_id': notificationId}}), isFalse);
+    expect(
+        await forbidden.handle({
+          'context': {'notification_id': notificationId}
+        }),
+        isFalse);
     expect(opened, 0);
   });
 
@@ -103,10 +116,17 @@ void main() {
       },
       openSemanticLink: (_) => true,
     );
-    expect(await intake.handle({'context': {'notification_id': notificationId}}),
+    expect(
+        await intake.handle({
+          'context': {'notification_id': notificationId}
+        }),
         isFalse);
     scope = 'account-1';
-    for (final raw in [null, 'invalid-json', {'notification_id': '../other'}]) {
+    for (final raw in [
+      null,
+      'invalid-json',
+      {'notification_id': '../other'}
+    ]) {
       expect(await intake.handle({'context': raw}), isFalse);
     }
     expect(reads, 0);

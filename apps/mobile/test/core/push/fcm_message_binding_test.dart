@@ -80,14 +80,18 @@ void main() {
     await runtime.dispose();
   });
 
-  test('initial and buffered taps cannot cross a startup session change', () async {
+  test('initial and buffered taps cannot cross a startup session change',
+      () async {
     Object? scope = 'epoch-1';
     final runtime = FakeMessages();
     var opens = 0;
     final binding = FcmMessageBinding(
       runtime: runtime,
       activeScope: () => scope,
-      onOpen: (_) async { opens++; return true; },
+      onOpen: (_) async {
+        opens++;
+        return true;
+      },
       onForeground: (_) async {},
     );
     final starting = binding.start();
