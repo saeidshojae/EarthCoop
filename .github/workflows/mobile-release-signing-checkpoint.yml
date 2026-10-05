@@ -99,14 +99,17 @@ jobs:
 
       - name: Build Android UAT APK
         working-directory: apps/mobile
-        run: flutter build apk --debug --dart-define-from-file="$RUNNER_TEMP/firebase-defines.json"
+        run: EARTHCOOP_RELEASE_CHANNEL=uat flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/firebase-defines.json"
+
+      - name: Verify Android UAT release package
+        run: bash scripts/mobile/verify_android_uat_release.sh apps/mobile/build/app/outputs/flutter-apk/app-release.apk
 
       - name: Stage deployable APK, metadata, and download page
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p mobile-uat-dist
-          cp apps/mobile/build/app/outputs/flutter-apk/app-debug.apk mobile-uat-dist/earthcoop-android-uat.apk
+          cp apps/mobile/build/app/outputs/flutter-apk/app-release.apk mobile-uat-dist/earthcoop-android-uat.apk
 
           VERSION="$(awk '/^version:/ {print $2; exit}' apps/mobile/pubspec.yaml)"
           APK_SHA256="$(sha256sum mobile-uat-dist/earthcoop-android-uat.apk | awk '{print $1}')"
@@ -118,6 +121,7 @@ jobs:
           {
             "channel": "uat",
             "platform": "android",
+            "build_type": "release",
             "version": "${VERSION}",
             "git_sha": "${GITHUB_SHA}",
             "fcm_configured": ${EARTHCOOP_FCM_CONFIGURED},
@@ -178,6 +182,7 @@ jobs:
           grep -F "\"version\": \"${VERSION}\"" mobile-uat-dist/build.json >/dev/null
           grep -F "\"git_sha\": \"${GITHUB_SHA}\"" mobile-uat-dist/build.json >/dev/null
           grep -F '"signing_mode": "stable-uat"' mobile-uat-dist/build.json >/dev/null
+          grep -F '"build_type": "release"' mobile-uat-dist/build.json >/dev/null
 
       - name: Retain published APK as workflow artifact
         uses: actions/upload-artifact@v4

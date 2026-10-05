@@ -15,6 +15,36 @@ val hasUatSigning = listOf(
     uatKeyPassword,
 ).all { !it.isNullOrBlank() }
 
+
+val releaseChannel = System.getenv("EARTHCOOP_RELEASE_CHANNEL")
+val productionKeystorePath = System.getenv("EARTHCOOP_PRODUCTION_KEYSTORE_PATH")
+val productionKeyAlias = System.getenv("EARTHCOOP_PRODUCTION_KEY_ALIAS")
+val productionStorePassword = System.getenv("EARTHCOOP_PRODUCTION_STORE_PASSWORD")
+val productionKeyPassword = System.getenv("EARTHCOOP_PRODUCTION_KEY_PASSWORD")
+val hasProductionSigning = listOf(
+    productionKeystorePath,
+    productionKeyAlias,
+    productionStorePassword,
+    productionKeyPassword,
+).all { !it.isNullOrBlank() }
+val appProject = project
+
+gradle.taskGraph.whenReady {
+    val releaseRequested = allTasks.any {
+        it.project == appProject && it.name.contains("Release")
+    }
+    val signingReady = when (releaseChannel) {
+        "uat" -> hasUatSigning && file(uatKeystorePath!!).isFile
+        "production" -> hasProductionSigning && file(productionKeystorePath!!).isFile
+        else -> false
+    }
+    if (releaseRequested && !signingReady) {
+        throw GradleException(
+            "EARTHCOOP_RELEASE_SIGNING_REQUIRED: select an explicit uat or production channel with complete signing inputs."
+        )
+    }
+}
+
 android {
     namespace = "coop.earthcoop.earthcoop_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -32,6 +62,14 @@ android {
                 storePassword = uatStorePassword!!
                 keyAlias = uatKeyAlias!!
                 keyPassword = uatKeyPassword!!
+            }
+        }
+        if (hasProductionSigning) {
+            create("production") {
+                storeFile = file(productionKeystorePath!!)
+                storePassword = productionStorePassword!!
+                keyAlias = productionKeyAlias!!
+                keyPassword = productionKeyPassword!!
             }
         }
     }
@@ -58,9 +96,15 @@ android {
             }
         }
         release {
-            // Production/store signing is intentionally separate from the UAT certificate.
-            // Keep the existing development fallback until the release-signing task is completed.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = when (releaseChannel) {
+                "uat" -> signingConfigs.findByName("uat")
+                "production" -> signingConfigs.findByName("production")
+                else -> null
+            }
+            // Initial UAT Release uses Dart AOT while preserving the unminified
+            // vendor SDK graph. R8/HMS optional dependency audit remains open.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

@@ -28,3 +28,10 @@ expect_blocked unknown-channel EARTHCOOP_RELEASE_CHANNEL=unknown
 expect_blocked missing-uat EARTHCOOP_RELEASE_CHANNEL=uat
 expect_blocked missing-production EARTHCOOP_RELEASE_CHANNEL=production
 expect_blocked partial-production EARTHCOOP_RELEASE_CHANNEL=production EARTHCOOP_PRODUCTION_KEY_ALIAS=placeholder
+
+if ! env -u EARTHCOOP_RELEASE_CHANNEL ./gradlew :app:assembleDebug --dry-run > "$logs/debug.log" 2>&1; then
+  echo 'FAIL: normal debug development task must remain available without a release channel.'
+  tail -40 "$logs/debug.log"
+  exit 1
+fi
+echo 'PASS: debug development task remains available.'
