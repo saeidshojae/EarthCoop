@@ -12,6 +12,9 @@ class UserTicketShowTemporalPresentationTest extends TestCase
 
         $this->assertSame(1, substr_count($contents, '<x-temporal.date-time :value="$ticket->created_at"'));
         $this->assertSame(1, substr_count($contents, '<x-temporal.date-time :value="$comment->created_at"'));
+        $this->assertSame(1, substr_count($contents, '<x-temporal.date :value="$ticket->created_at"'));
+        $this->assertSame(1, substr_count($contents, '<x-temporal.date-time :value="$ticket->sla_deadline"'));
+        $this->assertSame(1, substr_count($contents, '<x-temporal.date-time :value="$activity->created_at"'));
         $this->assertStringNotContainsString('Morilog\\Jalali', $contents);
         $this->assertStringNotContainsString('Jalalian::', $contents);
     }
