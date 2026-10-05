@@ -62,7 +62,8 @@ void main() {
     await runtime.changes.close();
   });
 
-  test('permission granted after denial can acquire a token on retry', () async {
+  test('permission granted after denial can acquire a token on retry',
+      () async {
     final runtime = FakeRuntime()..permissionGranted = false;
     final source = FcmPushTokenSource(options: options, runtime: runtime);
     expect(await source.initialize(), isNull);
