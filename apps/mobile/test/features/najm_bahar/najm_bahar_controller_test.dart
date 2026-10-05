@@ -25,7 +25,7 @@ void main() {
   });
   test('pagination deduplicates and simultaneous loadMore consumes cursor once', () async {
     final page=Completer<Map<String,Object?>>();
-    final adapter=fixtures.BoundaryAdapter((r)=>r.queryParameters['page[cursor]']==null?fixtures.envelope([fixtures.transactionJson(9)],cursor:'next',more:true):page.future);
+    final adapter=fixtures.BoundaryAdapter((r) { if(r.queryParameters['page[cursor]']!=null)return page.future; return fixtures.envelope([fixtures.transactionJson(9)],cursor:'next',more:true); });
     final controller=NajmBaharController(fixtures.repository(adapter));addTearDown(controller.dispose);
     await controller.refreshHistory();
     final first=controller.loadMore();final second=controller.loadMore();
