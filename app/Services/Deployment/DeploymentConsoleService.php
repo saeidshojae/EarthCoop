@@ -93,6 +93,12 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'fcm_readiness' => [
+            'command' => 'deployment:fcm-readiness',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
         'flag_status' => [
             'command' => null,
             'arguments' => [],
