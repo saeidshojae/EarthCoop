@@ -1,5 +1,6 @@
 import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
+import '../../core/api/api_envelope.dart';
 import 'najm_bahar_dto.dart';
 class NajmBaharRepository {
   NajmBaharRepository({required ApiClient apiClient,required bool Function() isCurrentSession}):_api=apiClient,_current=isCurrentSession;
