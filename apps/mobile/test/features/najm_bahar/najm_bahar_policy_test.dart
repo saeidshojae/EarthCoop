@@ -74,6 +74,32 @@ void main() {
   final requests=adapter.requests.length; await wallet.load(); await policies.load();
   expect(adapter.requests.length,requests);
  });
+
+ for (final origin in ['eligibility', 'account']) {
+ test('malformed HTTP 401 at $origin clears all financial sections', () async {
+  var expired=false;
+  final lateFee=Completer<Map<String,Object?>>();
+  final adapter=f.BoundaryAdapter((r)=>expired && r.path.endsWith('membership-fee') ? lateFee.future : expired && r.path.endsWith(origin)
+   ? <String,Object?>{'unexpected':'expired'}
+   : f.envelope(r.path.endsWith('eligibility')?eligibility():r.path.endsWith('membership-fee')?fee():r.path.endsWith('account')?f.accountJson():[]),
+   statusFor:(r)=>expired && r.path.endsWith(origin)?401:200);
+  final api=f.repository(adapter);
+  late final NajmBaharPolicyController policies;
+  final wallet=NajmBaharController(api,onSessionInvalidated:()=>policies.invalidateSession());
+  policies=NajmBaharPolicyController(api,onSessionInvalidated:wallet.invalidateSession);
+  addTearDown(() { wallet.dispose(); policies.dispose(); });
+  await wallet.load(); await policies.load();
+  expect(wallet.account,isNotNull); expect(policies.membership.value,isNotNull);
+  expired=true;
+  final pendingFee=policies.refreshMembership();
+  if(origin=='account') { await wallet.refreshAccount(); } else { await policies.refreshActivation(); }
+  expect(wallet.account,isNull); expect(wallet.receivedAt,isNull);
+  expect(policies.activation.value,isNull); expect(policies.membership.value,isNull);
+  expect(policies.membership.receivedAt,isNull);
+  lateFee.complete(f.envelope(fee())); await pendingFee;
+  expect(policies.membership.value,isNull);
+ });
+ }
  testWidgets('policy sections show server units and membership year without mutation buttons',(tester) async {
   final c=NajmBaharPolicyController(f.repository(f.BoundaryAdapter((r)=>f.envelope(r.path.endsWith('eligibility')?eligibility():fee()))));
   addTearDown(c.dispose); await tester.runAsync(()=>c.load());
