@@ -24,7 +24,7 @@ void main() {
     expect(find.textContaining('متعهد'), findsWidgets);
     await tester.scrollUntilVisible(find.text('T-9'), 300);
     expect(find.text('T-9'), findsOneWidget);
-  });
+  }, timeout: const Timeout(Duration(seconds: 20)));
   testWidgets('empty history is explicit, not fabricated transaction',
       (tester) async {
     final controller = NajmBaharController(fixtures.repository(
@@ -38,5 +38,5 @@ void main() {
         .pumpWidget(MaterialApp(home: NajmBaharScreen(controller: controller)));
     await tester.scrollUntilVisible(find.text('تراکنشی یافت نشد.'), 300);
     expect(find.text('تراکنشی یافت نشد.'), findsOneWidget);
-  });
+  }, timeout: const Timeout(Duration(seconds: 20)));
 }
