@@ -52,7 +52,8 @@ Map<String, Object?> envelope(Object? data,
     };
 
 class BoundaryAdapter implements HttpClientAdapter {
-  BoundaryAdapter(this.respond);
+  BoundaryAdapter(this.respond, {this.statusFor});
+  final int Function(RequestOptions)? statusFor;
   final FutureOr<Map<String, Object?>> Function(RequestOptions) respond;
   final requests = <RequestOptions>[];
   int status = 200;
@@ -61,7 +62,7 @@ class BoundaryAdapter implements HttpClientAdapter {
       Future<void>? cancel) async {
     requests.add(options);
     final body = await respond(options);
-    return ResponseBody.fromString(jsonEncode(body), status, headers: {
+    return ResponseBody.fromString(jsonEncode(body), statusFor?.call(options) ?? status, headers: {
       'content-type': ['application/json']
     });
   }
@@ -182,3 +183,9 @@ void main() {
     await assertion;
   });
 }
+
+Map<String, Object?> missingAccountEnvelope() => {
+  'status': 'error', 'data': null, 'request_id': 'nb-missing',
+  'meta': {'api_version': 'v1'},
+  'error': {'code': 'not_found', 'message': 'missing', 'retryable': false},
+};
