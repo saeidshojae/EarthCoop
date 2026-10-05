@@ -1,0 +1,19 @@
+# FCM readiness design
+
+The administrator has configured a private service-account file and FCM project on the host, but optimize_clear does not prove provider connectivity. Add a fixed read-only deployment-console operation fcm_readiness, backed by deployment:fcm-readiness. It runs with the configured project/file independently of PUSH_DELIVERY_DRIVER.
+
+Validate readable JSON (64 KiB maximum), service_account type, exact matching project, matching IAM service-account email suffix, nonempty private key, expected token_uri https://oauth2.googleapis.com/token and private location outside public_path. Only then obtain an OAuth token via the existing token provider with a bounded Guzzle handler. Send HTTP v1 validate_only=true to fixed topic earthcoop-readiness-probe; never use a real device token. Google documents validate_only as request testing without delivery: https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send . HTTP success with the documented name field establishes validation acceptance; it is not mobile receipt.
+
+Output is a ready boolean and one fixed categorical code. Missing/malformed/wrong-project credentials, OAuth absence/exception, provider rejection or transport exception must fail closed. No secret, private file path, provider response body or exception text is printed. Console RBAC, temporary secret and throttling remain unchanged. No new package/migration/driver enablement.
+
+Execution ruling: use an isolated sibling worktree based on production main d1ecab0c494c8108a32908cfedf6854f435a055a; never mix the unmerged native foundation. PHP/Composer are absent locally, so PHPUnit evidence comes from isolated CI. Do not repeat or bypass the unavailable local runtime.
+
+## Verified receipt — 2026-10-05
+
+Base production main d1ecab0c494c8108a32908cfedf6854f435a055a. Initial RED dd1cc3e904a728c55efc0e6c9154864ba61a038a / run37247646798: absent service (6 errors) and absent console operation (1 assertion failure). First GREEN75d31c97fa42d37a555e13a0a142f1885ebb240e / run37247921786 passed diagnostic/provider tests but one pre-existing console view contract failed because Vite manifest was absent in the custom runner. Build existing web assets was added to CI; no product JS changed.
+
+Independent reviewer found two Important issues: relative public symlink could bypass privacy checks, and open_basedir stat warning could escape categorical output. Review RED9b50b07def4dfbeebde0a6bcf1f7f12c81a9f6b4 / run37248202855 reproduced both (1 failure/1 error). Fix cf047cbad0abead6b0a7d0ad3e6446900989e7a1 rejects nonabsolute paths, lexically normalizes absolute public aliases, checks real paths/private file mode and catches/suppresses preflight filesystem errors. Cost of this ruling: host credential configuration must use an absolute path; the administrator already supplied one. No review minors were reported.
+
+GREEN https://github.com/saeidshojae/EarthCoop/actions/runs/37248388459 : 90 tests/554 assertions, no failures/errors, existing single PHPUnit deprecation. Composer validation and production security audit passed. Existing web assets built successfully for view tests. Pint normalized four changed PHP files in CI before tests; the exact reported patch was applied to source, so final PHP source matches tested source. No lock/package/migration change. No actual OAuth or FCM request against host credentials occurred in CI; synthetic HTTP/credential fixtures were used, including real Google Auth request construction via bounded mocked Guzzle transport.
+
+Administrator acceptance remains OPEN: execute fcm_readiness in the authenticated deployment console after deployment and inspect only sanitized result. Keep PUSH_DELIVERY_DRIVER disabled until host provider readiness and client intake verification are complete. This diagnostic does not need a phone and does not prove device delivery.

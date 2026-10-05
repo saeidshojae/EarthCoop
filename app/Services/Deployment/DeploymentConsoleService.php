@@ -93,6 +93,12 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'fcm_readiness' => [
+            'command' => 'deployment:fcm-readiness',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
         'flag_status' => [
             'command' => null,
             'arguments' => [],
@@ -110,6 +116,12 @@ class DeploymentConsoleService
             'arguments' => ['--confirm' => 'INSTALL-VENDOR-PACKAGE'],
             'write' => true,
             'confirmation' => 'INSTALL-VENDOR-PACKAGE',
+        ],
+        'optimize_clear' => [
+            'command' => 'optimize:clear',
+            'arguments' => [],
+            'write' => true,
+            'confirmation' => 'OPTIMIZE-CLEAR',
         ],
         'migrate' => [
             'command' => 'migrate',

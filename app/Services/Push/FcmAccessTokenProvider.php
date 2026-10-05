@@ -3,12 +3,16 @@
 namespace App\Services\Push;
 
 use Google\Auth\Credentials\ServiceAccountCredentials;
+use Google\Auth\HttpHandler\HttpHandlerFactory;
+use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use Throwable;
 
 class FcmAccessTokenProvider
 {
     public function __construct(
         private readonly ?string $credentialsPath = null,
+        private readonly ?ClientInterface $httpClient = null,
     ) {
     }
 
@@ -29,7 +33,12 @@ class FcmAccessTokenProvider
                 ['https://www.googleapis.com/auth/firebase.messaging'],
                 $credentials,
             );
-            $auth = $provider->fetchAuthToken();
+            $handler = HttpHandlerFactory::build($this->httpClient ?? new Client());
+            $auth = $provider->fetchAuthToken(fn ($request, array $options = []) => $handler($request, array_merge($options, [
+                'connect_timeout' => 5,
+                'timeout' => 10,
+                'allow_redirects' => false,
+            ])));
             $token = $auth['access_token'] ?? null;
 
             return is_string($token) && $token !== '' ? $token : null;

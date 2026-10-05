@@ -2,7 +2,7 @@
 
 $docsBaseUrl = 'https://docs.earthcoop.ir';
 
-$documentUrl = static fn (string $id): string => "{$docsBaseUrl}/#/documents/{$id}";
+$documentUrl = static fn (string $id): string => "{$docsBaseUrl}/documents/{$id}/";
 
 return [
     'base_url' => $docsBaseUrl,
@@ -10,7 +10,7 @@ return [
     'center' => [
         'id' => 'center',
         'label_key' => 'langWelcome.docs_footer_center',
-        'href' => "{$docsBaseUrl}/",
+        'href' => "{$docsBaseUrl}/home/",
     ],
 
     'publication_policy' => [
@@ -29,16 +29,16 @@ return [
         'id' => 'foundational-index',
         'code' => '',
         'title_key' => 'langWelcome.docs_foundational_index',
-        'href' => "{$docsBaseUrl}/",
+        'href' => "{$docsBaseUrl}/documents/",
         'icon' => 'fa-list-ul',
     ],
 
     'references' => [
         [
-            'id' => 'econ-ref-01-fa-0-1',
+            'id' => 'econ-ref-01',
             'code' => 'ECON-REF-01',
             'title' => 'سند مرجع اقتصاد و معماری نجم‌بهار',
-            'href' => $documentUrl('econ-ref-01-fa-0-1'),
+            'href' => $documentUrl('econ-ref-01'),
             'icon' => 'fa-book-open',
         ],
     ],
