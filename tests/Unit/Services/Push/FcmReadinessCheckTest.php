@@ -6,6 +6,8 @@ use App\Services\Push\FcmAccessTokenProvider;
 use App\Services\Push\FcmReadinessCheck;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Tests\TestCase;
 
 class FcmReadinessCheckTest extends TestCase
@@ -108,6 +110,35 @@ class FcmReadinessCheckTest extends TestCase
         };
         $result = (new FcmReadinessCheck($provider, 'project-123', $this->file(json_encode($this->credentials()))))->check();
         $this->assertSame(['ready' => false, 'code' => 'fcm_oauth_failed'], $result);
+        Http::assertNothingSent();
+    }
+
+    public function test_relative_public_symlink_is_never_accepted_as_private(): void
+    {
+        Http::fake(['*' => Http::response(['name' => 'projects/project-123/messages/validation'], 200)]);
+        $target = $this->file(json_encode($this->credentials()));
+        $link = public_path('fcm-readiness-synthetic-link.json');
+        symlink($target, $link);
+        $this->files[] = $link;
+        $cwd = getcwd();
+        try {
+            chdir(base_path());
+            $result = (new FcmReadinessCheck($this->tokens(), 'project-123', 'public/fcm-readiness-synthetic-link.json'))->check();
+            $this->assertSame(['ready' => false, 'code' => 'fcm_credentials_invalid'], $result);
+            Http::assertNothingSent();
+        } finally {
+            chdir($cwd);
+        }
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function test_open_basedir_warning_is_sanitized_as_credential_failure(): void
+    {
+        Http::fake();
+        ini_set('open_basedir', base_path().PATH_SEPARATOR.sys_get_temp_dir());
+        $result = (new FcmReadinessCheck($this->tokens(), 'project-123', '/fcm-private-blocked/secret.json'))->check();
+        $this->assertSame(['ready' => false, 'code' => 'fcm_credentials_invalid'], $result);
         Http::assertNothingSent();
     }
 

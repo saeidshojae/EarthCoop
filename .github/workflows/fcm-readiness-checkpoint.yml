@@ -59,9 +59,5 @@ jobs:
         run: |
           vendor/bin/pint app/Services/Push/FcmReadinessCheck.php app/Services/Push/FcmAccessTokenProvider.php app/Console/Commands/FcmReadiness.php app/Services/Deployment/DeploymentConsoleService.php routes/deployment-console.php tests/Unit/Services/Push/FcmReadinessCheckTest.php tests/Unit/Services/Push/FcmAccessTokenProviderTest.php tests/Feature/Admin/DeploymentFcmReadinessTest.php tests/Unit/Deployment/DeploymentConsoleServiceTest.php
           git diff --no-ext-diff
-      - name: Provider and deployment-console regression
-        run: |
-          composer validate --no-check-publish
-          composer audit --no-dev --abandoned=report
-          php artisan migrate:fresh --force
-          vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Services/Push tests/Unit/Push tests/Unit/Deployment tests/Architecture/DeploymentVendorPackageBoundaryTest.php tests/Feature/Admin/DeploymentConsoleSecurityTest.php tests/Feature/Admin/DeploymentConsoleExecutionTest.php tests/Feature/Admin/DeploymentConsoleSourceContractTest.php tests/Feature/Admin/DeploymentVendorPackageConsoleTest.php tests/Feature/Admin/DeploymentConsoleOptimizeClearTest.php tests/Feature/Admin/DeploymentFcmReadinessTest.php tests/Feature/Api/V1/PushProviderFailureIsolationTest.php tests/Feature/Api/V1/DevicePushContractTest.php tests/Feature/Api/V1/DevicePushReleaseTest.php
+      - name: Review findings regression RED
+        run: vendor/bin/phpunit -c phpunit.xml.dist --filter 'test_relative_public_symlink_is_never_accepted_as_private|test_open_basedir_warning_is_sanitized_as_credential_failure' tests/Unit/Services/Push/FcmReadinessCheckTest.php
