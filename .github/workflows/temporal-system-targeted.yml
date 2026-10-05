@@ -53,7 +53,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   temporal-tests:
@@ -77,45 +77,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: agent/temporal-system-20261001
-          fetch-depth: 0
-
-      - name: Apply bounded admin user index temporal patch
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('resources/views/admin/user/index.blade.php')
-          data = path.read_bytes()
-          old_date = br"{{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('Y/m/d') }}"
-          old_time = br"{{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('H:i') }}"
-          new_date = b'<x-temporal.date :value="$createdAt" />'
-          new_time = b'<x-temporal.time :value="$createdAt" />'
-
-          assert data.count(old_date) == 1, f'legacy date count={data.count(old_date)}'
-          assert data.count(old_time) == 1, f'legacy time count={data.count(old_time)}'
-
-          updated = data.replace(old_date, new_date, 1).replace(old_time, new_time, 1)
-          assert updated.count(new_date) == 1
-          assert updated.count(new_time) == 1
-          assert b'Morilog\\Jalali' not in updated
-          assert b'Jalalian::' not in updated
-          path.write_bytes(updated)
-          PY
-
-          git diff --check
-          test "$(git diff --name-only | wc -l)" -eq 1
-          test "$(git diff --name-only)" = "resources/views/admin/user/index.blade.php"
-          git diff -- resources/views/admin/user/index.blade.php
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- resources/views/admin/user/index.blade.php
-          git commit -m "fix(temporal): unify admin user index date presentation"
-          git push origin HEAD:agent/temporal-system-20261001
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
