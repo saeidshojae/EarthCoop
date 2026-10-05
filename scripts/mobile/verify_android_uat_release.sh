@@ -6,7 +6,7 @@ signer="$(printf '%s\n' "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail
 test -x "$signer"
 build_tools="$(dirname "$signer")"
 "$build_tools/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/earthcoop-apk-certificate.txt"
-actual="$(awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' "$RUNNER_TEMP/earthcoop-apk-certificate.txt")"
+actual="$(awk '/certificate SHA-256 digest:/ {print $NF; exit}' "$RUNNER_TEMP/earthcoop-apk-certificate.txt")"
 expected="$(keytool -exportcert -keystore "$EARTHCOOP_UAT_KEYSTORE_PATH" -alias "$EARTHCOOP_UAT_KEY_ALIAS" -storepass:env EARTHCOOP_UAT_STORE_PASSWORD | sha256sum | awk '{print $1}')"
 test -n "$actual" || { echo '::error::APK signer SHA-256 digest is missing.'; grep -i 'SHA-256' "$RUNNER_TEMP/earthcoop-apk-certificate.txt" || true; exit 1; }
 test "$actual" = "$expected" || { echo '::error::Release UAT certificate does not match the stable UAT keystore.'; exit 1; }

@@ -1,0 +1,107 @@
+name: Mobile UAT certificate continuity
+on:
+  push:
+    branches: [agent/mobile-release-continuity-20261005]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify-continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download verified previous Android +14
+        uses: actions/download-artifact@v4
+        with:
+          name: earthcoop-android-uat-f14b1381f307354ce12ca90890eae11ee7ec6def
+          run-id: 37323451404
+          github-token: ${{ github.token }}
+          path: previous-apk
+      - name: Download built Android +15
+        uses: actions/download-artifact@v4
+        with:
+          name: earthcoop-release-diagnostic-e01ec2ce1389eec64c9c8b4188f6b98433b82f79
+          run-id: 37329564077
+          github-token: ${{ github.token }}
+          path: current-apk
+      - name: Prepare Android UAT signing
+        shell: bash
+        env:
+          ANDROID_UAT_KEYSTORE_BASE64: ${{ secrets.ANDROID_UAT_KEYSTORE_BASE64 }}
+          ANDROID_UAT_KEY_ALIAS: ${{ secrets.ANDROID_UAT_KEY_ALIAS }}
+          ANDROID_UAT_STORE_PASSWORD: ${{ secrets.ANDROID_UAT_STORE_PASSWORD }}
+          ANDROID_UAT_KEY_PASSWORD: ${{ secrets.ANDROID_UAT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          configured=0
+          test -n "$ANDROID_UAT_KEYSTORE_BASE64" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_ALIAS" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_STORE_PASSWORD" && configured=$((configured + 1))
+          test -n "$ANDROID_UAT_KEY_PASSWORD" && configured=$((configured + 1))
+
+          if [ "$configured" -ne 4 ]; then
+            echo "::error::Published UAT APKs require all four stable UAT signing secrets."
+            exit 1
+          fi
+
+          UAT_KEYSTORE_PATH="$RUNNER_TEMP/earthcoop-uat.jks"
+          printf '%s' "$ANDROID_UAT_KEYSTORE_BASE64" | base64 --decode > "$UAT_KEYSTORE_PATH"
+          test -s "$UAT_KEYSTORE_PATH" || { echo "::error::Decoded UAT keystore is empty"; exit 1; }
+
+          {
+            echo "EARTHCOOP_UAT_KEYSTORE_PATH=$UAT_KEYSTORE_PATH"
+            echo "EARTHCOOP_UAT_KEY_ALIAS=$ANDROID_UAT_KEY_ALIAS"
+            echo "EARTHCOOP_UAT_STORE_PASSWORD=$ANDROID_UAT_STORE_PASSWORD"
+            echo "EARTHCOOP_UAT_KEY_PASSWORD=$ANDROID_UAT_KEY_PASSWORD"
+            echo "EARTHCOOP_UAT_SIGNING_MODE=stable-uat"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify complete metadata and configured-keystore signature
+        run: bash scripts/mobile/verify_android_uat_release.sh current-apk/app-release.apk
+      - name: Verify actual APK certificate continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          signer="$(printf '%s\n' "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
+          test -x "$signer"
+          "$signer" verify --print-certs previous-apk/earthcoop-android-uat.apk > "$RUNNER_TEMP/previous-cert.txt"
+          "$signer" verify --print-certs current-apk/app-release.apk > "$RUNNER_TEMP/current-cert.txt"
+          previous="$(awk '/certificate SHA-256 digest:/ {print $NF; exit}' "$RUNNER_TEMP/previous-cert.txt")"
+          current="$(awk '/certificate SHA-256 digest:/ {print $NF; exit}' "$RUNNER_TEMP/current-cert.txt")"
+          [[ "$previous" =~ ^[a-fA-F0-9]{64}$ ]]
+          [[ "$current" =~ ^[a-fA-F0-9]{64}$ ]]
+          test "$previous" = "$current"
+          echo "PASS: actual +14 and +15 APK certificates match; SHA-256 $current."
+      - name: Stage verified Release UAT package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile-uat-dist
+          cp current-apk/app-release.apk mobile-uat-dist/earthcoop-android-uat.apk
+          python - <<'PYCODE'
+          import json,hashlib,os
+          from pathlib import Path
+          from datetime import datetime,timezone
+          apk=Path('mobile-uat-dist/earthcoop-android-uat.apk')
+          metadata={
+              'channel':'uat','platform':'android','build_type':'release','version':'1.0.0+15',
+              'git_sha':'e01ec2ce1389eec64c9c8b4188f6b98433b82f79',
+              'verification_git_sha':os.environ['GITHUB_SHA'],
+              'fcm_configured':True,'signing_mode':'stable-uat',
+              'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+              'apk_size_bytes':apk.stat().st_size,
+              'verified_at_utc':datetime.now(timezone.utc).isoformat()
+          }
+          Path('mobile-uat-dist/build.json').write_text(json.dumps(metadata,indent=2)+'\n')
+          print(json.dumps(metadata))
+          print('previous_apk_size_bytes='+str(Path('previous-apk/earthcoop-android-uat.apk').stat().st_size))
+          PYCODE
+      - name: Retain verified Android +15 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthcoop-android-uat-release15-verified-${{ github.sha }}
+          path: mobile-uat-dist/
+          if-no-files-found: error
+          retention-days: 30
