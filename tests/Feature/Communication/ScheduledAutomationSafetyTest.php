@@ -4,6 +4,7 @@ namespace Tests\Feature\Communication;
 
 use App\Enums\Communication\CommunicationClassification;
 use App\Models\CommunicationRule;
+use App\Models\CommunicationTemplate;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -39,13 +40,20 @@ final class ScheduledAutomationSafetyTest extends TestCase
             'communications.view',
             'communications.rules.manage',
         ]);
+        $template = CommunicationTemplate::query()->create([
+            'key' => 'scheduled.safety.template',
+            'name' => 'Scheduled safety template',
+            'category' => 'test',
+            'classification' => CommunicationClassification::Operational,
+            'is_active' => true,
+        ]);
 
         $rule = CommunicationRule::query()->create([
             'key' => 'scheduled.safety.deactivate',
             'name' => 'Scheduled safety deactivate',
             'trigger_type' => 'scheduled',
             'audience_definition' => ['key' => 'specific.user', 'user_ids' => [$manager->id]],
-            'communication_template_id' => null,
+            'communication_template_id' => $template->id,
             'communication_sender_identity_id' => null,
             'classification' => CommunicationClassification::Operational,
             'priority' => 2,
