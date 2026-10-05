@@ -49,23 +49,23 @@ final class CommunicationPersianAdminUiTest extends TestCase
         $history = $sources['history.blade.php'];
         $failures = $sources['failures.blade.php'];
 
-        foreach ([
-            'نوع اجرا', 'مخاطبان', 'شرط اجرا', 'رویدادمحور', 'زمان‌بندی‌شده', 'شرطی',
-            'کاربر مشخص', 'الزامی', 'عملیاتی', 'اختیاری', 'هفتگی', 'روزانه', 'ساعتی',
-            'فاصله اجرا', 'منطقه زمانی',
-        ] as $term) {
+        foreach (['نوع اجرا', 'مخاطبان', 'شرط اجرا', 'کاربر مشخص', 'فاصله اجرا', 'منطقه زمانی'] as $term) {
             $this->assertStringContainsString($term, $createAutomation);
         }
-
-        foreach (['رویدادمحور', 'زمان‌بندی‌شده', 'شرطی', 'کاربر مشخص', 'عضو', 'مدیر', 'بازرس'] as $term) {
-            $this->assertStringContainsString($term, $indexAutomation);
+        foreach (['trigger($type)', 'audience($key)', 'condition($key)', 'classification($classification)', 'frequency($frequency)'] as $helperCall) {
+            $this->assertStringContainsString($helperCall, $createAutomation);
         }
 
-        foreach (['مخاطبان', 'کاربر مشخص', 'عملیاتی', 'اختیاری', 'الزامی'] as $term) {
-            $this->assertStringContainsString($term, $campaignCreate);
+        foreach (['trigger($rule->trigger_type)', "audience(data_get($rule->audience_definition, 'key'))", 'campaignStatus($campaign->status)'] as $helperCall) {
+            $haystack = $helperCall === 'campaignStatus($campaign->status)' ? $campaignIndex : $indexAutomation;
+            $this->assertStringContainsString($helperCall, $haystack);
         }
 
+        $this->assertStringContainsString('مخاطبان', $campaignCreate);
+        $this->assertStringContainsString('کاربر مشخص', $campaignCreate);
+        $this->assertStringContainsString('classification($classification)', $campaignCreate);
         $this->assertStringContainsString('وضعیت کمپین', $campaignIndex);
+
         foreach (['منطبق', 'مجاز به دریافت', 'عدم ارسال', 'نامعتبر'] as $term) {
             $this->assertStringContainsString($term, $campaignPreview);
         }
@@ -79,7 +79,9 @@ final class CommunicationPersianAdminUiTest extends TestCase
         $this->assertStringContainsString('ساختار متغیرها', $templateShow);
         $this->assertStringContainsString('پردازشگر صف', $dashboard);
         $this->assertStringContainsString('وضعیت تحویل', $history);
+        $this->assertStringContainsString('deliveryStatus(', $history);
         $this->assertStringContainsString('تلاش مجدد', $failures);
+        $this->assertStringContainsString('failureClass(', $failures);
 
         $all = implode("\n", $sources);
         foreach ([
