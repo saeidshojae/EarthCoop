@@ -133,7 +133,8 @@ void main() {
         isFalse);
   });
 
-  testWidgets('native logout blocks pending push opens and returns to login after offline revoke',
+  testWidgets(
+      'native logout blocks pending push opens and returns to login after offline revoke',
       (tester) async {
     final repository = _PendingRevokeRepository();
     final session = SessionController(repository: repository)
@@ -142,10 +143,13 @@ void main() {
       bootstrap: const BootstrapState.compatible(),
       sessionController: session,
       loginController: LoginController(
-        sessionController: session,
-        deviceContext: () => const DeviceContext(
-          platform: 'android', appVersion: '1', locale: 'fa',
-          timezone: 'Asia/Tehran', pushCapable: true)),
+          sessionController: session,
+          deviceContext: () => const DeviceContext(
+              platform: 'android',
+              appVersion: '1',
+              locale: 'fa',
+              timezone: 'Asia/Tehran',
+              pushCapable: true)),
     );
     await tester.pumpWidget(EarthCoopApp(runtimeFactory: () async => runtime));
     await tester.pumpAndSettle();
@@ -154,10 +158,17 @@ void main() {
     await tester.tap(logout);
     await tester.pump();
     expect(repository.revokeCalls, 1);
-    expect(tester.widget<FilledButton>(find.byKey(const Key('home-groups-action'))).onPressed, isNull);
-    expect(runtime.openSemanticLink(const SemanticLink(
-      version: 1, route: 'group.detail', params: {'group_id': 42}),
-      currentBootstrap: const BootstrapState.compatible()), isFalse);
+    expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('home-groups-action')))
+            .onPressed,
+        isNull);
+    expect(
+        runtime.openSemanticLink(
+            const SemanticLink(
+                version: 1, route: 'group.detail', params: {'group_id': 42}),
+            currentBootstrap: const BootstrapState.compatible()),
+        isFalse);
     repository.release.completeError(StateError('server unreachable'));
     await tester.pumpAndSettle();
     expect(repository.cleared, isTrue);
@@ -316,6 +327,9 @@ class _PendingRevokeRepository extends _FakeSessionRepository {
     revokeCalls++;
     await release.future;
   }
+
   @override
-  Future<void> clearLocalCredentials() async { cleared = true; }
+  Future<void> clearLocalCredentials() async {
+    cleared = true;
+  }
 }

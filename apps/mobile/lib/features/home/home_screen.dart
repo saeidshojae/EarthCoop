@@ -23,13 +23,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout() async {
     if (_busy) return;
-    setState(() { _leaving = true; _busy = true; _failed = false; });
+    setState(() {
+      _leaving = true;
+      _busy = true;
+      _failed = false;
+    });
     try {
       await widget.onLogout?.call();
     } catch (_) {
-      if (mounted) setState(() { _failed = true; });
+      if (mounted) {
+        setState(() {
+          _failed = true;
+        });
+      }
     } finally {
-      if (mounted) setState(() { _busy = false; });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
@@ -80,17 +92,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: const Key('home-logout-action'),
                     onPressed: _busy ? null : _logout,
                     icon: _busy
-                        ? const SizedBox(width: 18, height: 18,
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.logout),
-                    label: Text(_busy ? 'در حال خروج…' :
-                        _failed ? 'تلاش دوباره برای خروج' : 'خروج از حساب'),
+                    label: Text(_busy
+                        ? 'در حال خروج…'
+                        : _failed
+                            ? 'تلاش دوباره برای خروج'
+                            : 'خروج از حساب'),
                   ),
                   if (_failed)
                     const Padding(
                       padding: EdgeInsets.only(top: 12),
                       child: Text('خروج کامل نشد. دوباره تلاش کنید.',
-                        key: Key('home-logout-error')),
+                          key: Key('home-logout-error')),
                     ),
                 ],
               ],

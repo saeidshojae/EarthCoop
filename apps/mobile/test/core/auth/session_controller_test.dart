@@ -88,7 +88,9 @@ void main() {
       expect(repository.calls, ['login', 'rotate']);
     });
 
-    test('pending logout closes authorization immediately and retains cleanup identity', () async {
+    test(
+        'pending logout closes authorization immediately and retains cleanup identity',
+        () async {
       final repository = PendingRevokeRepository();
       NativeSession? cleanupSession;
       late final SessionController controller;
@@ -113,7 +115,9 @@ void main() {
       var clears = 0;
       final controller = SessionController(
         repository: repository,
-        clearUserScopedLocalState: () async { clears++; },
+        clearUserScopedLocalState: () async {
+          clears++;
+        },
       )..state = SessionState.authenticated(sampleSession());
       final first = controller.logout();
       final second = controller.logout();
@@ -123,7 +127,8 @@ void main() {
       expect(clears, 1);
     });
 
-    test('cleanup retry retains the outgoing account after a local failure', () async {
+    test('cleanup retry retains the outgoing account after a local failure',
+        () async {
       final identities = <int?>[];
       var clears = 0;
       late final SessionController controller;
