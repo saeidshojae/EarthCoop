@@ -105,10 +105,9 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
                         if (c.historyFailure != null)
                           _error(
                               c.historyFailure!,
-                              () => unawaited(
-                                  c.historyFailureFromPagination
-                                      ? c.loadMore()
-                                      : c.refreshHistory())),
+                              () => unawaited(c.historyFailureFromPagination
+                                  ? c.loadMore()
+                                  : c.refreshHistory())),
                         if (!c.historyLoading &&
                             c.historyFailure == null &&
                             c.transactions.isEmpty)

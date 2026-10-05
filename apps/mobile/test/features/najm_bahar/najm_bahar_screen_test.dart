@@ -94,8 +94,11 @@ void main() {
             .widget<TextButton>(find.widgetWithText(TextButton, 'تلاش دوباره'))
             .onPressed!();
         await retry!.future.timeout(const Duration(seconds: 5));
+        while (controller.historyLoading) {
+          await Future<void>.delayed(const Duration(milliseconds: 1));
+        }
       });
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(adapter.requests.last.queryParameters['page[cursor]'],
           pagination ? 'next' : null);
       expect(controller.transactions.map((t) => t.id),
