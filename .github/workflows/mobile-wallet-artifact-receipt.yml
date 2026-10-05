@@ -1,0 +1,38 @@
+name: Mobile wallet artifact receipt
+on:
+  push:
+    branches: [agent/mobile-wallet-artifact-receipt-20261005]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify-retained-binary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 37350236500
+          name: earthcoop-android-uat-546bbfd921b699d8887842dc141c993538842a8f
+          path: retained
+      - name: Confirm metadata against exact retained APK
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path('retained')
+          metadata = json.loads((root / 'build.json').read_text())
+          apk = root / 'earthcoop-android-uat.apk'
+          digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+          assert metadata['version'] == '1.0.0+16'
+          assert metadata['git_sha'] == '546bbfd921b699d8887842dc141c993538842a8f'
+          assert metadata['build_type'] == 'release'
+          assert metadata['signing_mode'] == 'stable-uat'
+          assert metadata['fcm_configured'] is True
+          assert metadata['apk_sha256'] == digest
+          assert metadata['apk_size_bytes'] == apk.stat().st_size
+          print('NB_VERIFIED_METADATA_BEGIN')
+          print(json.dumps(metadata, sort_keys=True))
+          print('NB_VERIFIED_METADATA_END')
+          PY
