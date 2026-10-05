@@ -31,6 +31,7 @@ class DeploymentConsoleServiceTest extends TestCase
             'migrate',
             'bootstrap',
             'stage_c_group_policy_apply',
+            'persian_seo_blog_publish',
             'reference_apply',
             'topology_apply',
         ], array_keys($service->operations()));
@@ -38,6 +39,7 @@ class DeploymentConsoleServiceTest extends TestCase
         $this->assertSame('MIGRATE', $service->confirmationFor('migrate'));
         $this->assertSame('BOOTSTRAP', $service->confirmationFor('bootstrap'));
         $this->assertSame('APPLY-GROUP-POLICY', $service->confirmationFor('stage_c_group_policy_apply'));
+        $this->assertSame('PUBLISH-PERSIAN-SEO-BLOG', $service->confirmationFor('persian_seo_blog_publish'));
         $this->assertSame('APPLY-IR', $service->confirmationFor('reference_apply'));
         $this->assertSame('APPLY-GOV-IR', $service->confirmationFor('topology_apply'));
         $this->assertSame('INSTALL-VENDOR-PACKAGE', $service->confirmationFor('vendor_package_install'));
