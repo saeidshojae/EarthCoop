@@ -28,6 +28,7 @@ Route::post('/run/{operation}', [DeploymentConsoleController::class, 'run'])
         'migrate',
         'bootstrap',
         'stage_c_group_policy_apply',
+        'persian_seo_blog_publish',
         'reference_apply',
         'topology_apply',
     ])
