@@ -28,7 +28,7 @@
         <div class="grid gap-4 md:grid-cols-3">
             <div><label class="mb-1 block text-sm">طبقه‌بندی پیام</label><select name="classification" class="w-full rounded-lg border-gray-300 dark:bg-gray-900">@foreach(['operational', 'optional', 'required'] as $classification)<option value="{{ $classification }}" @selected(old('classification', 'operational') === $classification)>{{ $labels::classification($classification) }}</option>@endforeach</select></div>
             <div><label class="mb-1 block text-sm">اولویت</label><input name="priority" type="number" min="1" max="9" value="{{ old('priority', 4) }}" class="w-full rounded-lg border-gray-300 dark:bg-gray-900"></div>
-            <div><label class="mb-1 block text-sm">زمان ارسال</label><input name="scheduled_at" type="datetime-local" value="{{ old('scheduled_at') }}" class="w-full rounded-lg border-gray-300 dark:bg-gray-900"><p class="mt-1 text-xs text-gray-500">خالی بگذارید تا پس از تأیید، آمادهٔ ارسال فوری شود.</p></div>
+            <div><label class="mb-1 block text-sm">زمان ارسال</label><x-temporal.date-time-input name="scheduled_at" :value="old('scheduled_at')" class="w-full rounded-lg border-gray-300 dark:bg-gray-900" /><p class="mt-1 text-xs text-gray-500">خالی بگذارید تا پس از تأیید، آمادهٔ ارسال فوری شود.</p></div>
         </div>
 
         <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">ایجاد کمپین هیچ ایمیلی ارسال نمی‌کند. ارسال فقط پس از پیش‌نمایش مخاطبان و تأیید نهایی مجاز می‌شود.</p>
