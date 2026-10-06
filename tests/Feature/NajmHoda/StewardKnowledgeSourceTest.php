@@ -4,8 +4,12 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
+use App\Models\FaqQuestion;
+use App\Models\KbArticle;
 use App\Models\StewardKnowledgeFile;
 use App\Models\User;
+use App\Modules\Blog\Models\BlogCategory;
+use App\Modules\Blog\Models\Post as BlogPost;
 use App\Services\NajmHoda\Agents\StewardAgent;
 use App\Services\NajmHoda\Knowledge\StewardKnowledgeUrlIngestor;
 use RuntimeException;
@@ -144,6 +148,98 @@ class StewardKnowledgeSourceTest extends TestCase
         $this->assertStringContainsString('id="steward-upload-form"', $view);
         $this->assertStringContainsString('id="steward-url-form"', $view);
         $this->assertStringContainsString("route('admin.najm-hoda.steward.add-knowledge-url')", $view);
+    }
+
+
+    public function test_normal_steward_retrieval_includes_only_published_public_content_sources(): void
+    {
+        $author = User::factory()->create();
+        $category = BlogCategory::create([
+            'name' => 'راهنما',
+            'slug' => 'guide',
+            'is_active' => true,
+            'order' => 1,
+        ]);
+
+        KbArticle::create([
+            'title' => 'راهنمای عدالت مشارکتی',
+            'slug' => 'justice-guide',
+            'excerpt' => 'عدالت مشارکتی در ارث‌کوپ',
+            'content' => 'متن منتشرشده پایگاه دانش درباره عدالت مشارکتی.',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+
+        KbArticle::create([
+            'title' => 'پیش‌نویس عدالت محرمانه',
+            'slug' => 'justice-draft',
+            'excerpt' => 'این متن نباید بازیابی شود',
+            'content' => 'محتوای پیش‌نویس خصوصی',
+            'status' => 'draft',
+        ]);
+
+        BlogPost::create([
+            'title' => 'عدالت در اقتصاد تعاونی',
+            'slug' => 'cooperative-justice',
+            'excerpt' => 'مقاله عمومی بلاگ درباره عدالت',
+            'content' => 'محتوای مقاله عمومی بلاگ ارث‌کوپ درباره عدالت مشارکتی.',
+            'category_id' => $category->id,
+            'user_id' => $author->id,
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        BlogPost::create([
+            'title' => 'پیش‌نویس بلاگ عدالت',
+            'slug' => 'draft-cooperative-justice',
+            'excerpt' => 'نباید در پاسخ دیده شود',
+            'content' => 'محتوای پیش‌نویس بلاگ',
+            'category_id' => $category->id,
+            'user_id' => $author->id,
+            'status' => 'draft',
+        ]);
+
+        FaqQuestion::create([
+            'title' => 'پرسش عدالت',
+            'question' => 'عدالت مشارکتی چیست؟',
+            'answer' => 'عدالت مشارکتی یعنی رعایت حق در مشارکت.',
+            'is_published' => true,
+            'status' => 'answered',
+        ]);
+
+        FaqQuestion::create([
+            'title' => 'پرسش منتشرنشده عدالت',
+            'question' => 'این پرسش نباید دیده شود',
+            'answer' => 'پاسخ خصوصی',
+            'is_published' => false,
+            'status' => 'answered',
+        ]);
+
+        $agent = new class extends StewardAgent {
+            public function exposeKnowledgeContext(string $question): string
+            {
+                return $this->knowledgeContextFor($question);
+            }
+        };
+
+        $context = $agent->exposeKnowledgeContext('عدالت مشارکتی چیست؟');
+
+        $this->assertStringContainsString('راهنمای عدالت مشارکتی', $context);
+        $this->assertStringContainsString('عدالت در اقتصاد تعاونی', $context);
+        $this->assertStringContainsString('پرسش عدالت', $context);
+
+        $this->assertStringNotContainsString('پیش‌نویس عدالت محرمانه', $context);
+        $this->assertStringNotContainsString('پیش‌نویس بلاگ عدالت', $context);
+        $this->assertStringNotContainsString('پرسش منتشرنشده عدالت', $context);
+    }
+
+    public function test_steward_uses_public_blog_module_not_private_group_posts_as_global_knowledge(): void
+    {
+        $source = file_get_contents(app_path('Services/NajmHoda/Agents/StewardAgent.php'));
+
+        $this->assertStringContainsString('use App\\Modules\\Blog\\Models\\Post as BlogPost;', $source);
+        $this->assertStringContainsString('BlogPost::published()', $source);
+        $this->assertStringNotContainsString('use App\\Models\\Blog;', $source);
     }
 
 }
