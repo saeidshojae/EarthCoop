@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   diagnose:
-    if: "github.event.head_commit.message == 'chore(ci): diagnose main merge conflicts'"
+    if: "github.event.head_commit.message == 'chore(ci): diagnose main merge conflicts v2'"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,6 +21,8 @@ jobs:
       - name: Diagnose merge
         shell: bash
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           set +e
           git merge --no-commit --no-ff cfb921b1b3f843438bec5222aaa75eaaf81f9977
