@@ -26,12 +26,45 @@ class BlogMetadataTest extends TestCase
         $this->assertStringContainsString('<title>عنوان متای مقاله</title>', $html);
         $this->assertStringContainsString('href="https://earthcoop.ir/blog/'.$post->slug.'"', $html);
         $this->assertStringContainsString('property="og:type" content="article"', $html);
-        preg_match('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $match);
-        $payload = json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
+        $payload = $this->articleJsonLd($html);
         $this->assertSame('Article', $payload['@type']);
         $this->assertSame($post->author->fullName(), $payload['author']['name']);
         $this->assertSame($post->published_at->toAtomString(), $payload['datePublished']);
         $this->assertArrayNotHasKey('image', $payload);
+    }
+
+    public function test_approved_seo_article_emits_entity_ownership_in_article_json_ld(): void
+    {
+        $post = $this->createPost([
+            'slug' => 'people-economy-explained',
+            'title' => 'اقتصاد مردمی چیست؟ از مشارکت اقتصادی تا اقتصاد آزاد مردمی',
+        ]);
+
+        $html = $this->get(route('blog.show', $post->slug))->assertOk()->getContent();
+        $payload = $this->articleJsonLd($html);
+
+        $this->assertSame('fa', $payload['inLanguage']);
+        $this->assertSame('Organization', $payload['publisher']['@type']);
+        $this->assertSame('EarthCoop', $payload['publisher']['name']);
+        $this->assertSame('https://earthcoop.ir/', $payload['publisher']['url']);
+        $this->assertSame('WebSite', $payload['isPartOf']['@type']);
+        $this->assertSame('https://earthcoop.ir/#website', $payload['isPartOf']['@id']);
+        $this->assertSame('Thing', $payload['about']['@type']);
+        $this->assertSame('اقتصاد آزاد مردمی چیست؟', $payload['about']['name']);
+        $this->assertSame('https://earthcoop.ir/economy', $payload['about']['url']);
+    }
+
+    public function test_legacy_article_does_not_fabricate_pillar_entity_ownership(): void
+    {
+        $post = $this->createPost(['slug' => 'existing-production-article']);
+
+        $html = $this->get(route('blog.show', $post->slug))->assertOk()->getContent();
+        $payload = $this->articleJsonLd($html);
+
+        $this->assertSame('fa', $payload['inLanguage']);
+        $this->assertSame('EarthCoop', $payload['publisher']['name']);
+        $this->assertSame('https://earthcoop.ir/#website', $payload['isPartOf']['@id']);
+        $this->assertArrayNotHasKey('about', $payload);
     }
 
     public function test_non_public_posts_are_not_accessible(): void
@@ -72,6 +105,16 @@ class BlogMetadataTest extends TestCase
             ->assertSee('content="noindex,follow"', false)
             ->assertSee('href="https://earthcoop.ir/blog/search"', false)
             ->assertDontSee('canonical" href="https://earthcoop.ir/blog/search?q=', false);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function articleJsonLd(string $html): array
+    {
+        preg_match('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $match);
+
+        return json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
     }
 
     private function createPost(array $attributes = []): Post

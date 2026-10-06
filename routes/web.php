@@ -105,6 +105,12 @@ Route::get('/lang/current', [LocaleController::class, 'current'])->name('locale.
 date_default_timezone_set("Asia/tehran");
 
 Route::view('/terms', 'terms', ['seoRobots' => 'index,follow'])->name('terms');
+Route::view('/privacy', 'privacy', [
+    'seoTitle' => 'سیاست حریم خصوصی ارث‌کوپ',
+    'seoDescription' => 'سیاست حریم خصوصی ارث‌کوپ؛ نحوه جمع‌آوری، استفاده، نگهداری و حذف اطلاعات کاربران و داده‌های ورود با حساب گوگل.',
+    'seoCanonical' => rtrim(config('seo.canonical_origin'), '/') . '/privacy',
+    'seoRobots' => 'index,follow',
+])->name('privacy');
 Route::post('/terms', [TermController::class, 'store'])->name('terms.store');
 Route::get('/sitemap.xml', SitemapController::class)->name('seo.sitemap');
 
@@ -663,6 +669,15 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::post('/{ticket}/close', [\App\Http\Controllers\Admin\TicketController::class, 'close'])->name('close');
     });
 
+    // Public contact inbox management
+    Route::middleware('permission:tickets.manage')->prefix('contact-messages')->name('contact-messages.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ContactMessageController::class, 'index'])->name('index');
+        Route::get('/{contactMessage}', [\App\Http\Controllers\Admin\ContactMessageController::class, 'show'])->name('show');
+        Route::post('/{contactMessage}/status', [\App\Http\Controllers\Admin\ContactMessageController::class, 'updateStatus'])->name('status');
+        Route::post('/{contactMessage}/reply', [\App\Http\Controllers\Admin\ContactMessageController::class, 'reply'])->name('reply');
+        Route::post('/{contactMessage}/convert-to-ticket', [\App\Http\Controllers\Admin\ContactMessageController::class, 'convert'])->name('convert');
+    });
+
     // Email management
     Route::prefix('emails')->name('emails.')->group(function () {
         Route::get('/', [EmailController::class, 'index'])->name('index');
@@ -966,7 +981,9 @@ Route::get('pages/{slug}', [\App\Http\Controllers\PageController::class, 'show']
 Route::post('/faq/questions', [\App\Http\Controllers\FaqQuestionController::class, 'store'])->name('questions.store');
 
 // Contact form (server-side ticket creation)
-Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+Route::post('/contact', [ContactController::class, 'store'])
+    ->middleware('throttle:5,10')
+    ->name('contact.store');
 
 // Route تست ایمیل (فقط برای تست - بعداً حذف کنید)
 Route::get('/admin/test-email', function() {

@@ -6,7 +6,9 @@ use App\Http\Controllers\API\V1\BootstrapController;
 use App\Http\Controllers\API\V1\DevicePushController;
 use App\Http\Controllers\API\V1\ElectionController;
 use App\Http\Controllers\API\V1\GroupController;
+use App\Http\Controllers\API\V1\GroupAttachmentController;
 use App\Http\Controllers\API\V1\GroupFeedController;
+use App\Http\Controllers\API\V1\GroupMessageController;
 use App\Http\Controllers\API\V1\LocationGovernanceController;
 use App\Http\Controllers\API\V1\MediaController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
@@ -56,6 +58,16 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
         Route::get('/groups/{group}/feed/delta', [GroupFeedController::class, 'delta'])->name('groups.feed.delta');
         Route::get('/groups/{group}/unread', [GroupFeedController::class, 'unread'])->name('groups.unread');
+        Route::post('/groups/{group}/messages', [GroupMessageController::class, 'store'])
+            ->middleware([
+                \App\Http\Middleware\PrepareNativeGroupMessage::class,
+                \App\Http\Middleware\EnsureMembershipParticipation::class,
+                \App\Http\Middleware\EnsureGroupSessionWritable::class,
+                'throttle:group-message',
+                'api.v1.idempotency',
+                'group.chat.timing',
+            ])->name('groups.messages.store');
+        Route::get('/groups/{group}/messages/{message}/attachment', [GroupAttachmentController::class, 'download'])->name('groups.messages.attachment');
         Route::post('/groups/{group}/read', [GroupFeedController::class, 'read'])->middleware('api.v1.idempotency')->name('groups.read');
 
         Route::get('/groups/{group}/elections/current', [ElectionController::class, 'current'])->name('elections.current');

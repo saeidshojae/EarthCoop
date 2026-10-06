@@ -107,6 +107,24 @@ class DeploymentConsoleSecurityTest extends TestCase
             ->assertSessionHasErrors('confirmation');
     }
 
+    public function test_wrong_vendor_package_confirmation_never_invokes_artisan(): void
+    {
+        $user = User::factory()->create(['is_admin' => true]);
+        Artisan::shouldReceive('call')->never();
+
+        $this->actingAs($user)
+            ->from('/admin/deployment-console')
+            ->post('/admin/deployment-console/run/vendor_package_install', [
+                'deployment_secret' => 'temporary-deployment-secret',
+                'confirmation' => 'WRONG',
+                'manifest' => '../../outside.json',
+                'path' => '/tmp/evil.zip',
+                'command' => 'arbitrary',
+            ])
+            ->assertRedirect('/admin/deployment-console')
+            ->assertSessionHasErrors('confirmation');
+    }
+
     public function test_unknown_operation_is_404_and_never_invokes_artisan(): void
     {
         $user = User::factory()->create(['is_admin' => true]);

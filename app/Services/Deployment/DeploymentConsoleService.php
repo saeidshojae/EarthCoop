@@ -93,11 +93,35 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'fcm_readiness' => [
+            'command' => 'deployment:fcm-readiness',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
         'flag_status' => [
             'command' => null,
             'arguments' => [],
             'write' => false,
             'confirmation' => null,
+        ],
+        'vendor_package_status' => [
+            'command' => 'deployment:vendor-package-status',
+            'arguments' => [],
+            'write' => false,
+            'confirmation' => null,
+        ],
+        'vendor_package_install' => [
+            'command' => 'deployment:install-vendor-package',
+            'arguments' => ['--confirm' => 'INSTALL-VENDOR-PACKAGE'],
+            'write' => true,
+            'confirmation' => 'INSTALL-VENDOR-PACKAGE',
+        ],
+        'optimize_clear' => [
+            'command' => 'optimize:clear',
+            'arguments' => [],
+            'write' => true,
+            'confirmation' => 'OPTIMIZE-CLEAR',
         ],
         'migrate' => [
             'command' => 'migrate',
@@ -122,6 +146,15 @@ class DeploymentConsoleService
             ],
             'write' => true,
             'confirmation' => 'APPLY-GROUP-POLICY',
+        ],
+        'persian_seo_blog_publish' => [
+            'command' => 'db:seed',
+            'arguments' => [
+                '--class' => 'PersianSeoBlogSeeder',
+                '--force' => true,
+            ],
+            'write' => true,
+            'confirmation' => 'PUBLISH-PERSIAN-SEO-BLOG',
         ],
         'reference_apply' => [
             'command' => 'location:reference-import',

@@ -40,6 +40,7 @@ Route::middleware('permission:communications.senders.manage')->group(function ()
 Route::middleware('permission:communications.rules.manage')->group(function (): void {
     Route::get('/automations/create', [AutomationController::class, 'create'])->name('automations.create');
     Route::post('/automations', [AutomationController::class, 'store'])->name('automations.store');
+    Route::post('/automations/{rule}/deactivate', [AutomationController::class, 'deactivate'])->name('automations.deactivate');
 });
 
 Route::middleware('permission:communications.campaigns.create')->group(function (): void {

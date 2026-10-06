@@ -28,7 +28,20 @@ class PublicMetadataTest extends TestCase
         $this->assertSame(['Organization', 'WebSite'], $types);
     }
 
-    public function test_published_page_prefers_translated_meta_values(): void
+    public function test_home_is_a_concise_semantic_hub_for_core_earthcoop_topics(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('ارث‌کوپ', $html);
+        $this->assertStringContainsString('اقتصاد آزاد مردمی', $html);
+        $this->assertStringContainsString('حکمرانی مشارکتی', $html);
+        $this->assertStringContainsString('href="/cooperative"', $html);
+        $this->assertStringContainsString('href="/economy"', $html);
+        $this->assertStringContainsString('href="/governance"', $html);
+        $this->assertStringContainsString('href="/justice"', $html);
+    }
+
+    public function test_published_page_prefers_translated_meta_values_and_is_indexable(): void
     {
         $page = $this->page([
             'slug' => 'translated-meta',
@@ -41,7 +54,8 @@ class PublicMetadataTest extends TestCase
             ->assertOk()
             ->assertSee('<title>عنوان متای فارسی</title>', false)
             ->assertSee('content="توضیح متای فارسی"', false)
-            ->assertSee('href="https://earthcoop.ir/pages/translated-meta"', false);
+            ->assertSee('href="https://earthcoop.ir/pages/translated-meta"', false)
+            ->assertSee('content="index,follow"', false);
     }
 
     public function test_page_fallback_description_is_plain_text_and_length_limited(): void

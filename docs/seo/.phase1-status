@@ -1,0 +1,4 @@
+research=complete
+content_architecture=complete
+technical_hardening=implemented
+runtime_verification=pending_pr_ci

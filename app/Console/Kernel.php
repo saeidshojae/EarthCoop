@@ -47,6 +47,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
         \App\Console\Commands\CommunicationProcessDueRules::class,
+        \App\Console\Commands\InstallVendorPackage::class,
+        \App\Console\Commands\VendorPackageStatus::class,
     ];
 
     protected function schedule(Schedule $schedule)

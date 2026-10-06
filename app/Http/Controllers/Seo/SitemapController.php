@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Modules\Blog\Models\Post;
 use App\Support\Seo\CanonicalUrl;
+use App\Support\Seo\PillarRegistry;
 use App\Support\Seo\SitemapEntry;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Schema;
@@ -17,8 +18,13 @@ final class SitemapController extends Controller
         $entries = [
             new SitemapEntry($canonicalUrl->to('/')),
             new SitemapEntry($canonicalUrl->to('/terms')),
+            new SitemapEntry($canonicalUrl->to('/privacy')),
             new SitemapEntry($canonicalUrl->to('/blog')),
         ];
+
+        foreach (PillarRegistry::paths() as $path) {
+            $entries[] = new SitemapEntry($canonicalUrl->to($path));
+        }
 
         if (Schema::hasTable('pages')) {
             Page::query()

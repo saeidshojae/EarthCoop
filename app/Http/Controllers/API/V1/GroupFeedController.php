@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Support\Api\V1\GroupTextProjection;
 use App\Models\Group;
+use App\Models\GroupFeedItem;
+use App\Models\Message;
 use App\Services\Group\Api\CanonicalGroupQueryService;
 use App\Services\GroupChat\GroupFeedDeltaService;
 use App\Services\GroupChat\GroupFeedService;
@@ -22,13 +25,40 @@ final class GroupFeedController extends Controller
         $validated = $request->validate([
             'after_sequence' => ['nullable', 'integer', 'min:0'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'window' => ['nullable', 'in:latest'],
         ]);
 
-        return response()->json($delta->forGroup(
-            $group,
-            (int) ($validated['after_sequence'] ?? 0),
-            (int) ($validated['limit'] ?? 100),
-        ));
+        $limit = (int) ($validated['limit'] ?? 100);
+        $after = (int) ($validated['after_sequence'] ?? 0);
+        if (($validated['window'] ?? null) === 'latest') {
+            // Select actual rows: missing/deleted sequence numbers must not shorten the window.
+            $sequences = GroupFeedItem::where('group_id', $group->id)
+                ->orderByDesc('sequence')->limit($limit)->pluck('sequence');
+            $after = max(0, (int) ($sequences->min() ?? 1) - 1);
+        }
+        $page = $delta->forGroup($group, $after, $limit);
+        $fileIds = collect($page['events'])->filter(fn (array $event): bool => ($event['payload']['content_type'] ?? null) === 'file')
+            ->pluck('payload.content_id')->filter()->values();
+        $files = $fileIds->isEmpty() ? collect() : Message::query()->where('group_id', $group->id)
+            ->whereIn('id', $fileIds)->get()->keyBy('id');
+        foreach ($page['events'] as &$event) {
+            $file = ($event['payload']['content_type'] ?? null) === 'file' ? $files->get($event['payload']['content_id'] ?? null) : null;
+            if ($file && $file->file_path && $file->lifecycle_state !== 'deleted' && $file->deleted_at === null) {
+                $event['payload']['attachment'] = [
+                    'file_name' => $file->file_name,
+                    'mime_type' => $file->file_type ?: 'application/octet-stream',
+                    'download_path' => '/groups/'.$group->id.'/messages/'.$file->id.'/attachment',
+                ];
+            }
+
+            foreach (['message', 'content'] as $field) {
+                if (isset($event['payload'][$field]) && is_string($event['payload'][$field])) {
+                    $event['payload'][$field] = GroupTextProjection::fromHtml($event['payload'][$field]);
+                }
+            }
+        }
+        unset($event);
+        return response()->json($page);
     }
 
     public function unread(

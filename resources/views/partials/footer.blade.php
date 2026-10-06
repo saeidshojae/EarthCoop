@@ -377,7 +377,7 @@
 
 
 
-                <li><a href="#" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_privacy') }}</a></li>
+                <li><a href="{{ route('privacy') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_privacy') }}</a></li>
 
 
 

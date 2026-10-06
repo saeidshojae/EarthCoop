@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Deployment\DeploymentConsoleService;
+use App\Services\Deployment\VendorPackageInstaller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -11,8 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class DeploymentConsoleController extends Controller
 {
-    public function __construct(private DeploymentConsoleService $console)
-    {
+    public function __construct(
+        private DeploymentConsoleService $console,
+        private VendorPackageInstaller $vendorPackages
+    ) {
     }
 
     public function index(): View
@@ -22,6 +25,7 @@ class DeploymentConsoleController extends Controller
         return view('admin.deployment-console.index', [
             'operations' => $this->console->operations(),
             'flags' => $this->console->flags(),
+            'vendorPackageStatus' => $this->vendorPackages->status(),
         ]);
     }
 

@@ -6,14 +6,14 @@ use Tests\TestCase;
 
 class DocsCenterLinkContractTest extends TestCase
 {
-    public function test_docs_links_use_the_self_hosted_center_and_all_ten_foundational_documents(): void
+    public function test_docs_links_use_stable_production_routes_for_all_governed_documents(): void
     {
         $links = require config_path('docs-links.php');
 
         $this->assertSame('https://docs.earthcoop.ir', $links['base_url']);
-        $this->assertSame('https://docs.earthcoop.ir/', $links['center']['href']);
-        $this->assertSame('https://docs.earthcoop.ir/', $links['foundational_index']['href']);
-        $this->assertSame('https://docs.earthcoop.ir/#/documents/publication-policy', $links['publication_policy']['href']);
+        $this->assertSame('https://docs.earthcoop.ir/home/', $links['center']['href']);
+        $this->assertSame('https://docs.earthcoop.ir/documents/', $links['foundational_index']['href']);
+        $this->assertSame('https://docs.earthcoop.ir/documents/publication-policy/', $links['publication_policy']['href']);
         $this->assertSame('https://github.com/saeidshojae/EarthCoop-docs', $links['github']['href']);
         $this->assertArrayNotHasKey('main', $links);
 
@@ -31,23 +31,23 @@ class DocsCenterLinkContractTest extends TestCase
         ];
 
         $this->assertCount(10, $links['foundational']);
-
         foreach ($expected as $id => $code) {
             $document = collect($links['foundational'])->firstWhere('id', $id);
-
             $this->assertNotNull($document, "Missing foundational document {$id}");
             $this->assertSame($code, $document['code']);
-            $this->assertSame("https://docs.earthcoop.ir/#/documents/{$id}", $document['href']);
+            $this->assertSame("https://docs.earthcoop.ir/documents/{$id}/", $document['href']);
         }
 
         $this->assertCount(1, $links['references']);
-        $econReference = collect($links['references'])->firstWhere('id', 'econ-ref-01-fa-0-1');
-        $this->assertNotNull($econReference, 'Missing ECON-REF-01 reference document');
+        $econReference = collect($links['references'])->firstWhere('id', 'econ-ref-01');
+        $this->assertNotNull($econReference, 'Missing stable ECON-REF-01 reference document');
         $this->assertSame('ECON-REF-01', $econReference['code']);
-        $this->assertSame('https://docs.earthcoop.ir/#/documents/econ-ref-01-fa-0-1', $econReference['href']);
+        $this->assertSame('https://docs.earthcoop.ir/documents/econ-ref-01/', $econReference['href']);
 
         $serialized = json_encode($links, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $this->assertIsString($serialized);
+        $this->assertStringNotContainsString('/#/documents/', $serialized);
+        $this->assertStringNotContainsString('econ-ref-01-fa-0-1', $serialized);
         $this->assertStringNotContainsString('/fa/introduction', $serialized);
         $this->assertStringNotContainsString('/fa/foundational', $serialized);
         $this->assertStringNotContainsString('/00-overview', $serialized);
