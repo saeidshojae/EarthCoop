@@ -17,12 +17,22 @@ final class DateTime extends Component
         private readonly TemporalContextResolver $contexts,
         public readonly DateTimeInterface|string $value,
         public readonly string $style = 'medium',
+        public readonly ?string $timezone = null,
     ) {
     }
 
     public function display(): string
     {
-        return $this->temporal->dateTime($this->value, $this->contexts->defaultContext(), $this->style);
+        $context = $this->contexts->defaultContext();
+        if ($this->timezone !== null && $this->timezone !== '') {
+            $context = $this->contexts->forLocale(
+                $context->locale(),
+                $this->timezone,
+                $context->numberingSystem(),
+            );
+        }
+
+        return $this->temporal->dateTime($this->value, $context, $this->style);
     }
 
     public function machineValue(): string
