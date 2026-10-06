@@ -177,7 +177,12 @@ class ResolveCommunicationRunAudience implements ShouldQueue
         User $user,
         CommunicationRun $run,
     ): ?array {
-        $anchor = ($run->started_at ?? now())->copy();
+        $timezone = trim((string) ($run->rule->schedule?->timezone ?? '')) !== ''
+            ? (string) $run->rule->schedule->timezone
+            : 'UTC';
+        $anchor = ($run->scheduled_for ?? $run->started_at ?? now())
+            ->copy()
+            ->setTimezone($timezone);
         $period = CarbonPeriod::create(
             $anchor->copy()->subDays(7)->startOfDay(),
             $anchor->copy()->subDay()->endOfDay(),
