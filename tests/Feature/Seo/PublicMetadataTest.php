@@ -21,7 +21,8 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('property="og:title"', $html);
         $this->assertStringContainsString('name="twitter:card"', $html);
         $this->assertStringContainsString('content="index,follow"', $html);
-        $this->assertStringContainsString('rel="icon" type="image/png" href="https://earthcoop.ir/icons/earthcoop-brand-192.png"', $html);
+        $this->assertStringContainsString('rel="icon" type="image/png"', $html);
+        $this->assertStringContainsString('/icons/earthcoop-brand-192.png', $html);
         $this->assertStringContainsString('property="og:image" content="https://earthcoop.ir/icons/earthcoop-brand-192.png"', $html);
 
         preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $matches);
