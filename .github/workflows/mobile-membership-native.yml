@@ -32,7 +32,7 @@ jobs:
           echo NB_FORMAT_PATCH_END
       - name: Native payment wire and existing retry checks
         working-directory: apps/mobile
-        run: flutter test --reporter expanded test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart test/core/api/api_client_test.dart test/core/api/retry_policy_test.dart test/features/najm_bahar/najm_bahar_policy_test.dart test/features/najm_bahar/najm_bahar_repository_test.dart
+        run: flutter test --reporter expanded test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart test/features/najm_bahar/najm_bahar_membership_payment_controller_test.dart test/core/api/api_client_test.dart test/core/api/retry_policy_test.dart test/features/najm_bahar/najm_bahar_policy_test.dart test/features/najm_bahar/najm_bahar_repository_test.dart
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
