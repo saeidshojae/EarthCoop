@@ -6,8 +6,10 @@ use App\Models\ContactMessage;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Support\ContactMessageConversionService;
+use App\Services\Support\ContactMessageReplyService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -97,4 +99,35 @@ class ContactMessageBoundaryTest extends TestCase
         $this->assertSame('converted', $message->status);
         $this->assertSame($ticket->id, $message->converted_ticket_id);
     }
+    public function test_external_contact_reply_uses_canonical_communication_center(): void
+    {
+        Queue::fake();
+
+        $message = ContactMessage::query()->create([
+            'name' => 'Guest',
+            'email' => 'guest@example.test',
+            'subject' => 'General enquiry',
+            'message' => 'Could you send me more information?',
+            'status' => 'reviewing',
+        ]);
+
+        $communication = app(ContactMessageReplyService::class)->reply(
+            $message,
+            'Thank you. We will send the requested information.',
+            1,
+        );
+
+        $this->assertSame('contact_message', $communication->source_type);
+        $this->assertSame((string) $message->id, $communication->source_id);
+        $this->assertDatabaseHas('communication_recipients', [
+            'communication_id' => $communication->id,
+            'user_id' => null,
+            'email' => 'guest@example.test',
+        ]);
+
+        $message->refresh();
+        $this->assertSame('replied', $message->status);
+        $this->assertNotNull($message->handled_at);
+    }
+
 }
