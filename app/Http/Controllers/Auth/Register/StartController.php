@@ -149,7 +149,7 @@ class StartController extends Controller
         return view('auth.register', compact('invitationRequired', 'invitationCode'));
     }
 
-    public function processRegister(Request $request)
+    public function processRegister(Request $request, EmailVerificationController $emailVerification)
     {
         if ($request->session()->get('registration_terms_accepted') !== true) {
             return redirect()->route('welcome')->withErrors([
@@ -218,8 +218,8 @@ class StartController extends Controller
             ]);
         }
 
-        // ارسال کد تأیید ایمیل
-        $emailVerification = new EmailVerificationController();
+        // ارسال کد تأیید ایمیل از طریق dependency injection تا وابستگی‌های
+        // Communication Center توسط container به‌درستی resolve شوند.
         $emailVerification->sendVerificationCode($request);
 
         auth()->login($user);
