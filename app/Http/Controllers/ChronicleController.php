@@ -11,6 +11,7 @@ use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Schema;
 
 final class ChronicleController extends Controller
 {
@@ -28,12 +29,14 @@ final class ChronicleController extends Controller
         $gregorianContext = $contexts->forLocale('en', $viewerContext->timezone());
         $epoch = LocalDate::fromCanonical(EarthCoopEpoch::canonicalDate());
 
-        $milestones = ChronicleMilestone::query()
-            ->published()
-            ->orderByDesc('occurred_on')
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
-            ->get()
+        $milestones = (Schema::hasTable('chronicle_milestones')
+            ? ChronicleMilestone::query()
+                ->published()
+                ->orderByDesc('occurred_on')
+                ->orderBy('sort_order')
+                ->orderByDesc('id')
+                ->get()
+            : collect())
             ->map(function (ChronicleMilestone $milestone) use (
                 $temporal,
                 $jalaliContext,
