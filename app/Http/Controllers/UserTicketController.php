@@ -9,6 +9,7 @@ use App\Models\TicketTag;
 use App\Models\KbArticle;
 use App\Services\TicketTriageService;
 use App\Services\TicketSlaService;
+use App\Services\EmailTicketIntegrationService;
 use App\Traits\LogsTicketActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -177,12 +178,8 @@ class UserTicketController extends Controller
         // ثبت فعالیت
         $this->logTicketCreated($ticket);
 
-        // ارسال نوتیفیکیشن
-        try {
-            auth()->user()->notify(new \App\Notifications\TicketCreatedNotification($ticket));
-        } catch (\Exception $e) {
-            \Log::error('Failed to send ticket notification: ' . $e->getMessage());
-        }
+        // ایمیل ایجاد تیکت فقط از مسیر canonical Communication Center صف‌بندی می‌شود.
+        app(EmailTicketIntegrationService::class)->sendTicketCreatedEmail($ticket);
 
         return redirect()->route('user.tickets.show', $ticket->id)
             ->with('success', 'تیکت شما با موفقیت ثبت شد. کد پیگیری: ' . $ticket->tracking_code);
