@@ -224,11 +224,11 @@
 
                                 <td style="padding: 12px; text-align: center; color: #6b7280; font-size: 11px;">
 
-                                    {{ $file->created_at->format('Y/m/d') }}
+                                    <x-temporal.date :value="$file->created_at" />
 
                                     <br>
 
-                                    <small>{{ $file->created_at->diffForHumans() }}</small>
+                                    <small><x-temporal.relative :value="$file->created_at" /></small>
 
                                 </td>
 
