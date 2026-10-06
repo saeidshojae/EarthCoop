@@ -77,11 +77,12 @@ class ContactMessageBoundaryTest extends TestCase
         app(ContactMessageConversionService::class)->convert($message);
     }
 
-    public function test_registered_contact_message_can_be_converted_and_linked_to_member_ticket(): void
+    public function test_authenticated_contact_message_can_be_converted_and_linked_to_member_ticket(): void
     {
         $user = User::factory()->create(['email' => 'member@example.test']);
 
         $message = ContactMessage::query()->create([
+            'user_id' => $user->id,
             'name' => 'Member',
             'email' => 'member@example.test',
             'subject' => 'Account support',
@@ -99,6 +100,23 @@ class ContactMessageBoundaryTest extends TestCase
         $this->assertSame('converted', $message->status);
         $this->assertSame($ticket->id, $message->converted_ticket_id);
     }
+    public function test_guest_cannot_claim_member_email_to_gain_ticket_linkage(): void
+    {
+        User::factory()->create(['email' => 'member-claimed@example.test']);
+
+        $message = ContactMessage::query()->create([
+            'name' => 'Unverified Guest',
+            'email' => 'member-claimed@example.test',
+            'subject' => 'Claimed member message',
+            'message' => 'This public message only claims the member email.',
+            'status' => 'new',
+        ]);
+
+        $this->expectException(DomainException::class);
+
+        app(ContactMessageConversionService::class)->convert($message);
+    }
+
     public function test_external_contact_reply_uses_canonical_communication_center(): void
     {
         Queue::fake();
