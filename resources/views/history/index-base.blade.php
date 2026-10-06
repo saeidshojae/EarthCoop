@@ -682,7 +682,7 @@
 
                             <td>{{ $blog->group->name }}</td>
 
-                            <td>{{ verta($blog->created_at)->format('Y-m-d') }}</td>
+                            <td><x-temporal.date :value="$blog->created_at" style="short" /></td>
 
                         </tr>
 
@@ -766,7 +766,7 @@
 
                             <td>{{ optional($tx->metadata)['reason'] ?? (is_string($tx->metadata) ? $tx->metadata : '-') }}</td>
 
-                            <td>{{ verta($tx->created_at)->format('Y-m-d H:i') }}</td>
+                            <td><x-temporal.date-time :value="$tx->created_at" style="short" /></td>
 
                         </tr>
 
@@ -848,7 +848,7 @@
 
                             <td>{{ $comment->blog->group->name }}</td>
 
-                            <td>{{ verta($comment->created_at)->format('Y-m-d') }}</td>
+                            <td><x-temporal.date :value="$comment->created_at" style="short" /></td>
 
                         </tr>
 
@@ -958,7 +958,7 @@
 
                             <td>{{ $reply->blog->group->name ?? '—' }}</td>
 
-                            <td>{{ verta($reply->created_at)->format('Y-m-d') }}</td>
+                            <td><x-temporal.date :value="$reply->created_at" style="short" /></td>
 
                         </tr>
 
@@ -1064,7 +1064,7 @@
 
                             </td>
 
-                            <td>{{ $reaction->created_at ? verta($reaction->created_at)->format('Y-m-d') : '—' }}</td>
+                            <td>@if($reaction->created_at) <x-temporal.date :value="$reaction->created_at" style="short" /> @else — @endif</td>
 
                         </tr>
 
@@ -1138,7 +1138,7 @@
 
                             <td>{{ $poll->poll->group->name }}</td>
 
-                            <td>{{ verta($poll->created_at)->format('Y-m-d') }}</td>
+                            <td><x-temporal.date :value="$poll->created_at" style="short" /></td>
 
                         </tr>
 
@@ -1204,7 +1204,7 @@
 
                             <td>{{ $election->election->group->name }}</td>
 
-                            <td>{{ verta($election->created_at)->format('Y-m-d') }}</td>
+                            <td><x-temporal.date :value="$election->created_at" style="short" /></td>
 
                         </tr>
 
