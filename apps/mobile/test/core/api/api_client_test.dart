@@ -119,6 +119,34 @@ void main() {
       );
     });
 
+    test('request context can suppress retry for a keyed financial mutation',
+        () async {
+      final adapter = SequenceHttpAdapter([
+        jsonResponse(
+            503, errorData('temporarily_unavailable', retryable: true)),
+        jsonResponse(200, successData({'should_not_run': true})),
+      ]);
+      final client = buildClient(adapter);
+
+      await expectLater(
+        client.post<Object?>(
+          '/najm-bahar/membership-fee/pay',
+          data: const {},
+          context: const RequestContext(
+            idempotencyKey: 'financial-intent-1',
+            allowAutomaticRetry: false,
+          ),
+          decodeData: (json) => json,
+        ),
+        throwsA(isA<ApiFailure>()
+            .having((e) => e.code, 'code', 'temporarily_unavailable')),
+      );
+
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.single.headers['Idempotency-Key'],
+          'financial-intent-1');
+    });
+
     test('retryable false is never automatically retried', () async {
       final adapter = SequenceHttpAdapter([
         jsonResponse(503, errorData('blocked', retryable: false)),
