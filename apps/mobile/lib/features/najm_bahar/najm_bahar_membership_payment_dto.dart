@@ -16,7 +16,9 @@ class MembershipPaymentIntent {
     if (bucket != 'dim' && bucket != 'active') {
       throw ArgumentError.value(bucket, 'bucket');
     }
-    if (key.trim().isEmpty) throw ArgumentError.value(key, 'key');
+    if (key.trim().isEmpty) {
+      throw ArgumentError.value(key, 'key');
+    }
 
     final selected = terms.paymentSources.any((candidate) =>
         candidate.kind == source.kind &&
