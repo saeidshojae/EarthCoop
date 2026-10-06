@@ -185,9 +185,11 @@
     @yield('scripts')
 
     <!-- Najm Hoda Widget -->
-    @if(config('najm-hoda.widget.enabled', true))
-        @include('components.najm-hoda-widget')
-    @endif
+    @auth
+        @if(config('najm-hoda.widget.enabled', true))
+            @include('components.najm-hoda-widget')
+        @endif
+    @endauth
 
     @if(request()->routeIs('home'))
         @include('components.home-shell-polish')
