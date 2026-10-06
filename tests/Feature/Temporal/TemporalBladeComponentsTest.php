@@ -48,6 +48,19 @@ class TemporalBladeComponentsTest extends TestCase
         $this->assertStringContainsString('Oct 1, 2026 13:30', $html);
     }
 
+    public function test_datetime_component_can_render_with_explicit_timezone_without_changing_machine_value(): void
+    {
+        app()->setLocale('en');
+
+        $html = Blade::render(
+            '<x-temporal.date-time :value="$instant" style="medium" timezone="Asia/Tehran" />',
+            ['instant' => new DateTimeImmutable('2026-10-01T13:30:00Z')],
+        );
+
+        $this->assertStringContainsString('datetime="2026-10-01T13:30:00Z"', $html);
+        $this->assertStringContainsString('Oct 1, 2026 17:00', $html);
+    }
+
     public function test_relative_component_renders_persian_relative_text_with_utc_machine_value(): void
     {
         app()->setLocale('fa');
