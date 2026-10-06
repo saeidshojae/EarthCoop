@@ -4,17 +4,26 @@ namespace App\Exports;
 
 use App\Helpers\BaharMoney;
 use App\Modules\NajmBahar\Models\SubAccount;
-use Carbon\Carbon;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 
 class NajmBaharTransactionsExport
 {
     protected $transactions;
     protected $account;
+    private TemporalService $temporal;
+    private TemporalContextResolver $temporalContexts;
 
-    public function __construct($transactions, $account)
-    {
+    public function __construct(
+        $transactions,
+        $account,
+        ?TemporalService $temporal = null,
+        ?TemporalContextResolver $temporalContexts = null,
+    ) {
         $this->transactions = $transactions;
         $this->account = $account;
+        $this->temporal = $temporal ?? app(TemporalService::class);
+        $this->temporalContexts = $temporalContexts ?? app(TemporalContextResolver::class);
     }
 
     public function collection()
@@ -25,11 +34,11 @@ class NajmBaharTransactionsExport
     public function getRows()
     {
         $rows = [$this->getHeadings()];
-        
+
         foreach ($this->transactions as $transaction) {
             $rows[] = $this->mapTransaction($transaction);
         }
-        
+
         return $rows;
     }
 
@@ -52,19 +61,23 @@ class NajmBaharTransactionsExport
     public function mapTransaction($transaction): array
     {
         $isIncoming = $this->account && isset($transaction->to_account_id) && $transaction->to_account_id == $this->account->id;
-        
+
         $fromAccount = $transaction->fromAccount;
         $toAccount = $transaction->toAccount;
-        
+
         $fromAccountName = $this->getAccountLabel($fromAccount, 'from');
         $fromAccountNumber = $fromAccount?->account_number ?? '—';
-        
+
         $toAccountName = $this->getAccountLabel($toAccount, 'to');
         $toAccountNumber = $toAccount?->account_number ?? '—';
 
         return [
             $transaction->tracking_number ?? '—',
-            \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i'),
+            $this->temporal->dateTime(
+                $transaction->created_at,
+                $this->temporalContexts->defaultContext(),
+                'short',
+            ),
             $fromAccountName,
             $fromAccountNumber,
             $toAccountName,
@@ -78,7 +91,7 @@ class NajmBaharTransactionsExport
 
     private function getAccountLabel($account, $type = 'from'): string
     {
-        if (!$account) {
+        if (! $account) {
             return 'نامشخص';
         }
 
@@ -105,4 +118,3 @@ class NajmBaharTransactionsExport
         return $userName;
     }
 }
-

@@ -494,17 +494,7 @@
 
                             <option value="">سال</option>
 
-                            @php
-
-                                use Morilog\Jalali\Jalalian;
-
-                                $currentYear = Jalalian::now()->getYear() - 15;
-
-                                $startYear = $currentYear - 135;
-
-                            @endphp
-
-                            @for ($i = $currentYear; $i >= $startYear; $i--)
+                            @for ($i = $birthYearMax; $i >= $birthYearMin; $i--)
 
                                 <option value="{{ $i }}" {{ old('birth_date.2') == $i ? 'selected' : '' }}>{{ $i }}</option>
 

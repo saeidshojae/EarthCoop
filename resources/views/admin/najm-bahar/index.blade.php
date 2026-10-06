@@ -1798,7 +1798,7 @@
 
 
 
-                                @php
+                                @if($agreement->created_at)
 
 
 
@@ -1808,7 +1808,7 @@
 
 
 
-                                    try {
+                                    <x-temporal.date-time :value="$agreement->created_at" style="short" />
 
 
 
@@ -1818,7 +1818,7 @@
 
 
 
-                                        $date = isset($agreement->created_at) ? \Carbon\Carbon::parse($agreement->created_at) : null;
+                                @else
 
 
 
@@ -1828,7 +1828,7 @@
 
 
 
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
+                                    -
 
 
 
@@ -1838,37 +1838,7 @@
 
 
 
-                                    } catch (\Exception $e) {
-
-
-
-
-
-
-
-
-
-                                        echo '-';
-
-
-
-
-
-
-
-
-
-                                    }
-
-
-
-
-
-
-
-
-
-                                @endphp
+                                @endif
 
 
 

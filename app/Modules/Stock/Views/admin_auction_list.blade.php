@@ -59,7 +59,7 @@
                     <div><div class="summary-label">قیمت پایه (گل)</div><div class="auction-price">{{ $fa($auction->base_price_gol ?? 0) }} گل</div><div class="summary-label">{{ $fa(((int)($auction->base_price_gol ?? 0))/100, 2) }} بهار</div></div>
                 </div>
                 <div class="auction-meta">
-                    <div>تعداد سهام<strong>{{ $fa($auction->shares_count ?? 0) }}</strong></div><div>نوع حراج<strong>{{ $typeLabels[$auction->type] ?? 'نامشخص' }}</strong></div><div>زمان شروع<strong>{{ $auction->start_time ? verta($auction->start_time)->format('Y/m/d H:i') : '—' }}</strong></div><div>زمان پایان<strong>{{ $auction->ends_at ? verta($auction->ends_at)->format('Y/m/d H:i') : '—' }}</strong></div>
+                    <div>تعداد سهام<strong>{{ $fa($auction->shares_count ?? 0) }}</strong></div><div>نوع حراج<strong>{{ $typeLabels[$auction->type] ?? 'نامشخص' }}</strong></div><div>زمان شروع<strong>@if($auction->start_time)<x-temporal.date-time :value="$auction->start_time" style="short" />@else—@endif</strong></div><div>زمان پایان<strong>@if($auction->ends_at)<x-temporal.date-time :value="$auction->ends_at" style="short" />@else—@endif</strong></div>
                 </div>
                 <div class="auction-links"><a href="{{ route('admin.auction.show', $auction) }}">جزئیات</a>@if(in_array($auction->status, ['scheduled']))<a href="{{ route('admin.auction.edit', $auction) }}">ویرایش</a>@endif</div>
             </article>

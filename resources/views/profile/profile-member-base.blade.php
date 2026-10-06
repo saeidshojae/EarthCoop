@@ -4540,7 +4540,7 @@
 
 
 
-                        <td>{{ $user->national_id == null ? '' : verta($user->birth_date)->format('Y-m-d') }}</td>
+                        <td>@if($user->national_id != null && $user->birth_date) <x-temporal.date :value="$user->birth_date" style="short" /> @endif</td>
 
 
 
@@ -5350,7 +5350,7 @@
 
 
 
-                        <td>{{ verta($user->created_at)->format('Y-m-d') }}</td>
+                        <td><x-temporal.date :value="$user->created_at" style="short" /></td>
 
 
 

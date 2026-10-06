@@ -1476,7 +1476,7 @@
 
                         @if($createdAt)
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('Y/m/d H:i') }}
+                            <x-temporal.date-time :value="$createdAt" />
 
                         @else
 
@@ -1538,7 +1538,7 @@
 
                     @if($updatedAt)
 
-                        {{ \Morilog\Jalali\Jalalian::fromCarbon($updatedAt)->format('Y/m/d H:i') }}
+                        <x-temporal.date-time :value="$updatedAt" />
 
                     @else
 
@@ -1600,7 +1600,7 @@
 
                     @if($lastSeen)
 
-                        {{ \Morilog\Jalali\Jalalian::fromCarbon($lastSeen)->format('Y/m/d H:i') }}
+                        <x-temporal.date-time :value="$lastSeen" />
 
                     @else
 
@@ -1652,7 +1652,7 @@
 
                         @if($emailVerifiedAt)
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($emailVerifiedAt)->format('Y/m/d H:i') }}
+                            <x-temporal.date-time :value="$emailVerifiedAt" />
 
                         @else
 
@@ -1710,7 +1710,7 @@
 
                             @if($lastLoginAt)
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($lastLoginAt)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$lastLoginAt" />
 
                             @else
 
@@ -1824,7 +1824,7 @@
 
                                 @if($lastActivity)
 
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($lastActivity)->format('Y/m/d H:i') }}
+                                    <x-temporal.date-time :value="$lastActivity" />
 
                                 @else
 

@@ -1717,7 +1717,7 @@
 
 
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$ticket->created_at" />
 
 
 

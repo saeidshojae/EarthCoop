@@ -8,12 +8,17 @@ use App\Models\User;
 use App\Services\Communication\CommunicationDispatcher;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\ProfileCompletionService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Formatting\DigitNormalizer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Morilog\Jalali\Jalalian;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+use ValueError;
 
 final class CanonicalProfileController extends ProfileController
 {
@@ -52,13 +57,15 @@ final class CanonicalProfileController extends ProfileController
     public function updateGeneral(Request $request)
     {
         if (! (bool) config('location-governance.registration_enabled', false)) {
+            $this->bridgeLocalizedBirthDateToLegacyParts($request);
+
             return parent::updateGeneral($request);
         }
 
         $inputs = $request->validate([
             'first_name' => 'nullable|string|max:50|regex:/^[آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی\\s]+$/u',
             'last_name' => 'nullable|string|max:50|regex:/^[آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی\\s]+$/u',
-            'birth_date' => 'nullable|array|min:3',
+            'birth_date' => 'nullable',
             'gender' => 'nullable|in:male,female',
             'national_id' => 'nullable|string|regex:/^\\d{10}$/|unique:users,national_id,'.Auth::id(),
             'phone' => 'nullable|regex:/^(0)?9\\d{9}$/|unique:users,phone,'.Auth::id(),
@@ -138,12 +145,8 @@ final class CanonicalProfileController extends ProfileController
             $inputs['documents'] = json_encode($existingDocuments, JSON_UNESCAPED_UNICODE);
         }
 
-        if (isset($inputs['birth_date']) && is_array($inputs['birth_date'])) {
-            $inputs['birth_date'] = (new Jalalian(
-                (int) $inputs['birth_date'][2],
-                (int) $inputs['birth_date'][1],
-                (int) $inputs['birth_date'][0],
-            ))->toCarbon();
+        if (array_key_exists('birth_date', $inputs)) {
+            $inputs['birth_date'] = $this->canonicalBirthDate($inputs['birth_date']);
         }
 
         DB::transaction(function () use ($user, $inputs): void {
@@ -203,5 +206,55 @@ final class CanonicalProfileController extends ProfileController
         );
 
         return back()->with('success', 'ایمیل دعوت با موفقیت ارسال شد.');
+    }
+
+    private function canonicalBirthDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $context = app(TemporalContextResolver::class)->forUser(Auth::user());
+
+        try {
+            if (is_array($value)) {
+                if (count($value) < 3 || $value[0] === '' || $value[1] === '' || $value[2] === '') {
+                    throw new InvalidArgumentException('Birth date parts are incomplete.');
+                }
+
+                return app(TemporalService::class)
+                    ->parseDateParts((int) $value[0], (int) $value[1], (int) $value[2], $context)
+                    ->toCanonical();
+            }
+
+            if (is_string($value)) {
+                return app(TemporalService::class)->parseDate(trim($value), $context)->toCanonical();
+            }
+        } catch (InvalidArgumentException|ValueError) {
+            throw ValidationException::withMessages([
+                'birth_date' => __('validation.date', ['attribute' => 'birth_date']),
+            ]);
+        }
+
+        throw ValidationException::withMessages([
+            'birth_date' => __('validation.date', ['attribute' => 'birth_date']),
+        ]);
+    }
+
+    private function bridgeLocalizedBirthDateToLegacyParts(Request $request): void
+    {
+        $value = $request->input('birth_date');
+        if (! is_string($value) || trim($value) === '') {
+            return;
+        }
+
+        $normalized = app(DigitNormalizer::class)->toLatin(trim($value));
+        if (preg_match('/^(\\d{4})[\\/-](\\d{2})[\\/-](\\d{2})$/', $normalized, $parts) !== 1) {
+            return;
+        }
+
+        $request->merge([
+            'birth_date' => [(int) $parts[3], (int) $parts[2], (int) $parts[1]],
+        ]);
     }
 }

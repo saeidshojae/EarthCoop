@@ -228,21 +228,7 @@
 
                             <div class="text-sm text-slate-600 dark:text-slate-400">
 
-                                @php
-
-                                    try {
-
-                                        $date = isset($report->created_at) ? \Carbon\Carbon::parse($report->created_at) : null;
-
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
-
-                                    } catch (\Exception $e) {
-
-                                        echo '-';
-
-                                    }
-
-                                @endphp
+                                <x-temporal.date-time :value="$report->created_at" />
 
                             </div>
 
@@ -354,21 +340,7 @@
 
                                     <div class="text-xs text-slate-500 dark:text-slate-400">
 
-                                        @php
-
-                                            try {
-
-                                                $date = isset($message->created_at) ? \Carbon\Carbon::parse($message->created_at) : null;
-
-                                                echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
-
-                                            } catch (\Exception $e) {
-
-                                                echo '-';
-
-                                            }
-
-                                        @endphp
+                                        <x-temporal.date-time :value="$message->created_at" />
 
                                     </div>
 
@@ -476,21 +448,7 @@
 
                                     <div class="text-xs text-slate-500 dark:text-slate-400">
 
-                                        @php
-
-                                            try {
-
-                                                $date = isset($post->created_at) ? \Carbon\Carbon::parse($post->created_at) : null;
-
-                                                echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
-
-                                            } catch (\Exception $e) {
-
-                                                echo '-';
-
-                                            }
-
-                                        @endphp
+                                        <x-temporal.date-time :value="$post->created_at" />
 
                                     </div>
 
@@ -572,21 +530,7 @@
 
                                     <div class="text-xs text-slate-500 dark:text-slate-400">
 
-                                        @php
-
-                                            try {
-
-                                                $date = isset($poll->created_at) ? \Carbon\Carbon::parse($poll->created_at) : null;
-
-                                                echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
-
-                                            } catch (\Exception $e) {
-
-                                                echo '-';
-
-                                            }
-
-                                        @endphp
+                                        <x-temporal.date-time :value="$poll->created_at" />
 
                                     </div>
 
@@ -978,21 +922,7 @@
 
                         <div class="text-sm text-slate-900 dark:text-white">
 
-                            @php
-
-                                try {
-
-                                    $date = \Carbon\Carbon::parse($report->reviewed_at);
-
-                                    echo \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i');
-
-                                } catch (\Exception $e) {
-
-                                    echo '-';
-
-                                }
-
-                            @endphp
+                            <x-temporal.date-time :value="$report->reviewed_at" />
 
                         </div>
 

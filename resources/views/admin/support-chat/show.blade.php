@@ -290,7 +290,7 @@ use Illuminate\Support\Facades\Storage;
 
                                 <div class="text-xs mt-1 opacity-75">
 
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($message->created_at)->format('Y/m/d H:i') }}
+                                    <x-temporal.date-time :value="$message->created_at" />
 
                                 </div>
 
@@ -590,7 +590,7 @@ use Illuminate\Support\Facades\Storage;
 
                         <span class="text-slate-900 dark:text-white font-medium">
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($chat->created_at)->format('Y/m/d') }}
+                            <x-temporal.date :value="$chat->created_at" />
 
                         </span>
 
@@ -602,7 +602,7 @@ use Illuminate\Support\Facades\Storage;
 
                         <span class="text-slate-900 dark:text-white font-medium">
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($chat->created_at)->format('H:i') }}
+                            <x-temporal.time :value="$chat->created_at" />
 
                         </span>
 
@@ -616,7 +616,7 @@ use Illuminate\Support\Facades\Storage;
 
                             <span class="text-slate-900 dark:text-white font-medium">
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($chat->last_activity_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$chat->last_activity_at" />
 
                             </span>
 
@@ -632,7 +632,7 @@ use Illuminate\Support\Facades\Storage;
 
                             <span class="text-slate-900 dark:text-white font-medium">
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($chat->resolved_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$chat->resolved_at" />
 
                             </span>
 

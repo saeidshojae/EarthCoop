@@ -4707,7 +4707,7 @@
 
 
 
-                                <small class="text-gray-500">{{ verta($request->created_at)->format('Y-m-d H:i') }}</small>
+                                <small class="text-gray-500"><x-temporal.date-time :value="$request->created_at" style="short" /></small>
 
 
 
@@ -5867,7 +5867,7 @@
 
 
 
-                <span class="info-value">{{ verta(Auth::user()->birth_date)->format('Y-m-d') }}</span>
+                <span class="info-value">@if(Auth::user()->birth_date) <x-temporal.date :value="Auth::user()->birth_date" style="short" /> @endif</span>
 
 
 
@@ -6917,7 +6917,7 @@
 
 
 
-                <span class="info-value">{{ verta(Auth::user()->created_at)->format('Y-m-d') }}</span>
+                <span class="info-value"><x-temporal.date :value="Auth::user()->created_at" style="short" /></span>
 
 
 

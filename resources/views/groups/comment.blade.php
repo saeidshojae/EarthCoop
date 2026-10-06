@@ -8998,7 +8998,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            {{ verta($blog->created_at)->format('Y/m/d H:i') }}
+            <x-temporal.date-time :value="$blog->created_at" />
 
 
 

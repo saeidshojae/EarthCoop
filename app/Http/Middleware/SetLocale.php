@@ -5,10 +5,13 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 
 class SetLocale
 {
+    private static ?bool $canPersistUserLocale = null;
+
     /**
      * Handle an incoming request.
      *
@@ -18,40 +21,71 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next)
     {
-        // زبان‌های پشتیبانی شده
         $availableLocales = ['fa', 'en', 'ar'];
-        
-        // دریافت زبان از session یا استفاده از مقدار پیش‌فرض برنامه
-        $locale = Session::get('locale');
+        $user = $request->user() ?? auth()->user();
+        $sessionLocale = Session::get('locale');
 
-        // handle corrupted or non-string locale values gracefully
-        if ($locale && !is_string($locale)) {
+        if ($sessionLocale && ! is_string($sessionLocale)) {
             \Log::warning('Invalid locale value detected', [
-                'type' => gettype($locale),
-                'class' => is_object($locale) ? get_class($locale) : null,
+                'type' => gettype($sessionLocale),
+                'class' => is_object($sessionLocale) ? get_class($sessionLocale) : null,
             ]);
-            $locale = null;
+            $sessionLocale = null;
             Session::forget('locale');
         }
-        
-        // اگر زبان در session نبود، از مقدار پیش‌فرض برنامه استفاده می‌کنیم
-        if (!$locale) {
+
+        $storedLocale = is_string($user?->locale ?? null) ? $user->locale : null;
+        $locale = $sessionLocale ?: $storedLocale ?: config('app.locale');
+
+        if (! is_string($locale) || ! in_array($locale, $availableLocales, true)) {
             $locale = config('app.locale');
         }
-        
-        // اطمینان از اینکه زبان معتبر است
-        if (!$locale || !in_array($locale, $availableLocales, true)) {
-            $locale = config('app.locale');
-        }
-        
-        // تنظیم زبان برنامه
+
         App::setLocale($locale);
-        
-        // تنظیم direction برای استفاده در view ها
+
+        if (
+            is_string($sessionLocale)
+            && in_array($sessionLocale, $availableLocales, true)
+            && $user
+            && $user->locale !== $sessionLocale
+            && $this->canPersistUserLocale()
+        ) {
+            $user->forceFill(['locale' => $sessionLocale])->saveQuietly();
+        }
+
         $direction = in_array($locale, ['fa', 'ar'], true) ? 'rtl' : 'ltr';
         view()->share('currentLocale', $locale);
         view()->share('direction', $direction);
-        
-        return $next($request);
+
+        $response = $next($request);
+
+        if ($request->cookie('earthcoop_locale') !== $locale) {
+            $response->headers->setCookie(cookie(
+                'earthcoop_locale',
+                $locale,
+                525600,
+                '/',
+                null,
+                $request->isSecure(),
+                false,
+                false,
+                'lax',
+            ));
+        }
+
+        return $response;
+    }
+
+    private function canPersistUserLocale(): bool
+    {
+        if (self::$canPersistUserLocale !== null) {
+            return self::$canPersistUserLocale;
+        }
+
+        try {
+            return self::$canPersistUserLocale = Schema::hasColumn('users', 'locale');
+        } catch (\Throwable) {
+            return self::$canPersistUserLocale = false;
+        }
     }
 }

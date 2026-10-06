@@ -4,13 +4,18 @@ namespace App\Listeners;
 
 use App\Events\ElectionStarted;
 use App\Models\GroupUser;
+use App\Models\User;
 use App\Services\NotificationService;
-use Morilog\Jalali\Jalalian;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 
 class SendElectionStartedNotifications
 {
-    public function __construct(private NotificationService $notifications)
-    {
+    public function __construct(
+        private NotificationService $notifications,
+        private TemporalService $temporal,
+        private TemporalContextResolver $temporalContexts,
+    ) {
     }
 
     public function handle(ElectionStarted $event): void
@@ -29,26 +34,41 @@ class SendElectionStartedNotifications
             return;
         }
 
-        $endsAt = Jalalian::fromCarbon($election->ends_at)->format('Y/m/d H:i');
-        
+        $recipients = User::query()->whereIn('id', $recipientIds)->get();
+        $recipientGroups = $recipients->groupBy(function (User $recipient): string {
+            $context = $this->temporalContexts->forRecipient($recipient);
+
+            return implode('|', [
+                $context->locale(),
+                $context->calendar(),
+                $context->timezone(),
+                $context->numberingSystem(),
+            ]);
+        });
+
         $title = 'انتخابات جدید در گروه ' . ($group->name ?? '');
-        $preview = "انتخابات برای انتخاب هیأت مدیره و بازرسان شروع شد. مهلت رای‌گیری تا {$endsAt} است.";
-        
         $url = route('groups.chat', $group->id);
-        $context = [
+        $notificationContext = [
             'group_id' => $group->id,
             'election_id' => $election->id,
             'ends_at' => $election->ends_at->toIso8601String(),
         ];
 
-        $this->notifications->notifyMany(
-            $recipientIds,
-            $title,
-            $preview,
-            $url,
-            'group.election.started',
-            $context
-        );
+        foreach ($recipientGroups as $members) {
+            /** @var \App\Models\User $representative */
+            $representative = $members->first();
+            $temporalContext = $this->temporalContexts->forRecipient($representative);
+            $endsAt = $this->temporal->dateTime($election->ends_at, $temporalContext, 'short');
+            $preview = "انتخابات برای انتخاب هیأت مدیره و بازرسان شروع شد. مهلت رای‌گیری تا {$endsAt} است.";
+
+            $this->notifications->notifyMany(
+                $members->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                $title,
+                $preview,
+                $url,
+                'group.election.started',
+                $notificationContext
+            );
+        }
     }
 }
-

@@ -2098,7 +2098,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
 
 
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($subAccount->created_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$subAccount->created_at" />
 
 
 

@@ -3,26 +3,28 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\Message;
+use App\Models\Poll;
 use App\Models\Report;
 use App\Models\ReportedMessage;
-use App\Models\Message;
-use App\Models\Blog;
-use App\Models\Poll;
 use App\Models\User;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    public function __construct(
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
+    ) {
+    }
+
     public function index(Request $request)
     {
-        // آمار کلی
         $stats = $this->getStatistics();
-        
-        // داده‌ها برای نمودارها
         $chartData = $this->getChartData();
-        
-        // فیلترها
         $filters = [
             'type' => $request->get('type', ''),
             'status' => $request->get('status', ''),
@@ -32,8 +34,6 @@ class ReportController extends Controller
             'reporter' => $request->get('reporter', ''),
             'search' => $request->get('search', ''),
         ];
-
-        // گرفتن گزارشات از هر دو جدول و ترکیب آن‌ها
         $reports = $this->getCombinedReports($request, 25);
 
         return view('admin.reports.index', compact('reports', 'stats', 'chartData', 'filters'));
@@ -41,96 +41,92 @@ class ReportController extends Controller
 
     protected function getCombinedReports(Request $request, $perPage = 25)
     {
-        // گزارشات از جدول جدید
         $newReportsQuery = Report::with(['reporter', 'reviewer', 'group']);
-        
-        // گزارشات از جدول قدیمی
         $oldReportsQuery = ReportedMessage::with(['message.user', 'reporter', 'group']);
 
-        // فیلتر نوع
         if ($request->filled('type')) {
             if ($request->type === 'message') {
                 $newReportsQuery->where('type', 'message');
-                // oldReports همیشه message است
             } else {
                 $newReportsQuery->where('type', $request->type);
-                $oldReportsQuery->whereRaw('1 = 0'); // هیچ نتیجه‌ای نده
+                $oldReportsQuery->whereRaw('1 = 0');
             }
         }
 
-        // فیلتر وضعیت
         if ($request->filled('status')) {
             $newReportsQuery->where('status', $request->status);
             $oldReportsQuery->where('status', $request->status);
         } else {
-            // پیش‌فرض: فقط pending و reviewed
             $newReportsQuery->whereIn('status', ['pending', 'reviewed']);
             $oldReportsQuery->whereIn('status', ['pending', 'reviewed']);
         }
 
-        // فیلتر اولویت
         if ($request->filled('priority')) {
             $newReportsQuery->where('priority', $request->priority);
         }
 
-        // فیلتر تاریخ
+        $context = $this->temporalContexts->defaultContext();
         if ($request->filled('date_from')) {
             try {
-                $dateFrom = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $request->date_from)->toCarbon();
-                $newReportsQuery->whereDate('created_at', '>=', $dateFrom);
-                $oldReportsQuery->whereDate('created_at', '>=', $dateFrom);
-            } catch (\Exception $e) {
-                // ignore invalid date
+                $dateFrom = $this->temporal->startOfDay(
+                    $this->temporal->parseDate((string) $request->input('date_from'), $context),
+                    $context,
+                );
+                $newReportsQuery->where('created_at', '>=', $dateFrom);
+                $oldReportsQuery->where('created_at', '>=', $dateFrom);
+            } catch (\Throwable) {
+                // Keep the historical behavior: an invalid optional filter is ignored.
             }
         }
 
         if ($request->filled('date_to')) {
             try {
-                $dateTo = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $request->date_to)->toCarbon();
-                $newReportsQuery->whereDate('created_at', '<=', $dateTo);
-                $oldReportsQuery->whereDate('created_at', '<=', $dateTo);
-            } catch (\Exception $e) {
-                // ignore invalid date
+                $dateTo = $this->temporal->endOfDay(
+                    $this->temporal->parseDate((string) $request->input('date_to'), $context),
+                    $context,
+                );
+                $newReportsQuery->where('created_at', '<=', $dateTo);
+                $oldReportsQuery->where('created_at', '<=', $dateTo);
+            } catch (\Throwable) {
+                // Keep the historical behavior: an invalid optional filter is ignored.
             }
         }
 
-        // فیلتر گزارش‌دهنده
         if ($request->filled('reporter')) {
             $newReportsQuery->where('reported_by', $request->reporter);
             $oldReportsQuery->where('reported_by', $request->reporter);
         }
 
-        // جستجو
         if ($request->filled('search')) {
             $search = $request->search;
-            $newReportsQuery->where(function($q) use ($search) {
+            $newReportsQuery->where(function ($q) use ($search) {
                 $q->where('reason', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('reporter', function($q) use ($search) {
-                      $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('reporter', function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
-            
-            $oldReportsQuery->where(function($q) use ($search) {
+
+            $oldReportsQuery->where(function ($q) use ($search) {
                 $q->where('reason', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('reporter', function($q) use ($search) {
-                      $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('reporter', function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
-        // گرفتن داده‌ها
-        $newReports = $newReportsQuery->orderBy('created_at', 'desc')->get()->map(function($report) {
+        $newReports = $newReportsQuery->orderBy('created_at', 'desc')->get()->map(function ($report) {
             $report->source = 'new';
+
             return $report;
         });
 
-        $oldReports = $oldReportsQuery->orderBy('created_at', 'desc')->get()->map(function($report) {
+        $oldReports = $oldReportsQuery->orderBy('created_at', 'desc')->get()->map(function ($report) {
             $report->source = 'old';
             $report->type = 'message';
             $report->reported_item_id = $report->message_id;
@@ -139,13 +135,11 @@ class ReportController extends Controller
             $report->reviewed_at = null;
             $report->report_count = 1;
             $report->metadata = null;
+
             return $report;
         });
 
-        // ترکیب و مرتب‌سازی
         $allReports = $newReports->concat($oldReports)->sortByDesc('created_at')->values();
-
-        // Pagination دستی
         $currentPage = $request->get('page', 1);
         $offset = ($currentPage - 1) * $perPage;
         $items = $allReports->slice($offset, $perPage)->values();
@@ -156,13 +150,12 @@ class ReportController extends Controller
             $total,
             $perPage,
             $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
+            ['path' => $request->url(), 'query' => $request->query()],
         );
     }
 
     protected function getStatistics()
     {
-        // آمار از جدول جدید - استفاده از selectRaw با backtick برای aliasها
         $newStats = Report::selectRaw("
             COUNT(*) as `total`,
             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as `pending`,
@@ -175,7 +168,6 @@ class ReportController extends Controller
             SUM(CASE WHEN priority = 'high' OR priority = 'critical' THEN 1 ELSE 0 END) as `high_priority`
         ")->first();
 
-        // آمار از جدول قدیمی
         $oldStats = ReportedMessage::selectRaw("
             COUNT(*) as `total`,
             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as `pending`,
@@ -189,48 +181,52 @@ class ReportController extends Controller
         ")->first();
 
         return [
-            'total' => (int)($newStats->total ?? 0) + (int)($oldStats->total ?? 0),
-            'pending' => (int)($newStats->pending ?? 0) + (int)($oldStats->pending ?? 0),
-            'resolved' => (int)($newStats->resolved ?? 0) + (int)($oldStats->resolved ?? 0),
-            'rejected' => (int)($newStats->rejected ?? 0) + (int)($oldStats->rejected ?? 0),
-            'messages' => (int)($newStats->messages ?? 0) + (int)($oldStats->messages ?? 0),
-            'posts' => (int)($newStats->posts ?? 0),
-            'polls' => (int)($newStats->polls ?? 0),
-            'users' => (int)($newStats->users ?? 0),
-            'high_priority' => (int)($newStats->high_priority ?? 0),
+            'total' => (int) ($newStats->total ?? 0) + (int) ($oldStats->total ?? 0),
+            'pending' => (int) ($newStats->pending ?? 0) + (int) ($oldStats->pending ?? 0),
+            'resolved' => (int) ($newStats->resolved ?? 0) + (int) ($oldStats->resolved ?? 0),
+            'rejected' => (int) ($newStats->rejected ?? 0) + (int) ($oldStats->rejected ?? 0),
+            'messages' => (int) ($newStats->messages ?? 0) + (int) ($oldStats->messages ?? 0),
+            'posts' => (int) ($newStats->posts ?? 0),
+            'polls' => (int) ($newStats->polls ?? 0),
+            'users' => (int) ($newStats->users ?? 0),
+            'high_priority' => (int) ($newStats->high_priority ?? 0),
         ];
     }
 
     protected function getChartData()
     {
-        // داده‌های 12 ماه گذشته برای نمودار
         $labels = [];
         $data = [];
+        $context = $this->temporalContexts->defaultContext();
 
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
             $monthStart = $date->copy()->startOfMonth();
             $monthEnd = $date->copy()->endOfMonth();
 
-            $labels[] = \Morilog\Jalali\Jalalian::fromCarbon($monthStart)->format('Y/m');
+            // The aggregation bucket is a canonical Gregorian month. A localized
+            // range label is truthful for every calendar, unlike relabeling that
+            // bucket as though it were a whole Jalali month.
+            $labels[] = $this->temporal->date($monthStart, $context, 'short')
+                . ' – '
+                . $this->temporal->date($monthEnd, $context, 'short');
 
             $count = Report::whereBetween('created_at', [$monthStart, $monthEnd])->count()
-                    + ReportedMessage::whereBetween('created_at', [$monthStart, $monthEnd])->count();
+                + ReportedMessage::whereBetween('created_at', [$monthStart, $monthEnd])->count();
             $data[] = $count;
         }
 
         return [
             'labels' => $labels,
-            'data' => $data
+            'data' => $data,
         ];
     }
 
     public function show($id, Request $request)
     {
-        // بررسی اینکه گزارش از کدام جدول است
         $report = Report::with(['reporter', 'reviewer', 'group', 'reportedItem'])->find($id);
-        
-        if (!$report) {
+
+        if (! $report) {
             $report = ReportedMessage::with(['message.user', 'reporter', 'group'])->find($id);
             if ($report) {
                 $report->source = 'old';
@@ -240,11 +236,10 @@ class ReportController extends Controller
             $report->source = 'new';
         }
 
-        if (!$report) {
+        if (! $report) {
             abort(404);
         }
 
-        // لود آیتم گزارش شده
         $reportedItem = $this->loadReportedItem($report);
 
         return view('admin.reports.show', compact('report', 'reportedItem'));
@@ -256,27 +251,22 @@ class ReportController extends Controller
             return $report->message ?? null;
         }
 
-        switch ($report->type) {
-            case 'message':
-                return Message::with('user', 'group')->find($report->reported_item_id);
-            case 'post':
-                return Blog::with('user', 'group', 'category')->find($report->reported_item_id);
-            case 'poll':
-                return Poll::with('creator', 'group', 'options')->find($report->reported_item_id);
-            case 'user':
-                return User::find($report->reported_item_id);
-            default:
-                return null;
-        }
+        return match ($report->type) {
+            'message' => Message::with('user', 'group')->find($report->reported_item_id),
+            'post' => Blog::with('user', 'group', 'category')->find($report->reported_item_id),
+            'poll' => Poll::with('creator', 'group', 'options')->find($report->reported_item_id),
+            'user' => User::find($report->reported_item_id),
+            default => null,
+        };
     }
 
     public function update(Request $request, $id)
     {
         $report = Report::find($id);
-        
-        if (!$report) {
+
+        if (! $report) {
             $report = ReportedMessage::find($id);
-            if (!$report) {
+            if (! $report) {
                 return response()->json(['status' => 'error', 'message' => 'گزارش یافت نشد'], 404);
             }
         }
@@ -288,16 +278,13 @@ class ReportController extends Controller
         ]);
 
         $report->status = $request->status;
-        
         if ($request->has('admin_note')) {
             $report->admin_note = $request->admin_note;
         }
-        
         if ($request->has('priority') && isset($report->priority)) {
             $report->priority = $request->priority;
         }
 
-        // اگر بررسی شده، اطلاعات reviewer را ذخیره کن
         if (in_array($request->status, ['reviewed', 'resolved', 'rejected']) && auth()->check()) {
             if (isset($report->reviewed_by)) {
                 $report->reviewed_by = auth()->id();
@@ -309,7 +296,7 @@ class ReportController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'گزارش با موفقیت به‌روزرسانی شد'
+            'message' => 'گزارش با موفقیت به‌روزرسانی شد',
         ]);
     }
 
@@ -327,59 +314,59 @@ class ReportController extends Controller
 
         foreach ($reportIds as $reportId) {
             $report = Report::find($reportId);
-            
-            if (!$report) {
+            if (! $report) {
                 $report = ReportedMessage::find($reportId);
             }
 
-            if ($report) {
-                switch ($action) {
-                    case 'approve':
-                        $report->status = 'resolved';
-                        if (isset($report->reviewed_by)) {
-                            $report->reviewed_by = auth()->id();
-                            $report->reviewed_at = now();
-                        }
-                        $report->save();
-                        $count++;
-                        break;
-                    case 'reject':
-                        $report->status = 'rejected';
-                        if (isset($report->reviewed_by)) {
-                            $report->reviewed_by = auth()->id();
-                            $report->reviewed_at = now();
-                        }
-                        $report->save();
-                        $count++;
-                        break;
-                    case 'archive':
-                        $report->status = 'archived';
-                        $report->save();
-                        $count++;
-                        break;
-                    case 'delete':
-                        $report->delete();
-                        $count++;
-                        break;
-                }
+            if (! $report) {
+                continue;
+            }
+
+            switch ($action) {
+                case 'approve':
+                    $report->status = 'resolved';
+                    if (isset($report->reviewed_by)) {
+                        $report->reviewed_by = auth()->id();
+                        $report->reviewed_at = now();
+                    }
+                    $report->save();
+                    $count++;
+                    break;
+                case 'reject':
+                    $report->status = 'rejected';
+                    if (isset($report->reviewed_by)) {
+                        $report->reviewed_by = auth()->id();
+                        $report->reviewed_at = now();
+                    }
+                    $report->save();
+                    $count++;
+                    break;
+                case 'archive':
+                    $report->status = 'archived';
+                    $report->save();
+                    $count++;
+                    break;
+                case 'delete':
+                    $report->delete();
+                    $count++;
+                    break;
             }
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => "عملیات با موفقیت روی {$count} گزارش انجام شد"
+            'message' => "عملیات با موفقیت روی {$count} گزارش انجام شد",
         ]);
     }
 
     public function destroy($id)
     {
         $report = Report::find($id);
-        
-        if (!$report) {
+        if (! $report) {
             $report = ReportedMessage::find($id);
         }
 
-        if (!$report) {
+        if (! $report) {
             return response()->json(['status' => 'error', 'message' => 'گزارش یافت نشد'], 404);
         }
 
@@ -387,8 +374,7 @@ class ReportController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'گزارش با موفقیت حذف شد'
+            'message' => 'گزارش با موفقیت حذف شد',
         ]);
     }
 }
-

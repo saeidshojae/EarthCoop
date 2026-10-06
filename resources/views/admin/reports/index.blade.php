@@ -3868,77 +3868,7 @@
 
 
 
-                                @php
-
-
-
-
-
-
-
-
-
-                                    try {
-
-
-
-
-
-
-
-
-
-                                        $date = isset($report->created_at) ? \Carbon\Carbon::parse($report->created_at) : null;
-
-
-
-
-
-
-
-
-
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
-
-
-
-
-
-
-
-
-
-                                    } catch (\Exception $e) {
-
-
-
-
-
-
-
-
-
-                                        echo '-';
-
-
-
-
-
-
-
-
-
-                                    }
-
-
-
-
-
-
-
-
-
-                                @endphp
+                                <x-temporal.date-time :value="$report->created_at" />
 
 
 

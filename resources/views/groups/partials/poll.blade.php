@@ -26,6 +26,8 @@
 
     $totalVotes = (int) ($pollTotals[$item->id] ?? 0);
     $optionVotes = $pollOptionVotes[$item->id] ?? [];
+    $temporal = app(\App\Temporal\Contracts\TemporalService::class);
+    $temporalContext = app(\App\Temporal\Context\TemporalContextResolver::class)->defaultContext();
 @endphp
 
 <div class="poll-wrapper {{ $isOwner ? 'poll-wrapper--self' : '' }}" id="poll-{{ $item->id }}"
@@ -36,9 +38,9 @@
             <div class="poll-card__context">
                 <span class="poll-card__badge">{{ $contentLabel }}</span>
                 <span class="poll-card__meta">
-                    <i class="far fa-calendar"></i> {{ verta($item->created_at)->format('Y/m/d') }}
+                    <i class="far fa-calendar"></i> <x-temporal.date :value="$item->created_at" style="short" />
                     <span class="poll-card__dot"></span>
-                    <i class="far fa-clock"></i> {{ verta($item->expires_at)->formatDifference() }}
+                    <i class="far fa-clock"></i> <x-temporal.relative :value="$item->expires_at" />
                     @if($isSpecialized)
                         <span class="poll-card__dot"></span>
                         <i class="fas fa-diagram-project"></i> {{ optional($item->skill)->name ?? 'بدون دسته' }}
@@ -140,9 +142,9 @@
         </div>
 
         <footer class="poll-card__footer content-meta-line">
-            <span class="content-meta-time">{{ verta($item->created_at)->format('H:i') }}</span>
+            <span class="content-meta-time"><x-temporal.time :value="$item->created_at" /></span>
             @if($item->edited_at)
-            <span class="content-edit-status" title="ویرایش شده در {{ verta($item->edited_at)->format('Y/m/d H:i:s') }}">(ویرایش شده)</span>
+            <span class="content-edit-status" title="ویرایش شده در {{ $temporal->dateTime($item->edited_at, $temporalContext, 'long') }}">(ویرایش شده)</span>
             @endif
             <span class="poll-card__total content-reactions-slot">تعداد رأی: {{ $totalVotes }}</span>
             <span class="poll-card__status">

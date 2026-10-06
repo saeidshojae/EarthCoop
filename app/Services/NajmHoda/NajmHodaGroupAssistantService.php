@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Services\NajmHoda\Runtime\GroupActionExecutor;
 use App\Services\NajmHoda\Runtime\NajmHodaPolicyGate;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
+use App\Temporal\Contracts\TemporalService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,8 @@ class NajmHodaGroupAssistantService
     public function __construct(
         protected NajmHodaPolicyGate $policyGate,
         protected GroupActionExecutor $groupActionExecutor,
-        protected RuntimeEventBus $runtimeEventBus
+        protected RuntimeEventBus $runtimeEventBus,
+        protected TemporalService $temporal
     ) {
     }
 
@@ -1481,7 +1483,7 @@ class NajmHodaGroupAssistantService
     protected function buildAutoPostDraft(Group $group, string $prompt): array
     {
         $groupName = trim((string) ($group->name ?? 'گروه'));
-        $today = verta(now())->format('Y/m/d');
+        $today = $this->temporal->date(now(), style: 'short');
 
         $title = "شروع هماهنگ همکاری در {$groupName}";
         $content = "سلام به اعضای {$groupName}\n\n"

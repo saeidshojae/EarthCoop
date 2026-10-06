@@ -5,13 +5,19 @@ namespace App\Modules\Stock\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Holding;
-use Carbon\Carbon;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Morilog\Jalali\Jalalian;
 
 class StockReportController extends Controller
 {
+    public function __construct(
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
+    ) {
+    }
+
     public function auctionPerformance(Request $request)
     {
         [$dateFrom, $dateTo] = $this->dateRange($request);
@@ -105,8 +111,9 @@ class StockReportController extends Controller
     {
         [$dateFrom, $dateTo] = $this->dateRange($request);
         $auctions = Auction::whereBetween('start_time', [$dateFrom, $dateTo])->with(['bids', 'stock'])->get();
+        $context = $this->temporalContexts->defaultContext();
 
-        return response()->stream(function () use ($auctions) {
+        return response()->stream(function () use ($auctions, $context) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($file, [
@@ -129,8 +136,8 @@ class StockReportController extends Controller
                     $canonicalBids->max('price_gol') ?? 0,
                     round((float) ($canonicalBids->avg('price_gol') ?? 0), 2),
                     $bids->sum('quantity'),
-                    $auction->start_time ? Jalalian::fromCarbon($auction->start_time)->format('Y/m/d H:i') : '',
-                    $auction->ends_at ? Jalalian::fromCarbon($auction->ends_at)->format('Y/m/d H:i') : '',
+                    $auction->start_time ? $this->temporal->dateTime($auction->start_time, $context, 'short') : '',
+                    $auction->ends_at ? $this->temporal->dateTime($auction->ends_at, $context, 'short') : '',
                 ]);
             }
             fclose($file);
@@ -184,8 +191,9 @@ class StockReportController extends Controller
             ->whereIn('status', ['settled', 'completed'])
             ->with('bids')
             ->get();
+        $context = $this->temporalContexts->defaultContext();
 
-        return response()->stream(function () use ($auctions) {
+        return response()->stream(function () use ($auctions, $context) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($file, [
@@ -204,7 +212,7 @@ class StockReportController extends Controller
                     $revenueGol / 100,
                     $wonBids->count(),
                     round((float) ($pricedWonBids->avg('price_gol') ?? 0), 2),
-                    $auction->start_time ? Jalalian::fromCarbon($auction->start_time)->format('Y/m/d') : '',
+                    $auction->start_time ? $this->temporal->date($auction->start_time, $context, 'short') : '',
                 ]);
             }
             fclose($file);
@@ -213,23 +221,15 @@ class StockReportController extends Controller
 
     private function dateRange(Request $request): array
     {
-        $dateFrom = $request->input('date_from')
-            ? $this->parseDate($request->input('date_from'), false)
+        $context = $this->temporalContexts->defaultContext();
+        $dateFrom = $request->filled('date_from')
+            ? $this->temporal->startOfDay($this->temporal->parseDate((string) $request->input('date_from'), $context), $context)
             : now()->subMonths(6);
-        $dateTo = $request->input('date_to')
-            ? $this->parseDate($request->input('date_to'), true)
+        $dateTo = $request->filled('date_to')
+            ? $this->temporal->endOfDay($this->temporal->parseDate((string) $request->input('date_to'), $context), $context)
             : now();
 
         return [$dateFrom, $dateTo];
-    }
-
-    private function parseDate(string $value, bool $endOfDay): Carbon
-    {
-        $date = str_contains($value, '/')
-            ? Jalalian::fromFormat('Y/m/d', $value)->toCarbon()
-            : Carbon::parse($value);
-
-        return $endOfDay ? $date->endOfDay() : $date;
     }
 
     private function bidTotalGol($bid): int
@@ -258,7 +258,7 @@ class StockReportController extends Controller
     {
         return [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $prefix . '_' . date('Y-m-d_H-i-s') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="' . $prefix . '_' . gmdate('Y-m-d_H-i-s') . '.csv"',
         ];
     }
 }

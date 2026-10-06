@@ -496,7 +496,7 @@
 
                                 @if($chat->last_activity_at)
 
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($chat->last_activity_at)->format('Y/m/d H:i') }}
+                                    <x-temporal.date-time :value="$chat->last_activity_at" />
 
                                 @else
 

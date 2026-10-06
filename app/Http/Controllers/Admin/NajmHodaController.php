@@ -28,6 +28,8 @@ use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaContinuousEvaluationHarnessService;
 use App\Services\NajmHoda\Runtime\NajmHodaOperationalAutonomyActivationService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use App\Services\NajmHoda\Runtime\NajmHodaPhaseSixSignoffService;
 use App\Services\NajmHoda\Runtime\NajmHodaShadowLiveRolloutService;
 use App\Models\Conversation;
@@ -58,6 +60,8 @@ class NajmHodaController extends Controller
     protected BackupManagerService $backupManager;
     protected NajmHodaEntryPolicy $entryPolicy;
     protected NajmHodaExecutionService $executionService;
+    protected TemporalService $temporal;
+    protected TemporalContextResolver $temporalContexts;
     
     public function __construct()
     {
@@ -69,6 +73,8 @@ class NajmHodaController extends Controller
         $this->backupManager = app(BackupManagerService::class);
         $this->entryPolicy = app(NajmHodaEntryPolicy::class);
         $this->executionService = app(NajmHodaExecutionService::class);
+        $this->temporal = app(TemporalService::class);
+        $this->temporalContexts = app(TemporalContextResolver::class);
     }
     
     /**
@@ -992,11 +998,18 @@ class NajmHodaController extends Controller
             'backup_retention_days' => config('najm-hoda.auto_fixer.backup_retention_days', 30),
         ];
 
+        $backupStats = $this->backupManager->getStatistics();
+        $oldestBackup = $backupStats['oldest_backup'] ?? null;
+        $context = $this->temporalContexts->forUser(request()->user());
+
         $stats = [
             'total_fixes' => $this->fixer->getLogs(9999) ? count($this->fixer->getLogs(9999)) : 0,
-            'total_backups' => $this->backupManager->getStatistics()['total_backups'],
-            'total_size_mb' => $this->backupManager->getStatistics()['total_size_mb'],
-            'oldest_backup' => $this->backupManager->getStatistics()['oldest_backup'],
+            'total_backups' => $backupStats['total_backups'],
+            'total_size_mb' => $backupStats['total_size_mb'],
+            'oldest_backup' => $oldestBackup,
+            'oldest_backup_label' => $oldestBackup
+                ? $this->temporal->date($oldestBackup, $context, 'short')
+                : null,
         ];
 
         return response()->json([

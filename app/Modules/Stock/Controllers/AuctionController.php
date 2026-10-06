@@ -3,11 +3,16 @@ namespace App\Modules\Stock\Controllers;
 
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 class AuctionController extends Controller
 {
+    public function __construct(private readonly TemporalService $temporal)
+    {
+    }
+
     public function index()
     {
         $auctions = Auction::orderByDesc('id')->get();
@@ -27,7 +32,7 @@ class AuctionController extends Controller
             $visible = $field . '_visible';
             if ($request->filled($visible) && !$request->filled($field)) {
                 try {
-                    $dt = \Morilog\Jalali\CalendarUtils::createCarbonFromFormat('Y/m/d H:i', $request->input($visible));
+                    $dt = $this->temporal->parseDateTime((string) $request->input($visible));
                     $request->merge([$field => $dt->format('Y-m-d H:i:s')]);
                 } catch (\Exception $e) {
                 }
@@ -35,14 +40,14 @@ class AuctionController extends Controller
         }
         if ($request->filled('start_time')) {
             try {
-                $greg = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $request->input('start_time'))->toCarbon();
+                $greg = $this->temporal->parseDateTime((string) $request->input('start_time'));
                 $request->merge(['start_time' => $greg->format('Y-m-d H:i:s')]);
             } catch (\Exception $e) {
             }
         }
         if ($request->filled('end_time')) {
             try {
-                $greg = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $request->input('end_time'))->toCarbon();
+                $greg = $this->temporal->parseDateTime((string) $request->input('end_time'));
                 $request->merge(['end_time' => $greg->format('Y-m-d H:i:s')]);
             } catch (\Exception $e) {
             }
@@ -190,8 +195,8 @@ class AuctionController extends Controller
             $df = $request->input('date_from');
             if (strpos($df, '/') !== false) {
                 try {
-                    $g = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $df)->toCarbon();
-                    $df = $g->format('Y-m-d') . ' 00:00:00';
+                    $g = $this->temporal->startOfDay($this->temporal->parseDate($df));
+                    $df = $g->format('Y-m-d H:i:s');
                 } catch (\Exception $e) {
                 }
             } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $df)) {
@@ -203,8 +208,8 @@ class AuctionController extends Controller
             $dt = $request->input('date_to');
             if (strpos($dt, '/') !== false) {
                 try {
-                    $g = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $dt)->toCarbon();
-                    $dt = $g->format('Y-m-d') . ' 23:59:59';
+                    $g = $this->temporal->endOfDay($this->temporal->parseDate($dt));
+                    $dt = $g->format('Y-m-d H:i:s');
                 } catch (\Exception $e) {
                 }
             } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt)) {
@@ -277,7 +282,7 @@ class AuctionController extends Controller
         $counts = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $monthLabel = \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m');
+            $monthLabel = substr($this->temporal->date($date, style: 'short'), 0, 7);
             $monthAuctions = $auctions->filter(fn($auction) => $auction->start_time && $auction->start_time->format('Y-m') === $date->format('Y-m'));
             $monthVolume = $monthAuctions->sum(fn($a) => $a->bids->sum('quantity'));
             $monthPrices = $monthAuctions->flatMap(fn($auction) => $auction->bids->pluck('price')->filter());
@@ -396,7 +401,7 @@ class AuctionController extends Controller
             $visible = $field . '_visible';
             if ($request->filled($visible) && !$request->filled($field)) {
                 try {
-                    $dt = \Morilog\Jalali\CalendarUtils::createCarbonFromFormat('Y/m/d H:i', $request->input($visible));
+                    $dt = $this->temporal->parseDateTime((string) $request->input($visible));
                     $request->merge([$field => $dt->format('Y-m-d H:i:s')]);
                 } catch (\Exception $e) {
                 }
@@ -460,7 +465,7 @@ class AuctionController extends Controller
             $notificationService->notifyMany(
                 $users,
                 'حراج جدید شروع شد',
-                "حراج #{$auction->id} شروع شد. فرصت پیشنهاد دادن تا " . \Morilog\Jalali\Jalalian::fromCarbon($auction->ends_at)->format('Y/m/d H:i') . ' است.',
+                "حراج #{$auction->id} شروع شد. فرصت پیشنهاد دادن تا " . $this->temporal->dateTime($auction->ends_at, style: 'short') . ' است.',
                 route('auction.show', $auction),
                 'success',
                 ['auction_id' => $auction->id]
@@ -556,8 +561,8 @@ class AuctionController extends Controller
                 $auction->shares_count,
                 $auction->base_price,
                 $auction->status,
-                $auction->start_time ? verta($auction->start_time)->format('Y/m/d H:i') : '',
-                $auction->ends_at ? verta($auction->ends_at)->format('Y/m/d H:i') : '',
+                $auction->start_time ? $this->temporal->dateTime($auction->start_time, style: 'short') : '',
+                $auction->ends_at ? $this->temporal->dateTime($auction->ends_at, style: 'short') : '',
             ]);
             fputcsv($handle, []);
             fputcsv($handle, ['BID_ID', 'USER_ID', 'PRICE', 'QUANTITY', 'STATUS', 'CREATED_AT']);
@@ -576,7 +581,7 @@ class AuctionController extends Controller
                     $b->price,
                     $b->quantity,
                     $b->status,
-                    $b->created_at ? verta($b->created_at)->format('Y/m/d H:i') : '',
+                    $b->created_at ? $this->temporal->dateTime($b->created_at, style: 'short') : '',
                 ]);
             }
             fclose($handle);

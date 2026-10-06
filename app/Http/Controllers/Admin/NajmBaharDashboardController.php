@@ -13,6 +13,9 @@ use App\Models\AdminActionLog;
 use App\Models\Setting;
 use App\Models\User;
 use App\Helpers\BaharMoney;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\ValueObjects\LocalDate;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,11 +24,18 @@ class NajmBaharDashboardController extends Controller
 {
     private const DEFAULT_USER_THRESHOLD = 1111111;
 
+    public function __construct(
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
+    ) {
+    }
+
     /**
      * نمایش Dashboard ادمین
      */
-    public function index()
+    public function index(Request $request)
     {
+        $context = $this->temporalContexts->forUser($request->user());
         $settings = Setting::firstNajmBaharSettings();
         $userThreshold = (int) ($settings->najm_bahar_user_threshold ?? self::DEFAULT_USER_THRESHOLD);
         $initialAmount = NajmBaharConstitution::initialMembershipGol();
@@ -74,6 +84,14 @@ class NajmBaharDashboardController extends Controller
             ->groupBy('date')
             ->orderBy('date')
             ->get();
+
+        $dailyTransactions->each(function ($item) use ($context) {
+            $item->date_label = $this->temporal->date(
+                LocalDate::fromCanonical((string) $item->date),
+                $context,
+                'month-day',
+            );
+        });
 
         // تراکنش‌های اخیر
         $recentTransactions = Transaction::with(['fromAccount', 'toAccount'])

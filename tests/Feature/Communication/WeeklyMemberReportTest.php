@@ -24,6 +24,8 @@ final class WeeklyMemberReportTest extends TestCase
             'first_name' => 'سعید',
             'last_name' => 'آزمایشی',
             'is_system' => false,
+            'locale' => 'fa',
+            'timezone' => 'UTC',
         ]);
 
         $activeGroup = Group::query()->create(['name' => 'گروه فعال']);
@@ -133,13 +135,30 @@ final class WeeklyMemberReportTest extends TestCase
             'open_polls_count',
             'unread_notifications_count',
         ], array_keys($context));
-        $this->assertSame('2026-09-22', $context['period_start']);
-        $this->assertSame('2026-09-28', $context['period_end']);
+        $this->assertSame('۱۴۰۵/۰۶/۳۱', $context['period_start']);
+        $this->assertSame('۱۴۰۵/۰۷/۰۶', $context['period_end']);
         $this->assertSame('سعید آزمایشی', $context['display_name']);
         $this->assertSame(1, $context['groups_count']);
         $this->assertSame(1, $context['open_elections_count']);
         $this->assertSame(1, $context['open_polls_count']);
         $this->assertSame(1, $context['unread_notifications_count']);
+    }
+
+    public function test_period_uses_recipient_gregorian_calendar_for_english_user(): void
+    {
+        $user = User::factory()->create([
+            'is_system' => false,
+            'locale' => 'en',
+            'timezone' => 'UTC',
+        ]);
+
+        $context = app(WeeklyMemberReportContextBuilder::class)->build(
+            $user,
+            CarbonPeriod::create('2026-09-22', '2026-09-28'),
+        );
+
+        $this->assertSame('2026-09-22', $context['period_start']);
+        $this->assertSame('2026-09-28', $context['period_end']);
     }
 
     public function test_member_context_is_zero_safe_for_user_without_activity(): void

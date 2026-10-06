@@ -1047,7 +1047,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                    <span>تاریخ ایجاد: {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('Y/m/d H:i') }}</span>
+                    <span>تاریخ ایجاد: <x-temporal.date-time :value="$ticket->created_at" /></span>
 
 
 
@@ -1307,7 +1307,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                                            {{ \Morilog\Jalali\Jalalian::fromCarbon($comment->created_at)->format('Y/m/d H:i') }}
+                                            <x-temporal.date-time :value="$comment->created_at" />
 
 
 
@@ -2507,7 +2507,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                            {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->created_at)->format('Y/m/d') }}
+                            <x-temporal.date :value="$ticket->created_at" />
 
 
 
@@ -2887,7 +2887,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($ticket->sla_deadline)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$ticket->sla_deadline" />
 
 
 
@@ -3217,7 +3217,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                                        {{ \Morilog\Jalali\Jalalian::fromCarbon($activity->created_at)->format('Y/m/d H:i') }}
+                                        <x-temporal.date-time :value="$activity->created_at" />
 
 
 

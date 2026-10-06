@@ -1237,7 +1237,7 @@
 
 
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($message->created_at)->format('H:i') }}
+                                <x-temporal.time :value="$message->created_at" />
 
 
 

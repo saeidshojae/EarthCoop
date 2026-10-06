@@ -3648,7 +3648,7 @@
 
                 @if($hasAcceptedAgreement && auth()->user()->najm_bahar_agreement_accepted_at)
 
-                    تاریخ موافقت شما با توافقنامه: <strong>{{ verta(auth()->user()->najm_bahar_agreement_accepted_at)->format('Y/m/d') }}</strong>
+                    تاریخ موافقت شما با توافقنامه: <strong><x-temporal.date :value="auth()->user()->najm_bahar_agreement_accepted_at" style="short" /></strong>
 
                 @elseif($agreements->isNotEmpty())
 
@@ -3660,7 +3660,7 @@
 
 
 
-                    آخرین به‌روزرسانی متن توافقنامه: <strong>{{ $agreements->first()->updated_at ? verta($agreements->first()->updated_at)->format('Y/m/d') : '-' }}</strong>
+                    آخرین به‌روزرسانی متن توافقنامه: <strong>@if($agreements->first()->updated_at)<x-temporal.date :value="$agreements->first()->updated_at" style="short" />@else-@endif</strong>
 
 
 
@@ -3905,6 +3905,8 @@
 
 
         sections.forEach(section => observer.observe(section));
+
+
 
 
 

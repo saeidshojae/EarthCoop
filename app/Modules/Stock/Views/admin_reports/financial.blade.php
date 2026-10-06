@@ -13,7 +13,6 @@
 @endphp
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('vendor/persian-datepicker/persian-datepicker.min.css') }}">
 <style>
 .report-card{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);padding:2rem;margin-bottom:2rem}.report-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}.report-filter{background:#f8fafc;border-radius:12px;padding:1.5rem;margin-bottom:2rem}.report-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem}.summary-card{border-radius:12px;padding:1.5rem;color:#fff;background:linear-gradient(135deg,#10b981,#047857)}.summary-card.info{background:linear-gradient(135deg,#667eea,#6d28d9)}.summary-card.warning{background:linear-gradient(135deg,#f59e0b,#d97706)}.summary-label{font-size:.8rem;opacity:.9}.summary-value{font-size:1.45rem;font-weight:800;margin-top:.45rem}.summary-sub{font-size:.78rem;opacity:.88;margin-top:.25rem}.empty{margin-top:2rem;padding:3rem 1rem;text-align:center;background:#f8fafc;border:2px dashed #e5e7eb;border-radius:12px;color:#64748b}.dark .report-card{background:#1e293b}.dark .report-filter{background:#334155}@media(max-width:700px){.report-card{padding:1rem}}
 </style>
@@ -29,8 +28,8 @@
 
         <div class="report-filter">
             <form method="GET" class="grid gap-4 md:grid-cols-3 items-end">
-                <div><label class="block text-sm font-semibold mb-2">از تاریخ</label><input type="text" name="date_from" value="{{ request('date_from', $dateFrom ? \Morilog\Jalali\Jalalian::fromCarbon($dateFrom)->format('Y/m/d') : '') }}" class="jalali-date w-full px-3 py-2 border rounded-lg" placeholder="1404/01/01"></div>
-                <div><label class="block text-sm font-semibold mb-2">تا تاریخ</label><input type="text" name="date_to" value="{{ request('date_to', $dateTo ? \Morilog\Jalali\Jalalian::fromCarbon($dateTo)->format('Y/m/d') : '') }}" class="jalali-date w-full px-3 py-2 border rounded-lg" placeholder="1404/12/29"></div>
+                <div><label class="block text-sm font-semibold mb-2" for="stock-financial-date-from">از تاریخ</label><x-temporal.date-input name="date_from" id="stock-financial-date-from" :value="$dateFrom" class="w-full px-3 py-2 border rounded-lg" /></div>
+                <div><label class="block text-sm font-semibold mb-2" for="stock-financial-date-to">تا تاریخ</label><x-temporal.date-input name="date_to" id="stock-financial-date-to" :value="$dateTo" class="w-full px-3 py-2 border rounded-lg" /></div>
                 <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold"><i class="fas fa-filter ml-2"></i>اعمال فیلتر</button>
             </form>
         </div>
@@ -58,9 +57,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script src="{{ asset('vendor/persian-date/persian-date.min.js') }}"></script>
-<script src="{{ asset('vendor/persian-datepicker/persian-datepicker.min.js') }}"></script>
-<script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.jQuery!=='undefined'&&typeof $.fn.persianDatepicker!=='undefined'){$('.jalali-date').each(function(){$(this).persianDatepicker({format:'YYYY/MM/DD',initialValue:!!$(this).val(),calendar:{persian:{locale:'fa'}},autoClose:true});});}});</script>
-@endpush

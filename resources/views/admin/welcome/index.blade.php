@@ -2699,76 +2699,18 @@
 
 
                                 @php
+                          try {
+                              $date = isset($slider->created_at) ? \Carbon\Carbon::parse($slider->created_at) : null;
+                          } catch (\Exception $e) {
+                              $date = null;
+                          }
+                      @endphp
 
-
-
-
-
-
-
-
-
-                                    try {
-
-
-
-
-
-
-
-
-
-                                        $date = isset($slider->created_at) ? \Carbon\Carbon::parse($slider->created_at) : null;
-
-
-
-
-
-
-
-
-
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d H:i') : '-';
-
-
-
-
-
-
-
-
-
-                                    } catch (\Exception $e) {
-
-
-
-
-
-
-
-
-
-                                        echo '-';
-
-
-
-
-
-
-
-
-
-                                    }
-
-
-
-
-
-
-
-
-
-                                @endphp
+                      @if($date)
+                          <x-temporal.date-time :value="$date" />
+                      @else
+                          -
+                      @endif
 
 
 
