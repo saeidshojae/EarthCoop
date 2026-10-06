@@ -392,7 +392,7 @@
                                     <span class="blog-badge secondary">بایگانی</span>
                                     @endif
                                 </td>
-                                <td>{{ $post->created_at->format('Y/m/d') }}</td>
+                                <td><x-temporal.date :value="$post->created_at" /></td>
                                 <td>
                                     <a href="{{ route('admin.blog.posts.edit', $post) }}" 
                                        class="text-blue-600 hover:text-blue-800 transition-colors">
@@ -431,7 +431,7 @@
                             @endif
                         </div>
                         <p class="blog-comment-content">{{ Str::limit($comment->content, 60) }}</p>
-                        <small class="blog-comment-meta">{{ $comment->created_at->diffForHumans() }}</small>
+                        <small class="blog-comment-meta"><x-temporal.relative :value="$comment->created_at" /></small>
                     </div>
                     @empty
                     <div class="text-center text-gray-500 py-4">نظری یافت نشد.</div>
