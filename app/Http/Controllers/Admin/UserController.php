@@ -320,11 +320,19 @@ class UserController extends Controller
         if ($request->filled('action')) {
             $query->where('action', $request->action);
         }
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+        $temporal = app(TemporalService::class);
+        $context = app(TemporalContextResolver::class)->forUser($request->user());
+        try {
+            if ($request->filled('date_from')) {
+                $dateFrom = $temporal->parseDate((string) $request->input('date_from'), $context);
+                $query->where('created_at', '>=', $temporal->startOfDay($dateFrom, $context));
+            }
+            if ($request->filled('date_to')) {
+                $dateTo = $temporal->parseDate((string) $request->input('date_to'), $context);
+                $query->where('created_at', '<=', $temporal->endOfDay($dateTo, $context));
+            }
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored.
         }
 
         $transactions = $query->orderByDesc('created_at')->paginate(25)->appends($request->except('page'));
