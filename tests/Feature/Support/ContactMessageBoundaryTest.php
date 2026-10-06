@@ -38,6 +38,30 @@ class ContactMessageBoundaryTest extends TestCase
         $this->assertSame(0, Ticket::query()->count());
     }
 
+    public function test_authenticated_contact_preserves_verified_account_linkage(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'signed-in@example.test',
+        ]);
+
+        $response = $this->actingAs($user)->post('/contact', [
+            'name' => '',
+            'email' => '',
+            'phone' => '',
+            'subject' => 'Signed-in enquiry',
+            'message' => 'This message was submitted while authenticated.',
+            'company_website' => '',
+        ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('contact_messages', [
+            'user_id' => $user->id,
+            'email' => 'signed-in@example.test',
+            'subject' => 'Signed-in enquiry',
+        ]);
+    }
+
     public function test_contact_honeypot_submission_is_silently_discarded(): void
     {
         $response = $this->post('/contact', [
@@ -60,6 +84,15 @@ class ContactMessageBoundaryTest extends TestCase
 
         $this->assertNotNull($route);
         $this->assertContains('throttle:5,10', $route->gatherMiddleware());
+    }
+
+    public function test_admin_contact_inbox_is_protected_by_ticket_management_permission(): void
+    {
+        $route = collect(Route::getRoutes()->getRoutes())
+            ->first(fn ($route) => $route->getName() === 'admin.contact-messages.index');
+
+        $this->assertNotNull($route);
+        $this->assertContains('permission:tickets.manage', $route->gatherMiddleware());
     }
 
     public function test_contact_message_cannot_be_converted_when_email_is_not_a_registered_user(): void
