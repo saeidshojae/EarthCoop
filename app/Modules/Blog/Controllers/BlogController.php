@@ -9,6 +9,8 @@ use App\Modules\Blog\Models\BlogTag;
 use App\Modules\Blog\Models\BlogComment;
 use App\Modules\Blog\Requests\CommentRequest;
 use App\Support\Seo\CanonicalUrl;
+use App\Support\Seo\PillarArticleRegistry;
+use App\Support\Seo\PillarRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -77,19 +79,40 @@ class BlogController extends Controller
         // Increment views
         $post->incrementViews();
 
-        $relatedPosts = Post::published()
-                            ->where('category_id', $post->category_id)
-                            ->where('id', '!=', $post->id)
-                            ->recent(4)
-                            ->get();
+        $pillarKey = PillarArticleRegistry::ownerForSlug($post->slug);
+
+        if ($pillarKey !== null) {
+            $curatedSlugs = collect(PillarArticleRegistry::for($pillarKey))
+                ->pluck('path')
+                ->map(static fn (string $path): string => basename($path))
+                ->reject(static fn (string $slug): bool => $slug === $post->slug)
+                ->values();
+
+            $relatedPosts = $curatedSlugs->isEmpty()
+                ? collect()
+                : Post::published()
+                    ->whereIn('slug', $curatedSlugs->all())
+                    ->get()
+                    ->sortBy(static fn (Post $relatedPost): int => $curatedSlugs->search($relatedPost->slug))
+                    ->values();
+        } else {
+            $relatedPosts = Post::published()
+                                ->where('category_id', $post->category_id)
+                                ->where('id', '!=', $post->id)
+                                ->recent(4)
+                                ->get();
+        }
 
         $categories = BlogCategory::active()->ordered()->get();
         $popularPosts = Post::published()->popular(5)->get();
         $tags = BlogTag::has('posts')->get();
 
         $canonical = $this->canonicalUrl->to('/blog/'.$post->slug);
+        $siteUrl = $this->canonicalUrl->to('/');
         $description = Str::limit(strip_tags((string) ($post->meta_description ?: $post->excerpt)), 160);
         $authorName = trim((string) ($post->author?->fullName() ?? ''));
+        $pillar = $pillarKey !== null ? PillarRegistry::get($pillarKey) : null;
+
         $article = array_filter([
             '@context' => 'https://schema.org',
             '@type' => 'Article',
@@ -98,6 +121,23 @@ class BlogController extends Controller
             'datePublished' => $post->published_at?->toAtomString(),
             'dateModified' => $post->updated_at?->toAtomString(),
             'mainEntityOfPage' => $canonical,
+            'inLanguage' => 'fa',
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => 'EarthCoop',
+                'url' => $siteUrl,
+            ],
+            'isPartOf' => [
+                '@type' => 'WebSite',
+                '@id' => $siteUrl.'#website',
+                'url' => $siteUrl,
+                'name' => 'EarthCoop',
+            ],
+            'about' => $pillar !== null ? [
+                '@type' => 'Thing',
+                'name' => $pillar['title'],
+                'url' => $this->canonicalUrl->to($pillar['path']),
+            ] : null,
             'author' => $authorName !== '' ? [
                 '@type' => 'Person',
                 'name' => $authorName,
