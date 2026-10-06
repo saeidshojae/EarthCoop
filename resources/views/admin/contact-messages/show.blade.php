@@ -34,20 +34,26 @@
         <div class="space-y-4">
             <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
                 <h2 class="font-bold mb-3">وضعیت</h2>
-                <form method="POST" action="{{ route('admin.contact-messages.status', $contactMessage) }}" class="space-y-3">
-                    @csrf
-                    <select name="status" class="w-full rounded-lg border-slate-300 dark:bg-slate-900">
-                        @foreach(['new'=>'جدید','reviewing'=>'در حال بررسی','replied'=>'پاسخ‌داده‌شده','closed'=>'بسته','spam'=>'اسپم'] as $value => $label)
-                            <option value="{{ $value }}" @selected($contactMessage->status === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <button class="w-full px-4 py-2 rounded-lg bg-slate-800 text-white">ذخیره وضعیت</button>
-                </form>
+                @if($contactMessage->convertedTicket)
+                    <p class="text-sm text-slate-600">این پیام به تیکت تبدیل شده و وضعیت عملیاتی آن از تیکت پیروی می‌کند.</p>
+                @else
+                    <form method="POST" action="{{ route('admin.contact-messages.status', $contactMessage) }}" class="space-y-3">
+                        @csrf
+                        <select name="status" class="w-full rounded-lg border-slate-300 dark:bg-slate-900">
+                            @foreach(['new'=>'جدید','reviewing'=>'در حال بررسی','replied'=>'پاسخ‌داده‌شده','closed'=>'بسته','spam'=>'اسپم'] as $value => $label)
+                                <option value="{{ $value }}" @selected($contactMessage->status === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <button class="w-full px-4 py-2 rounded-lg bg-slate-800 text-white">ذخیره وضعیت</button>
+                    </form>
+                @endif
             </div>
 
             <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
                 <h2 class="font-bold mb-3">پاسخ ایمیلی</h2>
-                @if($contactMessage->email)
+                @if($contactMessage->status === 'spam')
+                    <p class="text-sm text-slate-600">برای پیام علامت‌گذاری‌شده به‌عنوان اسپم، پاسخ ایمیلی غیرفعال است.</p>
+                @elseif($contactMessage->email)
                     <form method="POST" action="{{ route('admin.contact-messages.reply', $contactMessage) }}" class="space-y-3">
                         @csrf
                         <textarea name="message" rows="6" required minlength="5" maxlength="10000" class="w-full rounded-lg border-slate-300 dark:bg-slate-900" placeholder="متن پاسخ...">{{ old('message') }}</textarea>
@@ -65,13 +71,13 @@
                     <p class="text-sm text-slate-600 mb-3">این پیام قبلاً به تیکت تبدیل شده است.</p>
                     <a href="{{ route('admin.tickets.show', $contactMessage->convertedTicket) }}" class="block text-center px-4 py-2 rounded-lg bg-blue-600 text-white">مشاهده تیکت</a>
                 @elseif($registeredUser)
-                    <p class="text-sm text-slate-600 mb-3">ایمیل این پیام متعلق به یک عضو ثبت‌شده است.</p>
+                    <p class="text-sm text-slate-600 mb-3">این پیام هنگام ارسال به حساب واردشده این عضو متصل بوده است.</p>
                     <form method="POST" action="{{ route('admin.contact-messages.convert', $contactMessage) }}">
                         @csrf
                         <button class="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white">تبدیل به تیکت کاربر</button>
                     </form>
                 @else
-                    <p class="text-sm text-slate-600">این ایمیل به حساب عضو ثبت‌شده‌ای متصل نیست. پیام در صندوق تماس باقی می‌ماند و تیکت کاربری ساخته نمی‌شود.</p>
+                    <p class="text-sm text-slate-600">این پیام هنگام ارسال به حساب واردشده‌ای متصل نبوده است. برای جلوگیری از جعل هویت، صرف تشابه ایمیل برای ساخت تیکت کاربری کافی نیست.</p>
                 @endif
             </div>
         </div>
