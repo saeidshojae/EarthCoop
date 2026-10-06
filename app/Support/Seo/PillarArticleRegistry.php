@@ -14,6 +14,21 @@ final class PillarArticleRegistry
         return self::all()[$pillar] ?? [];
     }
 
+    public static function ownerForSlug(string $slug): ?string
+    {
+        $path = '/blog/'.ltrim($slug, '/');
+
+        foreach (self::all() as $pillar => $articles) {
+            foreach ($articles as $article) {
+                if ($article['path'] === $path) {
+                    return $pillar;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @return array<string, array<int, array{label: string, path: string}>>
      */
