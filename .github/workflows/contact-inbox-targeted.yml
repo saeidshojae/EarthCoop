@@ -1,0 +1,78 @@
+name: Contact Inbox Targeted Gate
+
+on:
+  push:
+    branches:
+      - agent/contact-inbox-separation-20261006
+    paths:
+      - 'app/Http/Controllers/ContactController.php'
+      - 'app/Http/Controllers/Admin/ContactMessageController.php'
+      - 'app/Models/ContactMessage.php'
+      - 'app/Services/Support/ContactMessageConversionService.php'
+      - 'database/migrations/2026_10_06_121500_create_contact_messages_table.php'
+      - 'resources/views/pages/templates/contact.blade.php'
+      - 'resources/views/admin/contact-messages/**'
+      - 'resources/views/admin/partials/sidebar.blade.php'
+      - 'routes/web.php'
+      - 'tests/Feature/Support/ContactMessageBoundaryTest.php'
+      - '.github/workflows/contact-inbox-targeted.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contact-inbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql, gd
+          coverage: none
+      - name: Prepare writable Laravel paths
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Prepare Laravel runtime
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop_test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          php artisan migrate:fresh --force
+      - name: Run contact boundary regression
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Support/ContactMessageBoundaryTest.php
