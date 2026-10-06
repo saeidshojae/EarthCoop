@@ -24,6 +24,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 use Illuminate\View\View;
 
 class LocationGovernanceController extends Controller
@@ -393,9 +395,25 @@ class LocationGovernanceController extends Controller
             'decision' => ['required', 'in:needs_evidence,verified_residential_village,verified_nonresidential_place'],
             'reason' => ['required', 'string', 'min:4', 'max:1000'],
             'evidence_source' => ['nullable', 'string', 'max:255'],
-            'evidence_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'evidence_date' => ['nullable', 'string', 'max:40'],
             'evidence_reference' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        if (! empty($validated['evidence_date'])) {
+            try {
+                $context = app(TemporalContextResolver::class)->forUser($request->user());
+                $date = app(TemporalService::class)->parseDate((string) $validated['evidence_date'], $context);
+                $today = now()->setTimezone($context->timezone())->format('Y-m-d');
+                if ($date->toCanonical() > $today) {
+                    throw ValidationException::withMessages(['evidence_date' => 'تاریخ مدرک نمی‌تواند در آینده باشد.']);
+                }
+                $validated['evidence_date'] = $date->toCanonical();
+            } catch (ValidationException $exception) {
+                throw $exception;
+            } catch (\Throwable) {
+                throw ValidationException::withMessages(['evidence_date' => 'تاریخ مدرک معتبر نیست.']);
+            }
+        }
 
         try {
             $review = $service->review(
