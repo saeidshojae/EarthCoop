@@ -8,6 +8,7 @@
     $quickLinks = $isWelcomeFooter
         ? [
             ['label' => __('langWelcome.footer_home'), 'url' => route('welcome')],
+            ['label' => __('navigation.chronicle'), 'url' => route('chronicle.index')],
             ['label' => __('langWelcome.footer_about'), 'url' => '#about'],
             ['label' => __('langWelcome.footer_network'), 'url' => '#network'],
             ['label' => __('langWelcome.footer_projects'), 'url' => '#projects'],
@@ -16,6 +17,7 @@
         : [
             ['label' => __('navigation.footer_home'), 'url' => $footerHomeUrl],
             ['label' => __('navigation.blog'), 'url' => route('blog.index')],
+            ['label' => __('navigation.chronicle'), 'url' => route('chronicle.index')],
             ...(auth()->check() ? [['label' => __('navigation.footer_my_groups'), 'url' => route('groups.index')]] : []),
             ['label' => __('navigation.charter'), 'url' => route('terms')],
             ['label' => __('navigation.footer_contact'), 'url' => route('pages.show', 'contact')],
