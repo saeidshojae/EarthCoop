@@ -31,6 +31,7 @@ final class GregorianCalendarAdapter implements CalendarAdapter
         return match ($style) {
             'short' => $date->toCanonical(),
             'medium' => $dateTime->format('M j, Y'),
+            'month-day' => $dateTime->format('M j'),
             'long' => $dateTime->format('l, F j, Y'),
             default => throw new InvalidArgumentException("Unsupported Gregorian date style: {$style}"),
         };
