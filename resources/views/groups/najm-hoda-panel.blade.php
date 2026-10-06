@@ -179,7 +179,7 @@
                         </details>
                     </td>
                     <td class="px-3 py-3 min-w-[180px]"><select class="queue-assignee w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">${memberOptions(item.assigned_user_id)}</select></td>
-                    <td class="px-3 py-3 min-w-[185px]"><input class="queue-due w-full text-xs border ${overdue ? 'border-red-300 bg-red-50' : 'border-gray-200'} rounded-lg px-2 py-1.5" type="datetime-local" value="${esc(item.due_at || '')}"></td>
+                    <td class="px-3 py-3 min-w-[185px]"><input class="queue-due w-full text-xs border ${overdue ? 'border-red-300 bg-red-50' : 'border-gray-200'} rounded-lg px-2 py-1.5" type="${esc(item.due_input_type || 'text')}" value="${esc(item.due_at || '')}" data-temporal-datetime-input></td>
                     <td class="px-3 py-3 min-w-[150px]"><select class="queue-status w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">${Object.entries(statusLabels).map(([k,v]) => `<option value="${k}" ${item.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
                     <td class="px-3 py-3 min-w-[125px]"><select class="queue-priority w-full text-xs border ${urgent ? 'border-rose-300 bg-rose-50' : 'border-gray-200'} rounded-lg px-2 py-1.5">${Object.entries(priorityLabels).map(([k,v]) => `<option value="${k}" ${item.priority === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
                     <td class="px-3 py-3"><button type="button" class="queue-save px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs hover:bg-emerald-700" data-id="${esc(item.id)}">ذخیره</button></td>
