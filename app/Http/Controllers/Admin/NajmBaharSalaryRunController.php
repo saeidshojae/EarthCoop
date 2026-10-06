@@ -8,6 +8,8 @@ use App\Modules\NajmBahar\Models\SalaryRunItem;
 use App\Modules\NajmBahar\Services\SalaryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 
 class NajmBaharSalaryRunController extends Controller
 {
@@ -21,7 +23,13 @@ class NajmBaharSalaryRunController extends Controller
     public function store(Request $request, SalaryService $salaryService)
     {
         $date = $request->input('run_date');
-        $runDate = $date ? Carbon::parse($date) : Carbon::today();
+        if ($date) {
+            $context = app(TemporalContextResolver::class)->forUser($request->user());
+            $canonical = app(TemporalService::class)->parseDate((string) $date, $context)->toCanonical();
+            $runDate = Carbon::parse($canonical);
+        } else {
+            $runDate = Carbon::today();
+        }
 
         $run = $salaryService->createRun($runDate, auth()->id());
 
