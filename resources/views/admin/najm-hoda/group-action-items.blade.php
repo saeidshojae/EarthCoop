@@ -122,13 +122,13 @@
                                 @endif
                         </td>
                         <td class="px-3 py-3">
-                                <input
-                                    type="datetime-local"
-                                    name="due_at"
-                                    form="action-item-form-{{ $item->id }}"
-                                    value="{{ optional($item->due_at)->format('Y-m-d\TH:i') }}"
-                                    class="border rounded px-2 py-1"
-                                >
+                                <x-temporal.date-time-input
+                                    name="due_at"
+                                    :id="'due_at_' . $item->id"
+                                    :value="$item->due_at"
+                                    form="action-item-form-{{ $item->id }}"
+                                    class="border rounded px-2 py-1"
+                                />
                                 @if($item->due_text)
                                     <div class="text-xs text-gray-400 mt-1">{{ $item->due_text }}</div>
                                 @endif
