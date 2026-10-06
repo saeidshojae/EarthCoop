@@ -8,6 +8,9 @@ use App\Models\GroupSetting;
 use App\Services\Elections\ElectionPolicyVersionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 
 class GroupSettingController extends Controller
 {
@@ -95,7 +98,7 @@ class GroupSettingController extends Controller
         return back()->with('success', "وضعیت انتخابات برای {$setting->name()} به {$status} تغییر یافت و نسخه جدید سیاست ثبت شد.");
     }
 
-    public function update(Request $request, GroupSetting $setting)
+    public function update(Request $request, GroupSetting $setting, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $validated = $request->validate([
             'manager_count' => 'required|integer|min:0',
@@ -107,7 +110,7 @@ class GroupSettingController extends Controller
             'election_report_min_distinct_voters' => 'nullable|integer|min:2|max:1000000',
             'election_report_bucket_days' => 'nullable|integer|min:1|max:365',
             'election_meaningful_trend_min_net_change' => 'nullable|integer|min:1|max:1000000',
-            'effective_at' => 'nullable|date',
+            'effective_at' => 'nullable|string|max:80',
             'change_reason' => 'nullable|string|max:500',
         ], [
             'manager_count.required' => 'تعداد مدیران الزامی است',
@@ -127,7 +130,17 @@ class GroupSettingController extends Controller
             'second_election_time.min' => 'فاصله چرخه‌ها نمی‌تواند منفی باشد',
         ]);
 
-        $effectiveAt = ! empty($validated['effective_at']) ? Carbon::parse($validated['effective_at']) : now();
+        if (! empty($validated['effective_at'])) {
+            try {
+                $effectiveAt = Carbon::instance(
+                    $temporal->parseDateTime((string) $validated['effective_at'], $contexts->defaultContext())
+                );
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['effective_at' => 'زمان اثر معتبر نیست.']);
+            }
+        } else {
+            $effectiveAt = now()->utc();
+        }
         $snapshot = [
             'election_status' => (bool) $setting->election_status,
             'manager_count' => (int) $validated['manager_count'],
