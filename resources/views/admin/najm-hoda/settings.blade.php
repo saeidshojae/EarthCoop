@@ -505,15 +505,15 @@
                             <div class="mt-3 p-3 border border-green-600 bg-green-50 rounded-lg">
                                 <div class="flex justify-between items-center mb-3">
                                     <h4 class="text-sm font-bold text-green-900 m-0">
-                                        📎 آپلود فایل‌های دانش
+                                        📚 منابع دانش مهماندار
                                     </h4>
                                     <a href="{{ route('admin.najm-hoda.steward.knowledge-files-page') }}" class="bg-green-700 text-white px-3 py-1.5 rounded-md no-underline text-xs font-bold">
                                         <i class="fas fa-list"></i>
-                                        مدیریت فایل‌ها
+                                        مدیریت منابع
                                     </a>
                                 </div>
                                 <div class="bg-yellow-100 border border-yellow-400 p-2.5 rounded-md mb-3 text-xs text-yellow-900">
-                                    <strong>⚠️ توجه:</strong> فایل‌های TXT و Markdown محتوا کاملاً استخراج می‌شوند. برای فایل‌های PDF و Word فقط نام فایل برای جستجو استفاده می‌شود.
+                                    <strong>⚠️ توجه:</strong> TXT، Markdown، PDF و Word برای استخراج متن پردازش می‌شوند. همچنین می‌توانید یک لینک عمومی وب را به‌عنوان منبع دانش ثبت کنید.
                                 </div>
                                 <form id="steward-upload-form" enctype="multipart/form-data">
                                     @csrf
@@ -541,7 +541,32 @@
                                         آپلود فایل
                                     </button>
                                     <div id="steward-upload-status" class="mt-2 text-xs text-green-900 hidden"></div>
-                                </form>
+                                </form>
+
+                                <div class="my-3 border-t border-green-300 pt-3">
+                                    <div class="text-xs font-bold text-green-900 mb-2">یا افزودن لینک عمومی وب</div>
+                                    <form id="steward-url-form">
+                                        @csrf
+                                        <div class="mb-2">
+                                            <label class="text-xs text-green-900 block mb-1">عنوان منبع (اختیاری):</label>
+                                            <input type="text" name="title" class="form-control-modern text-sm px-2.5 py-1.5" placeholder="در صورت خالی بودن از عنوان صفحه استفاده می‌شود">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="text-xs text-green-900 block mb-1">لینک منبع:</label>
+                                            <input type="url" name="source_url" class="form-control-modern text-sm px-2.5 py-1.5" placeholder="https://example.org/page" required>
+                                            <small class="text-xs text-green-900">فقط لینک عمومی HTTP/HTTPS؛ آدرس‌های شبکه داخلی پذیرفته نمی‌شوند.</small>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="text-xs text-green-900 block mb-1">اولویت جستجو (1-10):</label>
+                                            <input type="number" name="search_priority" class="form-control-modern text-sm px-2.5 py-1.5" min="1" max="10" value="5">
+                                        </div>
+                                        <button type="submit" class="btn-modern bg-gradient-to-r from-sky-600 to-sky-800 text-white w-full justify-center text-sm px-2 py-2">
+                                            <i class="fas fa-link"></i>
+                                            افزودن لینک
+                                        </button>
+                                        <div id="steward-url-status" class="mt-2 text-xs text-green-900 hidden"></div>
+                                    </form>
+                                </div>
                             </div>
 
                             <div id="uploaded-files-list" class="mt-3"></div>
@@ -975,6 +1000,69 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// افزودن منبع دانش از لینک عمومی
+document.addEventListener('DOMContentLoaded', function() {
+    const urlForm = document.getElementById('steward-url-form');
+    if (!urlForm) return;
+
+    urlForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const submitBtn = urlForm.querySelector('button[type="submit"]');
+        const statusBox = document.getElementById('steward-url-status');
+        const original = submitBtn.innerHTML;
+
+        const payload = {
+            title: urlForm.querySelector('[name="title"]')?.value || '',
+            source_url: urlForm.querySelector('[name="source_url"]')?.value || '',
+            search_priority: Number(urlForm.querySelector('[name="search_priority"]')?.value || 5),
+        };
+
+        const showStatus = (message, isError = false) => {
+            if (!statusBox) return;
+            statusBox.classList.remove('hidden');
+            statusBox.textContent = message;
+            statusBox.style.display = 'block';
+            statusBox.style.color = isError ? '#b91c1c' : '#166534';
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال دریافت منبع...';
+        showStatus('در حال دریافت و استخراج متن لینک...');
+
+        try {
+            const response = await fetch('{{ route('admin.najm-hoda.steward.add-knowledge-url') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'افزودن لینک ناموفق بود');
+            }
+
+            showStatus(data.message || 'لینک با موفقیت اضافه شد');
+            urlForm.reset();
+            const priority = urlForm.querySelector('[name="search_priority"]');
+            if (priority) priority.value = '5';
+            await loadKnowledgeFiles();
+        } catch (error) {
+            console.error('Knowledge URL error:', error);
+            showStatus(error.message || 'خطا در افزودن لینک', true);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = original;
+        }
+    });
+});
+
 // بارگذاری لیست فایل‌های دانش
 async function loadKnowledgeFiles() {
     try {
