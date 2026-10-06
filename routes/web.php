@@ -672,6 +672,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::get('/', [\App\Http\Controllers\Admin\ContactMessageController::class, 'index'])->name('index');
         Route::get('/{contactMessage}', [\App\Http\Controllers\Admin\ContactMessageController::class, 'show'])->name('show');
         Route::post('/{contactMessage}/status', [\App\Http\Controllers\Admin\ContactMessageController::class, 'updateStatus'])->name('status');
+        Route::post('/{contactMessage}/reply', [\App\Http\Controllers\Admin\ContactMessageController::class, 'reply'])->name('reply');
         Route::post('/{contactMessage}/convert-to-ticket', [\App\Http\Controllers\Admin\ContactMessageController::class, 'convert'])->name('convert');
     });
 
