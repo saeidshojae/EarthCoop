@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Group;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 use App\Models\Group;
 use App\Models\GroupSession;
 use App\Models\GroupUser;
@@ -183,7 +186,7 @@ class GroupController extends Controller
         return redirect()->route('groups.index')->with('success', 'شما با موفقیت به گروه بازگشتید');
     }
 
-    public function open(Request $request, Group $group, GroupSessionService $sessions)
+    public function open(Request $request, Group $group, GroupSessionService $sessions, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $this->authorize('manageSession', $group);
         if (! (bool) $group->is_open) {
@@ -194,9 +197,19 @@ class GroupController extends Controller
                 'title' => ['nullable', 'string', 'max:160'],
                 'subject' => ['nullable', 'string', 'max:1000'],
                 'agenda' => ['nullable', 'string', 'max:3000'],
-                'starts_at' => ['nullable', 'date'],
+                'starts_at' => ['nullable', 'string', 'max:80'],
             ]);
-            $startsAt = isset($validated['starts_at']) ? now()->parse($validated['starts_at']) : now();
+            if (isset($validated['starts_at']) && trim((string) $validated['starts_at']) !== '') {
+                try {
+                    $startsAt = $temporal->parseDateTime((string) $validated['starts_at'], $contexts->defaultContext());
+                } catch (\InvalidArgumentException|\ValueError $exception) {
+                    throw ValidationException::withMessages([
+                        'starts_at' => 'تاریخ یا ساعت شروع معتبر نیست.',
+                    ]);
+                }
+            } else {
+                $startsAt = now()->utc();
+            }
             $session = GroupSession::create([
                 'group_id' => $group->id,
                 'created_by' => auth()->id(),
