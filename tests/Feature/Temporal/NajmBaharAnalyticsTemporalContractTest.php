@@ -43,4 +43,18 @@ class NajmBaharAnalyticsTemporalContractTest extends TestCase
         $this->assertStringContainsString("['date_from', 'date_to']", $runtime);
         $this->assertStringContainsString('input.dataset.calendar = calendar', $runtime);
     }
+
+    public function test_analytics_view_uses_temporal_presentation_for_transactions_and_chart_labels(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharAnalyticsController.php'));
+        $view = file_get_contents(resource_path('views/admin/najm-bahar/analytics.blade.php'));
+
+        $this->assertStringContainsString("$item->label = $this->temporal->date(", $controller);
+        $this->assertStringContainsString("'month-day'", $controller);
+        $this->assertStringContainsString('<x-temporal.date-time :value="$transaction->created_at" />', $view);
+        $this->assertStringContainsString('dailyData.map(item => item.label)', $view);
+        $this->assertStringNotContainsString('Morilog\\\\Jalali', $view);
+        $this->assertStringNotContainsString('Jalalian::', $view);
+        $this->assertStringNotContainsString("toLocaleDateString('fa-IR'", $view);
+    }
 }
