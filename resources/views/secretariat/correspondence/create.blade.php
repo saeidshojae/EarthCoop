@@ -67,13 +67,11 @@
             </div>
             <div id="received-at-field">
                 <label class="block text-sm font-medium mb-2">زمان دریافت</label>
-                <input type="datetime-local" name="received_at" value="{{ old('received_at', now()->format('Y-m-d\TH:i')) }}"
-                       class="w-full rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700">
+                <x-temporal.date-time-input name="received_at" :value="old('received_at', now())" class="w-full rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700" />
             </div>
             <div id="sent-at-field" class="hidden">
                 <label class="block text-sm font-medium mb-2">زمان ارسال ثبت‌شده</label>
-                <input type="datetime-local" name="sent_at" value="{{ old('sent_at') }}"
-                       class="w-full rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700">
+                <x-temporal.date-time-input name="sent_at" :value="old('sent_at')" class="w-full rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700" />
             </div>
         </div>
 
