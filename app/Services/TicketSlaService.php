@@ -33,7 +33,9 @@ class TicketSlaService
         $priority = $ticket->priority ?? 'normal';
         $hours = self::SLA_DEADLINES[$priority] ?? self::SLA_DEADLINES['normal'];
         
-        return $ticket->created_at->addHours($hours);
+        $createdAt = $ticket->created_at?->copy() ?? now();
+
+        return $createdAt->addHours($hours);
     }
 
     /**
@@ -44,7 +46,9 @@ class TicketSlaService
         $priority = $ticket->priority ?? 'normal';
         $hours = self::FIRST_RESPONSE_SLA[$priority] ?? self::FIRST_RESPONSE_SLA['normal'];
         
-        return $ticket->created_at->addHours($hours);
+        $createdAt = $ticket->created_at?->copy() ?? now();
+
+        return $createdAt->addHours($hours);
     }
 
     /**

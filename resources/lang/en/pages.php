@@ -54,8 +54,8 @@ return [
         'hours_time' => '9:00 AM to 6:00 PM',
         'online_support_title' => 'Online Support',
         'online_support_message' => 'We respond to messages during weekdays and business hours.',
-        'tracking_title' => 'Request Tracking',
-        'tracking_message' => 'After submitting a message, a tracking number is generated so you can follow up on the response status.',
+        'tracking_title' => 'Contact Follow-up',
+        'tracking_message' => 'Public messages are reviewed in the contact inbox and, when needed, we will follow up using the contact details you provide.',
         'tracking_label' => 'Tracking number',
         'address_line' => 'Tehran, Iran',
         'features' => [

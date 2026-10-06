@@ -162,14 +162,16 @@
                 @if(session('success'))
                     <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                         {{ session('success') }}
-                        @if(session('ticket_tracking'))
-                            <span class="font-semibold">{{ __('pages.contact.tracking_label') }}: {{ session('ticket_tracking') }}</span>
-                        @endif
                     </div>
                 @endif
 
                 <form class="grid grid-cols-1 md:grid-cols-2 gap-5" action="{{ route('contact.store') }}" method="POST">
                     @csrf
+                    <input type="hidden" name="_contact_started_at" value="{{ \Illuminate\Support\Facades\Crypt::encryptString((string) now()->timestamp) }}">
+                    <div class="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+                        <label for="company_website">Website</label>
+                        <input type="text" id="company_website" name="company_website" tabindex="-1" autocomplete="off">
+                    </div>
                     <div class="contact-form-group md:col-span-1">
                         <label for="name" class="block text-sm font-semibold text-slate-600 mb-2">{{ __('pages.contact.form.name_label') }}</label>
                         <input type="text" id="name" name="name" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="{{ __('pages.contact.form.name_placeholder') }}" autocomplete="name">
