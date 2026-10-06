@@ -27,7 +27,7 @@
                     <td class="p-3">{{ $campaign->name }}</td>
                     <td class="p-3">{{ $labels::campaignStatus($campaign->status) }}</td>
                     <td class="p-3"><div>{{ $campaign->template?->name ?? '—' }}</div>@if($campaign->template?->key)<div class="mt-1 font-mono text-xs text-gray-500">{{ $campaign->template->key }}</div>@endif</td>
-                    <td class="p-3">{{ $campaign->scheduled_at?->format('Y-m-d H:i') ?? 'فوری پس از تأیید' }}</td>
+                    <td class="p-3">@if($campaign->scheduled_at)<x-temporal.date-time :value="$campaign->scheduled_at" />@else فوری پس از تأیید @endif</td>
                     <td class="p-3"><a class="underline" href="{{ route('admin.communications.campaigns.preview', $campaign) }}">پیش‌نمایش</a></td>
                 </tr>
             @empty
