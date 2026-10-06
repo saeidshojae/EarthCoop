@@ -64,6 +64,7 @@ final class JalaliCalendarAdapter implements CalendarAdapter
         return match ($style) {
             'short' => sprintf('%04d/%02d/%02d', $year, $month, $day),
             'medium' => sprintf('%d %s %d', $day, self::MONTHS[$month], $year),
+            'month-day' => sprintf('%d %s', $day, self::MONTHS[$month]),
             'long' => sprintf(
                 '%s %d %s %d',
                 self::WEEKDAYS[(int) (new DateTimeImmutable($date->toCanonical()))->format('w')],
