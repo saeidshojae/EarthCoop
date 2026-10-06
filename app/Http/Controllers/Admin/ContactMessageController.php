@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Models\User;
 use App\Services\Support\ContactMessageConversionService;
+use App\Services\Support\ContactMessageReplyService;
 use DomainException;
 use Illuminate\Http\Request;
 
@@ -39,6 +40,7 @@ class ContactMessageController extends Controller
         $stats = [
             'new' => ContactMessage::query()->where('status', 'new')->count(),
             'reviewing' => ContactMessage::query()->where('status', 'reviewing')->count(),
+            'replied' => ContactMessage::query()->where('status', 'replied')->count(),
             'closed' => ContactMessage::query()->where('status', 'closed')->count(),
             'spam' => ContactMessage::query()->where('status', 'spam')->count(),
             'converted' => ContactMessage::query()->where('status', 'converted')->count(),
@@ -60,7 +62,7 @@ class ContactMessageController extends Controller
     public function updateStatus(Request $request, ContactMessage $contactMessage)
     {
         $data = $request->validate([
-            'status' => 'required|in:new,reviewing,closed,spam',
+            'status' => 'required|in:new,reviewing,replied,closed,spam',
         ]);
 
         $contactMessage->update([
@@ -70,6 +72,29 @@ class ContactMessageController extends Controller
         ]);
 
         return back()->with('success', 'وضعیت پیام تماس بروزرسانی شد.');
+    }
+
+
+    public function reply(
+        Request $request,
+        ContactMessage $contactMessage,
+        ContactMessageReplyService $replies,
+    ) {
+        $data = $request->validate([
+            'message' => 'required|string|min:5|max:10000',
+        ]);
+
+        try {
+            $replies->reply(
+                $contactMessage,
+                (string) $data['message'],
+                (int) $request->user()->id,
+            );
+        } catch (DomainException) {
+            return back()->with('error', 'برای پاسخ ایمیلی، پیام تماس باید یک آدرس ایمیل معتبر داشته باشد.');
+        }
+
+        return back()->with('success', 'پاسخ از طریق مرکز ارتباطات در صف ارسال قرار گرفت.');
     }
 
     public function convert(
