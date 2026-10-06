@@ -3789,56 +3789,7 @@
 
 
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-
-
-
-
-
-
-
-
-
-                        @php
-
-
-
-
-
-
-
-
-
-                            $checkExpire = \App\Models\InvitationCode::where('used', 0)->where('expire_at', '<=', now())->where('user_id', auth()->user()->id)->orderBy('created_at', 'desc')->get();
-
-
-
-
-
-
-
-
-
-                            foreach($checkExpire as $check){ $check->delete(); }
-
-
-
-
-
-
-
-
-
-                        @endphp
-
-
-
-
-
-
-
-
-
-                        @foreach($codes as $code)
+@foreach($codes as $code)
 
 
 
