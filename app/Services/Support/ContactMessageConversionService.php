@@ -19,6 +19,10 @@ class ContactMessageConversionService
 
     public function convert(ContactMessage $message, ?int $actorId = null): Ticket
     {
+        if ($message->status === 'spam') {
+            throw new DomainException('contact_message_conversion_not_allowed');
+        }
+
         if ($message->converted_ticket_id) {
             $existing = Ticket::query()->find($message->converted_ticket_id);
             if ($existing) {
