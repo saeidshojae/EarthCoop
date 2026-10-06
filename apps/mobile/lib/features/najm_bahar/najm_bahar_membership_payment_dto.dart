@@ -24,7 +24,9 @@ class MembershipPaymentIntent {
         candidate.kind == source.kind &&
         candidate.subAccountId == source.subAccountId &&
         candidate.accountNumber == source.accountNumber);
-    if (!selected) throw ArgumentError('Payment source is not in current terms');
+    if (!selected) {
+      throw ArgumentError('Payment source is not in current terms');
+    }
 
     if (bucket == 'dim') {
       if (source.kind != 'main' ||
