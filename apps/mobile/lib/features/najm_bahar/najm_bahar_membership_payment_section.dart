@@ -143,11 +143,7 @@ class _NajmBaharMembershipPaymentSectionState
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'حق عضویت دورهٔ ' +
-                terms.paymentYear.toString() +
-                ': ' +
-                formatGol(terms.feeGol) +
-                '. پرداخت نیتیو در این نسخهٔ سرور فعال نیست.',
+            'حق عضویت دورهٔ ${terms.paymentYear}: ${formatGol(terms.feeGol)}. پرداخت نیتیو در این نسخهٔ سرور فعال نیست.',
           ),
         ),
       );
@@ -226,15 +222,12 @@ class _NajmBaharMembershipPaymentSectionState
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text('دوره: ' + terms.paymentYear.toString()),
-            Text('مبلغ: ' + formatGol(terms.feeGol)),
+            Text('دوره: ${terms.paymentYear}'),
+            Text('مبلغ: ${formatGol(terms.feeGol)}'),
             Text(
-              'سهم عملیات و حقوق: ' +
-                  formatGol(terms.operationsGol) +
-                  ' · بیمه مرکزی: ' +
-                  formatGol(terms.insuranceGol) +
-                  ' · صندوق امحای پول: ' +
-                  formatGol(terms.destructionGol),
+              'سهم عملیات و حقوق: ${formatGol(terms.operationsGol)}'
+              ' · بیمه مرکزی: ${formatGol(terms.insuranceGol)}'
+              ' · صندوق امحای پول: ${formatGol(terms.destructionGol)}',
             ),
             const SizedBox(height: 12),
             SegmentedButton<String>(
@@ -263,7 +256,7 @@ class _NajmBaharMembershipPaymentSectionState
             const SizedBox(height: 12),
             if (eligible.isNotEmpty)
               DropdownButtonFormField<MembershipSource>(
-                value: selected,
+                initialValue: selected,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'حساب پرداخت',
@@ -274,7 +267,7 @@ class _NajmBaharMembershipPaymentSectionState
                     DropdownMenuItem<MembershipSource>(
                       value: source,
                       child: Text(
-                        source.name + ' · ' + source.accountNumber,
+                        '${source.name} · ${source.accountNumber}',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -321,19 +314,14 @@ class _NajmBaharMembershipPaymentSectionState
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text('دوره: ' + terms.paymentYear.toString()),
-            Text('مبلغ: ' + formatGol(terms.feeGol)),
-            Text('منبع: ' +
-                (bucket == 'dim' ? 'بهار کمرنگ' : 'بهار فعال')),
-            Text('حساب: ' + source.name + ' · ' + source.accountNumber),
+            Text('دوره: ${terms.paymentYear}'),
+            Text('مبلغ: ${formatGol(terms.feeGol)}'),
+            Text('منبع: ${bucket == 'dim' ? 'بهار کمرنگ' : 'بهار فعال'}'),
+            Text('حساب: ${source.name} · ${source.accountNumber}'),
             Text(
-              'تقسیم مبلغ: ' +
-                  formatGol(terms.operationsGol) +
-                  ' عملیات و حقوق، ' +
-                  formatGol(terms.insuranceGol) +
-                  ' بیمه مرکزی، ' +
-                  formatGol(terms.destructionGol) +
-                  ' امحای پول.',
+              'تقسیم مبلغ: ${formatGol(terms.operationsGol)} عملیات و حقوق، '
+              '${formatGol(terms.insuranceGol)} بیمه مرکزی، '
+              '${formatGol(terms.destructionGol)} امحای پول.',
             ),
             if (bucket == 'dim') ...[
               const SizedBox(height: 8),
