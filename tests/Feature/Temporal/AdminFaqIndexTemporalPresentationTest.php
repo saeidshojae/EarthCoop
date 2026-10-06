@@ -22,7 +22,7 @@ class AdminFaqIndexTemporalPresentationTest extends TestCase
         $this->assertStringNotContainsString('toLocaleDateString("fa-IR"', $view);
 
         $this->assertStringContainsString("'notified_at_display'", $controller);
-        $this->assertStringContainsString("$temporal->date(", $controller);
+        $this->assertStringContainsString('$temporal->date(', $controller);
         $this->assertStringContainsString("'short'", $controller);
     }
 }
