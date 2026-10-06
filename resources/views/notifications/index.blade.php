@@ -971,9 +971,9 @@
                                 </p>
                                 <div class="notification-time">
                                     <i class="fas fa-clock"></i>
-                                    <span>{{ $notification->created_at->diffForHumans() }}</span>
+                                    <span><x-temporal.relative :value="$notification->created_at" /></span>
                                     <span>•</span>
-                                    <span>{{ $notification->created_at->format('Y/m/d H:i') }}</span>
+                                    <span><x-temporal.date-time :value="$notification->created_at" /></span>
                                 </div>
                             @if($notificationDestinations[$notification->id] ?? null)
                                 </a>
