@@ -232,7 +232,7 @@
 
                                     <td class="px-4 py-3 text-slate-500 dark:text-slate-400">
 
-                                        {{ $category->created_at ? verta($category->created_at)->format('Y/n/j') : '—' }}
+                                        @if($category->created_at)<x-temporal.date :value="$category->created_at" style="short" />@else—@endif
 
                                     </td>
 

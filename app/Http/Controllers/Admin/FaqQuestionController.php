@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FaqQuestion;
 use App\Services\Communication\CommunicationDispatcher;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -15,7 +17,11 @@ class FaqQuestionController extends Controller
     /**
      * Display FAQ questions list with filters
      */
-    public function index(Request $request)
+    public function index(
+        Request $request,
+        TemporalService $temporal,
+        TemporalContextResolver $temporalContexts,
+    )
     {
         $query = FaqQuestion::query();
 
@@ -55,6 +61,18 @@ class FaqQuestionController extends Controller
         }
 
         $questions = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        $temporalContext = $temporalContexts->defaultContext();
+        $questions->through(function (FaqQuestion $question) use ($temporal, $temporalContext) {
+            $question->setAttribute(
+                'notified_at_display',
+                $question->notified_at
+                    ? $temporal->date($question->notified_at, $temporalContext, 'short')
+                    : null,
+            );
+
+            return $question;
+        });
 
         // آمار
         $stats = [

@@ -5,18 +5,23 @@ namespace App\Console\Commands;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
 use App\Models\GroupUser;
+use App\Models\User;
 use App\Models\Vote;
 use App\Services\NotificationService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Console\Command;
-use Morilog\Jalali\Jalalian;
 
 class SendElectionReminders extends Command
 {
     protected $signature = 'elections:send-reminders';
     protected $description = 'ارسال اعلان دعوت به شرکت در انتخابات برای کاربرانی که هنوز رای نداده‌اند';
 
-    public function __construct(private NotificationService $notifications)
-    {
+    public function __construct(
+        private NotificationService $notifications,
+        private TemporalService $temporal,
+        private TemporalContextResolver $temporalContexts,
+    ) {
         parent::__construct();
     }
 
@@ -76,10 +81,9 @@ class SendElectionReminders extends Command
                 continue;
             }
 
-            $endsAt = Jalalian::fromCarbon($election->ends_at);
-            $now = Jalalian::now();
-            $remainingDays = $endsAt->diffInDays($now);
-            $remainingHours = $endsAt->diffInHours($now) % 24;
+            $now = now();
+            $remainingDays = (int) $election->ends_at->diffInDays($now);
+            $remainingHours = ((int) $election->ends_at->diffInHours($now)) % 24;
 
             if ($remainingDays > 0) {
                 $timeRemaining = "{$remainingDays} روز";
@@ -89,25 +93,43 @@ class SendElectionReminders extends Command
                 $timeRemaining = 'کمتر از یک ساعت';
             }
 
-            $endsAtFormatted = $endsAt->format('Y/m/d H:i');
             $title = 'یادآوری: انتخابات گروه ' . ($group->name ?? '');
-            $preview = "انتخابات گروه {$group->name} در حال برگزاری است. {$timeRemaining} تا پایان انتخابات باقی مانده است. (تا {$endsAtFormatted})";
             $url = route('groups.chat', $group->id);
-            $context = [
+            $notificationContext = [
                 'group_id' => $group->id,
                 'election_id' => $election->id,
                 'cycle_number' => (int) ($election->cycle_number ?? 1),
                 'ends_at' => $election->ends_at->toIso8601String(),
             ];
 
-            $this->notifications->notifyMany(
-                $nonVotedUserIds,
-                $title,
-                $preview,
-                $url,
-                'group.election.reminder',
-                $context
-            );
+            $recipients = User::query()->whereIn('id', $nonVotedUserIds)->get();
+            $recipientGroups = $recipients->groupBy(function (User $recipient): string {
+                $context = $this->temporalContexts->forRecipient($recipient);
+
+                return implode('|', [
+                    $context->locale(),
+                    $context->calendar(),
+                    $context->timezone(),
+                    $context->numberingSystem(),
+                ]);
+            });
+
+            foreach ($recipientGroups as $members) {
+                /** @var \App\Models\User $representative */
+                $representative = $members->first();
+                $temporalContext = $this->temporalContexts->forRecipient($representative);
+                $endsAtFormatted = $this->temporal->dateTime($election->ends_at, $temporalContext, 'short');
+                $preview = "انتخابات گروه {$group->name} در حال برگزاری است. {$timeRemaining} تا پایان انتخابات باقی مانده است. (تا {$endsAtFormatted})";
+
+                $this->notifications->notifyMany(
+                    $members->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                    $title,
+                    $preview,
+                    $url,
+                    'group.election.reminder',
+                    $notificationContext
+                );
+            }
 
             $count = count($nonVotedUserIds);
             $totalSent += $count;

@@ -596,9 +596,9 @@
 
                                 @endphp
 
-                                <div>{{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('Y/m/d') }}</div>
+                                <div><x-temporal.date :value="$createdAt" /></div>
 
-                                <div class="text-xs">{{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('H:i') }}</div>
+                                <div class="text-xs"><x-temporal.time :value="$createdAt" /></div>
 
                                 @if($question->answered_at)
 
@@ -614,7 +614,7 @@
 
                                     <div class="text-xs text-green-600 dark:text-green-400 mt-1">
 
-                                        پاسخ: {{ \Morilog\Jalali\Jalalian::fromCarbon($answeredAt)->format('Y/m/d') }}
+                                        پاسخ: <x-temporal.date :value="$answeredAt" />
 
                                     </div>
 
@@ -1132,7 +1132,7 @@
 
                 if (question.notified_at) {
 
-                    const notifiedDate = new Date(question.notified_at).toLocaleDateString('fa-IR');
+                    const notifiedDate = question.notified_at_display || '---';
 
                     emailStatus.innerHTML = `<i class="fas fa-check-circle text-green-600 ml-1"></i> ایمیل اطلاع‌رسانی در ${notifiedDate} ارسال شده است.`;
 

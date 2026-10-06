@@ -10,8 +10,11 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Communication\CommunicationTemplateService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class AdminCampaignManagementTest extends TestCase
@@ -48,6 +51,55 @@ final class AdminCampaignManagementTest extends TestCase
         $this->actingAs($creator)
             ->post('/admin/communications/campaigns/'.$campaign->id.'/confirm', ['elevated_confirmed' => true])
             ->assertForbidden();
+    }
+
+    public function test_campaign_schedule_input_uses_temporal_context_and_persists_canonical_utc(): void
+    {
+        $creator = $this->userWithPermissions(['communications.view', 'communications.campaigns.create']);
+        $creator->forceFill([
+            'locale' => 'fa',
+            'timezone' => 'Asia/Tehran',
+        ])->save();
+
+        [$template, $sender, $recipient] = $this->fixture();
+
+        $this->actingAs($creator)
+            ->get('/admin/communications/campaigns/create')
+            ->assertOk()
+            ->assertSee('data-temporal-datetime-input', false);
+
+        $localized = '۱۴۰۵/۰۷/۱۴ ۱۰:۳۰';
+        $context = app(TemporalContextResolver::class)->forUser($creator->fresh());
+        $expected = app(TemporalService::class)->parseDateTime($localized, $context);
+
+        $this->actingAs($creator)
+            ->post('/admin/communications/campaigns', array_merge(
+                $this->payload($template, $sender, $recipient),
+                ['scheduled_at' => $localized],
+            ))
+            ->assertRedirect('/admin/communications/campaigns');
+
+        $campaign = CommunicationCampaign::query()
+            ->where('name', 'Task 10 admin campaign')
+            ->latest('id')
+            ->firstOrFail();
+
+        $raw = DB::table('communication_campaigns')
+            ->where('id', $campaign->id)
+            ->value('scheduled_at');
+        $databaseTimezone = DB::selectOne(
+            'SELECT @@session.time_zone AS session_tz, @@system_time_zone AS system_tz'
+        );
+
+        $this->assertSame(
+            $expected->format('Y-m-d H:i:s'),
+            (string) $raw,
+            'MySQL timezone session='.$databaseTimezone->session_tz.' system='.$databaseTimezone->system_tz,
+        );
+        $this->assertSame(
+            $expected->format('Y-m-d H:i:s'),
+            $campaign->scheduled_at?->utc()->format('Y-m-d H:i:s'),
+        );
     }
 
     public function test_campaign_approver_can_preview_and_confirm_existing_draft(): void

@@ -418,15 +418,15 @@
 
                                     $date = isset($announcement->created_at) ? \Carbon\Carbon::parse($announcement->created_at) : null;
 
-                                    echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d') : '-';
+                                    $date = $date ?: null;
 
                                 } catch (\Exception $e) {
 
-                                    echo '-';
+                                    $date = null;
 
                                 }
 
-                            @endphp
+                            @endphp @if($date) <x-temporal.date :value="$date" /> @else - @endif
 
                         </p>
 
@@ -512,15 +512,15 @@
 
                                         $date = isset($page->created_at) ? \Carbon\Carbon::parse($page->created_at) : null;
 
-                                        echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d') : '-';
+                                        $date = $date ?: null;
 
                                     } catch (\Exception $e) {
 
-                                        echo '-';
+                                        $date = null;
 
                                     }
 
-                                @endphp
+                                @endphp @if($date) <x-temporal.date :value="$date" /> @else - @endif
 
                             </span>
 
@@ -588,15 +588,15 @@
 
                                     $date = isset($rule->created_at) ? \Carbon\Carbon::parse($rule->created_at) : null;
 
-                                    echo $date ? \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d') : '-';
+                                    $date = $date ?: null;
 
                                 } catch (\Exception $e) {
 
-                                    echo '-';
+                                    $date = null;
 
                                 }
 
-                            @endphp
+                            @endphp @if($date) <x-temporal.date :value="$date" /> @else - @endif
 
                         </p>
 

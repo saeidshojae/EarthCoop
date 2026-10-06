@@ -36,11 +36,58 @@ class ScheduledRuleTest extends TestCase
         $run = CommunicationRun::query()->where('communication_rule_id', $rule->id)->firstOrFail();
         $this->assertSame('pending', $run->status);
         $this->assertSame('schedule:'.$rule->id.':'.$now->utc()->format('YmdHis'), $run->run_key);
+        $this->assertSame(
+            $now->utc()->format('Y-m-d H:i:s'),
+            $run->scheduled_for?->utc()->format('Y-m-d H:i:s'),
+        );
 
         $schedule->refresh();
         $this->assertNotNull($schedule->last_run_at);
         $this->assertTrue($schedule->next_run_at->greaterThan($now));
         Queue::assertPushed(ResolveCommunicationRunAudience::class, 1);
+    }
+
+    public function test_delayed_daily_schedule_uses_planned_occurrence_and_preserves_local_wall_clock_across_dst(): void
+    {
+        Queue::fake();
+
+        $scheduledFor = CarbonImmutable::parse('2026-03-07 09:00:00', 'America/New_York');
+        $processedAt = CarbonImmutable::parse('2026-03-07 09:05:00', 'America/New_York');
+        $users = User::factory()->count(2)->create();
+        [$rule, $schedule] = $this->scheduledRule($users->pluck('id')->all(), $scheduledFor);
+
+        $schedule->forceFill([
+            'frequency' => 'daily',
+            'timezone' => 'America/New_York',
+            'timezone_mode' => 'explicit',
+            'next_run_at' => $scheduledFor->utc(),
+        ])->save();
+
+        $this->assertSame(1, app(CommunicationScheduleService::class)->processDue($processedAt));
+
+        $run = CommunicationRun::query()->where('communication_rule_id', $rule->id)->firstOrFail();
+        $this->assertSame(
+            'schedule:'.$rule->id.':'.$scheduledFor->utc()->format('YmdHis'),
+            $run->run_key,
+        );
+        $this->assertSame(
+            $scheduledFor->utc()->format('Y-m-d H:i:s'),
+            $run->scheduled_for?->utc()->format('Y-m-d H:i:s'),
+        );
+
+        $schedule->refresh();
+        $this->assertSame(
+            $processedAt->utc()->format('Y-m-d H:i:s'),
+            $schedule->last_run_at?->utc()->format('Y-m-d H:i:s'),
+        );
+        $this->assertSame(
+            '2026-03-08 13:00:00',
+            $schedule->next_run_at?->utc()->format('Y-m-d H:i:s'),
+        );
+        $this->assertSame(
+            '09:00',
+            $schedule->next_run_at?->timezone('America/New_York')->format('H:i'),
+        );
     }
 
     public function test_audience_resolution_is_chunked_for_large_specific_user_sets(): void
@@ -114,7 +161,7 @@ class ScheduledRuleTest extends TestCase
             'schedule_definition' => ['interval' => 1],
             'timezone' => 'Asia/Tehran',
             'timezone_mode' => 'system',
-            'next_run_at' => $now,
+            'next_run_at' => $now->utc(),
         ]);
 
         return [$rule, $schedule];

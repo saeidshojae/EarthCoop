@@ -40,7 +40,7 @@
         <div class="space-y-3">
             @forelse($template->versions as $version)
                 <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                    <div class="flex flex-wrap justify-between gap-2"><strong>نسخه {{ $version->version }} / {{ $labels::locale($version->locale) }}</strong><span class="text-xs text-gray-500">انتشار: {{ optional($version->published_at)->format('Y-m-d H:i') ?? '—' }}</span></div>
+                    <div class="flex flex-wrap justify-between gap-2"><strong>نسخه {{ $version->version }} / {{ $labels::locale($version->locale) }}</strong><span class="text-xs text-gray-500">انتشار: @if($version->published_at)<x-temporal.date-time :value="$version->published_at" />@else — @endif</span></div>
                     <p class="mt-2 text-sm">موضوع: {{ $version->subject }}</p>
                     <p class="mt-1 text-xs text-gray-500">فرستنده: {{ $version->senderIdentity?->display_name ?? 'پیش‌فرض' }}@if($version->senderIdentity?->email) — {{ $version->senderIdentity->email }}@endif</p>
                 </div>

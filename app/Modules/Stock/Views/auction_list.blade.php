@@ -66,8 +66,8 @@
                                 <span class="meta-badge">@switch($auction->settlement_channel) @case('external_irr') تسویه خارجی با ریال @break @case('external_usd') تسویه خارجی با دلار @break @default تسویه با بهار فعال @endswitch</span>
                             </td>
                             <td data-label="نوع حراج">@switch($auction->type) @case('single_winner') تک برنده @break @case('uniform_price') قیمت یکسان @break @case('pay_as_bid') پرداخت به قیمت پیشنهادی @break @default {{ $auction->type ?? '-' }} @endswitch</td>
-                            <td data-label="زمان شروع">{{ $auction->start_time ? verta($auction->start_time)->format('Y/m/d H:i') : '-' }}</td>
-                            <td data-label="زمان پایان">{{ $auction->ends_at ? verta($auction->ends_at)->format('Y/m/d H:i') : '-' }}</td>
+                            <td data-label="زمان شروع">@if($auction->start_time)<x-temporal.date-time :value="$auction->start_time" style="short" />@else-@endif</td>
+                            <td data-label="زمان پایان">@if($auction->ends_at)<x-temporal.date-time :value="$auction->ends_at" style="short" />@else-@endif</td>
                             <td data-label="وضعیت">
                                 @if($effectiveStatus === 'expired')
                                     <span class="status-badge canceled">پایان‌یافته</span>

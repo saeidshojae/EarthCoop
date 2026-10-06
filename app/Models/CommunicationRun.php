@@ -12,14 +12,18 @@ class CommunicationRun extends Model
     use HasFactory;
 
     protected $fillable = [
-        'communication_rule_id', 'communication_campaign_id', 'run_key', 'status',
+        'communication_rule_id', 'communication_campaign_id', 'run_key', 'status', 'scheduled_for',
         'matched_count', 'eligible_count', 'suppressed_count', 'invalid_count',
         'queued_count', 'sent_count', 'failed_count', 'started_at', 'finished_at',
     ];
 
     protected function casts(): array
     {
-        return ['started_at' => 'datetime', 'finished_at' => 'datetime'];
+        return [
+            'scheduled_for' => 'datetime',
+            'started_at' => 'datetime',
+            'finished_at' => 'datetime',
+        ];
     }
 
     public function rule(): BelongsTo

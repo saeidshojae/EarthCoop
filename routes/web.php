@@ -44,6 +44,8 @@ use App\Modules\Blog\Controllers\BlogController as ModuleBlogController;
 use App\Modules\Blog\Controllers\AdminBlogController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Seo\SitemapController;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 
 use App\Http\Controllers\Auth\Register\StartController;
 use App\Http\Controllers\Auth\Register\Step1Controller;
@@ -100,7 +102,7 @@ Route::get('/lang/current', [LocaleController::class, 'current'])->name('locale.
 | Static pages
 |--------------------------------------------------------------------------
 */
-date_default_timezone_set("Asia/tehran");
+
 
 Route::view('/terms', 'terms', ['seoRobots' => 'index,follow'])->name('terms');
 Route::view('/privacy', 'privacy', [
@@ -1331,7 +1333,7 @@ Route::get('/users/search', function(Request $request){
     return response()->json($users);
 });
 
-Route::get('/categories/{category}/blogs', function(\App\Models\Category $category, Request $request){
+Route::get('/categories/{category}/blogs', function(\App\Models\Category $category, Request $request, TemporalService $temporal, TemporalContextResolver $temporalContexts){
     $query = Blog::query()
             ->where('category_id', $category->id)
             ->latest();
@@ -1341,14 +1343,15 @@ Route::get('/categories/{category}/blogs', function(\App\Models\Category $catego
         }
 
         $blogs = $query->select(['id','title','created_at'])->get();
+        $context = $temporalContexts->forUser($request->user());
 
         // این Route رو با چیزی که تو پروژه‌ات برای نمایش صفحه‌ی بلاگ داری هماهنگ کن
         // طبق regex موجود، ظاهراً مسیر نمایش بلاگ: /groups/comment/{id}
-        $items = $blogs->map(function ($b) {
+        $items = $blogs->map(function ($b) use ($temporal, $context) {
             return [
                 'id' => $b->id,
                 'title' => $b->title,
-                'date' => verta($b->created_at)->format('Y/m/d H:i'),
+                'date' => $temporal->dateTime($b->created_at, $context, 'short'),
                 'url' => route('groups.comment', $b->id), // اگر اسمت فرق دارد، همین‌جا عوض کن
             ];
         });

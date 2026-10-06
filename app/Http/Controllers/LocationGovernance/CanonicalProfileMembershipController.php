@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\ProfileCompletionService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Morilog\Jalali\Jalalian;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+use ValueError;
 
 final class CanonicalProfileMembershipController extends Controller
 {
@@ -54,18 +58,48 @@ final class CanonicalProfileMembershipController extends Controller
             return app(ProfileController::class)->updateGeneral($request);
         }
 
+        $user = $request->user();
+        abort_unless($user !== null, 401);
+
         $birthDate = $request->input('birth_date');
+        $canonicalBirthDate = null;
+
         if ($birthDate !== null) {
-            validator(
-                ['birth_date' => $birthDate],
-                ['birth_date' => 'nullable|array|min:3'],
-            )->validate();
+            $context = app(TemporalContextResolver::class)->forUser($user);
+
+            try {
+                if (is_array($birthDate)) {
+                    if (count($birthDate) < 3
+                        || $birthDate[0] === ''
+                        || $birthDate[1] === ''
+                        || $birthDate[2] === '') {
+                        throw new InvalidArgumentException('Birth date parts are incomplete.');
+                    }
+
+                    $canonicalBirthDate = app(TemporalService::class)->parseDateParts(
+                        (int) $birthDate[0],
+                        (int) $birthDate[1],
+                        (int) $birthDate[2],
+                        $context,
+                    );
+                } elseif (is_string($birthDate)) {
+                    $canonicalBirthDate = app(TemporalService::class)->parseDate(
+                        trim($birthDate),
+                        $context,
+                    );
+                } else {
+                    throw new InvalidArgumentException('Birth date must be a localized date string or legacy date-parts array.');
+                }
+            } catch (InvalidArgumentException|ValueError) {
+                throw ValidationException::withMessages([
+                    'birth_date' => __('validation.date', ['attribute' => 'birth_date']),
+                ]);
+            }
 
             // Registration cutover owns the canonical birth-date value even while
-            // Stage C groups are dark. Remove it from the mature legacy request so
-            // the old age-group detach/materialize block can never run in canonical
-            // registration mode. The value is persisted below, while membership
-            // reconciliation remains independently gated by groups_enabled.
+            // Stage C groups are dark. Remove it from the mature profile request so
+            // the legacy age-group detach/materialize block can never run here.
+            // The canonical value is persisted below after mature profile rules pass.
             $request->request->remove('birth_date');
         }
 
@@ -78,17 +112,10 @@ final class CanonicalProfileMembershipController extends Controller
             return $response;
         }
 
-        $user = $request->user();
-        abort_unless($user !== null, 401);
-
-        DB::transaction(function () use ($user, $birthDate, $reconciler): void {
-            if (is_array($birthDate) && count($birthDate) >= 3) {
+        DB::transaction(function () use ($user, $birthDate, $canonicalBirthDate, $reconciler): void {
+            if ($birthDate !== null && $canonicalBirthDate !== null) {
                 $user->forceFill([
-                    'birth_date' => (new Jalalian(
-                        (int) $birthDate[2],
-                        (int) $birthDate[1],
-                        (int) $birthDate[0],
-                    ))->toCarbon(),
+                    'birth_date' => $canonicalBirthDate->toCanonical(),
                 ])->save();
             }
 

@@ -189,7 +189,7 @@
 
             <span class="post-card__timestamp">
 
-                {{ verta($item->created_at)->format('Y/m/d H:i') }}
+                <x-temporal.date-time :value="$item->created_at" style="short" />
 
             </span>
 
@@ -296,9 +296,14 @@
                 $readCount = is_array($readBy) ? count($readBy) : 0;
             @endphp
 
-            <span class="content-meta-time">{{ verta($item->created_at)->format('H:i') }}</span>
+            <span class="content-meta-time"><x-temporal.time :value="$item->created_at" style="short" /></span>
             @if($item->edited_at)
-            <span class="content-edit-status" title="ویرایش شده در {{ verta($item->edited_at)->format('Y/m/d H:i:s') }}">(ویرایش شده)</span>
+            @php
+                $temporal = app(\App\Temporal\Contracts\TemporalService::class);
+                $temporalContext = app(\App\Temporal\Context\TemporalContextResolver::class)->defaultContext();
+                $editedAtTitle = $temporal->date($item->edited_at, $temporalContext, 'short') . ' ' . $temporal->time($item->edited_at, $temporalContext, 'long');
+            @endphp
+            <span class="content-edit-status" title="ویرایش شده در {{ $editedAtTitle }}">(ویرایش شده)</span>
             @endif
 
             <div class="reaction-buttons post-card__stats" data-post-id="{{ $item->id }}">

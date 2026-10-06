@@ -10,6 +10,7 @@ use App\Models\CommunicationTemplate;
 use App\Models\User;
 use App\Services\Communication\CommunicationCampaignService;
 use App\Services\Communication\CommunicationTemplateService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use Tests\TestCase;
@@ -105,6 +106,59 @@ final class CampaignAudienceTest extends TestCase
         $this->assertSame('running', $confirmed->fresh()->status);
     }
 
+    public function test_due_campaign_command_promotes_only_due_scheduled_campaigns_using_canonical_utc(): void
+    {
+        config()->set('communications.campaigns.elevated_confirmation_threshold', 100);
+
+        [$due] = $this->campaignWithUsers();
+        [$future] = $this->campaignWithUsers();
+        [$draft] = $this->campaignWithUsers();
+
+        $clock = CarbonImmutable::parse('2026-10-07 12:00:00', 'UTC');
+
+        $due->update([
+            'status' => 'scheduled',
+            'scheduled_at' => $clock->subMinute(),
+        ]);
+        $future->update([
+            'status' => 'scheduled',
+            'scheduled_at' => $clock->addMinute(),
+        ]);
+        $draft->update([
+            'status' => 'draft',
+            'scheduled_at' => $clock->subMinute(),
+        ]);
+
+        $processed = app(CommunicationCampaignService::class)->processDueCampaigns($clock);
+
+        $this->assertSame(1, $processed);
+        $this->assertSame('running', $due->fresh()->status);
+        $this->assertSame('scheduled', $future->fresh()->status);
+        $this->assertSame('draft', $draft->fresh()->status);
+    }
+
+    public function test_due_campaign_console_command_processes_due_scheduled_campaigns(): void
+    {
+        [$campaign] = $this->campaignWithUsers();
+        $clock = CarbonImmutable::parse('2026-10-07 12:00:00', 'UTC');
+        CarbonImmutable::setTestNow($clock);
+
+        try {
+            $campaign->update([
+                'status' => 'scheduled',
+                'scheduled_at' => $clock->subMinute(),
+            ]);
+
+            $this->artisan('communications:process-due-campaigns')
+                ->expectsOutput('Processed 1 due communication campaign(s).')
+                ->assertSuccessful();
+
+            $this->assertSame('running', $campaign->fresh()->status);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
     /** @return array{0:CommunicationCampaign,1:array<int,User>} */
     private function campaignWithUsers(): array
     {
@@ -133,10 +187,11 @@ final class CampaignAudienceTest extends TestCase
             $sender,
         );
 
+        $suffix = uniqid('', true);
         $users = [
-            User::factory()->create(['email' => 'campaign-a@example.test']),
-            User::factory()->create(['email' => 'campaign-b@example.test']),
-            User::factory()->create(['email' => 'campaign-c@example.test']),
+            User::factory()->create(['email' => 'campaign-a-'.$suffix.'@example.test']),
+            User::factory()->create(['email' => 'campaign-b-'.$suffix.'@example.test']),
+            User::factory()->create(['email' => 'campaign-c-'.$suffix.'@example.test']),
         ];
 
         $campaign = CommunicationCampaign::query()->create([

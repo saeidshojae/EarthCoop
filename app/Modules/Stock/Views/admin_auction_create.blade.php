@@ -98,17 +98,38 @@
 
                 <div class="canonical-card">
                     <label for="start_time" class="canonical-label">زمان شروع</label>
-                    <input id="start_time" class="canonical-input" type="datetime-local" name="start_time" value="{{ old('start_time', isset($auction) && $auction->start_time ? $auction->start_time->format('Y-m-d\TH:i') : '') }}" required>
+                    <x-temporal.date-time-input
+                        name="start_time"
+                        id="start_time"
+                        class="canonical-input"
+                        :value="old('start_time', $auction->start_time ?? null)"
+                        required
+                    />
+                    @error('start_time')<div class="text-sm text-red-500 mt-1">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="canonical-card">
                     <label for="end_time" class="canonical-label">زمان پایان</label>
-                    <input id="end_time" class="canonical-input" type="datetime-local" name="end_time" value="{{ old('end_time', isset($auction) && $auction->end_time ? $auction->end_time->format('Y-m-d\TH:i') : '') }}" required>
+                    <x-temporal.date-time-input
+                        name="end_time"
+                        id="end_time"
+                        class="canonical-input"
+                        :value="old('end_time', $auction->end_time ?? null)"
+                        required
+                    />
+                    @error('end_time')<div class="text-sm text-red-500 mt-1">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="canonical-card">
                     <label for="ends_at" class="canonical-label">زمان بسته‌شدن خودکار</label>
-                    <input id="ends_at" class="canonical-input" type="datetime-local" name="ends_at" value="{{ old('ends_at', isset($auction) && $auction->ends_at ? $auction->ends_at->format('Y-m-d\TH:i') : '') }}" {{ $isEdit ? '' : 'required' }}>
+                    <x-temporal.date-time-input
+                        name="ends_at"
+                        id="ends_at"
+                        class="canonical-input"
+                        :value="old('ends_at', $auction->ends_at ?? null)"
+                        :required="! $isEdit"
+                    />
+                    @error('ends_at')<div class="text-sm text-red-500 mt-1">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="canonical-card">

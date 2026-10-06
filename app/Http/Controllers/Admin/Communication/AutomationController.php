@@ -150,7 +150,7 @@ final class AutomationController extends Controller
                     'frequency' => $frequency,
                     'schedule_definition' => ['interval' => $interval],
                     'timezone' => $timezone,
-                    'timezone_mode' => 'system',
+                    'timezone_mode' => 'explicit',
                     'next_run_at' => $nextRunAt->utc(),
                 ]);
             }

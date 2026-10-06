@@ -1817,7 +1817,7 @@ $roleLabels = [
 
 
 
-                                        <td>{{ \Morilog\Jalali\Jalalian::fromCarbon($log->created_at)->format('Y/m/d H:i') }}</td>
+                                        <td><x-temporal.date-time :value="$log->created_at" style="short" /></td>
 
 
 

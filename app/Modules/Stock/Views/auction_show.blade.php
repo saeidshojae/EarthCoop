@@ -23,8 +23,8 @@ $displayStatus=$isExpiredRunning?'پایان‌یافته؛ در انتظار ب
 <div class="info-item"><span class="info-label">تعداد سهام</span><span class="info-value">{{ number_format($auction->shares_count) }} سهم</span></div>
 <div class="info-item"><span class="info-label">قیمت پایه</span><span class="info-value">{{ number_format($baseGol) }} گل</span><span class="subvalue">{{ number_format($baseBahar,2) }} بهار</span></div>
 <div class="info-item"><span class="info-label">نوع حراج</span><span class="info-value">@switch($auction->type)@case('single_winner') تک‌برنده @break @case('uniform_price') قیمت یکسان @break @case('pay_as_bid') پرداخت به قیمت پیشنهادی @break @default نامشخص @endswitch</span></div>
-<div class="info-item"><span class="info-label">شروع</span><span class="info-value">{{ $auction->start_time?verta($auction->start_time)->format('Y/m/d H:i'):'-' }}</span></div>
-<div class="info-item"><span class="info-label">پایان</span><span class="info-value">{{ $auction->ends_at?verta($auction->ends_at)->format('Y/m/d H:i'):'-' }}</span></div>
+<div class="info-item"><span class="info-label">شروع</span><span class="info-value">@if($auction->start_time)<x-temporal.date-time :value="$auction->start_time" style="short" />@else-@endif</span></div>
+<div class="info-item"><span class="info-label">پایان</span><span class="info-value">@if($auction->ends_at)<x-temporal.date-time :value="$auction->ends_at" style="short" />@else-@endif</span></div>
 <div class="info-item"><span class="info-label">وضعیت</span><span class="status {{ $isExpiredRunning?'expired':($auction->status==='running'?'running':'') }}">{{ $displayStatus }}</span></div>
 </div>
 @if($isPrimaryTreasury&&$isExternal)<div class="notice">تسویه خارجی فقط برای عرضه اولیه خزانه EarthCoop مجاز است. مبلغ وجه خارجی در زمان پرداخت، از قیمت مرجع سهم بر حسب گل و با نرخ معتبر و زمان‌دار محاسبه می‌شود. این مبلغ وارد موجودی نجم بهار نمی‌شود و بهار جدیدی نیز ایجاد نمی‌کند.</div>@endif

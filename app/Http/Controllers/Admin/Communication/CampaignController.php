@@ -9,6 +9,8 @@ use App\Models\CommunicationSenderIdentity;
 use App\Models\CommunicationTemplate;
 use App\Services\Communication\CommunicationAudienceRegistry;
 use App\Services\Communication\CommunicationCampaignService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -39,8 +41,13 @@ final class CampaignController extends Controller
         return view('admin.communications.campaigns.create', compact('templates', 'senders', 'audienceKeys'));
     }
 
-    public function store(Request $request, CommunicationAudienceRegistry $audiences): RedirectResponse
-    {
+    public function store(
+        Request $request,
+        CommunicationAudienceRegistry $audiences,
+        TemporalService $temporal,
+        TemporalContextResolver $temporalContexts,
+    ): RedirectResponse {
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'audience_key' => ['required', 'string', 'max:160'],
@@ -50,7 +57,7 @@ final class CampaignController extends Controller
             'communication_sender_identity_id' => ['nullable', 'integer', 'exists:communication_sender_identities,id'],
             'classification' => ['required', Rule::in(array_column(CommunicationClassification::cases(), 'value'))],
             'priority' => ['required', 'integer', 'min:1', 'max:9'],
-            'scheduled_at' => ['nullable', 'date'],
+            'scheduled_at' => ['nullable', 'string', 'max:64'],
         ]);
 
         $audienceKey = (string) $validated['audience_key'];
@@ -67,6 +74,21 @@ final class CampaignController extends Controller
             ]);
         }
 
+        $scheduledAt = null;
+        $scheduledAtInput = trim((string) ($validated['scheduled_at'] ?? ''));
+        if ($scheduledAtInput !== '') {
+            try {
+                $scheduledAt = $temporal->parseDateTime(
+                    $scheduledAtInput,
+                    $temporalContexts->forUser($request->user()),
+                );
+            } catch (InvalidArgumentException|\ValueError) {
+                return back()->withInput()->withErrors([
+                    'scheduled_at' => 'زمان ارسال معتبر نیست.',
+                ]);
+            }
+        }
+
         CommunicationCampaign::query()->create([
             'name' => $validated['name'],
             'status' => 'draft',
@@ -77,7 +99,7 @@ final class CampaignController extends Controller
             'communication_sender_identity_id' => $validated['communication_sender_identity_id'] ?? null,
             'classification' => $validated['classification'],
             'priority' => $validated['priority'],
-            'scheduled_at' => $validated['scheduled_at'] ?? null,
+            'scheduled_at' => $scheduledAt,
             'created_by' => $request->user()?->id,
         ]);
 

@@ -2667,7 +2667,7 @@
 
 
 
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('Y/m/d H:i') }}
+                                    <x-temporal.date-time :value="$createdAt" />
 
 
 

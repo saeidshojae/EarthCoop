@@ -4201,7 +4201,7 @@
 
 
 
-                            تاریخ پذیرش: <strong>{{ verta($termsAcceptedAt)->format('Y/m/d H:i') }}</strong>
+                            تاریخ پذیرش: <strong><x-temporal.date-time :value="$termsAcceptedAt" style="short" /></strong>
 
 
 
@@ -4887,7 +4887,7 @@
 
 
 
-                آخرین به‌روزرسانی: <strong>{{ verta(($setting->updated_at ?? now()))->format('Y/m/d') }}</strong>
+                آخرین به‌روزرسانی: <strong><x-temporal.date :value="$setting->updated_at ?? now()" style="short" /></strong>
 
 
 
@@ -5661,28 +5661,6 @@
 
         };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         window.toggleNested = (id, button) => {
 
 
@@ -6005,8 +5983,6 @@
                 }
             });
         }
-
-
 
 
 

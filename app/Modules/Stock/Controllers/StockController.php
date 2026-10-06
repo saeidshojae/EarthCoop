@@ -2,6 +2,7 @@
 namespace App\Modules\Stock\Controllers;
 
 use App\Modules\Stock\Models\Stock;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Modules\Stock\Models\Auction;
@@ -17,6 +18,10 @@ use Illuminate\Validation\ValidationException;
 class StockController extends Controller
 {
     private const GOL_PER_BAHAR = 100;
+
+    public function __construct(private readonly TemporalService $temporal)
+    {
+    }
 
     // نمایش اطلاعات پایه سهام
     public function index()
@@ -203,7 +208,7 @@ class StockController extends Controller
 
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $monthLabel = \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m');
+            $monthLabel = substr($this->temporal->date($date, style: 'short'), 0, 7);
 
             $monthAuctions = $auctions->filter(function($auction) use ($date) {
                 return $auction->start_time && $auction->start_time->format('Y-m') === $date->format('Y-m');

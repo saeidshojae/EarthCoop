@@ -1232,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     document.getElementById('oldestBackup').textContent = data.stats.oldest_backup 
 
-                        ? new Date(data.stats.oldest_backup).toLocaleDateString('fa-IR')
+                        ? data.stats.oldest_backup_label
 
                         : '-';
 

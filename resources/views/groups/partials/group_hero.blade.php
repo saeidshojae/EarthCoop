@@ -113,7 +113,7 @@
                     @if($group->location_level)
                         <span class="inline-flex items-center gap-1.5"><i class="fas fa-map-marker-alt text-emerald-500"></i>{{ $group->location_level }}</span>
                     @endif
-                    <span class="inline-flex items-center gap-1.5"><i class="fas fa-clock text-emerald-500"></i>{{ verta($group->updated_at)->formatDifference() }}</span>
+                    <span class="inline-flex items-center gap-1.5"><i class="fas fa-clock text-emerald-500"></i><x-temporal.relative :value="$group->updated_at" /></span>
                 </div>
                 @if(!empty($group->description))
                     <p class="group-hero__description--desktop mt-2 mb-0 max-w-2xl text-xs leading-6 text-slate-500">{{ Str::limit(strip_tags($group->description), 150) }}</p>

@@ -86,9 +86,14 @@ final class CommunicationPersianAdminUiTest extends TestCase
             $this->assertStringContainsString($helperCall, $createAutomation);
         }
 
-        foreach (['trigger($rule->trigger_type)', 'audience($audienceKey)', 'frequency($rule->schedule->frequency)', "?->timezone(\$rule->schedule->timezone ?: config('"] as $helperCall) {
+        foreach (['trigger($rule->trigger_type)', 'audience($audienceKey)', 'frequency($rule->schedule->frequency)'] as $helperCall) {
             $this->assertStringContainsString($helperCall, $indexAutomation);
         }
+        $this->assertStringContainsString(
+            '<x-temporal.date-time :value="$rule->schedule->next_run_at" :timezone="$rule->schedule->timezone" />',
+            $indexAutomation,
+        );
+        $this->assertStringNotContainsString("format('Y-m-d H:i')", $indexAutomation);
         $this->assertStringContainsString('campaignStatus($campaign->status)', $campaignIndex);
 
         $this->assertStringContainsString('مخاطبان', $campaignCreate);

@@ -493,7 +493,7 @@
                                     <td><span class="reputation-event-title">{{ $eventLabel }}</span></td>
                                     <td><span class="reputation-delta {{ $delta >= 0 ? 'reputation-delta--positive' : 'reputation-delta--negative' }}">{{ $delta >= 0 ? '+' : '' }}{{ number_format($delta) }}</span></td>
                                     <td>{{ $sourceLabel }}</td>
-                                    <td>{{ verta($transaction->created_at)->format('Y-m-d H:i') }}</td>
+                                    <td><x-temporal.date-time :value="$transaction->created_at" /></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -514,7 +514,7 @@
                             </div>
                             <div class="reputation-history-mobile-item__meta">
                                 <span>{{ $sourceLabel }}</span>
-                                <span>{{ verta($transaction->created_at)->format('Y-m-d H:i') }}</span>
+                                <span><x-temporal.date-time :value="$transaction->created_at" /></span>
                             </div>
                         </article>
                     @endforeach

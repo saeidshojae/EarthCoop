@@ -12,6 +12,7 @@ class CommunicationScheduleService
 {
     public function processDue(CarbonInterface $now): int
     {
+        $now = $now->copy()->utc();
         $processed = 0;
 
         $schedules = CommunicationRuleSchedule::query()
@@ -27,7 +28,12 @@ class CommunicationScheduleService
                 continue;
             }
 
-            $runKey = 'schedule:'.$rule->id.':'.$now->copy()->utc()->format('YmdHis');
+            $scheduledFor = $schedule->next_run_at?->copy()->utc();
+            if ($scheduledFor === null) {
+                continue;
+            }
+
+            $runKey = 'schedule:'.$rule->id.':'.$scheduledFor->format('YmdHis');
 
             try {
                 $run = CommunicationRun::query()->firstOrCreate(
@@ -35,6 +41,7 @@ class CommunicationScheduleService
                     [
                         'communication_rule_id' => $rule->id,
                         'status' => 'pending',
+                        'scheduled_for' => $scheduledFor,
                         'started_at' => $now,
                     ],
                 );
@@ -48,7 +55,7 @@ class CommunicationScheduleService
 
             $schedule->forceFill([
                 'last_run_at' => $now,
-                'next_run_at' => $this->nextRunAt($schedule, $now),
+                'next_run_at' => $this->nextRunAt($schedule, $scheduledFor),
             ])->save();
 
             ResolveCommunicationRunAudience::dispatch($run->id)->onQueue('communications-bulk');
@@ -58,16 +65,22 @@ class CommunicationScheduleService
         return $processed;
     }
 
-    private function nextRunAt(CommunicationRuleSchedule $schedule, CarbonInterface $now): CarbonInterface
+    private function nextRunAt(CommunicationRuleSchedule $schedule, CarbonInterface $scheduledFor): CarbonInterface
     {
         $definition = (array) $schedule->schedule_definition;
         $interval = max(1, (int) ($definition['interval'] ?? 1));
+        $timezone = trim((string) $schedule->timezone) !== ''
+            ? (string) $schedule->timezone
+            : 'UTC';
+        $localOccurrence = $scheduledFor->copy()->setTimezone($timezone);
 
-        return match ($schedule->frequency) {
-            'hourly' => $now->copy()->addHours($interval),
-            'daily' => $now->copy()->addDays($interval),
-            'weekly' => $now->copy()->addWeeks($interval),
-            default => $now->copy()->addDays($interval),
+        $nextLocalOccurrence = match ($schedule->frequency) {
+            'hourly' => $localOccurrence->addHours($interval),
+            'daily' => $localOccurrence->addDays($interval),
+            'weekly' => $localOccurrence->addWeeks($interval),
+            default => $localOccurrence->addDays($interval),
         };
+
+        return $nextLocalOccurrence->utc();
     }
 }
