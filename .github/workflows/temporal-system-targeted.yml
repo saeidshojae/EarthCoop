@@ -53,7 +53,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   temporal-tests:
@@ -77,52 +77,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Apply bounded participation history temporal patch
-        if: github.event_name == 'push' && github.event.head_commit.message == 'chore(ci): stage bounded history temporal patch'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('resources/views/history/index-base.blade.php')
-          data = path.read_bytes()
-          before_cr = data.count(b'\r')
-          before_lf = data.count(b'\n')
-
-          replacements = [
-              ("{{ verta($blog->created_at)->format('Y-m-d') }}", '<x-temporal.date :value="$blog->created_at" style="short" />'),
-              ("{{ verta($tx->created_at)->format('Y-m-d H:i') }}", '<x-temporal.date-time :value="$tx->created_at" style="short" />'),
-              ("{{ verta($comment->created_at)->format('Y-m-d') }}", '<x-temporal.date :value="$comment->created_at" style="short" />'),
-              ("{{ verta($reply->created_at)->format('Y-m-d') }}", '<x-temporal.date :value="$reply->created_at" style="short" />'),
-              ("{{ $reaction->created_at ? verta($reaction->created_at)->format('Y-m-d') : '—' }}", '@if($reaction->created_at) <x-temporal.date :value="$reaction->created_at" style="short" /> @else — @endif'),
-              ("{{ verta($poll->created_at)->format('Y-m-d') }}", '<x-temporal.date :value="$poll->created_at" style="short" />'),
-              ("{{ verta($election->created_at)->format('Y-m-d') }}", '<x-temporal.date :value="$election->created_at" style="short" />'),
-          ]
-
-          for old, new in replacements:
-              old_b = old.encode('utf-8')
-              new_b = new.encode('utf-8')
-              count = data.count(old_b)
-              if count != 1:
-                  raise SystemExit(f'expected exactly one occurrence for {old!r}, got {count}')
-              data = data.replace(old_b, new_b, 1)
-
-          if b'verta(' in data:
-              raise SystemExit('legacy verta() remains in history view')
-          if data.count(b'\r') != before_cr or data.count(b'\n') != before_lf:
-              raise SystemExit('line-ending counts changed')
-
-          path.write_bytes(data)
-          PY
-
-          changed="$(git diff --name-only)"
-          test "$changed" = "resources/views/history/index-base.blade.php"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add resources/views/history/index-base.blade.php
-          git commit -m "fix(temporal): unify participation history dates"
-          git push origin HEAD:agent/temporal-system-20261001
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
