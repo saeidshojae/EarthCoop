@@ -9,6 +9,9 @@ use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Services\SecretariatAclService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class SecretariatAccessController extends Controller
@@ -34,7 +37,7 @@ class SecretariatAccessController extends Controller
         ]);
     }
 
-    public function grant(Request $request, SecretariatOffice $office, SecretariatRecord $record): RedirectResponse
+    public function grant(Request $request, SecretariatOffice $office, SecretariatRecord $record, TemporalService $temporal, TemporalContextResolver $contexts): RedirectResponse
     {
         $this->assertOfficeRecord($office, $record);
         $this->authorize('manageAcl', $record);
@@ -42,8 +45,20 @@ class SecretariatAccessController extends Controller
         $validated = $request->validate([
             'principal_type' => ['required', Rule::in(['user', 'group'])],
             'principal_id' => ['required', 'integer', 'min:1'],
-            'expires_at' => ['nullable', 'date', 'after:now'],
+            'expires_at' => ['nullable', 'string', 'max:80'],
         ]);
+
+        if (! empty($validated['expires_at'])) {
+            try {
+                $expiresAt = $temporal->parseDateTime((string) $validated['expires_at'], $contexts->defaultContext());
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['expires_at' => 'زمان انقضا معتبر نیست.']);
+            }
+            if ($expiresAt <= new \DateTimeImmutable('now', new \DateTimeZone('UTC'))) {
+                throw ValidationException::withMessages(['expires_at' => 'زمان انقضا باید در آینده باشد.']);
+            }
+            $validated['expires_at'] = $expiresAt->format('Y-m-d H:i:s');
+        }
 
         $this->acl->grant(
             $record,
