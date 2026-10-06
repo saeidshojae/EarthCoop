@@ -10,7 +10,7 @@ return [
 
     'default_title' => 'ارث‌کوپ | تعاون جهانی، حکمرانی مشارکتی و اقتصاد آزاد مردمی',
     'default_description' => 'ارث‌کوپ یک سامانه تعاونی و مشارکتی از محله تا جهان است که برای تحقق عدالت، حکمرانی مشارکتی، اقتصاد آزاد مردمی و پاسداشت حقوق همگانی زمین و منابع طراحی شده است.',
-    'default_image' => '/icons/icon.svg',
+    'default_image' => '/icons/earthcoop-brand-192.png',
 
     'social_profiles' => [
         'https://instagram.com/earthcoop',
