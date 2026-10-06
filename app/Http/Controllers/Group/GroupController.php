@@ -753,7 +753,7 @@ class GroupController extends Controller
         ]);
     }
 
-    public function najmHodaActionItems(Request $request, Group $group)
+    public function najmHodaActionItems(Request $request, Group $group, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         if (!$this->hasGroupLeadershipAccess($group)) {
             return response()->json([
@@ -785,7 +785,16 @@ class GroupController extends Controller
             });
         }
 
-        $items = $query->take(100)->get()->map(function ($item) {
+        $temporalContext = $contexts->defaultContext();
+        $items = $query->take(100)->get()->map(function ($item) use ($temporal, $temporalContext) {
+            $dueAt = null;
+            if ($item->due_at) {
+                $dueAt = $temporal->dateTime($item->due_at, $temporalContext, 'short');
+                if ($temporalContext->calendar() === 'gregorian') {
+                    $dueAt = str_replace(' ', 'T', $dueAt);
+                }
+            }
+
             return [
                 'id' => $item->id,
                 'title' => $item->title,
@@ -794,9 +803,10 @@ class GroupController extends Controller
                 'priority' => $item->priority,
                 'assignee_name' => $item->assignee_name,
                 'assigned_user_id' => $item->assigned_user_id,
-                'due_at' => optional($item->due_at)->format('Y-m-d\TH:i'),
-                'due_human' => optional($item->due_at)->diffForHumans(),
-                'updated_at_human' => optional($item->updated_at)->diffForHumans(),
+                'due_at' => $dueAt,
+                'due_input_type' => $temporalContext->calendar() === 'jalali' ? 'text' : 'datetime-local',
+                'due_human' => $item->due_at ? $temporal->relative($item->due_at, $temporalContext) : null,
+                'updated_at_human' => $item->updated_at ? $temporal->relative($item->updated_at, $temporalContext) : null,
             ];
         });
 
@@ -820,7 +830,7 @@ class GroupController extends Controller
         ]);
     }
 
-    public function updateNajmHodaActionItem(Request $request, Group $group, NajmHodaGroupActionItem $actionItem)
+    public function updateNajmHodaActionItem(Request $request, Group $group, NajmHodaGroupActionItem $actionItem, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         if (!$this->hasGroupLeadershipAccess($group)) {
             return response()->json([
@@ -840,8 +850,18 @@ class GroupController extends Controller
             'status' => 'nullable|in:open,in_progress,blocked,done,cancelled',
             'priority' => 'nullable|in:low,medium,high,urgent',
             'assigned_user_id' => 'nullable|integer|exists:users,id',
-            'due_at' => 'nullable|date',
+            'due_at' => 'nullable|string|max:80',
         ]);
+
+        if (! empty($validated['due_at'])) {
+            try {
+                $validated['due_at'] = $temporal
+                    ->parseDateTime((string) $validated['due_at'], $contexts->defaultContext())
+                    ->format('Y-m-d H:i:s');
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['due_at' => 'زمان سررسید معتبر نیست.']);
+            }
+        }
 
         if (array_key_exists('assigned_user_id', $validated) && !empty($validated['assigned_user_id'])) {
             $isMember = GroupUser::where('group_id', $group->id)
@@ -878,8 +898,14 @@ class GroupController extends Controller
                 'status' => $actionItem->status,
                 'priority' => $actionItem->priority,
                 'assignee_name' => $actionItem->assignee_name,
-                'due_at' => optional($actionItem->due_at)->format('Y-m-d\TH:i'),
-                'updated_at_human' => optional($actionItem->updated_at)->diffForHumans(),
+                'due_at' => $actionItem->due_at
+                    ? ($contexts->defaultContext()->calendar() === 'gregorian'
+                        ? str_replace(' ', 'T', $temporal->dateTime($actionItem->due_at, $contexts->defaultContext(), 'short'))
+                        : $temporal->dateTime($actionItem->due_at, $contexts->defaultContext(), 'short'))
+                    : null,
+                'updated_at_human' => $actionItem->updated_at
+                    ? $temporal->relative($actionItem->updated_at, $contexts->defaultContext())
+                    : null,
             ],
         ]);
     }
