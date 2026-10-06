@@ -64,8 +64,8 @@
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-5">
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-900 p-3"><dt class="text-gray-500">کانال</dt><dd class="font-medium mt-1">{{ $detail?->channel ?: '—' }}</dd></div>
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-900 p-3"><dt class="text-gray-500">مرجع بیرونی</dt><dd class="font-medium mt-1">{{ $detail?->external_reference_number ?: '—' }}</dd></div>
-                    <div class="rounded-xl bg-gray-50 dark:bg-gray-900 p-3"><dt class="text-gray-500">دریافت</dt><dd class="font-medium mt-1">{{ optional($detail?->received_at)->format('Y-m-d H:i') ?: '—' }}</dd></div>
-                    <div class="rounded-xl bg-gray-50 dark:bg-gray-900 p-3"><dt class="text-gray-500">ارسال ثبت‌شده</dt><dd class="font-medium mt-1">{{ optional($detail?->sent_at)->format('Y-m-d H:i') ?: '—' }}</dd></div>
+                    <div class="rounded-xl bg-gray-50 dark:bg-gray-900 p-3"><dt class="text-gray-500">دریافت</dt><dd class="font-medium mt-1">@if($detail?->received_at)<x-temporal.date-time :value="$detail->received_at" />@else—@endif</dd></div>
+                    <div class="rounded-xl bg-gray-50 dark:bg-gray-900 p-3"><dt class="text-gray-500">ارسال ثبت‌شده</dt><dd class="font-medium mt-1">@if($detail?->sent_at)<x-temporal.date-time :value="$detail->sent_at" />@else—@endif</dd></div>
                 </dl>
                 @if($record->summary)<p class="mb-4 text-gray-600 dark:text-gray-300">{{ $record->summary }}</p>@endif
                 <div class="whitespace-pre-wrap leading-8">{{ $record->currentVersion?->body ?: 'متنی ثبت نشده است.' }}</div>
@@ -121,9 +121,9 @@
                             </div>
                             @if($dispatch->instructions)<p class="text-sm mt-3 text-gray-600 dark:text-gray-300">{{ $dispatch->instructions }}</p>@endif
                             <div class="text-xs text-gray-400 mt-3 flex flex-wrap gap-3">
-                                <span>ارسال: {{ optional($dispatch->dispatched_at)->format('Y-m-d H:i') ?: '—' }}</span>
-                                <span>دریافت: {{ optional($dispatch->received_at)->format('Y-m-d H:i') ?: '—' }}</span>
-                                <span>تکمیل: {{ optional($dispatch->completed_at)->format('Y-m-d H:i') ?: '—' }}</span>
+                                <span>ارسال: @if($dispatch->dispatched_at)<x-temporal.date-time :value="$dispatch->dispatched_at" />@else—@endif</span>
+                                <span>دریافت: @if($dispatch->received_at)<x-temporal.date-time :value="$dispatch->received_at" />@else—@endif</span>
+                                <span>تکمیل: @if($dispatch->completed_at)<x-temporal.date-time :value="$dispatch->completed_at" />@else—@endif</span>
                             </div>
                             @can('transition', $record)
                                 @if(!empty($nextDispatchStatuses[$dispatch->status] ?? []))
