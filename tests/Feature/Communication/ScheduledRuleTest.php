@@ -36,6 +36,10 @@ class ScheduledRuleTest extends TestCase
         $run = CommunicationRun::query()->where('communication_rule_id', $rule->id)->firstOrFail();
         $this->assertSame('pending', $run->status);
         $this->assertSame('schedule:'.$rule->id.':'.$now->utc()->format('YmdHis'), $run->run_key);
+        $this->assertSame(
+            $now->utc()->format('Y-m-d H:i:s'),
+            $run->scheduled_for?->utc()->format('Y-m-d H:i:s'),
+        );
 
         $schedule->refresh();
         $this->assertNotNull($schedule->last_run_at);
@@ -65,6 +69,10 @@ class ScheduledRuleTest extends TestCase
         $this->assertSame(
             'schedule:'.$rule->id.':'.$scheduledFor->utc()->format('YmdHis'),
             $run->run_key,
+        );
+        $this->assertSame(
+            $scheduledFor->utc()->format('Y-m-d H:i:s'),
+            $run->scheduled_for?->utc()->format('Y-m-d H:i:s'),
         );
 
         $schedule->refresh();
