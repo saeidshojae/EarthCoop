@@ -23,26 +23,28 @@ class BlogRelatedPostsTest extends TestCase
             'published_at' => now()->subDays(3),
         ]);
 
-        $curatedSibling = $this->createPost($category, $author, [
+        $this->createPost($category, $author, [
             'slug' => 'free-market-without-monopoly',
             'title' => 'بازار آزاد بدون انحصار چگونه ممکن است؟',
             'published_at' => now()->subDays(5),
         ]);
 
-        $sameCategoryButNotCurated = $this->createPost($category, $author, [
+        $this->createPost($category, $author, [
             'slug' => 'economy-unrelated-newer',
             'title' => 'مقاله جدیدتر اما خارج از نگاشت معنایی',
             'published_at' => now()->subHour(),
         ]);
 
-        $response = $this->get(route('blog.show', $current->slug))->assertOk();
-
-        $response->assertSee($curatedSibling->title);
-        $response->assertDontSee($sameCategoryButNotCurated->title);
-        $response->assertDontSee('href="'.route('blog.show', $current->slug).'"', false);
+        $this->get(route('blog.show', $current->slug))
+            ->assertOk()
+            ->assertViewHas('relatedPosts', function ($relatedPosts): bool {
+                return $relatedPosts->pluck('slug')->values()->all() === [
+                    'free-market-without-monopoly',
+                ];
+            });
     }
 
-    public function test_unpublished_curated_sibling_is_not_rendered(): void
+    public function test_unpublished_curated_sibling_is_not_returned_as_related(): void
     {
         $category = $this->category('economy', 'اقتصاد');
         $author = User::factory()->create();
@@ -51,7 +53,7 @@ class BlogRelatedPostsTest extends TestCase
             'slug' => 'people-economy-explained',
         ]);
 
-        $draftSibling = $this->createPost($category, $author, [
+        $this->createPost($category, $author, [
             'slug' => 'free-market-without-monopoly',
             'title' => 'بازار آزاد بدون انحصار چگونه ممکن است؟',
             'status' => 'draft',
@@ -59,7 +61,9 @@ class BlogRelatedPostsTest extends TestCase
 
         $this->get(route('blog.show', $current->slug))
             ->assertOk()
-            ->assertDontSee($draftSibling->title);
+            ->assertViewHas('relatedPosts', function ($relatedPosts): bool {
+                return $relatedPosts->isEmpty();
+            });
     }
 
     public function test_legacy_article_keeps_same_category_recent_fallback(): void
@@ -73,22 +77,25 @@ class BlogRelatedPostsTest extends TestCase
             'published_at' => now()->subDays(3),
         ]);
 
-        $sameCategoryRecent = $this->createPost($category, $author, [
+        $this->createPost($category, $author, [
             'slug' => 'legacy-related',
             'title' => 'مقاله مرتبط قدیمی',
             'published_at' => now()->subHour(),
         ]);
 
-        $otherCategoryPost = $this->createPost($otherCategory, $author, [
+        $this->createPost($otherCategory, $author, [
             'slug' => 'other-category-post',
             'title' => 'مقاله دسته دیگر',
             'published_at' => now()->subMinutes(10),
         ]);
 
-        $response = $this->get(route('blog.show', $current->slug))->assertOk();
-
-        $response->assertSee($sameCategoryRecent->title);
-        $response->assertDontSee($otherCategoryPost->title);
+        $this->get(route('blog.show', $current->slug))
+            ->assertOk()
+            ->assertViewHas('relatedPosts', function ($relatedPosts): bool {
+                return $relatedPosts->pluck('slug')->values()->all() === [
+                    'legacy-related',
+                ];
+            });
     }
 
     private function category(string $slug, string $name): BlogCategory
