@@ -109,8 +109,13 @@ final class TemporalManager implements TemporalService
     public function parseDate(string $value, ?TemporalContext $context = null): LocalDate
     {
         $context ??= $this->contexts->defaultContext();
+        $normalized = trim($this->digitNormalizer->toLatin($value));
 
-        return $this->adapter($context)->parseDate($value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalized) === 1) {
+            return LocalDate::fromCanonical($normalized);
+        }
+
+        return $this->adapter($context)->parseDate($normalized);
     }
 
     public function parseDateTime(string $value, ?TemporalContext $context = null): DateTimeImmutable
