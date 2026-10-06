@@ -155,7 +155,7 @@
                                 </form>
                         </td>
                         <td class="px-3 py-3 text-gray-500 text-xs js-updated-at" data-item-id="{{ $item->id }}">
-                            {{ $item->updated_at?->diffForHumans() }}
+                            @if($item->updated_at)<x-temporal.relative :value="$item->updated_at" />@endif
                         </td>
                     </tr>
                 @empty
