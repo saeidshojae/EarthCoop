@@ -38,7 +38,7 @@ void main() {
     var fail=true;
     final a=f.BoundaryAdapter((r){
       if(r.method=='GET') return f.envelope(p.fee());
-      if(fail) throw DioException(requestOptions:r,type:DioExceptionType.receiveTimeout);
+      if(fail) { throw DioException(requestOptions:r,type:DioExceptionType.receiveTimeout); }
       return f.envelope(p.receipt());});
     final c=MembershipPaymentController(f.repository(a),keyFactory:()=>'stable-key');addTearDown(c.dispose);
     await prepare(c);await c.confirm();expect(c.state,MembershipPaymentState.outcomeUnknown);
@@ -58,8 +58,8 @@ void main() {
   });
   test('different membership period cannot resolve unknown intent',() async {
     var rollover=false;
-    final a=f.BoundaryAdapter((r){if(r.method=='GET')return f.envelope({...p.fee(),
-      if(rollover)'payment_year':2026,if(rollover)'has_paid':true});
+    final a=f.BoundaryAdapter((r){if(r.method=='GET') { return f.envelope({...p.fee(),
+      if(rollover)'payment_year':2026,if(rollover)'has_paid':true}); }
       throw DioException(requestOptions:r,type:DioExceptionType.receiveTimeout);});
     final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);
     await prepare(c);await c.confirm();rollover=true;await c.reconcile();
