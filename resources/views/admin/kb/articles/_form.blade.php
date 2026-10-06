@@ -124,7 +124,7 @@
 
                 <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">تاریخ انتشار</label>
 
-                <input type="datetime-local" name="published_at" value="{{ old('published_at', optional($article->published_at ?? null)->format('Y-m-d\TH:i')) }}" class="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                <x-temporal.date-time-input name="published_at" :value="old('published_at', $article->published_at ?? null)" class="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
 
             </div>
 
