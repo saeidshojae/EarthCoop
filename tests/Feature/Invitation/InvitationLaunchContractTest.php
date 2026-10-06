@@ -146,7 +146,7 @@ class InvitationLaunchContractTest extends TestCase
 
         $this->assertStringNotContainsString('vendor/chart.js/chart.umd.min.js', $view);
         $this->assertStringNotContainsString('vendor/sweetalert2/sweetalert2.all.min.js', $layout);
-        $this->assertStringContainsString('cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js', $view);
+        $this->assertStringNotContainsString('chart.umd.min.js', $view);
         $this->assertStringContainsString('cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js', $layout);
     }
 
@@ -161,6 +161,9 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertStringNotContainsString("->orderBy('created_at', 'desc')->get()", $controller);
         $this->assertStringNotContainsString("foreach($checkExpire as $check){ $check->delete(); }", $view);
         $this->assertStringNotContainsString("InvitationCode::where('used', 0)->where('expire_at', '<=', now())", $view);
+        $this->assertStringContainsString('$codes->links()', $view);
+        $this->assertStringContainsString('private function invitationMetrics', $controller);
+        $this->assertStringNotContainsString('DATE_FORMAT(', $controller);
     }
 
 }
