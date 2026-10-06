@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: native-membership-payment-linux-tests
+  group: native-membership-payment-ui-tests
   cancel-in-progress: true
 jobs:
   native-wire:
