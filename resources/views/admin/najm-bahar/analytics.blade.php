@@ -1348,7 +1348,7 @@
 
 
 
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$transaction->created_at" />
 
 
 
@@ -2118,37 +2118,7 @@
 
 
 
-    const labels = dailyData.map(item => {
-
-
-
-
-
-
-
-
-
-        const date = new Date(item.date);
-
-
-
-
-
-
-
-
-
-        return date.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' });
-
-
-
-
-
-
-
-
-
-    });
+    const labels = dailyData.map(item => item.date_label);
 
 
 
