@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SecretariatController extends Controller
@@ -51,6 +53,18 @@ class SecretariatController extends Controller
         $this->authorize('view', $office);
 
         $filters = $request->only(['registry_number', 'record_type', 'status', 'title', 'date_from', 'date_to']);
+        $context = app(TemporalContextResolver::class)->forUser($request->user());
+        $temporal = app(TemporalService::class);
+        foreach (['date_from', 'date_to'] as $field) {
+            if (empty($filters[$field])) {
+                continue;
+            }
+            try {
+                $filters[$field] = $temporal->parseDate((string) $filters[$field], $context)->toCanonical();
+            } catch (\Throwable) {
+                $filters[$field] = null;
+            }
+        }
         $filters['office_id'] = $office->id;
 
         $records = $this->search->search($request->user(), $filters, 100);
