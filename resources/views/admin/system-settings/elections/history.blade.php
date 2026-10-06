@@ -74,8 +74,8 @@
                     @forelse($policies as $policy)
                         <tr class="{{ $currentPolicy && $currentPolicy->id === $policy->id ? 'bg-green-50/60 dark:bg-green-900/10' : '' }}">
                             <td class="px-4 py-4 whitespace-nowrap font-bold">v{{ $policy->version }}</td>
-                            <td class="px-4 py-4 whitespace-nowrap">{{ optional($policy->effective_at)->format('Y-m-d H:i') ?? '—' }}</td>
-                            <td class="px-4 py-4 whitespace-nowrap">{{ optional($policy->retired_at)->format('Y-m-d H:i') ?? '—' }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap">@if($policy->effective_at)<x-temporal.date-time :value="$policy->effective_at" />@else—@endif</td>
+                            <td class="px-4 py-4 whitespace-nowrap">@if($policy->retired_at)<x-temporal.date-time :value="$policy->retired_at" />@else—@endif</td>
                             <td class="px-4 py-4 min-w-[240px]">
                                 <div>مدیر {{ $policy->manager_count }} / بازرس {{ $policy->inspector_count }}</div>
                                 <div>حدنصاب {{ $policy->start_threshold }} / رأی‌گیری {{ $policy->voting_duration_days }} روز</div>
