@@ -36,7 +36,22 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
       - name: Prepare Laravel runtime
         run: |
-          cp .env.example .env
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=sqlite
+          DB_DATABASE=:memory:
+          EOF
           php artisan key:generate --force
       - name: Run ticket SLA regression
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Support/TicketSlaHotfixTest.php
