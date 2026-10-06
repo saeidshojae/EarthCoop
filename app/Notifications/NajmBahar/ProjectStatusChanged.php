@@ -6,7 +6,6 @@ use App\Modules\NajmBahar\Models\Project;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class ProjectStatusChanged extends Notification implements ShouldQueue
@@ -58,18 +57,4 @@ class ProjectStatusChanged extends Notification implements ShouldQueue
         return new BroadcastMessage($this->toArray($notifiable));
     }
 
-    /**
-     * اعلان ایمیل (اختیاری)
-     */
-    public function toMail($notifiable): MailMessage
-    {
-        return (new MailMessage)
-            ->subject('تغییر وضعیت پروژه: ' . $this->project->title)
-            ->line('وضعیت پروژه «' . $this->project->title . '» تغییر کرد.')
-            ->line('وضعیت جدید: ' . $this->newStatus)
-            ->when($this->comment, function ($mail) {
-                return $mail->line('یادداشت: ' . $this->comment);
-            })
-            ->action('مشاهده پروژه', route('najm-bahar.projects.show', $this->project));
-    }
 }
