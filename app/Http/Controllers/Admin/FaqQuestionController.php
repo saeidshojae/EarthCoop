@@ -53,16 +53,23 @@ class FaqQuestionController extends Controller
         }
 
         // فیلتر بر اساس تاریخ
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+        $temporalContext = $temporalContexts->forUser($request->user());
+        try {
+            if ($request->filled('from')) {
+                $from = $temporal->parseDate((string) $request->input('from'), $temporalContext);
+                $query->where('created_at', '>=', $temporal->startOfDay($from, $temporalContext));
+            }
+            if ($request->filled('to')) {
+                $to = $temporal->parseDate((string) $request->input('to'), $temporalContext);
+                $query->where('created_at', '<=', $temporal->endOfDay($to, $temporalContext));
+            }
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored.
         }
 
         $questions = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
 
-        $temporalContext = $temporalContexts->defaultContext();
+        $temporalContext = $temporalContexts->forUser($request->user());
         $questions->through(function (FaqQuestion $question) use ($temporal, $temporalContext) {
             $question->setAttribute(
                 'notified_at_display',
