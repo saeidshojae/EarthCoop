@@ -131,6 +131,10 @@ class StewardAgent extends BaseAgent
         foreach ($files as $file) {
             $entry = "- منبع: {$file['title']} | نوع: {$file['file_type']} | اولویت: {$file['priority']}";
 
+            if (!empty($file['url'])) {
+                $entry .= "\n  لینک: {$file['url']}";
+            }
+
             if (!empty($file['content'])) {
                 $entry .= "\n  محتوا: {$file['content']}";
             } elseif (!empty($file['excerpt'])) {
@@ -459,6 +463,9 @@ class StewardAgent extends BaseAgent
                 if (!empty($file['excerpt'])) {
                     $formatted .= "    {$file['excerpt']}\n";
                 }
+                if (!empty($file['url'])) {
+                    $formatted .= "    URL: {$file['url']}\n";
+                }
                 if (!empty($file['content'])) {
                     $formatted .= "    محتوا: {$file['content']}\n";
                 }
@@ -521,7 +528,8 @@ class StewardAgent extends BaseAgent
                          return [
                              'type' => 'File',
                              'title' => $file->title,
-                             'file_type' => strtoupper($file->file_type),
+                             'file_type' => strtoupper((string) $file->file_type),
+                             'url' => $file->source_url,
                              'excerpt' => $file->summary ?? mb_substr((string) $file->extracted_content, 0, 200),
                              'content' => mb_substr((string) $file->extracted_content, 0, 1000),
                              'priority' => $file->search_priority,
