@@ -5,12 +5,19 @@ import 'najm_bahar_controller.dart';
 import 'najm_bahar_dto.dart';
 import 'najm_bahar_policy_controller.dart';
 import 'najm_bahar_policy_sections.dart';
+import 'najm_bahar_membership_payment_controller.dart';
+import 'najm_bahar_membership_payment_section.dart';
 
 class NajmBaharScreen extends StatefulWidget {
-  const NajmBaharScreen(
-      {super.key, required this.controller, this.policyController});
+  const NajmBaharScreen({
+    super.key,
+    required this.controller,
+    this.policyController,
+    this.paymentController,
+  });
   final NajmBaharController controller;
   final NajmBaharPolicyController? policyController;
+  final MembershipPaymentController? paymentController;
   @override
   State<NajmBaharScreen> createState() => _NajmBaharScreenState();
 }
@@ -129,6 +136,11 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
                         if (widget.policyController != null)
                           NajmBaharPolicySections(
                               controller: widget.policyController!),
+                        if (widget.paymentController != null) ...[
+                          const SizedBox(height: 16),
+                          NajmBaharMembershipPaymentSection(
+                              controller: widget.paymentController!),
+                        ],
                       ]))),
         ));
   }
