@@ -24,7 +24,7 @@ final class SitemapController extends Controller
             new SitemapEntry(
                 $canonicalUrl->to('/chronicle'),
                 Schema::hasTable('chronicle_milestones')
-                    ? ChronicleMilestone::query()->published()->max('updated_at')
+                    ? ChronicleMilestone::query()->published()->latest('updated_at')->first()?->updated_at
                     : null,
             ),
         ];
