@@ -5,84 +5,156 @@ on:
     branches:
       - agent/temporal-system-20261001
     paths:
+      - 'app/Temporal/**'
+      - 'app/Chronicle/**'
+      - 'app/Http/Controllers/ChronicleController.php'
+      - 'app/Providers/ChronicleServiceProvider.php'
+      - 'app/View/Components/Temporal/**'
+      - 'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php'
+      - 'app/Modules/Stock/Views/admin_auction_create.blade.php'
+      - 'config/temporal.php'
+      - 'resources/lang/*/chronicle.php'
+      - 'resources/js/temporal-input.js'
+      - 'resources/views/chronicle/**'
+      - 'resources/views/components/temporal/**'
+      - 'tests/Unit/Temporal/**'
+      - 'tests/Unit/Chronicle/**'
+      - 'tests/Feature/Temporal/**'
+      - 'tests/Feature/Chronicle/**'
+      - 'tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php'
+      - 'tests/js/temporal/**'
+      - 'package.json'
       - '.github/workflows/temporal-system-targeted.yml'
+  pull_request:
+    branches:
+      - main
+      - agent/temporal-system-20261001
+    paths:
+      - 'app/Temporal/**'
+      - 'app/Chronicle/**'
+      - 'app/Http/Controllers/ChronicleController.php'
+      - 'app/Providers/ChronicleServiceProvider.php'
+      - 'app/View/Components/Temporal/**'
+      - 'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php'
+      - 'app/Modules/Stock/Views/admin_auction_create.blade.php'
+      - 'config/temporal.php'
+      - 'resources/lang/*/chronicle.php'
+      - 'resources/js/temporal-input.js'
+      - 'resources/views/chronicle/**'
+      - 'resources/views/components/temporal/**'
+      - 'tests/Unit/Temporal/**'
+      - 'tests/Unit/Chronicle/**'
+      - 'tests/Feature/Temporal/**'
+      - 'tests/Feature/Chronicle/**'
+      - 'tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php'
+      - 'tests/js/temporal/**'
+      - 'package.json'
+      - '.github/workflows/temporal-system-targeted.yml'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   temporal-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Apply bounded admin content temporal patch
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, pdo, pdo_mysql, bcmath, openssl, zip, curl, json
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci --no-audit --no-fund
+
+      - name: Create isolated test environment
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop_testing
+          DB_USERNAME=root
+          DB_PASSWORD=
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          NAJM_HODA_MOCK_MODE=true
+          EOF
+          php artisan key:generate --force
+
+      - name: Fresh migration
+        run: php artisan migrate:fresh --force
+
+      - name: Run Temporal and Chronicle unit tests
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          php artisan test tests/Unit/Temporal
+          if [ -d tests/Unit/Chronicle ]; then
+            php artisan test tests/Unit/Chronicle
+          fi
 
-          path = Path('resources/views/admin/content/index.blade.php')
-          data = path.read_bytes()
-          before = data
-          before_cr = data.count(b'\r')
-          before_lf = data.count(b'\n')
+      - name: Run Temporal and Chronicle feature tests when present
+        shell: bash
+        run: |
+          if [ -d tests/Feature/Temporal ]; then
+            php artisan test tests/Feature/Temporal
+          fi
+          if [ -d tests/Feature/Chronicle ]; then
+            php artisan test tests/Feature/Chronicle
+          fi
 
-          variables = [b'announcement', b'page', b'rule']
-          legacy = b"echo $date ? \\Morilog\\Jalali\\Jalalian::fromCarbon($date)->format('Y/m/d') : '-';"
-          replacement = b"$date = $date ?: null;"
+      - name: Run admin-user safety regressions
+        run: |
+          php artisan test tests/Feature/Admin/CanonicalUserResidenceEditTest.php
+          php artisan test tests/Feature/NajmHoda/SafeUserLifecycleControllerTest.php
+          php artisan test tests/Feature/NajmBahar/MembershipRemovalServiceTest.php
 
-          for variable in variables:
-              assignment = (
-                  b"$date = isset($" + variable + b"->created_at) ? "
-                  b"\\Carbon\\Carbon::parse($" + variable + b"->created_at) : null;"
-              )
-              pattern = re.compile(
-                  rb"(@php)(\s+)(try \{)(\s+)(" + re.escape(assignment) + rb")"
-                  rb"(\s+)(" + re.escape(legacy) + rb")"
-                  rb"(\s+)(\} catch \(\\Exception \$e\) \{)"
-                  rb"(\s+)(echo '-';)(\s+)(\})(\s+)(@endphp)"
-              )
-              matches = list(pattern.finditer(data))
-              if len(matches) != 1:
-                  raise SystemExit(f"{variable.decode()} block count={len(matches)}")
+      - name: Run stock auction regressions
+        run: php artisan test tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php
 
-              def repl(match):
-                  return (
-                      match.group(1) + match.group(2) + match.group(3) + match.group(4)
-                      + match.group(5) + match.group(6) + replacement
-                      + match.group(8) + match.group(9) + match.group(10)
-                      + b"$date = null;" + match.group(12) + match.group(13)
-                      + match.group(14) + match.group(15)
-                      + b' @if($date) <x-temporal.date :value="$date" /> @else - @endif'
-                  )
-
-              data = pattern.sub(repl, data, count=1)
-
-          if data == before:
-              raise SystemExit('patch made no changes')
-          if data.count(b'<x-temporal.date :value="$date" />') != 3:
-              raise SystemExit('temporal component count mismatch')
-          if b'Morilog\\Jalali' in data or b'Jalalian::' in data:
-              raise SystemExit('legacy Jalali presentation remains')
-          if data.count(b'\r') != before_cr or data.count(b'\n') != before_lf:
-              raise SystemExit('line-ending counts changed')
-
-          path.write_bytes(data)
-          PY
-
-          changed="$(git diff --name-only)"
-          test "$changed" = "resources/views/admin/content/index.blade.php"
-          git diff --stat
-          git diff -- resources/views/admin/content/index.blade.php
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add resources/views/admin/content/index.blade.php
-          git commit -m "fix(temporal): unify admin content dates"
-          git push origin HEAD:agent/temporal-system-20261001
+      - name: Run Temporal frontend tests
+        run: npm run test:temporal
