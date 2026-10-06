@@ -219,7 +219,7 @@ class GroupController extends Controller
                 'starts_at' => $startsAt,
                 'status' => 'scheduled',
             ]);
-            if ($startsAt->isFuture()) {
+            if ($startsAt > new \DateTimeImmutable('now', new \DateTimeZone('UTC'))) {
                 $sessions->scheduled($session, (int) auth()->id());
                 $message = 'جلسه برای زمان تعیین‌شده برنامه‌ریزی شد.';
             } else {
