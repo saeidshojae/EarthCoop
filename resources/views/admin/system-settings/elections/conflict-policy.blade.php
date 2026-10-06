@@ -25,7 +25,7 @@
                 <option value="allowed_with_suspension">مجاز با تعلیق سمت قبلی</option>
             </select>
             <input name="rule_reason" maxlength="500" placeholder="توضیح این قاعده">
-            <input name="effective_at" type="datetime-local" placeholder="زمان اثر">
+            <x-temporal.date-time-input name="effective_at" :value="old('effective_at')" placeholder="زمان اثر" />
             <input name="change_reason" maxlength="500" required placeholder="دلیل انتشار نسخه جدید">
         </div>
         <button class="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white">انتشار نسخه جدید با این خانه ماتریس</button>
