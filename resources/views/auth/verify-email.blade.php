@@ -14,9 +14,6 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{{ asset("vendor/fontawesome/css/all.min.css") }}">
 
-    <!-- jQuery -->
-    <script src="{{ asset("vendor/jquery/jquery.min.js") }}"></script>
-
     <style>
         :root {
             --color-earth-green: #10b981;
@@ -106,11 +103,19 @@
             cursor: pointer;
         }
 
-        .btn-primary-custom:hover {
-            background-color: var(--color-dark-green); /* تیره‌تر شدن در هاور */
+        .btn-primary-custom:hover:not(:disabled) {
+            background-color: var(--color-dark-green);
             background-image: linear-gradient(135deg, var(--color-dark-green) 0%, #065f46 100%);
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-primary-custom:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            background-image: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
         }
 
         .btn-secondary-custom {
@@ -232,7 +237,7 @@
         @endif
 
         <!-- Verification Form -->
-        <form action="{{ route('email.verify') }}" method="POST">
+        <form id="verification-form" action="{{ route('email.verify') }}" method="POST">
             @csrf
             <input type="hidden" name="email" value="{{ $email }}">
 
@@ -252,7 +257,7 @@
             @enderror
 
             <div class="text-center mb-6">
-                <button type="submit" class="btn-primary-custom w-full md:w-auto">
+                <button type="submit" id="verify-button" class="btn-primary-custom w-full md:w-auto" disabled aria-disabled="true">
                     <i class="fas fa-check ml-2"></i>
                     تأیید
                 </button>
@@ -278,7 +283,7 @@
         if(isset($_GET['email'])){
             $verification = \App\Models\EmailVerification::where('email', $_GET['email'])->first();
             $remainingSeconds = $verification && $verification->expires_at > now()
-                ? now()->diffInSeconds($verification->expires_at)
+                ? max(0, (int) ceil(now()->diffInSeconds($verification->expires_at, false)))
                 : 0;
         } else {
             $remainingSeconds = 0;
@@ -287,7 +292,35 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const inputs = document.querySelectorAll('.verification-code input');
+            const form = document.getElementById('verification-form');
+            const inputs = Array.from(document.querySelectorAll('.verification-code input'));
+            const verifyButton = document.getElementById('verify-button');
+            let isSubmitting = false;
+
+            const normalizeDigits = (value) => String(value ?? '')
+                .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+                .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+                .replace(/[^0-9]/g, '');
+
+            const codeIsComplete = () => inputs.length === 6 && inputs.every((input) => /^[0-9]$/.test(input.value));
+
+            const updateVerifyState = () => {
+                const complete = codeIsComplete();
+                verifyButton.disabled = !complete || isSubmitting;
+                verifyButton.setAttribute('aria-disabled', verifyButton.disabled ? 'true' : 'false');
+                return complete;
+            };
+
+            const submitVerification = () => {
+                if (isSubmitting || !updateVerifyState()) {
+                    return;
+                }
+
+                isSubmitting = true;
+                verifyButton.disabled = true;
+                verifyButton.setAttribute('aria-disabled', 'true');
+                form.requestSubmit();
+            };
 
             if (inputs.length > 0) {
                 inputs[0].focus();
@@ -298,51 +331,66 @@
                 input.style.direction = 'ltr';
                 input.style.textAlign = 'center';
 
-                input.addEventListener('input', function(e) {
-                    this.value = this.value.replace(/[^0-9]/g, '');
-                    if (this.value.length === 1) {
-                        if (index < inputs.length - 1) {
-                            inputs[index + 1].focus();
-                        }
+                input.addEventListener('input', function() {
+                    this.value = normalizeDigits(this.value).slice(0, 1);
+
+                    if (this.value && index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+
+                    if (updateVerifyState()) {
+                        window.setTimeout(submitVerification, 120);
                     }
                 });
 
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Backspace' && this.value === '') {
-                        if (index > 0) {
-                            inputs[index - 1].focus();
-                            inputs[index - 1].value = '';
-                        }
+                input.addEventListener('keydown', function(event) {
+                    if (event.key === 'Backspace' && this.value === '' && index > 0) {
+                        inputs[index - 1].focus();
+                        inputs[index - 1].value = '';
+                        updateVerifyState();
+                        return;
+                    }
+
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        submitVerification();
                     }
                 });
 
-                input.addEventListener('keypress', function(e) {
-                    if (!/[0-9]/.test(e.key)) {
-                        e.preventDefault();
-                    }
-                });
+                input.addEventListener('paste', function(event) {
+                    event.preventDefault();
+                    const pastedData = (event.clipboardData || window.clipboardData).getData('text');
+                    const numbers = normalizeDigits(pastedData).split('').slice(0, inputs.length - index);
 
-                input.addEventListener('paste', function(e) {
-                    e.preventDefault();
-                    const pastedData = (e.clipboardData || window.clipboardData).getData('text');
-                    const numbers = pastedData.replace(/[^0-9]/g, '').split('');
-                    numbers.forEach((num, i) => {
-                        if (index + i < inputs.length) {
-                            inputs[index + i].value = num;
-                        }
+                    numbers.forEach((num, offset) => {
+                        inputs[index + offset].value = num;
                     });
+
                     const lastFilledIndex = Math.min(index + numbers.length - 1, inputs.length - 1);
-                    if (lastFilledIndex < inputs.length - 1) {
-                        inputs[lastFilledIndex + 1].focus();
-                    } else {
+                    if (lastFilledIndex >= 0) {
                         inputs[lastFilledIndex].focus();
+                    }
+
+                    if (updateVerifyState()) {
+                        window.setTimeout(submitVerification, 120);
                     }
                 });
             });
 
-            let remaining = {{ $remainingSeconds ?? 0 }};
+            form.addEventListener('submit', function(event) {
+                if (!codeIsComplete()) {
+                    event.preventDefault();
+                    isSubmitting = false;
+                    updateVerifyState();
+                }
+            });
+
+            updateVerifyState();
+
+            let remaining = Number.parseInt(@json($remainingSeconds ?? 0), 10) || 0;
             const resendButton = document.getElementById('resend-button');
             const timerDisplay = document.getElementById('timer');
+            let interval = null;
 
             function updateTimer() {
                 if (remaining > 0) {
@@ -350,17 +398,21 @@
                     const minutes = Math.floor(remaining / 60);
                     const seconds = remaining % 60;
                     timerDisplay.innerHTML = `<i class="fas fa-clock ml-1"></i> امکان ارسال مجدد تا ${minutes}:${seconds.toString().padStart(2, '0')} دیگر فعال می‌شود.`;
-                    remaining--;
-                } else {
-                    resendButton.disabled = false;
-                    timerDisplay.textContent = '';
+                    remaining -= 1;
+                    return;
+                }
+
+                resendButton.disabled = false;
+                timerDisplay.textContent = '';
+                if (interval !== null) {
                     clearInterval(interval);
+                    interval = null;
                 }
             }
 
             if (remaining > 0) {
                 updateTimer();
-                const interval = setInterval(updateTimer, 1000);
+                interval = window.setInterval(updateTimer, 1000);
             }
         });
     </script>
