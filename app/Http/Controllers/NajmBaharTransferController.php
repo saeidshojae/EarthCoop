@@ -13,6 +13,9 @@ use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Services\NajmBaharAuditLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 use App\Models\User;
 
 class NajmBaharTransferController extends Controller
@@ -51,7 +54,7 @@ class NajmBaharTransferController extends Controller
         return view('najm-bahar.transfer', compact('account', 'subAccounts'));
     }
 
-    public function store(Request $request, AccountService $accountService, SubAccountService $subAccountService)
+    public function store(Request $request, AccountService $accountService, SubAccountService $subAccountService, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $user = auth()->user();
         $account = $accountService->getMainAccountForUser($user->id);
@@ -67,7 +70,7 @@ class NajmBaharTransferController extends Controller
             'amount' => ['required', 'regex:/^\d+(\.\d{1,2})?$/'],
             'description' => 'nullable|string|max:500',
             'transaction_type' => 'required|in:immediate,scheduled',
-            'execute_at' => 'nullable|date',
+            'execute_at' => 'nullable|string|max:80',
         ]);
 
         $sourceSubAccount = SubAccount::where('id', $validated['source_sub_account_id'])
@@ -110,7 +113,13 @@ class NajmBaharTransferController extends Controller
                     return back()->with('error', 'زمان اجرای تراکنش الزامی است.')->withInput();
                 }
 
-                $executeAt = Carbon::parse($validated['execute_at']);
+                try {
+                    $executeAt = Carbon::instance(
+                        $temporal->parseDateTime((string) $validated['execute_at'], $contexts->defaultContext())
+                    );
+                } catch (\InvalidArgumentException|\ValueError) {
+                    throw ValidationException::withMessages(['execute_at' => 'زمان اجرای تراکنش معتبر نیست.']);
+                }
                 if ($executeAt->lessThanOrEqualTo(now())) {
                     return back()->with('error', 'زمان اجرا باید در آینده باشد.')->withInput();
                 }
