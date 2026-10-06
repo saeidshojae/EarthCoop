@@ -2912,7 +2912,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                            {{ verta($message->created_at)->formatDifference() }}
+                            <x-temporal.relative :value="$message->created_at" />
 
 
 
@@ -3172,7 +3172,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                            {{ verta($post->created_at)->formatDifference() }}
+                            <x-temporal.relative :value="$post->created_at" />
 
 
 
@@ -3542,7 +3542,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                            {{ verta($poll->created_at)->formatDifference() }}
+                            <x-temporal.relative :value="$poll->created_at" />
 
 
 
@@ -3662,7 +3662,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                        <span>مهلت: <strong>{{ verta($poll->expires_at)->format('Y/m/d') }}</strong></span>
+                        <span>مهلت: <strong><x-temporal.date :value="$poll->expires_at" style="short" /></strong></span>
 
 
 
@@ -3902,7 +3902,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                            {{ verta($election->created_at ?? now())->formatDifference() }}
+                            <x-temporal.relative :value="$election->created_at ?? now()" />
 
 
 
@@ -3982,7 +3982,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                        از <strong>{{ verta($election->starts_at)->format('Y/m/d') }}</strong>
+                        از <strong><x-temporal.date :value="$election->starts_at" style="short" /></strong>
 
 
 
@@ -3992,7 +3992,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                        تا <strong>{{ verta($election->ends_at)->format('Y/m/d') }}</strong>
+                        تا <strong><x-temporal.date :value="$election->ends_at" style="short" /></strong>
 
 
 
