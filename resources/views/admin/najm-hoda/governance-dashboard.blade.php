@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'حکمرانی خودمختار نجم هُدی - ' . config('app.name', 'EarthCoop'))
-@section('page-title', 'حکمرانی خودمختار نجم هُدی')
-@section('page-description', 'نظارت، کنترل، ارزیابی و مدیریت ایمن عملکرد خودمختار نجم هُدی')
+@section('title', 'حکمرانی خودمختار نجم هدا - ' . config('app.name', 'EarthCoop'))
+@section('page-title', 'حکمرانی خودمختار نجم هدا')
+@section('page-description', 'نظارت، کنترل، ارزیابی و مدیریت ایمن عملکرد خودمختار نجم هدا')
 
 @section('content')
 <div class="space-y-6" dir="rtl">
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
         <div class="font-bold mb-1"><i class="fas fa-info-circle ml-1"></i> راهنمای این صفحه</div>
-        <p class="mb-0">این صفحه برای مشاهده و کنترل سطح خودمختاری نجم هُدی است. اگر درباره یک کنترل مطمئن نیستید، ابتدا فقط «تازه‌سازی وضعیت» را بزنید. کنترل توقف اضطراری و تغییر مرحله انتشار فقط هنگام رخداد عملیاتی یا پس از بررسی وضعیت استفاده شوند.</p>
+        <p class="mb-0">این صفحه برای مشاهده و کنترل سطح خودمختاری نجم هدا است. اگر درباره یک کنترل مطمئن نیستید، ابتدا فقط «تازه‌سازی وضعیت» را بزنید. کنترل توقف اضطراری و تغییر مرحله انتشار فقط هنگام رخداد عملیاتی یا پس از بررسی وضعیت استفاده شوند.</p>
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -80,7 +80,7 @@
 
         <div class="bg-white border rounded-lg p-4">
             <h3 class="font-semibold mb-1">کنترل‌های ایمنی و خودمختاری</h3>
-            <p class="text-xs text-gray-500 mb-3">این کنترل‌ها مستقیماً رفتار اجرایی نجم هُدی را محدود می‌کنند.</p>
+            <p class="text-xs text-gray-500 mb-3">این کنترل‌ها مستقیماً رفتار اجرایی نجم هدا را محدود می‌کنند.</p>
             <div id="controlStateBox" class="text-sm text-gray-700 space-y-2 mb-4 bg-gray-50 border rounded p-3"></div>
 
             <div class="space-y-4">
@@ -91,7 +91,7 @@
                     <button data-control-action="deactivate_kill_switch" class="control-action px-3 py-2 bg-green-700 text-white rounded">غیرفعال‌کردن توقف اضطراری</button>
                 </div></div>
 
-                <div><h4 class="font-medium text-sm mb-1">محدودکردن به حالت پیشنهاد</h4><p class="text-xs text-gray-500 mb-2">در این حالت نجم هُدی پیشنهاد می‌دهد اما اقدام خودکار انجام نمی‌دهد.</p><div class="grid gap-2">
+                <div><h4 class="font-medium text-sm mb-1">محدودکردن به حالت پیشنهاد</h4><p class="text-xs text-gray-500 mb-2">در این حالت نجم هدا پیشنهاد می‌دهد اما اقدام خودکار انجام نمی‌دهد.</p><div class="grid gap-2">
                     <button data-control-action="set_override" class="control-action px-3 py-2 bg-slate-700 text-white rounded">اجبار به حالت «فقط پیشنهاد»</button>
                     <button data-control-action="clear_override" class="control-action px-3 py-2 bg-gray-700 text-white rounded">حذف محدودیت موقت</button>
                 </div></div>
