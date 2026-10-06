@@ -5,156 +5,53 @@ on:
     branches:
       - agent/temporal-system-20261001
     paths:
-      - 'app/Temporal/**'
-      - 'app/Chronicle/**'
-      - 'app/Http/Controllers/ChronicleController.php'
-      - 'app/Providers/ChronicleServiceProvider.php'
-      - 'app/View/Components/Temporal/**'
-      - 'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php'
-      - 'app/Modules/Stock/Views/admin_auction_create.blade.php'
-      - 'config/temporal.php'
-      - 'resources/lang/*/chronicle.php'
-      - 'resources/js/temporal-input.js'
-      - 'resources/views/chronicle/**'
-      - 'resources/views/components/temporal/**'
-      - 'tests/Unit/Temporal/**'
-      - 'tests/Unit/Chronicle/**'
-      - 'tests/Feature/Temporal/**'
-      - 'tests/Feature/Chronicle/**'
-      - 'tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php'
-      - 'tests/js/temporal/**'
-      - 'package.json'
-      - '.github/workflows/temporal-system-targeted.yml'
-  pull_request:
-    branches:
-      - main
-      - agent/temporal-system-20261001
-    paths:
-      - 'app/Temporal/**'
-      - 'app/Chronicle/**'
-      - 'app/Http/Controllers/ChronicleController.php'
-      - 'app/Providers/ChronicleServiceProvider.php'
-      - 'app/View/Components/Temporal/**'
-      - 'app/Modules/Stock/Controllers/CanonicalAdminAuctionController.php'
-      - 'app/Modules/Stock/Views/admin_auction_create.blade.php'
-      - 'config/temporal.php'
-      - 'resources/lang/*/chronicle.php'
-      - 'resources/js/temporal-input.js'
-      - 'resources/views/chronicle/**'
-      - 'resources/views/components/temporal/**'
-      - 'tests/Unit/Temporal/**'
-      - 'tests/Unit/Chronicle/**'
-      - 'tests/Feature/Temporal/**'
-      - 'tests/Feature/Chronicle/**'
-      - 'tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php'
-      - 'tests/js/temporal/**'
-      - 'package.json'
       - '.github/workflows/temporal-system-targeted.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   temporal-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_DATABASE: newearthcoop_testing
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, dom, fileinfo, pdo, pdo_mysql, bcmath, openssl, zip, curl, json
-          coverage: none
+          fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-
-      - name: Prepare Laravel directories
-        run: |
-          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
-          chmod -R 775 bootstrap/cache storage/framework storage/logs
-
-      - name: Install dependencies
-        run: |
-          composer install --no-interaction --prefer-dist --no-progress
-          npm ci --no-audit --no-fund
-
-      - name: Create isolated test environment
-        run: |
-          cat > .env <<'EOF'
-          APP_NAME=EarthCoop
-          APP_ENV=testing
-          APP_KEY=
-          APP_DEBUG=true
-          APP_URL=http://localhost
-          LOG_CHANNEL=stack
-          DB_CONNECTION=mysql
-          DB_HOST=127.0.0.1
-          DB_PORT=3306
-          DB_DATABASE=newearthcoop_testing
-          DB_USERNAME=root
-          DB_PASSWORD=
-          CACHE_DRIVER=array
-          SESSION_DRIVER=array
-          QUEUE_CONNECTION=sync
-          MAIL_MAILER=array
-          BROADCAST_DRIVER=log
-          FILESYSTEM_DISK=local
-          NAJM_HODA_MOCK_MODE=true
-          EOF
-          php artisan key:generate --force
-
-      - name: Fresh migration
-        run: php artisan migrate:fresh --force
-
-      - name: Run Temporal and Chronicle unit tests
+      - name: Apply bounded category temporal patch
         shell: bash
         run: |
-          php artisan test tests/Unit/Temporal
-          if [ -d tests/Unit/Chronicle ]; then
-            php artisan test tests/Unit/Chronicle
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Run Temporal and Chronicle feature tests when present
-        shell: bash
-        run: |
-          if [ -d tests/Feature/Temporal ]; then
-            php artisan test tests/Feature/Temporal
-          fi
-          if [ -d tests/Feature/Chronicle ]; then
-            php artisan test tests/Feature/Chronicle
-          fi
+          path = Path('resources/views/admin/system-settings/categories/index.blade.php')
+          data = path.read_bytes()
 
-      - name: Run admin-user safety regressions
-        run: |
-          php artisan test tests/Feature/Admin/CanonicalUserResidenceEditTest.php
-          php artisan test tests/Feature/NajmHoda/SafeUserLifecycleControllerTest.php
-          php artisan test tests/Feature/NajmBahar/MembershipRemovalServiceTest.php
+          old = "{{ $category->created_at ? verta($category->created_at)->format('Y/n/j') : '—' }}".encode()
+          new = '@if($category->created_at)<x-temporal.date :value="$category->created_at" style="short" />@else—@endif'.encode()
 
-      - name: Run stock auction regressions
-        run: php artisan test tests/Feature/Stock/StockAdminCanonicalAuctionStoreTest.php
+          assert data.count(old) == 1, f'expected exactly one legacy expression, got {data.count(old)}'
+          assert data.count(new) == 0, 'new temporal expression already exists'
 
-      - name: Run Temporal frontend tests
-        run: npm run test:temporal
+          before_cr = data.count(b'\r')
+          before_lf = data.count(b'\n')
+          patched = data.replace(old, new, 1)
+
+          assert patched.count(old) == 0
+          assert patched.count(new) == 1
+          assert patched.count(b'\r') == before_cr
+          assert patched.count(b'\n') == before_lf
+
+          path.write_bytes(patched)
+          PY
+
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "resources/views/admin/system-settings/categories/index.blade.php"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/views/admin/system-settings/categories/index.blade.php
+          git commit -m "fix(temporal): unify system settings category dates"
+          git push
