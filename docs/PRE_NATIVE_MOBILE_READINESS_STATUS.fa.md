@@ -249,7 +249,7 @@ Sanctum در پروژه وجود دارد، اما `routes/api.php` هنوز ver
 
 ## M2 — Najm Hoda stable mobile contract — **PARTIAL / YELLOW**
 
-نجم هدی از نظر capability/runtime/safety/audit زیرساخت بالغی دارد، اما mobile contract هنوز freeze نشده است.
+نجم هدا از نظر capability/runtime/safety/audit زیرساخت بالغی دارد، اما mobile contract هنوز freeze نشده است.
 
 کارهای ضروری قبل از قرار دادن آن پشت Native client:
 
@@ -260,7 +260,7 @@ Sanctum در پروژه وجود دارد، اما `routes/api.php` هنوز ver
 - جلوگیری از اینکه client دادهٔ context را authority تلقی کند؛
 - stable API schema برای propose/apply/approval/error/evidence.
 
-مواردی مانند autonomy کامل نجم هدی یا همهٔ agentهای آینده شرط شروع Native نیستند.
+مواردی مانند autonomy کامل نجم هدا یا همهٔ agentهای آینده شرط شروع Native نیستند.
 
 ## M3 — Najm Bahar mobile contract — **CORE GREEN / MOBILE CONTRACT OPEN**
 
@@ -358,7 +358,7 @@ PoC می‌تواند قبل از کامل‌شدن تمام featureهای Earth
 - `docs/location-governance/CHECKPOINT_4_CANONICAL_CONSUMER_AUDIT_2026-09-26.md`: closure consumerهای canonical؛ C14 نیست.
 - `docs/location-governance/IR_1404_SETTLEMENT_CATALOG_IMPLEMENTATION_PLAN_2026-09-24.md`: plan تاریخی؛ بخش عمدهٔ C1–C5 بعداً اجرا شد و باید با status update خوانده شود.
 - `docs/location-governance/CUTOVER_READINESS.md`: سند تاریخی pre-cutover؛ وضعیت بعد از 2026-09-25 باید با update جدید آن خوانده شود.
-- `docs/NAJM_HODA_SECURITY_HARDENING_STATUS.md`: مرجع شکاف‌های security/autonomy نجم هدی، ولی همهٔ آن‌ها blocker Native PoC نیستند.
+- `docs/NAJM_HODA_SECURITY_HARDENING_STATUS.md`: مرجع شکاف‌های security/autonomy نجم هدا، ولی همهٔ آن‌ها blocker Native PoC نیستند.
 - `docs/NAJM_BAHAR_UAT_READINESS_MATRIX.fa.md`: مرجع maturity هستهٔ اقتصادی و UATهای باقیمانده.
 
 ## نتیجهٔ مرجع

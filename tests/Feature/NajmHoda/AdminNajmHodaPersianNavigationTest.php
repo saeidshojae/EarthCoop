@@ -11,8 +11,8 @@ class AdminNajmHodaPersianNavigationTest extends TestCase
         $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
 
         $this->assertIsString($sidebar);
-        $this->assertStringContainsString('نجم هُدی', $sidebar);
-        $this->assertStringContainsString('داشبورد نجم هُدی', $sidebar);
+        $this->assertStringContainsString('نجم هدا', $sidebar);
+        $this->assertStringContainsString('داشبورد نجم هدا', $sidebar);
         $this->assertStringContainsString('مرکز مدیریت کل', $sidebar);
         $this->assertStringContainsString("route('admin.najm-hoda.founder-ops.index')", $sidebar);
         $this->assertStringContainsString("request()->routeIs('admin.najm-hoda.founder-ops.*')", $sidebar);
@@ -27,7 +27,7 @@ class AdminNajmHodaPersianNavigationTest extends TestCase
         $view = file_get_contents(resource_path('views/admin/najm-hoda/governance-dashboard.blade.php'));
 
         $this->assertIsString($view);
-        $this->assertStringContainsString('حکمرانی خودمختار نجم هُدی', $view);
+        $this->assertStringContainsString('حکمرانی خودمختار نجم هدا', $view);
         $this->assertStringContainsString('راهنمای این صفحه', $view);
         $this->assertStringContainsString('کنترل‌های ایمنی و خودمختاری', $view);
         $this->assertStringContainsString('توقف اضطراری', $view);

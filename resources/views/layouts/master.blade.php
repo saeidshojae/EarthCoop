@@ -7,7 +7,7 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
+    <link rel="icon" type="image/png" href="{{ asset('icons/earthcoop-brand-192.png') }}">
     <x-seo-meta
         :title="$seoTitle ?? trim($__env->yieldContent('title')) ?: config('seo.default_title')"
         :description="$seoDescription ?? trim($__env->yieldContent('meta_description')) ?: config('seo.default_description')"

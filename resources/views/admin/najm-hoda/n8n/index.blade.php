@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'مدیریت n8n نجم هُدی - ' . config('app.name', 'EarthCoop'))
-@section('page-title', 'مدیریت اتصال n8n نجم هُدی')
+@section('title', 'مدیریت n8n نجم هدا - ' . config('app.name', 'EarthCoop'))
+@section('page-title', 'مدیریت اتصال n8n نجم هدا')
 @section('page-description', 'وضعیت اتصال، آمادگی، کنترل‌های اجرایی، audit و رسیدهای callback')
 
 @section('content')
@@ -45,7 +45,7 @@
                             <button type="submit" class="btn btn-primary">ثبت کنترل‌ها</button>
                         </form>
                     @else
-                        <div class="alert alert-info mb-0">برای تغییر runtime controls مجوز مدیریت تنظیمات نجم هُدی لازم است.</div>
+                        <div class="alert alert-info mb-0">برای تغییر runtime controls مجوز مدیریت تنظیمات نجم هدا لازم است.</div>
                     @endhasPermission
                 </div>
             </div>

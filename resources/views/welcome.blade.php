@@ -8,8 +8,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <meta name="theme-color" content="#10b981">
-    <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icons/earthcoop-brand-192.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('icons/earthcoop-brand-192.png') }}">
     @php
         $homeCanonical = app(\App\Support\Seo\CanonicalUrl::class)->to('/');
         $homeImage = app(\App\Support\Seo\CanonicalUrl::class)->to(config('seo.default_image'));
@@ -18,6 +18,7 @@
                 '@context' => 'https://schema.org',
                 '@type' => 'Organization',
                 'name' => 'EarthCoop',
+                'alternateName' => ['ارث‌کوپ', 'ارث کوپ'],
                 'url' => $homeCanonical,
                 'logo' => $homeImage,
                 'sameAs' => config('seo.social_profiles', []),
@@ -26,6 +27,7 @@
                 '@context' => 'https://schema.org',
                 '@type' => 'WebSite',
                 'name' => 'EarthCoop',
+                'alternateName' => ['ارث‌کوپ', 'ارث کوپ'],
                 'url' => $homeCanonical,
                 'inLanguage' => 'fa-IR',
             ],

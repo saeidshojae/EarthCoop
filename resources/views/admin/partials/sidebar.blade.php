@@ -31,14 +31,14 @@
             @endphp
             <li x-data="{ open: {{ $najmHodaMenuActive ? 'true' : 'false' }} }" @mouseenter="if (isDesktop) open = true" @mouseleave="if (isDesktop && !{{ $najmHodaMenuActive ? 'true' : 'false' }}) open = false">
                 <button @click="open = !open" class="w-full flex items-center justify-between px-4 py-3 rounded-lg text-white hover:bg-gray-700 transition-colors {{ $najmHodaMenuActive ? 'bg-gray-700' : '' }}">
-                    <div class="flex items-center space-x-3 space-x-reverse"><i class="fas fa-robot w-5"></i><span>نجم هُدی</span></div>
+                    <div class="flex items-center space-x-3 space-x-reverse"><i class="fas fa-robot w-5"></i><span>نجم هدا</span></div>
                     <div class="flex items-center gap-2">
                         @if($waitingChats > 0)<span class="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">{{ $waitingChats }}</span>@endif
                         <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': open }"></i>
                     </div>
                 </button>
                 <ul x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform -translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform -translate-y-2" class="mr-8 mt-2 space-y-1" x-cloak>
-                    <li><a href="{{ route('admin.najm-hoda.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.najm-hoda.index') ? 'bg-gray-700 text-white' : '' }}"><i class="fas fa-tachometer-alt w-4"></i><span>داشبورد نجم هُدی</span></a></li>
+                    <li><a href="{{ route('admin.najm-hoda.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.najm-hoda.index') ? 'bg-gray-700 text-white' : '' }}"><i class="fas fa-tachometer-alt w-4"></i><span>داشبورد نجم هدا</span></a></li>
                     <li><a href="{{ route('admin.najm-hoda.founder-ops.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.najm-hoda.founder-ops.*') ? 'bg-gray-700 text-white' : '' }}"><i class="fas fa-briefcase w-4"></i><span>مرکز مدیریت کل</span></a></li>
                     @if($canNajmHodaAutonomyNav)
                     <li><a href="{{ route('admin.najm-hoda.autonomy.governance.page') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.najm-hoda.autonomy.*') ? 'bg-gray-700 text-white' : '' }}"><i class="fas fa-shield-alt w-4"></i><span>حکمرانی خودمختار</span></a></li>
