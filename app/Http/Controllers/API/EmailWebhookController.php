@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\EmailTicketIntegrationService;
+use App\Models\Ticket;
+use App\Models\ContactMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -58,21 +60,37 @@ class EmailWebhookController extends Controller
                 'attachments' => $this->processAttachments($request),
             ];
 
-            // تبدیل به تیکت یا کامنت
-            $ticket = $this->emailService->processIncomingEmail($emailData);
+            // Reply معتبر به تیکت موجود همان thread را ادامه می‌دهد؛
+            // ایمیل جدید مستقل وارد Contact Inbox می‌شود.
+            $result = $this->emailService->processIncomingEmail($emailData);
 
-            if ($ticket) {
-                Log::info('Email converted to ticket', [
-                    'ticket_id' => $ticket->id,
-                    'tracking_code' => $ticket->tracking_code,
+            if ($result instanceof Ticket) {
+                Log::info('Inbound email appended to ticket thread', [
+                    'ticket_id' => $result->id,
+                    'tracking_code' => $result->tracking_code,
                     'from_email' => $emailData['from']['email'],
                 ]);
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'ایمیل با موفقیت پردازش شد',
-                    'ticket_id' => $ticket->id,
-                    'tracking_code' => $ticket->tracking_code,
+                    'message' => 'ایمیل به تیکت موجود افزوده شد',
+                    'entity_type' => 'ticket',
+                    'ticket_id' => $result->id,
+                    'tracking_code' => $result->tracking_code,
+                ], 200);
+            }
+
+            if ($result instanceof ContactMessage) {
+                Log::info('Inbound email routed to contact inbox', [
+                    'contact_message_id' => $result->id,
+                    'from_email' => $emailData['from']['email'],
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'ایمیل در صندوق پیام‌های تماس ثبت شد',
+                    'entity_type' => 'contact_message',
+                    'contact_message_id' => $result->id,
                 ], 200);
             }
 
