@@ -150,4 +150,17 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertStringContainsString('cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js', $layout);
     }
 
+
+    #[Test]
+    public function admin_invitation_index_is_bounded_and_view_is_read_only(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/InvitationCodeController.php'));
+        $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
+
+        $this->assertStringContainsString("->paginate(50)->withQueryString()", $controller);
+        $this->assertStringNotContainsString("->orderBy('created_at', 'desc')->get()", $controller);
+        $this->assertStringNotContainsString("foreach($checkExpire as $check){ $check->delete(); }", $view);
+        $this->assertStringNotContainsString("InvitationCode::where('used', 0)->where('expire_at', '<=', now())", $view);
+    }
+
 }
