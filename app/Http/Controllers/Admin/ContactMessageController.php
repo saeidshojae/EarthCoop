@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
-use App\Models\User;
 use App\Services\Support\ContactMessageConversionService;
 use App\Services\Support\ContactMessageReplyService;
 use DomainException;
