@@ -130,16 +130,40 @@ class EmailTicketIntegrationService
 
     protected function findTicketByMessageId(?string $inReplyTo, ?string $references): ?Ticket
     {
-        $comment = TicketComment::whereJsonContains('metadata->message_id', $inReplyTo)
-            ->orWhereJsonContains('metadata->message_id', $references)
+        $messageIds = collect([$inReplyTo, $references])
+            ->filter(fn ($value): bool => is_string($value) && trim($value) !== '')
+            ->flatMap(function (string $header): array {
+                preg_match_all('/<[^>]+>/', $header, $matches);
+
+                return $matches[0] !== [] ? $matches[0] : [trim($header)];
+            })
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($messageIds->isEmpty()) {
+            return null;
+        }
+
+        $comment = TicketComment::query()
+            ->where(function ($query) use ($messageIds): void {
+                foreach ($messageIds as $messageId) {
+                    $query->orWhereJsonContains('metadata->message_id', $messageId);
+                }
+            })
             ->first();
 
         if ($comment) {
             return $comment->ticket;
         }
 
-        return Ticket::whereJsonContains('metadata->message_id', $inReplyTo)
-            ->orWhereJsonContains('metadata->message_id', $references)
+        return Ticket::query()
+            ->where(function ($query) use ($messageIds): void {
+                foreach ($messageIds as $messageId) {
+                    $query->orWhereJsonContains('metadata->message_id', $messageId);
+                }
+            })
             ->first();
     }
 
