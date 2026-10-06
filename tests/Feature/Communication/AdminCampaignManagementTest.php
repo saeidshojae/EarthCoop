@@ -14,6 +14,7 @@ use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class AdminCampaignManagementTest extends TestCase
@@ -83,6 +84,18 @@ final class AdminCampaignManagementTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
+        $raw = DB::table('communication_campaigns')
+            ->where('id', $campaign->id)
+            ->value('scheduled_at');
+        $databaseTimezone = DB::selectOne(
+            'SELECT @@session.time_zone AS session_tz, @@system_time_zone AS system_tz'
+        );
+
+        $this->assertSame(
+            $expected->format('Y-m-d H:i:s'),
+            (string) $raw,
+            'MySQL timezone session='.$databaseTimezone->session_tz.' system='.$databaseTimezone->system_tz,
+        );
         $this->assertSame(
             $expected->format('Y-m-d H:i:s'),
             $campaign->scheduled_at?->utc()->format('Y-m-d H:i:s'),
