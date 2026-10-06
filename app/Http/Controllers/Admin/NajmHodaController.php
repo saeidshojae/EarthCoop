@@ -2524,10 +2524,35 @@ class NajmHodaController extends Controller
                 }
                 
             } elseif ($extension === 'docx' || $extension === 'doc') {
-                // Word: فعلاً فقط نام فایل (کتابخانه phpoffice/phpword نصب نیست)
-                $content = "📝 فایل Word: {$filename}\n\n";
-                $content .= "این یک فایل Word است. ";
-                $content .= "برای استخراج خودکار محتوای Word، نیاز به نصب کتابخانه phpoffice/phpword است.";
+                if (class_exists('\PhpOffice\PhpWord\IOFactory')) {
+                    try {
+                        $document = \PhpOffice\PhpWord\IOFactory::load($file->getRealPath());
+                        $parts = [];
+
+                        foreach ($document->getSections() as $section) {
+                            foreach ($section->getElements() as $element) {
+                                $text = $this->extractPhpWordElementText($element);
+                                if ($text !== '') {
+                                    $parts[] = $text;
+                                }
+                            }
+                        }
+
+                        $wordText = trim(implode("\n", $parts));
+                        $content = $wordText !== ''
+                            ? "📝 فایل Word: {$filename}\n\nمحتوای استخراج‌شده:\n\n{$wordText}"
+                            : "📝 فایل Word: {$filename}\n\nمتن قابل استخراجی در فایل پیدا نشد.";
+                    } catch (\Throwable $e) {
+                        \Log::warning('Word parsing failed', [
+                            'filename' => $filename,
+                            'error' => $e->getMessage(),
+                        ]);
+
+                        $content = "📝 فایل Word: {$filename}\n\nخطا در استخراج محتوا. نام فایل برای جستجو استفاده می‌شود.";
+                    }
+                } else {
+                    $content = "📝 فایل Word: {$filename}\n\nکتابخانه PHPWord در دسترس نیست.";
+                }
             }
         } catch (\Throwable $e) {
             \Log::error('File content extraction error', [
@@ -2541,5 +2566,37 @@ class NajmHodaController extends Controller
         }
 
         return $content;
+    }
+
+    private function extractPhpWordElementText($element): string
+    {
+        $parts = [];
+
+        if (is_object($element) && method_exists($element, 'getText')) {
+            $text = $element->getText();
+            if (is_string($text) && trim($text) !== '') {
+                $parts[] = trim($text);
+            }
+        }
+
+        foreach (['getElements', 'getRows', 'getCells'] as $method) {
+            if (!is_object($element) || !method_exists($element, $method)) {
+                continue;
+            }
+
+            $children = $element->{$method}();
+            if (!is_iterable($children)) {
+                continue;
+            }
+
+            foreach ($children as $child) {
+                $text = $this->extractPhpWordElementText($child);
+                if ($text !== '') {
+                    $parts[] = $text;
+                }
+            }
+        }
+
+        return trim(implode("\n", array_unique($parts)));
     }
 }
