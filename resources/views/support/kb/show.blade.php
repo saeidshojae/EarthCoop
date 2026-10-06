@@ -1087,7 +1087,7 @@
 
 
 
-                    <span><i class="far fa-clock ml-1"></i>انتشار: {{ optional($article->published_at)->format('Y/m/d H:i') }}</span>
+                    <span><i class="far fa-clock ml-1"></i>انتشار: @if($article->published_at)<x-temporal.date-time :value="$article->published_at" />@endif</span>
 
 
 
@@ -1467,7 +1467,7 @@
 
 
 
-                                    <i class="far fa-clock ml-1"></i>{{ optional($related->published_at)->format('Y/m/d') }}
+                                    <i class="far fa-clock ml-1"></i>@if($related->published_at)<x-temporal.date :value="$related->published_at" />@endif
 
 
 
