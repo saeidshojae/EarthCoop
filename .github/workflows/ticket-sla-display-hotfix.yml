@@ -36,12 +36,20 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql, gd
           coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
       - name: Prepare Laravel paths
         run: |
           mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
           chmod -R 775 bootstrap/cache storage/framework storage/logs
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
       - name: Prepare runtime
         run: |
           cat > .env <<'EOF'
