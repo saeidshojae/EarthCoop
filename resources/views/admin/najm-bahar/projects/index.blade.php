@@ -314,7 +314,7 @@
 
                             <td class="px-6 py-4 text-sm text-gray-500">
 
-                                {{ $project->submitted_at ? $project->submitted_at->diffForHumans() : '-' }}
+                                @if($project->submitted_at)<x-temporal.relative :value="$project->submitted_at" />@else-@endif
 
                             </td>
 
