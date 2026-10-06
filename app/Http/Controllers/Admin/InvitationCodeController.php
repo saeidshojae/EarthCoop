@@ -72,76 +72,139 @@ class InvitationCodeController extends Controller
 
             $codes = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
-            $now = now();
-            $stats = [
-                'total' => InvitationCode::count(),
-                'used' => InvitationCode::where('used', 1)->count(),
-                'expired' => InvitationCode::where('used', 0)->whereNotNull('expire_at')->where('expire_at', '<=', $now)->count(),
-                'active' => InvitationCode::where('used', 0)->where(function($q) use ($now){
-                    $q->whereNull('expire_at')->orWhere('expire_at', '>', $now);
-                })->count(),
-                'today' => InvitationCode::whereDate('created_at', $now->toDateString())->count(),
-                'week' => InvitationCode::whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->count(),
-            ];
-
-            $days = collect(range(7,0))->map(function($d){ return now()->subDays($d)->format('Y-m-d'); });
-            $createdDaily = [];
-            $usedDaily = [];
-            foreach ($days as $d) {
-                $createdDaily[] = InvitationCode::whereDate('created_at', $d)->count();
-                $usedDaily[] = InvitationCode::where('used', 1)
-                    ->where(function($q) use ($d){
-                        $q->whereDate('used_at', $d)->orWhere(function($qq) use ($d){ $qq->whereNull('used_at')->whereDate('updated_at', $d); });
-                    })->count();
-            }
-
-            $months = collect(range(11,0))->map(function($m){ return now()->subMonths($m)->format('Y-m'); });
-            $createdMonthly = [];
-            $usedMonthly = [];
-            foreach ($months as $m) {
-                $createdMonthly[] = InvitationCode::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$m])->count();
-                $usedMonthly[] = InvitationCode::where('used', 1)
-                    ->where(function($q) use ($m){
-                        $q->whereRaw("DATE_FORMAT(used_at, '%Y-%m') = ?", [$m])
-                          ->orWhere(function($qq) use ($m){ $qq->whereNull('used_at')->whereRaw("DATE_FORMAT(updated_at, '%Y-%m') = ?", [$m]); });
-                    })->count();
-            }
-
-            $weeks = collect(range(11,0))->map(function($w){ return now()->startOfWeek()->subWeeks($w); });
-            $weekLabels = [];
-            $createdWeekly = [];
-            $usedWeekly = [];
-            foreach ($weeks as $start) {
-                $end = (clone $start)->endOfWeek();
-                $weekLabels[] = $start->format('Y-m-d') . ' تا ' . $end->format('m-d');
-                $createdWeekly[] = InvitationCode::whereBetween('created_at', [$start, $end])->count();
-                $usedWeekly[] = InvitationCode::where('used', 1)
-                    ->where(function($q) use ($start, $end){
-                        $q->whereBetween('used_at', [$start, $end])
-                          ->orWhere(function($qq) use ($start, $end){ $qq->whereNull('used_at')->whereBetween('updated_at', [$start, $end]); });
-                    })->count();
-            }
-
-            $charts = [
-                'daily' => [
-                    'labels' => $days->map(fn($d)=>substr($d,5))->values(),
-                    'created' => $createdDaily,
-                    'used' => $usedDaily,
-                ],
-                'weekly' => [
-                    'labels' => $weekLabels,
-                    'created' => $createdWeekly,
-                    'used' => $usedWeekly,
-                ],
-                'monthly' => [
-                    'labels' => $months->values(),
-                    'created' => $createdMonthly,
-                    'used' => $usedMonthly,
-                ],
-            ];
+            [$stats, $charts] = $this->invitationMetrics(now());
         }
 
         return view('admin.invitation_codes.index', compact('codes', 'stats', 'charts'));
+    }
+
+
+    /** @return array{0:array<string,int>,1:array<string,array<string,mixed>>} */
+    private function invitationMetrics(Carbon $now): array
+    {
+        $todayStart = $now->copy()->startOfDay();
+        $tomorrowStart = $todayStart->copy()->addDay();
+        $weekStart = $now->copy()->startOfWeek();
+        $weekEnd = $now->copy()->endOfWeek();
+
+        $summary = InvitationCode::query()
+            ->selectRaw(
+                'COUNT(*) as total,
+                SUM(CASE WHEN used = 1 THEN 1 ELSE 0 END) as used_count,
+                SUM(CASE WHEN used = 0 AND expire_at IS NOT NULL AND expire_at <= ? THEN 1 ELSE 0 END) as expired_count,
+                SUM(CASE WHEN used = 0 AND (expire_at IS NULL OR expire_at > ?) THEN 1 ELSE 0 END) as active_count,
+                SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as today_count,
+                SUM(CASE WHEN created_at >= ? AND created_at <= ? THEN 1 ELSE 0 END) as week_count',
+                [$now, $now, $todayStart, $tomorrowStart, $weekStart, $weekEnd]
+            )
+            ->first();
+
+        $stats = [
+            'total' => (int) ($summary->total ?? 0),
+            'used' => (int) ($summary->used_count ?? 0),
+            'expired' => (int) ($summary->expired_count ?? 0),
+            'active' => (int) ($summary->active_count ?? 0),
+            'today' => (int) ($summary->today_count ?? 0),
+            'week' => (int) ($summary->week_count ?? 0),
+        ];
+
+        $dayKeys = collect(range(7, 0))
+            ->map(fn (int $daysAgo) => $now->copy()->subDays($daysAgo)->format('Y-m-d'));
+        $monthKeys = collect(range(11, 0))
+            ->map(fn (int $monthsAgo) => $now->copy()->subMonths($monthsAgo)->format('Y-m'));
+        $weekStarts = collect(range(11, 0))
+            ->map(fn (int $weeksAgo) => $now->copy()->startOfWeek()->subWeeks($weeksAgo));
+
+        $createdDaily = array_fill_keys($dayKeys->all(), 0);
+        $usedDaily = array_fill_keys($dayKeys->all(), 0);
+        $createdMonthly = array_fill_keys($monthKeys->all(), 0);
+        $usedMonthly = array_fill_keys($monthKeys->all(), 0);
+
+        $weekKeys = $weekStarts->map(fn (Carbon $start) => $start->format('Y-m-d'));
+        $createdWeekly = array_fill_keys($weekKeys->all(), 0);
+        $usedWeekly = array_fill_keys($weekKeys->all(), 0);
+
+        $chartWindowStart = $monthKeys->isEmpty()
+            ? $now->copy()->startOfMonth()
+            : Carbon::createFromFormat('Y-m', $monthKeys->first())->startOfMonth();
+
+        $rows = InvitationCode::query()
+            ->select(['created_at', 'updated_at', 'used', 'used_at'])
+            ->where(function ($query) use ($chartWindowStart) {
+                $query->where('created_at', '>=', $chartWindowStart)
+                    ->orWhere(function ($used) use ($chartWindowStart) {
+                        $used->where('used', 1)
+                            ->where(function ($timestamp) use ($chartWindowStart) {
+                                $timestamp->where('used_at', '>=', $chartWindowStart)
+                                    ->orWhere(function ($fallback) use ($chartWindowStart) {
+                                        $fallback->whereNull('used_at')
+                                            ->where('updated_at', '>=', $chartWindowStart);
+                                    });
+                            });
+                    });
+            })
+            ->get();
+
+        foreach ($rows as $row) {
+            if ($row->created_at) {
+                $dayKey = $row->created_at->format('Y-m-d');
+                if (array_key_exists($dayKey, $createdDaily)) {
+                    $createdDaily[$dayKey]++;
+                }
+
+                $monthKey = $row->created_at->format('Y-m');
+                if (array_key_exists($monthKey, $createdMonthly)) {
+                    $createdMonthly[$monthKey]++;
+                }
+
+                $weekKey = $row->created_at->copy()->startOfWeek()->format('Y-m-d');
+                if (array_key_exists($weekKey, $createdWeekly)) {
+                    $createdWeekly[$weekKey]++;
+                }
+            }
+
+            if ((bool) $row->used) {
+                $usedAt = $row->used_at ?? $row->updated_at;
+                if ($usedAt) {
+                    $dayKey = $usedAt->format('Y-m-d');
+                    if (array_key_exists($dayKey, $usedDaily)) {
+                        $usedDaily[$dayKey]++;
+                    }
+
+                    $monthKey = $usedAt->format('Y-m');
+                    if (array_key_exists($monthKey, $usedMonthly)) {
+                        $usedMonthly[$monthKey]++;
+                    }
+
+                    $weekKey = $usedAt->copy()->startOfWeek()->format('Y-m-d');
+                    if (array_key_exists($weekKey, $usedWeekly)) {
+                        $usedWeekly[$weekKey]++;
+                    }
+                }
+            }
+        }
+
+        $charts = [
+            'daily' => [
+                'labels' => $dayKeys->map(fn (string $day) => substr($day, 5))->values(),
+                'created' => array_values($createdDaily),
+                'used' => array_values($usedDaily),
+            ],
+            'weekly' => [
+                'labels' => $weekStarts
+                    ->map(fn (Carbon $start) => $start->format('Y-m-d') . ' تا ' . $start->copy()->endOfWeek()->format('m-d'))
+                    ->values(),
+                'created' => array_values($createdWeekly),
+                'used' => array_values($usedWeekly),
+            ],
+            'monthly' => [
+                'labels' => $monthKeys->values(),
+                'created' => array_values($createdMonthly),
+                'used' => array_values($usedMonthly),
+            ],
+        ];
+
+        return [$stats, $charts];
     }
 
     public function store(Request $request)
