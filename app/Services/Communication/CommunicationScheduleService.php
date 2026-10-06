@@ -12,6 +12,7 @@ class CommunicationScheduleService
 {
     public function processDue(CarbonInterface $now): int
     {
+        $now = $now->copy()->utc();
         $processed = 0;
 
         $schedules = CommunicationRuleSchedule::query()
