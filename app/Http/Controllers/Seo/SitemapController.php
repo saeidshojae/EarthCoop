@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seo;
 
 use App\Http\Controllers\Controller;
+use App\Chronicle\ChronicleMilestone;
 use App\Models\Page;
 use App\Modules\Blog\Models\Post;
 use App\Support\Seo\CanonicalUrl;
@@ -20,6 +21,12 @@ final class SitemapController extends Controller
             new SitemapEntry($canonicalUrl->to('/terms')),
             new SitemapEntry($canonicalUrl->to('/privacy')),
             new SitemapEntry($canonicalUrl->to('/blog')),
+            new SitemapEntry(
+                $canonicalUrl->to('/chronicle'),
+                Schema::hasTable('chronicle_milestones')
+                    ? ChronicleMilestone::query()->published()->max('updated_at')
+                    : null,
+            ),
         ];
 
         foreach (PillarRegistry::paths() as $path) {
