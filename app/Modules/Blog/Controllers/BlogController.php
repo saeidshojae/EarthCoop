@@ -79,11 +79,29 @@ class BlogController extends Controller
         // Increment views
         $post->incrementViews();
 
-        $relatedPosts = Post::published()
-                            ->where('category_id', $post->category_id)
-                            ->where('id', '!=', $post->id)
-                            ->recent(4)
-                            ->get();
+        $pillarKey = PillarArticleRegistry::ownerForSlug($post->slug);
+
+        if ($pillarKey !== null) {
+            $curatedSlugs = collect(PillarArticleRegistry::for($pillarKey))
+                ->pluck('path')
+                ->map(static fn (string $path): string => basename($path))
+                ->reject(static fn (string $slug): bool => $slug === $post->slug)
+                ->values();
+
+            $relatedPosts = $curatedSlugs->isEmpty()
+                ? collect()
+                : Post::published()
+                    ->whereIn('slug', $curatedSlugs->all())
+                    ->get()
+                    ->sortBy(static fn (Post $relatedPost): int => $curatedSlugs->search($relatedPost->slug))
+                    ->values();
+        } else {
+            $relatedPosts = Post::published()
+                                ->where('category_id', $post->category_id)
+                                ->where('id', '!=', $post->id)
+                                ->recent(4)
+                                ->get();
+        }
 
         $categories = BlogCategory::active()->ordered()->get();
         $popularPosts = Post::published()->popular(5)->get();
