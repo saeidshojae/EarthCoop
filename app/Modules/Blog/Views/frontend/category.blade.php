@@ -453,7 +453,7 @@
                             </small>
                             <small>
                                 <i class="far fa-calendar" style="margin-left: 0.25rem;"></i>
-                                {{ $post->published_at->format('Y/m/d') }}
+                                <x-temporal.date :value="$post->published_at" />
                                 <i class="far fa-eye" style="margin: 0 0.5rem;"></i>
                                 {{ $post->views_count }}
                             </small>
