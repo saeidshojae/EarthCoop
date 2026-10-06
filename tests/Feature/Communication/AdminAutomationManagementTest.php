@@ -65,6 +65,8 @@ final class AdminAutomationManagementTest extends TestCase
         $this->assertNotNull($rule->schedule);
         $this->assertSame('weekly', $rule->schedule->frequency);
         $this->assertSame(1, $rule->schedule->schedule_definition['interval']);
+        $this->assertSame('Asia/Tehran', $rule->schedule->timezone);
+        $this->assertSame('explicit', $rule->schedule->timezone_mode);
     }
 
     public function test_specific_user_scheduled_automation_persists_target_user_ids(): void
