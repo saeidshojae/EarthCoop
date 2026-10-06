@@ -44,7 +44,9 @@ class TemporalManagerTest extends TestCase
         $this->assertSame('2026-10-01', $manager->parseDate('1405/07/09', $fa)->toCanonical());
         $this->assertSame('۱۴۰۵/۰۷/۰۹', $manager->date(LocalDate::fromCanonical('2026-10-01'), $fa, 'short'));
         $this->assertSame('۹ مهر ۱۴۰۵', $manager->date(LocalDate::fromCanonical('2026-10-01'), $fa, 'medium'));
+        $this->assertSame('۹ مهر', $manager->date(LocalDate::fromCanonical('2026-10-01'), $fa, 'month-day'));
         $this->assertSame('2026-10-01', $manager->date(LocalDate::fromCanonical('2026-10-01'), $en, 'short'));
+        $this->assertSame('Oct 1', $manager->date(LocalDate::fromCanonical('2026-10-01'), $en, 'month-day'));
     }
 
     public function test_manager_exposes_year_in_context_calendar_without_formatting_round_trip(): void
