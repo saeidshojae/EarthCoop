@@ -251,17 +251,17 @@ class MembershipPaymentController extends ChangeNotifier {
 
       if (_isSessionFailure(error)) {
         invalidateSession();
+      } else if (error.code == 'bootstrap_unavailable') {
+        _intent = null;
+        _intentStartedAt = null;
+        state = MembershipPaymentState.ready;
+        notifyListeners();
       } else if (error.code == 'already_paid') {
         state = MembershipPaymentState.outcomeUnknown;
         notifyListeners();
         await reconcile();
       } else if (_isUnknownOutcome(error)) {
         state = MembershipPaymentState.outcomeUnknown;
-        notifyListeners();
-      } else if (error.code == 'bootstrap_unavailable') {
-        _intent = null;
-        _intentStartedAt = null;
-        state = MembershipPaymentState.ready;
         notifyListeners();
       } else {
         _intent = null;
