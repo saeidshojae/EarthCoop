@@ -2768,7 +2768,7 @@ $actionLabels = [
 
 
 
-                                            {{ \Morilog\Jalali\Jalalian::fromCarbon($transfer->created_at)->format('Y/m/d H:i') }}
+                                            <x-temporal.date-time :value="$transfer->created_at" />
 
 
 
