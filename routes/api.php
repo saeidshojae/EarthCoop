@@ -426,9 +426,6 @@ Route::middleware('auth:sanctum')->prefix('tickets')->group(function () {
     Route::get('{id}/attachments/{attachment_id}/download', [\App\Http\Controllers\API\TicketController::class, 'downloadAttachment']);
 });
 
-// مسیر Webhook ایمیل (بدون احراز هویت، با signature verification)
-Route::post('email/webhook', [\App\Http\Controllers\API\EmailWebhookController::class, 'webhook']);
-
 // مسیرهای API برای انتخاب محدوده جغرافیایی (برای فرم های پروژه)
 Route::prefix('geographic')->group(function () {
     Route::get('continents', [\App\Http\Controllers\API\GeographicController::class, 'continents']);
