@@ -70,7 +70,7 @@ class InvitationCodeController extends Controller
                 $query->where('code', 'like', "%{$request->q}%");
             }
 
-            $codes = $query->orderBy('created_at', 'desc')->get();
+            $codes = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
             $now = now();
             $stats = [
