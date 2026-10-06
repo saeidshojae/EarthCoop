@@ -96,8 +96,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <label class="block">
                 <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">زمان اثر نسخه جدید</span>
-                <input type="datetime-local" name="effective_at" value="{{ old('effective_at') }}"
-                       class="mt-2 w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700">
+                <x-temporal.date-time-input name="effective_at" :value="old('effective_at')" class="mt-2 w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
                 <small class="text-slate-500">خالی = اثر فوری. زمان آینده، policy را بدون تغییر زودهنگام mirror زمان‌بندی می‌کند.</small>
             </label>
 
