@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\Blog;
+use App\Modules\Blog\Models\Post as BlogPost;
 use Illuminate\Support\Facades\Cache;
 
 class BlogObserver
@@ -10,7 +10,7 @@ class BlogObserver
     /**
      * Handle the Blog "created" event.
      */
-    public function created(Blog $blog): void
+    public function created(BlogPost $blog): void
     {
         $this->invalidateCache();
     }
@@ -18,7 +18,7 @@ class BlogObserver
     /**
      * Handle the Blog "updated" event.
      */
-    public function updated(Blog $blog): void
+    public function updated(BlogPost $blog): void
     {
         $this->invalidateCache();
     }
@@ -26,7 +26,7 @@ class BlogObserver
     /**
      * Handle the Blog "deleted" event.
      */
-    public function deleted(Blog $blog): void
+    public function deleted(BlogPost $blog): void
     {
         $this->invalidateCache();
     }
