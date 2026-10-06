@@ -7,12 +7,15 @@ use App\Jobs\Communication\ResolveCommunicationRunAudience;
 use App\Models\Communication;
 use App\Models\CommunicationPreference;
 use App\Models\CommunicationRule;
+use App\Models\CommunicationRuleSchedule;
 use App\Models\CommunicationRun;
 use App\Models\CommunicationSenderIdentity;
 use App\Models\CommunicationTemplate;
 use App\Models\User;
 use App\Services\Communication\CommunicationAudienceRegistry;
 use App\Services\Communication\CommunicationTemplateService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -97,10 +100,20 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
                 'priority' => 2,
                 'is_active' => true,
             ]);
+            CommunicationRuleSchedule::query()->create([
+                'communication_rule_id' => $rule->id,
+                'frequency' => 'weekly',
+                'schedule_definition' => ['interval' => 1],
+                'timezone' => 'America/New_York',
+                'timezone_mode' => 'explicit',
+                'next_run_at' => CarbonImmutable::parse('2026-03-15 03:30:00', 'UTC'),
+            ]);
+
             $run = CommunicationRun::query()->create([
                 'communication_rule_id' => $rule->id,
-                'run_key' => 'weekly-member-2026-W40',
+                'run_key' => 'weekly-member-schedule-boundary',
                 'status' => 'pending',
+                'scheduled_for' => CarbonImmutable::parse('2026-03-08 04:30:00', 'UTC'),
                 'started_at' => now(),
             ]);
 
@@ -120,6 +133,19 @@ final class WeeklyReportSchedulePreferenceTest extends TestCase
             $this->assertSame(
                 2,
                 $communications->pluck('deduplication_key')->unique()->count(),
+            );
+
+            $allowedContext = $communications
+                ->first(fn (Communication $communication) => $communication->recipients()->where('user_id', $allowed->id)->exists())
+                ?->context_snapshot ?? [];
+            $temporalContext = app(TemporalContextResolver::class)->forRecipient($allowed);
+            $this->assertSame(
+                app(TemporalService::class)->date('2026-02-28', $temporalContext, 'short'),
+                $allowedContext['period_start'] ?? null,
+            );
+            $this->assertSame(
+                app(TemporalService::class)->date('2026-03-06', $temporalContext, 'short'),
+                $allowedContext['period_end'] ?? null,
             );
 
             $allowedRecipient = $communications
