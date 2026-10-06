@@ -1,4 +1,5 @@
 import 'najm_bahar_dto.dart';
+import 'najm_bahar_membership_source.dart';
 
 Map<String, Object?> _map(Object? raw) {
   if (raw is! Map) {
@@ -72,6 +73,28 @@ class NajmBaharMembershipFee {
       throw const FormatException('Invalid payment source');
     }
     _nullableInteger(v, 'policy_version_id');
+    policyVersionId = v['policy_version_id'] as int?;
+
+    final rawContract = v['payment_contract_version'];
+    if (rawContract != null && rawContract is! int) {
+      throw const FormatException('Invalid payment contract version');
+    }
+    paymentContractVersion = rawContract as int?;
+    final rawSources = v['payment_sources'];
+    if (paymentContractVersion == null) {
+      if (rawSources != null) {
+        throw const FormatException('Sources require a payment contract');
+      }
+      paymentSources = const <MembershipSource>[];
+    } else {
+      if (paymentContractVersion != 1 || rawSources is! List) {
+        throw const FormatException('Unsupported payment contract');
+      }
+      paymentSources = List<MembershipSource>.unmodifiable(
+        rawSources.map(MembershipSource.fromJson),
+      );
+    }
+
     final b = _map(v['breakdown']);
     operationsGol = _number(b, 'operations_salary_gol');
     insuranceGol = _number(b, 'central_insurance_gol');
@@ -87,6 +110,8 @@ class NajmBaharMembershipFee {
     aggregate = NajmBaharBalance.fromJson(balances['aggregate']);
   }
   late final bool hasPaid, canPayDim, canPayActive;
+  late final int? policyVersionId, paymentContractVersion;
+  late final List<MembershipSource> paymentSources;
   late final int paymentYear,
       feeGol,
       operationsGol,
