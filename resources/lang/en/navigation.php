@@ -12,6 +12,7 @@ return [
     'profile' => 'Profile',
     'charter' => 'Charter',
     'financial_agreement' => 'Financial Agreement',
+    'chronicle' => 'Chronicle',
     'blog' => 'Blog',
     'stock_office' => 'Stock Office',
     'auctions' => 'Share Auctions',
