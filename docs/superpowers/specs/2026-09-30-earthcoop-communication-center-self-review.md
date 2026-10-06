@@ -1,5 +1,7 @@
 # Communication Center Design — Self Review
 
+> **Historical document:** This review records the pre-implementation design decision. Communication Center v1 has since been implemented and closed. Use `docs/operations/COMMUNICATION_CENTER_CLOSURE_STATUS.md` for the authoritative as-built state and handoff.
+
 **Spec reviewed:** `docs/superpowers/specs/2026-09-30-earthcoop-communication-center-design.md`
 
 ## Result
