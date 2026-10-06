@@ -207,7 +207,38 @@ Invitation messages must explain:
 
 Member-originated invitation should name the inviter only when that identity is intentionally part of the invitation contract.
 
-## 15. Formatting rules
+## 15. EarthCoop logo and email header
+
+The canonical current site logo asset is:
+
+`public/images/logo.png`
+
+and the site header renders it through:
+
+`asset('images/logo.png')`
+
+Email should reuse this same official asset so website and email identity do not drift.
+
+Recommended email-header contract:
+
+- render the logo from an absolute application asset URL;
+- show the text **EarthCoop** next to or immediately below the logo;
+- include meaningful alt text such as `EarthCoop`;
+- keep the logo static — do not copy website animation, hover effects, filters, or JavaScript;
+- do not depend on the image for critical meaning;
+- keep a sensible fixed display size so oversized source pixels do not enlarge the email;
+- preserve readable branding when external images are blocked;
+- link the brand header to the canonical EarthCoop home URL where appropriate.
+
+Do not create an email-only logo variant unless an explicit brand decision replaces the canonical product asset.
+
+### Image-delivery note
+
+Using an absolute HTTPS asset URL is the preferred first implementation because it is simple and provider-independent. Some email clients may block remote images until the recipient allows them, so the text brand must always remain visible.
+
+CID/embedded-image delivery can be considered later only if real client testing shows a material need; it is not required to make the first professional email layout correct.
+
+## 16. Formatting rules
 
 Recommended body conventions:
 
@@ -223,7 +254,7 @@ Recommended body conventions:
 - text links visible without hover;
 - no critical information encoded by color alone.
 
-## 16. Plain-text fallback
+## 17. Plain-text fallback
 
 Long-term target: every delivered HTML email should have a readable plain-text alternative.
 
@@ -234,7 +265,7 @@ Plain text should preserve:
 - primary link;
 - support/security note.
 
-## 17. Footer
+## 18. Footer
 
 Default footer should be concise:
 
@@ -245,7 +276,7 @@ Default footer should be concise:
 
 Required security messages must not imply that users can unsubscribe from security mail.
 
-## 18. Copy safety
+## 19. Copy safety
 
 Before publishing a new version, review:
 
@@ -257,7 +288,7 @@ Before publishing a new version, review:
 - does it remain understandable on mobile?
 - is there exactly one primary action?
 
-## 19. Versioning
+## 20. Versioning
 
 Never overwrite historical published content.
 
@@ -267,7 +298,7 @@ Professional revisions should publish new immutable versions:
 - v2 becomes current;
 - delivery history retains the exact version used.
 
-## 20. Review checklist
+## 21. Review checklist
 
 A template is ready when:
 
