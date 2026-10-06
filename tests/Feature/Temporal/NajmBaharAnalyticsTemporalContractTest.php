@@ -49,7 +49,7 @@ class NajmBaharAnalyticsTemporalContractTest extends TestCase
         $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharAnalyticsController.php'));
         $view = file_get_contents(resource_path('views/admin/najm-bahar/analytics.blade.php'));
 
-        $this->assertStringContainsString("$item->label = $this->temporal->date(", $controller);
+        $this->assertStringContainsString('$item->label = $this->temporal->date(', $controller);
         $this->assertStringContainsString("'month-day'", $controller);
         $this->assertStringContainsString('<x-temporal.date-time :value="$transaction->created_at" />', $view);
         $this->assertStringContainsString('dailyData.map(item => item.label)', $view);
