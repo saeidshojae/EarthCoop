@@ -52,11 +52,11 @@ class StewardKnowledgeSourceTest extends TestCase
         $content = str_repeat('قانون اساسی ارث‌کوپ و عدالت زمین. ', 4000);
         $upload = UploadedFile::fake()->createWithContent('constitution.txt', $content);
 
-        $response = $this->postJson(route('admin.najm-hoda.steward.upload-knowledge'), [
+        $response = $this->post(route('admin.najm-hoda.steward.upload-knowledge'), [
             'title' => 'قانون اساسی ارث‌کوپ',
             'knowledge_file' => $upload,
             'search_priority' => 10,
-        ]);
+        ], ['Accept' => 'application/json']);
 
         $response->assertCreated()->assertJsonPath('success', true);
 
