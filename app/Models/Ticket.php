@@ -66,6 +66,24 @@ class Ticket extends Model
         return $this->hasMany(TicketActivity::class)->orderBy('created_at', 'desc');
     }
 
+    public function isOverdue(): bool
+    {
+        if (! $this->sla_deadline || $this->status === 'closed') {
+            return false;
+        }
+
+        return now()->greaterThan($this->sla_deadline);
+    }
+
+    public function isApproachingDeadline(int $hours = 24): bool
+    {
+        if (! $this->sla_deadline || $this->status === 'closed' || $this->isOverdue()) {
+            return false;
+        }
+
+        return now()->diffInMinutes($this->sla_deadline, false) <= ($hours * 60);
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return match ((string) $this->status) {
