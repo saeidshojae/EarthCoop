@@ -76,6 +76,14 @@ class NajmBaharAnalyticsController extends Controller
             ->orderBy('date')
             ->get();
 
+        $dailyStats->each(function ($stat) use ($context) {
+            $stat->date_label = $this->temporal->date(
+                LocalDate::fromCanonical((string) $stat->date),
+                $context,
+                'month-day',
+            );
+        });
+
         $typeDistribution = Transaction::select(
                 'type',
                 DB::raw('COUNT(*) as count'),
