@@ -24,7 +24,7 @@ void main() {
   });
   test('repeated confirm shares one pending POST and unpaid GET stays frozen',() async {
     final response=Completer<Map<String,Object?>>();
-    final a=f.BoundaryAdapter((r)=>r.method=='POST'?response.future:f.envelope(p.fee()));
+    final a=f.BoundaryAdapter((r) async => r.method=='POST' ? await response.future : f.envelope(p.fee()));
     final c=MembershipPaymentController(f.repository(a),keyFactory:()=>'test-key');addTearDown(c.dispose);
     await prepare(c); final first=c.confirm(); final second=c.confirm();
     await Future<void>.delayed(Duration.zero); await c.reconcile();
@@ -121,7 +121,7 @@ void main() {
   test('logout and disposal suppress delayed payment publication',()async{
     for(final dispose in [false,true]){
       var current=true;final changes=ChangeNotifier(); final pending=Completer<Map<String,Object?>>();
-      final a=f.BoundaryAdapter((r)=>r.method=='GET'?f.envelope(p.fee()):pending.future);
+      final a=f.BoundaryAdapter((r) async => r.method=='GET' ? f.envelope(p.fee()) : await pending.future);
       final c=MembershipPaymentController(f.repository(a,current:()=>current),sessionChanges:changes);
       await prepare(c);final task=c.confirm();await Future<void>.delayed(Duration.zero);
       if(dispose){c.dispose();}else{current=false;changes.notifyListeners();}
