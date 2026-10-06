@@ -582,7 +582,7 @@
 
                     <span class="conversation-meta-label">شروع:</span>
 
-                    {{ $conversation->created_at->format('Y/m/d H:i') }}
+                    <x-temporal.date-time :value="$conversation->created_at" />
 
                 </div>
 
@@ -590,7 +590,7 @@
 
                     <span class="conversation-meta-label">آخرین فعالیت:</span>
 
-                    {{ $conversation->updated_at->format('Y/m/d H:i') }}
+                    <x-temporal.date-time :value="$conversation->updated_at" />
 
                 </div>
 
@@ -720,7 +720,7 @@
 
                         <div class="message-time">
 
-                            {{ $message->created_at->format('H:i') }} - {{ $message->created_at->diffForHumans() }}
+                            <x-temporal.time :value="$message->created_at" /> - <x-temporal.relative :value="$message->created_at" />
 
                         </div>
 
