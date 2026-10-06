@@ -67,7 +67,7 @@
                                 @endphp
                                 <span class="inline-flex px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">{{ $labels[$message->status] ?? $message->status }}</span>
                             </td>
-                            <td class="px-4 py-3 text-slate-500">{{ $message->created_at?->format('Y-m-d H:i') }}</td>
+                            <td class="px-4 py-3 text-slate-500">@if($message->created_at)<x-temporal.date-time :value="$message->created_at" />@endif</td>
                             <td class="px-4 py-3 text-left">
                                 <a href="{{ route('admin.contact-messages.show', $message) }}" class="text-blue-600 hover:underline">مشاهده</a>
                             </td>
