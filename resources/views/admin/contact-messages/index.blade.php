@@ -11,10 +11,11 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
         @foreach([
             'new' => ['جدید', $stats['new']],
             'reviewing' => ['در حال بررسی', $stats['reviewing']],
+            'replied' => ['پاسخ‌داده‌شده', $stats['replied']],
             'converted' => ['تبدیل‌شده', $stats['converted']],
             'closed' => ['بسته', $stats['closed']],
             'spam' => ['اسپم', $stats['spam']],
@@ -31,7 +32,7 @@
             <input type="text" name="q" value="{{ request('q') }}" placeholder="جستجو در نام، ایمیل، موضوع یا متن..." class="flex-1 rounded-lg border-slate-300 dark:bg-slate-900">
             <select name="status" class="rounded-lg border-slate-300 dark:bg-slate-900">
                 <option value="">همه وضعیت‌ها</option>
-                @foreach(['new'=>'جدید','reviewing'=>'در حال بررسی','converted'=>'تبدیل‌شده','closed'=>'بسته','spam'=>'اسپم'] as $value => $label)
+                @foreach(['new'=>'جدید','reviewing'=>'در حال بررسی','replied'=>'پاسخ‌داده‌شده','converted'=>'تبدیل‌شده','closed'=>'بسته','spam'=>'اسپم'] as $value => $label)
                     <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -62,7 +63,7 @@
                             </td>
                             <td class="px-4 py-3">
                                 @php
-                                    $labels = ['new'=>'جدید','reviewing'=>'در حال بررسی','converted'=>'تبدیل‌شده','closed'=>'بسته','spam'=>'اسپم'];
+                                    $labels = ['new'=>'جدید','reviewing'=>'در حال بررسی','replied'=>'پاسخ‌داده‌شده','converted'=>'تبدیل‌شده','closed'=>'بسته','spam'=>'اسپم'];
                                 @endphp
                                 <span class="inline-flex px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">{{ $labels[$message->status] ?? $message->status }}</span>
                             </td>
