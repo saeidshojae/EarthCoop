@@ -32,6 +32,7 @@ use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use App\Services\NajmHoda\Runtime\NajmHodaPhaseSixSignoffService;
 use App\Services\NajmHoda\Runtime\NajmHodaShadowLiveRolloutService;
+use App\Services\NajmHoda\Knowledge\StewardKnowledgeUrlIngestor;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -2306,6 +2307,68 @@ class NajmHodaController extends Controller
     }
 
     /**
+     * افزودن منبع دانش از یک لینک عمومی وب.
+     */
+    public function addKnowledgeUrl(Request $request, StewardKnowledgeUrlIngestor $ingestor)
+    {
+        $validated = $request->validate([
+            'source_url' => 'required|url|max:2048',
+            'title' => 'nullable|string|max:255',
+            'search_priority' => 'nullable|integer|min:1|max:10',
+        ], [
+            'source_url.required' => 'لطفاً لینک منبع را وارد کنید',
+            'source_url.url' => 'لینک منبع معتبر نیست',
+        ]);
+
+        try {
+            $ingested = $ingestor->ingest($validated['source_url']);
+            $title = trim((string) ($validated['title'] ?? ''));
+            if ($title === '') {
+                $title = (string) $ingested['title'];
+            }
+
+            $knowledgeFile = StewardKnowledgeFile::create([
+                'title' => mb_substr($title, 0, 255),
+                'source_type' => 'url',
+                'source_url' => (string) $ingested['url'],
+                'original_filename' => null,
+                'file_path' => null,
+                'file_type' => 'url',
+                'file_size' => strlen((string) $ingested['content']),
+                'extracted_content' => (string) $ingested['content'],
+                'summary' => mb_substr((string) $ingested['content'], 0, 200),
+                'search_priority' => $validated['search_priority'] ?? 5,
+                'uploaded_by' => auth()->id(),
+                'is_active' => true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '✅ لینک دانش با موفقیت ثبت و متن آن استخراج شد',
+                'file' => [
+                    'id' => $knowledgeFile->id,
+                    'title' => $knowledgeFile->title,
+                    'source_type' => $knowledgeFile->source_type,
+                    'source_url' => $knowledgeFile->source_url,
+                    'search_priority' => $knowledgeFile->search_priority,
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+            \Log::warning('Knowledge URL ingestion failed', [
+                'user_id' => auth()->id(),
+                'url' => $validated['source_url'],
+                'exception' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '❌ افزودن لینک دانش ناموفق بود: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * دریافت لیست فایل‌های دانش
      */
     public function getKnowledgeFiles()
@@ -2328,6 +2391,8 @@ class NajmHodaController extends Controller
                 return [
                     'id' => $file->id,
                     'title' => $file->title,
+                    'source_type' => $file->source_type ?? 'file',
+                    'source_url' => $file->source_url,
                     'file_type' => $file->file_type,
                     'file_size' => $file->formatted_file_size,
                     'search_priority' => $file->search_priority,
@@ -2387,7 +2452,7 @@ class NajmHodaController extends Controller
             $file = StewardKnowledgeFile::findOrFail($id);
             
             // حذف فایل از storage
-            if (Storage::disk('public')->exists($file->file_path)) {
+            if ($file->file_path && Storage::disk('public')->exists($file->file_path)) {
                 Storage::disk('public')->delete($file->file_path);
             }
             
