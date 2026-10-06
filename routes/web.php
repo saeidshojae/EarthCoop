@@ -102,7 +102,7 @@ Route::get('/lang/current', [LocaleController::class, 'current'])->name('locale.
 | Static pages
 |--------------------------------------------------------------------------
 */
-date_default_timezone_set("Asia/tehran");
+
 
 Route::view('/terms', 'terms', ['seoRobots' => 'index,follow'])->name('terms');
 Route::view('/privacy', 'privacy', [
