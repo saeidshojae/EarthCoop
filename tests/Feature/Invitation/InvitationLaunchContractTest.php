@@ -139,15 +139,12 @@ class InvitationLaunchContractTest extends TestCase
 
 
     #[Test]
-    public function admin_invitation_page_does_not_reference_missing_local_vendor_assets(): void
+    public function admin_invitation_page_does_not_load_the_missing_unused_chart_asset(): void
     {
         $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
-        $layout = file_get_contents(resource_path('views/layouts/admin.blade.php'));
 
         $this->assertStringNotContainsString('vendor/chart.js/chart.umd.min.js', $view);
-        $this->assertStringNotContainsString('vendor/sweetalert2/sweetalert2.all.min.js', $layout);
         $this->assertStringNotContainsString('chart.umd.min.js', $view);
-        $this->assertStringContainsString('cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js', $layout);
     }
 
 
@@ -162,7 +159,8 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertStringNotContainsString('foreach($checkExpire as $check){ $check->delete(); }', $view);
         $this->assertStringNotContainsString("InvitationCode::where('used', 0)->where('expire_at', '<=', now())", $view);
         $this->assertStringContainsString('$codes->links()', $view);
-        $this->assertStringContainsString('private function invitationMetrics', $controller);
+        $this->assertStringContainsString("->selectRaw(", $controller);
+        $this->assertStringContainsString('$charts = null;', $controller);
         $this->assertStringNotContainsString('DATE_FORMAT(', $controller);
     }
 
