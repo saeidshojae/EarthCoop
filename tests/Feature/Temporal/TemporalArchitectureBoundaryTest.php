@@ -75,7 +75,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     {
         return [
             "resources/views/admin/najm-hoda/auto-fixer-settings.blade.php: toLocaleDateString('fa-IR'",
-            'resources/views/admin/system-settings/categories/index.blade.php: verta(',
             'resources/views/groups/comment.blade.php: verta(',
             'resources/views/groups/show.blade.php: verta(',
             'resources/views/history/index-base.blade.php: verta(',
