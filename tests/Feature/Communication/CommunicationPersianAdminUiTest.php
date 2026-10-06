@@ -45,6 +45,24 @@ final class CommunicationPersianAdminUiTest extends TestCase
         $this->assertSame('ارتباطات مدیریتی و اداری', $management->purpose);
     }
 
+    public function test_builtin_template_and_rule_names_are_persian(): void
+    {
+        $expected = [
+            'onboarding.welcome' => 'خوش‌آمدگویی پس از ثبت‌نام',
+            'reports.member.weekly' => 'گزارش هفتگی اعضا',
+            'reports.manager.weekly' => 'گزارش هفتگی مدیران',
+            'reports.inspector.weekly' => 'گزارش هفتگی بازرسان',
+        ];
+
+        foreach ($expected as $key => $name) {
+            $template = CommunicationTemplate::query()->where('key', $key)->firstOrFail();
+            $this->assertSame($name, $template->name);
+
+            $rule = \App\Models\CommunicationRule::query()->where('key', $key.'.rule')->firstOrFail();
+            $this->assertSame($name, $rule->name);
+        }
+    }
+
     public function test_admin_communication_views_use_persian_user_facing_terms(): void
     {
         $sources = $this->viewSources();
@@ -68,7 +86,7 @@ final class CommunicationPersianAdminUiTest extends TestCase
             $this->assertStringContainsString($helperCall, $createAutomation);
         }
 
-        foreach (['trigger($rule->trigger_type)', 'audience($audienceKey)', 'frequency($rule->schedule->frequency)'] as $helperCall) {
+        foreach (['trigger($rule->trigger_type)', 'audience($audienceKey)', 'frequency($rule->schedule->frequency)', "timezone($rule->schedule->timezone)"] as $helperCall) {
             $this->assertStringContainsString($helperCall, $indexAutomation);
         }
         $this->assertStringContainsString('campaignStatus($campaign->status)', $campaignIndex);
