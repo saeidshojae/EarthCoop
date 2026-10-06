@@ -47,6 +47,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
         \App\Console\Commands\CommunicationProcessDueRules::class,
+        \App\Console\Commands\CommunicationProcessDueCampaigns::class,
         \App\Console\Commands\InstallVendorPackage::class,
         \App\Console\Commands\VendorPackageStatus::class,
     ];
@@ -55,6 +56,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('auctions:close')->everyMinute();
         $schedule->command('communications:process-due')->everyMinute()->withoutOverlapping();
+        $schedule->command('communications:process-due-campaigns --limit=100')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:activate-sessions')->everyMinute()->withoutOverlapping();
         $schedule->call(function (): void {
