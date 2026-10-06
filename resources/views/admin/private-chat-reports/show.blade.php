@@ -50,7 +50,7 @@
                     </div>
                     <div>
                         <div class="text-slate-500 dark:text-slate-400">زمان ثبت</div>
-                        <div class="font-semibold text-slate-900 dark:text-white">{{ $report->created_at?->format('Y/m/d H:i') }}</div>
+                        <div class="font-semibold text-slate-900 dark:text-white">@if($report->created_at)<x-temporal.date-time :value="$report->created_at" />@endif</div>
                     </div>
                     <div>
                         <div class="text-slate-500 dark:text-slate-400">گزارش‌دهنده</div>
@@ -66,7 +66,7 @@
                     </div>
                     <div>
                         <div class="text-slate-500 dark:text-slate-400">زمان بررسی</div>
-                        <div class="font-semibold text-slate-900 dark:text-white">{{ $report->reviewed_at?->format('Y/m/d H:i') ?? '-' }}</div>
+                        <div class="font-semibold text-slate-900 dark:text-white">@if($report->reviewed_at)<x-temporal.date-time :value="$report->reviewed_at" />@else-@endif</div>
                     </div>
                 </div>
 
@@ -85,7 +85,7 @@
                         <div class="p-4 rounded-xl border {{ $message->id === $report->reported_message_id ? 'border-rose-300 bg-rose-50 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30' }}">
                             <div class="flex items-center justify-between gap-3 mb-2 text-sm">
                                 <div class="font-semibold text-slate-900 dark:text-white">{{ $message->sender?->fullName() ?? $message->sender?->email ?? 'کاربر' }}</div>
-                                <div class="text-slate-500 dark:text-slate-400">{{ $message->created_at?->format('Y/m/d H:i') }}</div>
+                                <div class="text-slate-500 dark:text-slate-400">@if($message->created_at)<x-temporal.date-time :value="$message->created_at" />@endif</div>
                             </div>
                             <div class="text-slate-700 dark:text-slate-200 leading-7">{{ $message->message }}</div>
                             @if($message->id === $report->reported_message_id)
