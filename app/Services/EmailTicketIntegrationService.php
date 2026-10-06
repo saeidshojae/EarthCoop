@@ -29,9 +29,10 @@ class EmailTicketIntegrationService
     }
 
     /**
-     * تبدیل ایمیل دریافتی به تیکت یا کامنت
+     * Reply معتبر به تیکت موجود را به همان thread متصل می‌کند؛
+     * ایمیل مستقل جدید را به Contact Inbox می‌فرستد.
      */
-    public function processIncomingEmail(array $emailData): ?Ticket
+    public function processIncomingEmail(array $emailData): Ticket|ContactMessage|null
     {
         $context = [
             'scope' => 'support:email',
