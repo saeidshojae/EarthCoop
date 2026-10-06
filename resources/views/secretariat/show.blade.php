@@ -79,7 +79,7 @@
                                     <strong>نسخه {{ $version->version_number }}</strong>
                                     <span class="text-xs text-gray-500 mr-2">{{ $version->change_reason }}</span>
                                 </div>
-                                <div class="text-xs text-gray-500">{{ optional($version->created_at)->format('Y-m-d H:i') }}</div>
+                                <div class="text-xs text-gray-500">@if($version->created_at)<x-temporal.date-time :value="$version->created_at" />@endif</div>
                             </div>
                             @if($version->attachments->isNotEmpty())
                                 <div class="space-y-2">
@@ -157,7 +157,7 @@
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">دفتر</dt><dd>{{ $office->code }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">جهت</dt><dd>{{ $record->direction }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">محرمانگی</dt><dd>{{ $record->confidentiality }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">ثبت</dt><dd>{{ optional($record->registered_at)->format('Y-m-d H:i') ?: '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">ثبت</dt><dd>@if($record->registered_at)<x-temporal.date-time :value="$record->registered_at" />@else—@endif</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">نسخه جاری</dt><dd>{{ optional($record->currentVersion)->version_number ?: '—' }}</dd></div>
                 </dl>
             </section>
