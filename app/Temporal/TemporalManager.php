@@ -118,6 +118,16 @@ final class TemporalManager implements TemporalService
         $context ??= $this->contexts->defaultContext();
         $normalized = trim($this->digitNormalizer->toLatin($value));
 
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?$/', $normalized) === 1) {
+            $hasExplicitZone = preg_match('/(?:Z|[+-]\d{2}:\d{2})$/', $normalized) === 1;
+            $canonical = new DateTimeImmutable(
+                $normalized,
+                new DateTimeZone($hasExplicitZone ? 'UTC' : $context->timezone()),
+            );
+
+            return $canonical->setTimezone(new DateTimeZone('UTC'));
+        }
+
         if (! preg_match('/^(.+?)[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/', $normalized, $matches)) {
             throw new InvalidArgumentException('Localized datetime must contain a date and HH:MM time.');
         }
