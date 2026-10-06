@@ -125,4 +125,16 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertTrue((bool) $rule->convertible);
         $this->assertSame('once_per_context', $rule->repeat_policy);
     }
+
+    #[Test]
+    public function admin_invitation_settings_checkbox_submits_a_boolean_value(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
+
+        $this->assertStringContainsString(
+            'name="invation_status" id="invation_status" value="1"',
+            $view
+        );
+    }
+
 }
