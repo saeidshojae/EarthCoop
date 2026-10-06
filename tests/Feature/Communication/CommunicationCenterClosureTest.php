@@ -111,6 +111,39 @@ final class CommunicationCenterClosureTest extends TestCase
         $this->assertSame(0, ContactMessage::query()->count());
     }
 
+    public function test_references_header_can_restore_ticket_thread_when_in_reply_to_is_missing(): void
+    {
+        $ticket = Ticket::query()->create([
+            'tracking_code' => 'TK-THREAD03',
+            'subject' => 'References-only thread',
+            'message' => 'Initial issue',
+            'status' => 'open',
+            'priority' => 'normal',
+            'name' => 'References Owner',
+            'email' => 'references-owner@example.test',
+        ]);
+
+        TicketComment::query()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => null,
+            'message' => 'Admin reply',
+            'metadata' => ['message_id' => '<ticket-thread-3@earthcoop.test>'],
+        ]);
+
+        $result = app(EmailTicketIntegrationService::class)->processIncomingEmail([
+            'from' => ['email' => 'references-owner@example.test', 'name' => 'References Owner'],
+            'subject' => 'Re: References-only thread',
+            'text_plain' => 'Reply resolved only from a multi-value References header.',
+            'message_id' => '<reply-3@example.test>',
+            'in_reply_to' => null,
+            'references' => '<older@earthcoop.test> <ticket-thread-3@earthcoop.test>',
+        ]);
+
+        $this->assertInstanceOf(Ticket::class, $result);
+        $this->assertSame($ticket->id, $result->id);
+        $this->assertSame(0, ContactMessage::query()->count());
+    }
+
     public function test_mismatched_sender_cannot_append_to_ticket_thread_and_is_routed_to_contact_inbox(): void
     {
         $ticket = Ticket::query()->create([
