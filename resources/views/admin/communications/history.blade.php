@@ -33,8 +33,8 @@
                         <td class="px-4 py-3 font-medium">{{ $recipient->email }}</td>
                         <td class="px-4 py-3"><span class="rounded-full bg-gray-100 px-2 py-1 text-xs dark:bg-gray-700">{{ $labels::deliveryStatus($recipient->status) }}</span></td>
                         <td class="px-4 py-3"><div>{{ $recipient->templateVersion?->template?->name ?? '—' }}</div>@if($recipient->templateVersion?->template?->key)<div class="mt-1 font-mono text-xs text-gray-500">{{ $recipient->templateVersion->template->key }}</div>@endif</td>
-                        <td class="px-4 py-3">{{ optional($recipient->queued_at)->format('Y-m-d H:i') ?? '—' }}</td>
-                        <td class="px-4 py-3">{{ optional($recipient->sent_at ?? $recipient->failed_at)->format('Y-m-d H:i') ?? '—' }}</td>
+                        <td class="px-4 py-3">@if($recipient->queued_at)<x-temporal.date-time :value="$recipient->queued_at" />@else — @endif</td>
+                        <td class="px-4 py-3">@if($recipient->sent_at ?? $recipient->failed_at)<x-temporal.date-time :value="$recipient->sent_at ?? $recipient->failed_at" />@else — @endif</td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">موردی مطابق فیلترها پیدا نشد.</td></tr>
