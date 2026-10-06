@@ -27,9 +27,9 @@ class ContactController extends Controller
 
         ContactMessage::query()->create([
             'user_id' => $user?->id,
-            'name' => $data['name'] ?? ($user ? $user->fullName() : null),
-            'email' => $data['email'] ?? ($user?->email),
-            'phone' => $data['phone'] ?? ($user?->phone),
+            'name' => filled($data['name'] ?? null) ? $data['name'] : ($user ? $user->fullName() : null),
+            'email' => filled($data['email'] ?? null) ? $data['email'] : ($user?->email),
+            'phone' => filled($data['phone'] ?? null) ? $data['phone'] : ($user?->phone),
             'subject' => $data['subject'],
             'message' => $data['message'],
             'status' => 'new',
