@@ -9,6 +9,7 @@ use App\Services\Support\ContactMessageConversionService;
 use App\Services\Support\ContactMessageReplyService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -26,6 +27,7 @@ class ContactMessageBoundaryTest extends TestCase
             'subject' => 'Partnership enquiry',
             'message' => 'I would like to discuss a possible collaboration with EarthCoop.',
             'company_website' => '',
+            '_contact_started_at' => Crypt::encryptString((string) now()->subSeconds(3)->timestamp),
         ]);
 
         $response->assertRedirect();
@@ -51,6 +53,7 @@ class ContactMessageBoundaryTest extends TestCase
             'subject' => 'Signed-in enquiry',
             'message' => 'This message was submitted while authenticated.',
             'company_website' => '',
+            '_contact_started_at' => Crypt::encryptString((string) now()->subSeconds(3)->timestamp),
         ]);
 
         $response->assertRedirect();
@@ -70,11 +73,27 @@ class ContactMessageBoundaryTest extends TestCase
             'subject' => 'SEO offer',
             'message' => 'Automated advertising message.',
             'company_website' => 'https://spam.example',
+            '_contact_started_at' => Crypt::encryptString((string) now()->subSeconds(3)->timestamp),
         ]);
 
         $response->assertRedirect();
         $this->assertSame(0, ContactMessage::query()->count());
         $this->assertSame(0, Ticket::query()->count());
+    }
+
+    public function test_too_fast_contact_submission_is_silently_discarded(): void
+    {
+        $response = $this->post('/contact', [
+            'name' => 'Fast Bot',
+            'email' => 'fast@example.test',
+            'subject' => 'Automated offer',
+            'message' => 'This submission arrived too quickly to be a normal contact form.',
+            'company_website' => '',
+            '_contact_started_at' => Crypt::encryptString((string) now()->timestamp),
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(0, ContactMessage::query()->count());
     }
 
     public function test_contact_route_has_public_rate_limit(): void
