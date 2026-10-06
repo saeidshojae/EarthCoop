@@ -32,9 +32,12 @@ void main(){
     await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('تأیید و پرداخت'),findsOneWidget);
-    await tester.tap(find.byKey(const Key('membership-cancel')));
+    final cancelButton = tester.widget<TextButton>(
+      find.byKey(const Key('membership-cancel')),
+    );
     await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      cancelButton.onPressed!.call();
+      await Future<void>.delayed(Duration.zero);
     });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -46,8 +49,15 @@ void main(){
     await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.textContaining('NB-7'),findsWidgets);
-    await tester.tap(find.byKey(const Key('membership-pay')));
-    await runControllerAsync(tester, c.confirm);
+    final payButton = tester.widget<FilledButton>(
+      find.byKey(const Key('membership-pay')),
+    );
+    await tester.runAsync(() async {
+      payButton.onPressed!.call();
+      await c.confirm();
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(a.requests.where((r)=>r.method=='POST').length,1);expect(c.receipt?.hasPaid,true);
   });
   testWidgets('unknown result freezes selection and reconciliation never POSTs',(tester)async{
@@ -56,12 +66,26 @@ void main(){
     final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await tester.runAsync(c.prepare);await show(tester,c);
     await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.byKey(const Key('membership-pay')));
-    await runControllerAsync(tester, c.confirm);
+    final payButton = tester.widget<FilledButton>(
+      find.byKey(const Key('membership-pay')),
+    );
+    await tester.runAsync(() async {
+      payButton.onPressed!.call();
+      await c.confirm();
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('نتیجهٔ پرداخت هنوز مشخص نیست'),findsOneWidget);
     expect(find.byKey(const Key('membership-review')),findsNothing);
-    await tester.tap(find.byKey(const Key('membership-reconcile')));
-    await runControllerAsync(tester, c.reconcile);
+    final reconcileButton = tester.widget<FilledButton>(
+      find.byKey(const Key('membership-reconcile')),
+    );
+    await tester.runAsync(() async {
+      reconcileButton.onPressed!.call();
+      await c.reconcile();
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(a.requests.where((r)=>r.method=='POST').length,1);
   });
   testWidgets('old server contract stays read only',(tester)async{
