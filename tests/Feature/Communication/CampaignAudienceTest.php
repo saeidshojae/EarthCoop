@@ -165,10 +165,11 @@ final class CampaignAudienceTest extends TestCase
             $sender,
         );
 
+        $suffix = uniqid('', true);
         $users = [
-            User::factory()->create(['email' => 'campaign-a@example.test']),
-            User::factory()->create(['email' => 'campaign-b@example.test']),
-            User::factory()->create(['email' => 'campaign-c@example.test']),
+            User::factory()->create(['email' => 'campaign-a-'.$suffix.'@example.test']),
+            User::factory()->create(['email' => 'campaign-b-'.$suffix.'@example.test']),
+            User::factory()->create(['email' => 'campaign-c-'.$suffix.'@example.test']),
         ];
 
         $campaign = CommunicationCampaign::query()->create([
