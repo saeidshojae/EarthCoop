@@ -5,7 +5,7 @@ namespace App\Services\NajmHoda\Agents;
 use App\Services\NajmHoda\BaseAgent;
 use App\Models\User;
 use App\Models\KbArticle;
-use App\Models\Blog;
+use App\Modules\Blog\Models\Post as BlogPost;
 use App\Models\FaqQuestion;
 use App\Models\StewardKnowledgeFile;
 use Illuminate\Support\Facades\Cache;
@@ -116,35 +116,11 @@ class StewardAgent extends BaseAgent
     }
 
     /**
-     * زمینه محدود و مرتبط از فایل‌های دانش فعال را برای مسیر واقعی ask می‌سازد.
+     * زمینه محدود و مرتبط از همه منابع عمومی/مدیریتی را برای مسیر واقعی ask می‌سازد.
      */
     protected function knowledgeContextFor(string $question): string
     {
-        $files = $this->searchKnowledgeFiles($question);
-
-        if (empty($files)) {
-            return '';
-        }
-
-        $formatted = [];
-
-        foreach ($files as $file) {
-            $entry = "- منبع: {$file['title']} | نوع: {$file['file_type']} | اولویت: {$file['priority']}";
-
-            if (!empty($file['url'])) {
-                $entry .= "\n  لینک: {$file['url']}";
-            }
-
-            if (!empty($file['content'])) {
-                $entry .= "\n  محتوا: {$file['content']}";
-            } elseif (!empty($file['excerpt'])) {
-                $entry .= "\n  خلاصه: {$file['excerpt']}";
-            }
-
-            $formatted[] = $entry;
-        }
-
-        return implode("\n\n", $formatted);
+        return trim($this->formatContentForPrompt($this->findRelatedContent($question)));
     }
 
     /**
@@ -173,22 +149,22 @@ class StewardAgent extends BaseAgent
                 $summary .= "  (هیچ مقاله‌ای))\n\n";
             }
             
-            // 2. Blog Posts
-            $summary .= "📝 وبلاگ (Blog Posts):\n";
-            $blogs = Blog::select('id', 'title', 'group_id')
-                ->with('group:id,name')
+            // 2. Public Blog Posts
+            $summary .= "📝 مقالات عمومی بلاگ:\n";
+            $blogs = BlogPost::published()
+                ->with('category:id,name')
                 ->get();
-            
+
             if ($blogs->isNotEmpty()) {
-                $blogsByGroup = $blogs->groupBy(function($blog) {
-                    return $blog->group?->name ?? 'عمومی';
+                $blogsByCategory = $blogs->groupBy(function($blog) {
+                    return $blog->category?->name ?? 'عمومی';
                 });
-                foreach ($blogsByGroup as $groupName => $posts) {
-                    $summary .= "  • {$groupName}: {$posts->count()} پست\n";
+                foreach ($blogsByCategory as $category => $posts) {
+                    $summary .= "  • {$category}: {$posts->count()} مقاله\n";
                 }
                 $summary .= "\n";
             } else {
-                $summary .= "  (هیچ پستی)\n\n";
+                $summary .= "  (هیچ مقاله‌ای)\n\n";
             }
             
             // 3. FAQ Questions
@@ -240,15 +216,17 @@ class StewardAgent extends BaseAgent
         $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
         $keywords = array_slice($keywords, 0, 5); // حداکثر 5 کلیدواژه
         
-        $query = KbArticle::where('status', 'published')
-            ->with('category');
-        
-        foreach ($keywords as $keyword) {
-            if (strlen($keyword) > 2) {
-                $query->orWhere('title', 'like', "%{$keyword}%")
-                      ->orWhere('excerpt', 'like', "%{$keyword}%");
+        $query = KbArticle::published()->with('category');
+
+        $query->where(function ($matches) use ($keywords) {
+            foreach ($keywords as $keyword) {
+                if (mb_strlen($keyword) > 2) {
+                    $matches->orWhere('title', 'like', "%{$keyword}%")
+                        ->orWhere('excerpt', 'like', "%{$keyword}%")
+                        ->orWhere('content', 'like', "%{$keyword}%");
+                }
             }
-        }
+        });
         
         return $query->take(5)->get()->toArray();
     }
@@ -259,78 +237,81 @@ class StewardAgent extends BaseAgent
     protected function findRelatedContent(string $question): array
     {
         $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
-        $keywords = array_slice($keywords, 0, 5);
-        
+        $keywords = array_values(array_filter(array_slice($keywords ?: [], 0, 5), fn ($keyword) => mb_strlen($keyword) > 2));
+
         $results = [
             'kb_articles' => [],
-            'blog_posts' => [],
+            'knowledge_files' => [],
             'faq_questions' => [],
-            'knowledge_files' => []
+            'blog_posts' => [],
         ];
-        
-        // جستجو در Knowledge Base
-        $kbQuery = KbArticle::where('status', 'published')->with('category');
-        foreach ($keywords as $keyword) {
-            if (strlen($keyword) > 2) {
-                $kbQuery->orWhere('title', 'like', "%{$keyword}%")
-                        ->orWhere('excerpt', 'like', "%{$keyword}%");
-            }
+
+        if ($keywords === []) {
+            return $this->sortBySourcePriority($results);
         }
-        $results['kb_articles'] = $kbQuery->take(3)->get()->map(function($article) {
+
+        $kbQuery = KbArticle::published()
+            ->with('category')
+            ->where(function ($matches) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $matches->orWhere('title', 'like', "%{$keyword}%")
+                        ->orWhere('excerpt', 'like', "%{$keyword}%")
+                        ->orWhere('content', 'like', "%{$keyword}%");
+                }
+            });
+
+        $results['kb_articles'] = $kbQuery->take(3)->get()->map(function ($article) {
             return [
                 'type' => 'KB',
                 'title' => $article->title,
-                'slug' => $article->slug,
                 'category' => $article->category?->name ?? 'عمومی',
-                'excerpt' => $article->excerpt,
-                'url' => "/support/knowledge-base/{$article->slug}"
+                'excerpt' => $article->excerpt ?: mb_substr(strip_tags((string) $article->content), 0, 500),
+                'url' => "/support/knowledge-base/{$article->slug}",
             ];
         })->toArray();
-        
-        // جستجو در Blog
-        $blogQuery = Blog::with('group');
-        foreach ($keywords as $keyword) {
-            if (strlen($keyword) > 2) {
-                $blogQuery->orWhere('title', 'like', "%{$keyword}%")
-                          ->orWhere('content', 'like', "%{$keyword}%");
-            }
-        }
-        $results['blog_posts'] = $blogQuery->take(3)->get()->map(function($blog) {
-            return [
-                'type' => 'Blog',
-                'title' => $blog->title,
-                'group' => $blog->group?->name ?? 'عمومی',
-                'excerpt' => substr($blog->content, 0, 100) . '...',
-                'url' => "/groups/" . ($blog->group_id ?? '#')
-            ];
-        })->toArray();
-        
-        // جستجو در FAQ
-        $faqQuery = FaqQuestion::published();
-        foreach ($keywords as $keyword) {
-            if (strlen($keyword) > 2) {
-                $faqQuery->orWhere('title', 'like', "%{$keyword}%")
-                         ->orWhere('question', 'like', "%{$keyword}%")
-                         ->orWhere('answer', 'like', "%{$keyword}%");
-            }
-        }
-        $results['faq_questions'] = $faqQuery->take(3)->get()->map(function($faq) {
+
+        $results['knowledge_files'] = $this->searchKnowledgeFiles($question);
+
+        $faqQuery = FaqQuestion::published()
+            ->where(function ($matches) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $matches->orWhere('title', 'like', "%{$keyword}%")
+                        ->orWhere('question', 'like', "%{$keyword}%")
+                        ->orWhere('answer', 'like', "%{$keyword}%");
+                }
+            });
+
+        $results['faq_questions'] = $faqQuery->take(3)->get()->map(function ($faq) {
             return [
                 'type' => 'FAQ',
                 'title' => $faq->title,
                 'category' => $faq->category ?? 'سایر',
                 'question' => $faq->question,
-                'answer' => substr($faq->answer, 0, 100) . '...'
+                'answer' => mb_substr((string) $faq->answer, 0, 700),
             ];
         })->toArray();
-        
-        // جستجو در فایل‌های دانش
-        $results['knowledge_files'] = $this->searchKnowledgeFiles($question);
-        
-        // مرتب‌سازی منابع بر اساس اولویت
-        $results = $this->sortBySourcePriority($results);
-        
-        return $results;
+
+        $blogQuery = BlogPost::published()
+            ->with('category')
+            ->where(function ($matches) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $matches->orWhere('title', 'like', "%{$keyword}%")
+                        ->orWhere('excerpt', 'like', "%{$keyword}%")
+                        ->orWhere('content', 'like', "%{$keyword}%");
+                }
+            });
+
+        $results['blog_posts'] = $blogQuery->take(3)->get()->map(function ($post) {
+            return [
+                'type' => 'Blog',
+                'title' => $post->title,
+                'category' => $post->category?->name ?? 'عمومی',
+                'excerpt' => $post->excerpt ?: mb_substr(strip_tags((string) $post->content), 0, 500),
+                'url' => "/blog/{$post->slug}",
+            ];
+        })->toArray();
+
+        return $this->sortBySourcePriority($results);
     }
     
     /**
@@ -440,65 +421,68 @@ class StewardAgent extends BaseAgent
      */
     protected function formatContentForPrompt(array $content): string
     {
-        $formatted = "";
-        
-        // Knowledge Base Articles
-        if (!empty($content['kb_articles'])) {
-            $formatted .= "📚 مقالات پایگاه دانش:\n";
-            foreach ($content['kb_articles'] as $article) {
-                $formatted .= "  • {$article['title']} ({$article['category']})\n";
-                if (!empty($article['excerpt'])) {
-                    $formatted .= "    {$article['excerpt']}\n";
-                }
-                $formatted .= "    URL: {$article['url']}\n";
+        $sections = [];
+
+        foreach ($content as $source => $items) {
+            if (empty($items)) {
+                continue;
             }
-            $formatted .= "\n";
-        }
-        
-        // Uploaded Knowledge Files
-        if (!empty($content['knowledge_files'])) {
-            $formatted .= "📎 فایل‌های دانش آپلودشده:\n";
-            foreach ($content['knowledge_files'] as $file) {
-                $formatted .= "  • {$file['title']} (نوع: {$file['file_type']}, اولویت: {$file['priority']})\n";
-                if (!empty($file['excerpt'])) {
-                    $formatted .= "    {$file['excerpt']}\n";
+
+            if ($source === 'kb_articles') {
+                $lines = ["📚 مقالات پایگاه دانش:"];
+                foreach ($items as $article) {
+                    $lines[] = "  • {$article['title']} ({$article['category']})";
+                    if (!empty($article['excerpt'])) {
+                        $lines[] = "    {$article['excerpt']}";
+                    }
+                    $lines[] = "    URL: {$article['url']}";
                 }
-                if (!empty($file['url'])) {
-                    $formatted .= "    URL: {$file['url']}\n";
+                $sections[] = implode("\n", $lines);
+                continue;
+            }
+
+            if ($source === 'knowledge_files') {
+                $lines = ["📎 منابع دانش بارگذاری‌شده:"];
+                foreach ($items as $file) {
+                    $lines[] = "  • {$file['title']} (نوع: {$file['file_type']}, اولویت: {$file['priority']})";
+                    if (!empty($file['url'])) {
+                        $lines[] = "    URL: {$file['url']}";
+                    }
+                    if (!empty($file['content'])) {
+                        $lines[] = "    محتوا: {$file['content']}";
+                    } elseif (!empty($file['excerpt'])) {
+                        $lines[] = "    خلاصه: {$file['excerpt']}";
+                    }
                 }
-                if (!empty($file['content'])) {
-                    $formatted .= "    محتوا: {$file['content']}\n";
+                $sections[] = implode("\n", $lines);
+                continue;
+            }
+
+            if ($source === 'faq_questions') {
+                $lines = ["❓ سوالات متداول:"];
+                foreach ($items as $faq) {
+                    $lines[] = "  • {$faq['title']} ({$faq['category']})";
+                    $lines[] = "    سوال: {$faq['question']}";
+                    $lines[] = "    جواب: {$faq['answer']}";
                 }
+                $sections[] = implode("\n", $lines);
+                continue;
             }
-            $formatted .= "\n";
-        }
-        
-        // FAQ Questions
-        if (!empty($content['faq_questions'])) {
-            $formatted .= "❓ سوالات متداول:\n";
-            foreach ($content['faq_questions'] as $faq) {
-                $formatted .= "  • {$faq['title']} ({$faq['category']})\n";
-                $formatted .= "    سوال: {$faq['question']}\n";
-                $formatted .= "    جواب: {$faq['answer']}\n";
+
+            if ($source === 'blog_posts') {
+                $lines = ["📝 مقالات عمومی بلاگ:"];
+                foreach ($items as $post) {
+                    $lines[] = "  • {$post['title']} ({$post['category']})";
+                    if (!empty($post['excerpt'])) {
+                        $lines[] = "    {$post['excerpt']}";
+                    }
+                    $lines[] = "    URL: {$post['url']}";
+                }
+                $sections[] = implode("\n", $lines);
             }
-            $formatted .= "\n";
         }
-        
-        // Blog Posts
-        if (!empty($content['blog_posts'])) {
-            $formatted .= "📝 پست‌های وبلاگ:\n";
-            foreach ($content['blog_posts'] as $post) {
-                $formatted .= "  • {$post['title']} (گروه: {$post['group']})\n";
-                $formatted .= "    {$post['excerpt']}\n";
-            }
-            $formatted .= "\n";
-        }
-        
-        if (empty($formatted)) {
-            $formatted = "هیچ منبع مرتبطی یافت نشد.\n";
-        }
-        
-        return $formatted;
+
+        return $sections === [] ? '' : implode("\n\n", $sections);
     }
     
     /**
