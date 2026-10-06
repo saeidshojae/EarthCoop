@@ -218,7 +218,7 @@
 
                             <td class="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
 
-                                {{ optional($article->published_at)->format('Y/m/d H:i') ?? '---' }}
+                                @if($article->published_at)<x-temporal.date-time :value="$article->published_at" />@else---@endif
 
                             </td>
 
