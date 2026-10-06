@@ -5,16 +5,16 @@ namespace App\Services;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
-use App\Notifications\TicketCreatedNotification;
 use App\Services\Support\TicketManagementService;
-use Illuminate\Support\Facades\Notification;
+use App\Services\Communication\CommunicationDispatcher;
 use Illuminate\Support\Str;
 
 class NajmHodaIntegrationService
 {
     public function __construct(
         protected TicketTriageService $triage,
-        protected TicketManagementService $tickets
+        protected TicketManagementService $tickets,
+        protected CommunicationDispatcher $communications,
     ) {}
 
     public function handleEscalation(array $payload): Ticket
@@ -69,17 +69,42 @@ class NajmHodaIntegrationService
         }
 
         try {
-            $supportEmail = env('SUPPORT_EMAIL');
-            if ($supportEmail) {
-                Notification::route('mail', $supportEmail)->notify(new TicketCreatedNotification($ticket));
+            $subject = 'تیکت پشتیبانی جدید از نجم هدا - '.$ticket->tracking_code;
+            $body = '<p>یک گفتگوی نجم هدا به تیکت پشتیبانی تبدیل شد.</p>'
+                .'<p><strong>کد پیگیری:</strong> '.e($ticket->tracking_code).'</p>'
+                .'<p><strong>موضوع:</strong> '.e($ticket->subject).'</p>';
+
+            $supportEmail = trim((string) env('SUPPORT_EMAIL'));
+            if ($supportEmail !== '') {
+                $this->communications->dispatchExternal(
+                    'support.ticket_internal_alert',
+                    ['type' => 'najm_hoda.ticket_escalation', 'id' => (string) $ticket->id],
+                    [['email' => $supportEmail, 'locale' => 'fa']],
+                    ['subject' => $subject, 'rendered_html' => $body],
+                    [
+                        'priority' => 1,
+                        'deduplication_key' => 'support.ticket_internal_alert:'.$ticket->id.':support',
+                    ],
+                );
             }
 
             if (! empty($ticket->assignee_id)) {
-                $user = User::find($ticket->assignee_id);
-                if ($user) $user->notify(new TicketCreatedNotification($ticket));
+                $assignee = User::find($ticket->assignee_id);
+                if ($assignee) {
+                    $this->communications->dispatch(
+                        'support.ticket_internal_alert',
+                        ['type' => 'najm_hoda.ticket_escalation', 'id' => (string) $ticket->id],
+                        [$assignee],
+                        ['subject' => $subject, 'rendered_html' => $body],
+                        [
+                            'priority' => 1,
+                            'deduplication_key' => 'support.ticket_internal_alert:'.$ticket->id.':assignee:'.$assignee->id,
+                        ],
+                    );
+                }
             }
         } catch (\Throwable $e) {
-            // Ticket creation must not fail because a notification provider failed.
+            // Ticket creation must not fail because communication infrastructure is unavailable.
         }
 
         return $ticket;
