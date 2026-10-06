@@ -4421,6 +4421,12 @@
 
             </div>
 
+            @if($codes instanceof \Illuminate\Contracts\Pagination\Paginator)
+                <div class="border-t border-slate-200 dark:border-slate-700 px-4 py-3">
+                    {{ $codes->links() }}
+                </div>
+            @endif
+
 
 
 
@@ -4659,7 +4665,7 @@
 
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
 
 
 
