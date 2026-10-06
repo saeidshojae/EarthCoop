@@ -9,6 +9,9 @@ use App\Models\KbTag;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -44,7 +47,7 @@ class KbArticleController extends Controller
         return view('admin.kb.articles.create', compact('categories', 'tags'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $this->emitRuntime('najm_hoda.input.content.service.kb_article.store.requested', [
             'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
@@ -62,8 +65,18 @@ class KbArticleController extends Controller
             'is_featured' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:kb_tags,id'],
-            'published_at' => ['nullable', 'date'],
+            'published_at' => ['nullable', 'string', 'max:80'],
         ]);
+
+        if (! empty($validated['published_at'])) {
+            try {
+                $validated['published_at'] = $temporal
+                    ->parseDateTime((string) $validated['published_at'], $contexts->defaultContext())
+                    ->format('Y-m-d H:i:s');
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['published_at' => 'تاریخ انتشار معتبر نیست.']);
+            }
+        }
 
         try {
             $article = new KbArticle($validated);
@@ -102,7 +115,7 @@ class KbArticleController extends Controller
         return view('admin.kb.articles.edit', compact('article', 'categories', 'tags'));
     }
 
-    public function update(Request $request, KbArticle $article)
+    public function update(Request $request, KbArticle $article, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $this->emitRuntime('najm_hoda.input.content.service.kb_article.update.requested', [
             'article_id' => (int) $article->id,
@@ -121,8 +134,18 @@ class KbArticleController extends Controller
             'is_featured' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:kb_tags,id'],
-            'published_at' => ['nullable', 'date'],
+            'published_at' => ['nullable', 'string', 'max:80'],
         ]);
+
+        if (! empty($validated['published_at'])) {
+            try {
+                $validated['published_at'] = $temporal
+                    ->parseDateTime((string) $validated['published_at'], $contexts->defaultContext())
+                    ->format('Y-m-d H:i:s');
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['published_at' => 'تاریخ انتشار معتبر نیست.']);
+            }
+        }
 
         try {
             $article->fill($validated);
