@@ -11,35 +11,43 @@ Future<void> show(WidgetTester tester, MembershipPaymentController c, {double sc
   await tester.pumpWidget(MaterialApp(home:Directionality(textDirection:TextDirection.rtl,
     child:MediaQuery(data:MediaQueryData(textScaler:TextScaler.linear(scale)),
       child:Scaffold(body:SingleChildScrollView(child:NajmBaharMembershipPaymentSection(controller:c)))))));
-  await tester.pumpAndSettle();
+  await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 }
 void main(){
   testWidgets('both buckets appear and opening or cancelling never POSTs',(tester)async{
     final a=f.BoundaryAdapter((_)=>f.envelope(p.fee()));
     final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await c.prepare();await show(tester,c);
     expect(find.text('بهار کمرنگ'),findsOneWidget);expect(find.text('بهار فعال'),findsOneWidget);
-    await tester.tap(find.byKey(const Key('membership-review')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('تأیید و پرداخت'),findsOneWidget);
-    await tester.tap(find.byKey(const Key('membership-cancel')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('membership-cancel')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(a.requests.where((r)=>r.method=='POST'),isEmpty);
   });
   testWidgets('explicit confirmation pays once and retains exact source',(tester)async{
     final a=f.BoundaryAdapter((r)=>f.envelope(r.method=='GET'?p.fee():p.receipt()));
     final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await c.prepare();await show(tester,c);
-    await tester.tap(find.byKey(const Key('membership-review')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(find.textContaining('NB-7'),findsWidgets);
-    await tester.tap(find.byKey(const Key('membership-pay')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('membership-pay')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(a.requests.where((r)=>r.method=='POST').length,1);expect(c.receipt?.hasPaid,true);
   });
   testWidgets('unknown result freezes selection and reconciliation never POSTs',(tester)async{
     final a=f.BoundaryAdapter((r){if(r.method=='GET')return f.envelope(p.fee());
       throw DioException(requestOptions:r,type:DioExceptionType.receiveTimeout);});
     final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await c.prepare();await show(tester,c);
-    await tester.tap(find.byKey(const Key('membership-review')));await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('membership-pay')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byKey(const Key('membership-pay')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('نتیجهٔ پرداخت هنوز مشخص نیست'),findsOneWidget);
     expect(find.byKey(const Key('membership-review')),findsNothing);
-    await tester.tap(find.byKey(const Key('membership-reconcile')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('membership-reconcile')));await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     expect(a.requests.where((r)=>r.method=='POST').length,1);
   });
   testWidgets('old server contract stays read only',(tester)async{
