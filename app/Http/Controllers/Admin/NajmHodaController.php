@@ -2205,6 +2205,8 @@ class NajmHodaController extends Controller
      */
     public function uploadKnowledgeFile(Request $request)
     {
+        $filePath = null;
+
         // بررسی authentication
         if (!auth()->check()) {
             return response()->json([
@@ -2259,7 +2261,7 @@ class NajmHodaController extends Controller
                 'file_type' => $extension,
                 'file_size' => $fileSize,
                 'extracted_content' => $extractedContent,
-                'summary' => substr($extractedContent, 0, 200),
+                'summary' => mb_substr($extractedContent, 0, 200),
                 'search_priority' => $validated['search_priority'] ?? 5,
                 'uploaded_by' => auth()->id(),
                 'is_active' => true,
@@ -2284,17 +2286,21 @@ class NajmHodaController extends Controller
                 'message' => '⚠️ ' . $errors
             ], 422);
             
-        } catch (\Exception $e) {
-            // Log error for debugging
+        } catch (\Throwable $e) {
+            if ($filePath && Storage::disk('public')->exists($filePath)) {
+                Storage::disk('public')->delete($filePath);
+            }
+
             \Log::error('Knowledge file upload error: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),
                 'file' => $request->file('knowledge_file') ? $request->file('knowledge_file')->getClientOriginalName() : 'unknown',
-                'trace' => $e->getTraceAsString()
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => '❌ خطا در آپلود فایل: ' . $e->getMessage()
+                'message' => '❌ پردازش یا ذخیره فایل دانش ناموفق بود. جزئیات در گزارش سرور ثبت شد.'
             ], 500);
         }
     }
@@ -2438,7 +2444,7 @@ class NajmHodaController extends Controller
                             $content = "📄 فایل PDF: {$filename}\n\n";
                             $content .= "این فایل PDF شامل تصاویر یا محتوای غیرقابل استخراج است.";
                         }
-                    } catch (\Exception $e) {
+                    } catch (\Throwable $e) {
                         \Log::warning('PDF parsing failed', [
                             'filename' => $filename,
                             'error' => $e->getMessage()
@@ -2458,7 +2464,7 @@ class NajmHodaController extends Controller
                 $content .= "این یک فایل Word است. ";
                 $content .= "برای استخراج خودکار محتوای Word، نیاز به نصب کتابخانه phpoffice/phpword است.";
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('File content extraction error', [
                 'filename' => $filename,
                 'extension' => $extension,
