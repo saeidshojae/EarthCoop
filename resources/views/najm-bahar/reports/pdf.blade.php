@@ -1258,7 +1258,7 @@
 
 
 
-        <p>از {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateFrom))->format('Y/m/d') }} تا {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateTo))->format('Y/m/d') }}</p>
+        <p>از <x-temporal.date :value="$dateFrom" /> تا <x-temporal.date :value="$dateTo" /></p>
 
 
 
@@ -1958,7 +1958,7 @@
 
 
 
-                    <td>{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</td>
+                    <td><x-temporal.date-time :value="$transaction->created_at" /></td>
 
 
 
@@ -2228,7 +2228,7 @@
 
 
 
-        <p>تاریخ تولید گزارش: {{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d H:i') }}</p>
+        <p>تاریخ تولید گزارش: <x-temporal.date-time :value="now()" /></p>
 
 
 
