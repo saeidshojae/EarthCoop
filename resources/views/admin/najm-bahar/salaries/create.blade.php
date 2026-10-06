@@ -270,9 +270,7 @@
 
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">شروع</label>
 
-                    <input type="date" name="start_at" value="{{ old('start_at') }}"
-
-                           class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <x-temporal.date-input name="start_at" :value="old('start_at')" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" />
 
                 </div>
 
@@ -282,9 +280,7 @@
 
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">پایان</label>
 
-                    <input type="date" name="end_at" value="{{ old('end_at') }}"
-
-                           class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <x-temporal.date-input name="end_at" :value="old('end_at')" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" />
 
                 </div>
 
