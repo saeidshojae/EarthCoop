@@ -6,7 +6,17 @@ This runbook is the operational contract for EarthCoop outbound email after the 
 
 Production callers must create a canonical `Communication` through `CommunicationDispatcher`. Direct Laravel `Mail::*` provider access is allowed only inside `app/Services/Communication/EmailDeliveryAdapter.php`.
 
-The architecture test `tests/Architecture/CommunicationDeliveryBoundaryTest.php` enforces this boundary.
+The architecture test `tests/Architecture/CommunicationDeliveryBoundaryTest.php` enforces this boundary. It also rejects Laravel Notification mail channels and `Notification::route('mail', ...)` in production application code, so email cannot bypass canonical communication records through the notification subsystem.
+
+## 1.1 Inbound support-email boundary
+
+Inbound provider webhooks are not a shortcut around the Contact/Ticket identity boundary:
+
+- a valid reply to an existing ticket thread may append a ticket comment only when the inbound sender address matches that ticket's mailbox;
+- email possession is not treated as authenticated EarthCoop identity, so webhook-created comments do not acquire a member `user_id` merely from the From address;
+- a new unthreaded inbound email, or a reply whose sender does not match the ticket mailbox, is stored in the Contact Inbox (`contact_messages`, source `email_webhook`) rather than creating or claiming a member support ticket;
+- Contact Inbox messages can become formal member tickets only through the same trusted authenticated-link conversion rules used by the public contact form;
+- `/api/email/webhook` must have one route registration and provider signature verification remains mandatory.
 
 ## 2. Queue classes and worker priority
 
