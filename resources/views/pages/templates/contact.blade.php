@@ -167,6 +167,7 @@
 
                 <form class="grid grid-cols-1 md:grid-cols-2 gap-5" action="{{ route('contact.store') }}" method="POST">
                     @csrf
+                    <input type="hidden" name="_contact_started_at" value="{{ \Illuminate\Support\Facades\Crypt::encryptString((string) now()->timestamp) }}">
                     <div class="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
                         <label for="company_website">Website</label>
                         <input type="text" id="company_website" name="company_website" tabindex="-1" autocomplete="off">
