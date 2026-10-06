@@ -191,4 +191,48 @@ class TemporalArchitectureBoundaryTest extends TestCase
 
         $this->assertSame([], $offenders, 'Chronicle/EarthCoop-era logic must stay outside Temporal core.');
     }
+
+    public function test_first_party_blade_surfaces_do_not_reintroduce_raw_human_datetime_rendering(): void
+    {
+        $roots = [resource_path('views'), app_path('Modules')];
+        $needles = [
+            'type="datetime-local"',
+            "type='datetime-local'",
+            'diffForHumans(',
+            "->format('Y/m/d')",
+            "->format('Y/m/d H:i')",
+            "->format('Y-m-d H:i')",
+        ];
+        $offenders = [];
+
+        foreach ($roots as $root) {
+            if (! is_dir($root)) {
+                continue;
+            }
+
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+            foreach ($iterator as $file) {
+                if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.blade.php')) {
+                    continue;
+                }
+
+                $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $contents = file_get_contents($file->getPathname());
+
+                foreach ($needles as $needle) {
+                    if (str_contains($contents, $needle)) {
+                        $offenders[] = "{$relative}: {$needle}";
+                    }
+                }
+            }
+        }
+
+        sort($offenders);
+        $this->assertSame(
+            [],
+            $offenders,
+            "Human-facing Blade surfaces must use EarthCoop Temporal components instead of raw browser/localized datetime formatting:\n" . implode("\n", $offenders),
+        );
+    }
+
 }
