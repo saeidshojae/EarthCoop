@@ -1,5 +1,8 @@
 # EarthCoop Communication Center — Design Specification
 
+> **Document role after implementation:** This is the approved historical design baseline. The authoritative as-built closure record is `docs/operations/COMMUNICATION_CENTER_CLOSURE_STATUS.md`. Where implementation names or boundaries differ from examples in this design, the closure record and current code are authoritative. For example, the implemented Najm Bahar project-assignment purpose is `najm_bahar.project_assigned`, not the earlier illustrative `projects.project_assigned` name.
+
+
 **Date:** 2026-09-30
 
 ## 1. Purpose
