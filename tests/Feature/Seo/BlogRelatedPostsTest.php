@@ -17,19 +17,19 @@ class BlogRelatedPostsTest extends TestCase
         $category = $this->category('economy', 'اقتصاد');
         $author = User::factory()->create();
 
-        $current = $this->post($category, $author, [
+        $current = $this->createPost($category, $author, [
             'slug' => 'people-economy-explained',
             'title' => 'اقتصاد مردمی چیست؟ از مشارکت اقتصادی تا اقتصاد آزاد مردمی',
             'published_at' => now()->subDays(3),
         ]);
 
-        $curatedSibling = $this->post($category, $author, [
+        $curatedSibling = $this->createPost($category, $author, [
             'slug' => 'free-market-without-monopoly',
             'title' => 'بازار آزاد بدون انحصار چگونه ممکن است؟',
             'published_at' => now()->subDays(5),
         ]);
 
-        $sameCategoryButNotCurated = $this->post($category, $author, [
+        $sameCategoryButNotCurated = $this->createPost($category, $author, [
             'slug' => 'economy-unrelated-newer',
             'title' => 'مقاله جدیدتر اما خارج از نگاشت معنایی',
             'published_at' => now()->subHour(),
@@ -47,11 +47,11 @@ class BlogRelatedPostsTest extends TestCase
         $category = $this->category('economy', 'اقتصاد');
         $author = User::factory()->create();
 
-        $current = $this->post($category, $author, [
+        $current = $this->createPost($category, $author, [
             'slug' => 'people-economy-explained',
         ]);
 
-        $draftSibling = $this->post($category, $author, [
+        $draftSibling = $this->createPost($category, $author, [
             'slug' => 'free-market-without-monopoly',
             'title' => 'بازار آزاد بدون انحصار چگونه ممکن است؟',
             'status' => 'draft',
@@ -68,18 +68,18 @@ class BlogRelatedPostsTest extends TestCase
         $otherCategory = $this->category('other', 'دیگر');
         $author = User::factory()->create();
 
-        $current = $this->post($category, $author, [
+        $current = $this->createPost($category, $author, [
             'slug' => 'legacy-current',
             'published_at' => now()->subDays(3),
         ]);
 
-        $sameCategoryRecent = $this->post($category, $author, [
+        $sameCategoryRecent = $this->createPost($category, $author, [
             'slug' => 'legacy-related',
             'title' => 'مقاله مرتبط قدیمی',
             'published_at' => now()->subHour(),
         ]);
 
-        $otherCategoryPost = $this->post($otherCategory, $author, [
+        $otherCategoryPost = $this->createPost($otherCategory, $author, [
             'slug' => 'other-category-post',
             'title' => 'مقاله دسته دیگر',
             'published_at' => now()->subMinutes(10),
@@ -101,7 +101,7 @@ class BlogRelatedPostsTest extends TestCase
         ]);
     }
 
-    private function post(BlogCategory $category, User $author, array $attributes = []): Post
+    private function createPost(BlogCategory $category, User $author, array $attributes = []): Post
     {
         return Post::query()->create(array_merge([
             'title' => 'مقاله آزمایشی',
