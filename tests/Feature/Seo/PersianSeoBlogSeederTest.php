@@ -59,6 +59,22 @@ class PersianSeoBlogSeederTest extends TestCase
         }
     }
 
+    public function test_wave_one_articles_are_present_in_the_sitemap_after_seeding(): void
+    {
+        $this->supportAuthor();
+        $this->seed(PersianSeoBlogSeeder::class);
+
+        $content = $this->get('/sitemap.xml')->assertOk()->getContent();
+
+        foreach (array_keys(self::POSTS) as $slug) {
+            $this->assertStringContainsString(
+                'https://earthcoop.ir/blog/'.$slug,
+                $content,
+                $slug.' must remain discoverable through the canonical sitemap.'
+            );
+        }
+    }
+
     public function test_it_is_idempotent_and_does_not_delete_unrelated_existing_blog_content(): void
     {
         $author = $this->supportAuthor();
