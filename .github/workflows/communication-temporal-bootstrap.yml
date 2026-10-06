@@ -1,4 +1,4 @@
-name: Temporary Temporal bootstrap diagnostic
+name: Temporary Temporal bootstrap merge
 
 on:
   push:
@@ -6,29 +6,25 @@ on:
       - agent/communication-temporal-integration-20261006
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
-    if: "github.event.head_commit.message == 'chore(ci): diagnose temporal bootstrap merge'"
+  merge:
+    if: "github.event.head_commit.message == 'chore(ci): stage temporal bootstrap merge'"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Diagnose merge
+      - name: Merge approved Temporal baseline
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin agent/temporal-system-20261001
-          set +e
-          git merge --no-commit --no-ff 61fa6cd5ebb64f9a915adcc5603b34051c811e15
-          status=$?
-          set -e
-          echo "MERGE_STATUS=$status"
-          echo "UNMERGED_BEGIN"
-          git diff --name-only --diff-filter=U
-          echo "UNMERGED_END"
-          git merge --abort || true
+          actual="$(git rev-parse origin/agent/temporal-system-20261001)"
+          expected="61fa6cd5ebb64f9a915adcc5603b34051c811e15"
+          test "$actual" = "$expected"
+          git merge --no-ff "$expected" -m "Merge approved Temporal baseline into communication integration branch"
+          git push origin HEAD:agent/communication-temporal-integration-20261006
