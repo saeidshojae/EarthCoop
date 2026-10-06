@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ContactMessage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
+use Throwable;
 
 class ContactController extends Controller
 {
@@ -16,10 +18,15 @@ class ContactController extends Controller
             'subject' => 'required|string|max:255',
             'message' => 'required|string|max:10000',
             'company_website' => 'nullable|string|max:255',
+            '_contact_started_at' => 'required|string|max:2048',
         ]);
 
-        // Honeypot: accept the request generically but do not persist spam.
-        if (filled($data['company_website'] ?? null)) {
+        // Honeypot and minimum form-age checks fail silently so bots do not
+        // receive a useful signal about which anti-abuse check rejected them.
+        if (
+            filled($data['company_website'] ?? null)
+            || ! $this->hasHumanFormAge((string) $data['_contact_started_at'])
+        ) {
             return back()->with('success', 'پیام شما دریافت شد.');
         }
 
@@ -38,4 +45,18 @@ class ContactController extends Controller
 
         return back()->with('success', 'پیام شما دریافت شد و از طریق صندوق تماس بررسی خواهد شد.');
     }
+
+    private function hasHumanFormAge(string $token): bool
+    {
+        try {
+            $startedAt = (int) Crypt::decryptString($token);
+        } catch (Throwable) {
+            return false;
+        }
+
+        $age = now()->timestamp - $startedAt;
+
+        return $age >= 2 && $age <= 7200;
+    }
+
 }
