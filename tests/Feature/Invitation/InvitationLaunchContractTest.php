@@ -137,4 +137,17 @@ class InvitationLaunchContractTest extends TestCase
         );
     }
 
+
+    #[Test]
+    public function admin_invitation_page_does_not_reference_missing_local_vendor_assets(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
+        $layout = file_get_contents(resource_path('views/layouts/admin.blade.php'));
+
+        $this->assertStringNotContainsString('vendor/chart.js/chart.umd.min.js', $view);
+        $this->assertStringNotContainsString('vendor/sweetalert2/sweetalert2.all.min.js', $layout);
+        $this->assertStringContainsString('cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js', $view);
+        $this->assertStringContainsString('cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js', $layout);
+    }
+
 }
