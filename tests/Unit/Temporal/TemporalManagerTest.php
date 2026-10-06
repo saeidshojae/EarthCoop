@@ -93,6 +93,18 @@ class TemporalManagerTest extends TestCase
         $this->assertSame('2026-10-01T17:00:00+00:00', $english->format('c'));
     }
 
+    public function test_manager_accepts_canonical_machine_datetimes_independent_of_display_calendar(): void
+    {
+        [$manager, $resolver] = $this->manager();
+        $fa = $resolver->forLocale('fa', 'Asia/Tehran');
+
+        $canonicalLocal = $manager->parseDateTime('2026-10-01 18:00:00', $fa);
+        $isoInstant = $manager->parseDateTime('2026-10-01T18:00:00+03:30', $fa);
+
+        $this->assertSame('2026-10-01T14:30:00+00:00', $canonicalLocal->format('c'));
+        $this->assertSame('2026-10-01T14:30:00+00:00', $isoInstant->format('c'));
+    }
+
     public function test_manager_rejects_invalid_local_time(): void
     {
         [$manager, $resolver] = $this->manager();
