@@ -82,7 +82,7 @@
 
                 <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">از تاریخ</label>
 
-                <x-temporal.date-input name="from" :value="request('from')"" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" />
+                <x-temporal.date-input name="from" :value="request('from')" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" />
 
             </div>
 
@@ -90,7 +90,7 @@
 
                 <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">تا تاریخ</label>
 
-                <x-temporal.date-input name="to" :value="request('to')"" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" />
+                <x-temporal.date-input name="to" :value="request('to')" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" />
 
             </div>
 
