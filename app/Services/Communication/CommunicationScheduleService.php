@@ -41,6 +41,7 @@ class CommunicationScheduleService
                     [
                         'communication_rule_id' => $rule->id,
                         'status' => 'pending',
+                        'scheduled_for' => $scheduledFor,
                         'started_at' => $now,
                     ],
                 );
