@@ -848,7 +848,7 @@
 
 
 
-                <input type="checkbox" name="invation_status" id="invation_status" class="w-5 h-5" {{ old('invation_status', \App\Models\Setting::find(1)->invation_status) == 1 ? 'checked' : '' }}>
+                <input type="checkbox" name="invation_status" id="invation_status" value="1" class="w-5 h-5" {{ old('invation_status', \App\Models\Setting::find(1)->invation_status) == 1 ? 'checked' : '' }}>
 
 
 
