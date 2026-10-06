@@ -121,7 +121,7 @@
                                 </span>
                             </td>
                             <td class="px-4 py-4 align-top text-sm text-slate-500 dark:text-slate-400">
-                                {{ optional($report->created_at)->format('Y/m/d H:i') }}
+                                @if($report->created_at)<x-temporal.date-time :value="$report->created_at" />@endif
                             </td>
                             <td class="px-4 py-4 align-top">
                                 <a href="{{ route('admin.private-chat-reports.show', $report->id) }}" class="inline-flex items-center px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors text-sm">
