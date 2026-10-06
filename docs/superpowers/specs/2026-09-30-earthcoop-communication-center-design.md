@@ -1,6 +1,7 @@
 # EarthCoop Communication Center — Design Specification
 
 **Date:** 2026-09-30
+**Implementation reconciliation:** 2026-10-07
 
 ## 1. Purpose
 
@@ -183,10 +184,18 @@ A recurring schedule creates a `CommunicationRun`, resolves its audience, applie
 Example:
 
 ```text
-Every Monday at 08:00 system timezone
+Every Monday at 08:00 in the schedule's explicit IANA timezone
 Audience: active managers
 Template: reports.manager.weekly
 ```
+
+Implemented scheduling contract (merged via PR #219):
+- scheduler clocks evaluate due work in canonical UTC;
+- each schedule has an explicit timezone semantic rather than relying on the worker/process timezone;
+- recurrence advances from the **planned occurrence**, not from the actual worker execution time, preventing drift after delayed jobs;
+- each `CommunicationRun` persists its planned occurrence in `scheduled_for`;
+- DST/timezone transitions are covered by recurrence tests;
+- weekly report calendar-day periods are derived from the planned occurrence in the schedule timezone, then converted to canonical query instants.
 
 The scheduler orchestrates work; it never performs SMTP delivery directly.
 
@@ -363,7 +372,11 @@ Declarative event / scheduled / conditional rule definitions, including classifi
 
 ### `communication_rule_schedules`
 
-Structured recurrence configuration and timezone mode.
+Structured recurrence configuration with explicit schedule timezone semantics. Runtime recurrence is anchored to the planned occurrence, while due evaluation is canonical UTC.
+
+### `communication_runs` planned occurrence
+
+Each scheduled run persists `scheduled_for` as the canonical planned occurrence. Recipient/report context builders use this value (with legacy fallback only where necessary) rather than treating worker start time as the schedule definition.
 
 ### `communication_campaigns`
 
@@ -779,3 +792,30 @@ EarthCoop will implement **Communication Center as a dedicated communication sub
 Domain modules remain authorities for business state. They emit stable events and supply safe context. Communication Center is the authority for communication rules, audience resolution, preference policy, templates, sender identity selection, scheduling, queueing, delivery, retries, deduplication, and communication audit.
 
 This provides a practical system for today's EarthCoop operations while creating a stable future boundary for additional channels and Najm Hoda assistance without making AI, SMTP, or admin-authored rules a source of business authority.
+
+
+---
+
+## 30. Temporal integration status — 2026-10-07
+
+Communication Center's Temporal integration is implemented and merged into `main` via PR #219.
+
+The merged contract includes:
+- campaign date/time input through the central Temporal input/parser path rather than raw `datetime-local`;
+- admin communication timestamps through shared Temporal Blade components;
+- explicit schedule timezone semantics;
+- canonical UTC scheduler clocks;
+- planned-occurrence recurrence and persisted `CommunicationRun::scheduled_for`;
+- recurrence behavior that does not drift based on late worker execution;
+- DST/timezone regression coverage;
+- scheduled campaign activation command + Laravel scheduler wiring;
+- weekly-report periods based on the planned occurrence in the schedule timezone;
+- recipient-context Temporal rendering of report period dates;
+- Communication-specific Temporal architecture regression tests.
+
+Validation on the merged implementation:
+- Temporal System Targeted Gate #569 — success
+- Responsive Contract Validation #1024 — success
+- Integration Full Validation #3948 — success
+
+This section supersedes older wording that could be read as process/system-timezone scheduling semantics.
