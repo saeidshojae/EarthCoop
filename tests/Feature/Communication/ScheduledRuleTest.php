@@ -114,7 +114,7 @@ class ScheduledRuleTest extends TestCase
             'schedule_definition' => ['interval' => 1],
             'timezone' => 'Asia/Tehran',
             'timezone_mode' => 'system',
-            'next_run_at' => $now,
+            'next_run_at' => $now->utc(),
         ]);
 
         return [$rule, $schedule];
