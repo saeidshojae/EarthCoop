@@ -67,4 +67,6 @@ jobs:
           vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/CampaignAudienceTest.php
           vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/AdminAutomationManagementTest.php
           vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/ScheduledRuleTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/WeeklyMemberReportTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/WeeklyReportSchedulePreferenceTest.php
           vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Temporal/TemporalArchitectureBoundaryTest.php
