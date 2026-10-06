@@ -12,6 +12,8 @@ class StewardKnowledgeFile extends Model
 
     protected $fillable = [
         'title',
+        'source_type',
+        'source_url',
         'original_filename',
         'file_path',
         'file_type',
@@ -84,6 +86,7 @@ class StewardKnowledgeFile extends Model
             'docx' => 'fa-file-word',
             'txt' => 'fa-file-alt',
             'md' => 'fa-file-code',
+            'url' => 'fa-link',
             'default' => 'fa-file'
         ];
 
