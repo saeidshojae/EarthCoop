@@ -29,7 +29,9 @@ class StewardKnowledgeUrlIngestor
             throw new RuntimeException('آدرس‌های محلی به‌عنوان منبع دانش مجاز نیستند.');
         }
 
-        $this->assertPublicHost($host);
+        $resolvedIp = $this->resolvePublicHost($host);
+        $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
+        $resolvedTarget = str_contains($resolvedIp, ':') ? "[{$resolvedIp}]" : $resolvedIp;
 
         $response = Http::connectTimeout(5)
             ->timeout(12)
@@ -37,10 +39,15 @@ class StewardKnowledgeUrlIngestor
                 'User-Agent' => 'EarthCoop-Knowledge-Importer/1.0',
                 'Accept' => 'text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.1',
             ])
-            ->withOptions(['allow_redirects' => false])
+            ->withOptions([
+                'allow_redirects' => false,
+                'curl' => [
+                    CURLOPT_RESOLVE => ["{$host}:{$port}:{$resolvedTarget}"],
+                ],
+            ])
             ->get($url);
 
-        if ($response->redirect()) {
+        if ($response->status() >= 300 && $response->status() < 400) {
             throw new RuntimeException('لینک منبع تغییر مسیر می‌دهد؛ لطفاً آدرس نهایی HTTPS را ثبت کنید.');
         }
 
@@ -80,11 +87,11 @@ class StewardKnowledgeUrlIngestor
         ];
     }
 
-    private function assertPublicHost(string $host): void
+    private function resolvePublicHost(string $host): string
     {
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             $this->assertPublicIp($host);
-            return;
+            return $host;
         }
 
         $records = dns_get_record($host, DNS_A | DNS_AAAA);
@@ -106,9 +113,15 @@ class StewardKnowledgeUrlIngestor
             throw new RuntimeException('برای دامنه منبع IP معتبری پیدا نشد.');
         }
 
+        $publicIps = [];
         foreach (array_unique($ips) as $ip) {
             $this->assertPublicIp($ip);
+            $publicIps[] = $ip;
         }
+
+        usort($publicIps, fn (string $a, string $b) => (str_contains($a, ':') <=> str_contains($b, ':')));
+
+        return $publicIps[0];
     }
 
     private function assertPublicIp(string $ip): void
