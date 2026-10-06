@@ -74,9 +74,6 @@ class TemporalArchitectureBoundaryTest extends TestCase
     private function knownLegacyDebt(): array
     {
         return [
-            'resources/views/admin/faq/index.blade.php: Jalalian::',
-            'resources/views/admin/faq/index.blade.php: Morilog\\Jalali',
-            "resources/views/admin/faq/index.blade.php: toLocaleDateString('fa-IR'",
             'resources/views/admin/najm-bahar/analytics.blade.php: Jalalian::',
             'resources/views/admin/najm-bahar/analytics.blade.php: Morilog\\Jalali',
             "resources/views/admin/najm-bahar/analytics.blade.php: toLocaleDateString('fa-IR'",
