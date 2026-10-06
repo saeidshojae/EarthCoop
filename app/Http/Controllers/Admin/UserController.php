@@ -71,11 +71,19 @@ class UserController extends Controller
             });
         }
 
-        if ($request->filled('created_from')) {
-            $query->whereDate('created_at', '>=', $request->created_from);
-        }
-        if ($request->filled('created_to')) {
-            $query->whereDate('created_at', '<=', $request->created_to);
+        $temporal = app(TemporalService::class);
+        $temporalContext = app(TemporalContextResolver::class)->forUser($request->user());
+        try {
+            if ($request->filled('created_from')) {
+                $createdFrom = $temporal->parseDate((string) $request->input('created_from'), $temporalContext);
+                $query->where('created_at', '>=', $temporal->startOfDay($createdFrom, $temporalContext));
+            }
+            if ($request->filled('created_to')) {
+                $createdTo = $temporal->parseDate((string) $request->input('created_to'), $temporalContext);
+                $query->where('created_at', '<=', $temporal->endOfDay($createdTo, $temporalContext));
+            }
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored.
         }
 
         $users = $query->orderBy('created_at', 'desc')->get();
@@ -95,7 +103,7 @@ class UserController extends Controller
         $provinces = \App\Models\Province::orderBy('name')->get();
 
         $temporal = app(TemporalService::class);
-        $temporalContext = app(TemporalContextResolver::class)->defaultContext();
+        $temporalContext = app(TemporalContextResolver::class)->forUser($request->user());
         $registrationChartData = [];
         for ($i = 29; $i >= 0; $i--) {
             $date = now()->subDays($i);
