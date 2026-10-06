@@ -4387,7 +4387,7 @@ $groupId = $routeParams['group'] ?? null;
 
 
 
-                                            {{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}
+                                            <x-temporal.date-time :value="$transaction->created_at" />
 
 
 
@@ -5377,7 +5377,7 @@ $groupId = $routeParams['group'] ?? null;
 
 
 
-                                        <span class="font-medium">{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</span>
+                                        <span class="font-medium"><x-temporal.date-time :value="$transaction->created_at" /></span>
 
 
 
