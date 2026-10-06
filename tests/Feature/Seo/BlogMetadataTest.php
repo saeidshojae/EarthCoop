@@ -46,9 +46,9 @@ class BlogMetadataTest extends TestCase
         $this->assertSame('fa', $payload['inLanguage']);
         $this->assertSame('Organization', $payload['publisher']['@type']);
         $this->assertSame('EarthCoop', $payload['publisher']['name']);
-        $this->assertSame('https://earthcoop.ir', $payload['publisher']['url']);
+        $this->assertSame('https://earthcoop.ir/', $payload['publisher']['url']);
         $this->assertSame('WebSite', $payload['isPartOf']['@type']);
-        $this->assertSame('https://earthcoop.ir#website', $payload['isPartOf']['@id']);
+        $this->assertSame('https://earthcoop.ir/#website', $payload['isPartOf']['@id']);
         $this->assertSame('Thing', $payload['about']['@type']);
         $this->assertSame('اقتصاد آزاد مردمی چیست؟', $payload['about']['name']);
         $this->assertSame('https://earthcoop.ir/economy', $payload['about']['url']);
