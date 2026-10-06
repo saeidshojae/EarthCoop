@@ -7,6 +7,8 @@ use App\Models\CommunicationCampaign;
 use App\Models\CommunicationTemplateVersion;
 use App\Models\GroupUser;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 use RuntimeException;
@@ -107,22 +109,51 @@ class CommunicationCampaignService
         return $campaign->fresh();
     }
 
-    public function startIfDue(CommunicationCampaign $campaign): bool
+    public function processDueCampaigns(CarbonInterface $now, int $limit = 100): int
+    {
+        $clock = $now->copy()->utc();
+        $processed = 0;
+
+        CommunicationCampaign::query()
+            ->where('status', 'scheduled')
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<=', $clock)
+            ->orderBy('scheduled_at')
+            ->orderBy('id')
+            ->limit(max(1, $limit))
+            ->get()
+            ->each(function (CommunicationCampaign $campaign) use ($clock, &$processed): void {
+                if ($this->startIfDue($campaign, $clock)) {
+                    $processed++;
+                }
+            });
+
+        return $processed;
+    }
+
+    public function startIfDue(CommunicationCampaign $campaign, ?CarbonInterface $now = null): bool
     {
         if ($campaign->status !== 'scheduled') {
             return false;
         }
 
-        if ($campaign->scheduled_at !== null && $campaign->scheduled_at->isFuture()) {
+        $clock = ($now ?? CarbonImmutable::now('UTC'))->copy()->utc();
+        $scheduledAt = $campaign->scheduled_at?->copy()->utc();
+
+        if ($scheduledAt !== null && $scheduledAt->gt($clock)) {
             return false;
         }
 
         $updated = CommunicationCampaign::query()
             ->whereKey($campaign->id)
             ->where('status', 'scheduled')
+            ->where(function ($query) use ($clock): void {
+                $query->whereNull('scheduled_at')
+                    ->orWhere('scheduled_at', '<=', $clock);
+            })
             ->update([
                 'status' => 'running',
-                'updated_at' => now(),
+                'updated_at' => $clock,
             ]);
 
         return $updated === 1;
