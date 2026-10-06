@@ -111,6 +111,10 @@ final class LegacyAdminSurfaceDeprecationTest extends TestCase
 
         $this->assertIsString($sidebar);
         $this->assertStringContainsString("route('admin.communications.index')", $sidebar);
+        $this->assertStringContainsString("route('admin.communications.history')", $sidebar);
+        $this->assertStringContainsString("route('admin.communications.failures')", $sidebar);
+        $this->assertStringContainsString('تاریخچه ارسال‌ها', $sidebar);
+        $this->assertStringContainsString('خطاها و تلاش مجدد', $sidebar);
         $this->assertStringContainsString("route('admin.communications.templates.index')", $sidebar);
         $this->assertStringContainsString("route('admin.communications.senders.index')", $sidebar);
         $this->assertStringContainsString("route('admin.communications.automations.index')", $sidebar);
