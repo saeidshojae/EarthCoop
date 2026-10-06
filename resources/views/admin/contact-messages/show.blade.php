@@ -37,12 +37,26 @@
                 <form method="POST" action="{{ route('admin.contact-messages.status', $contactMessage) }}" class="space-y-3">
                     @csrf
                     <select name="status" class="w-full rounded-lg border-slate-300 dark:bg-slate-900">
-                        @foreach(['new'=>'جدید','reviewing'=>'در حال بررسی','closed'=>'بسته','spam'=>'اسپم'] as $value => $label)
+                        @foreach(['new'=>'جدید','reviewing'=>'در حال بررسی','replied'=>'پاسخ‌داده‌شده','closed'=>'بسته','spam'=>'اسپم'] as $value => $label)
                             <option value="{{ $value }}" @selected($contactMessage->status === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                     <button class="w-full px-4 py-2 rounded-lg bg-slate-800 text-white">ذخیره وضعیت</button>
                 </form>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+                <h2 class="font-bold mb-3">پاسخ ایمیلی</h2>
+                @if($contactMessage->email)
+                    <form method="POST" action="{{ route('admin.contact-messages.reply', $contactMessage) }}" class="space-y-3">
+                        @csrf
+                        <textarea name="message" rows="6" required minlength="5" maxlength="10000" class="w-full rounded-lg border-slate-300 dark:bg-slate-900" placeholder="متن پاسخ...">{{ old('message') }}</textarea>
+                        <button class="w-full px-4 py-2 rounded-lg bg-blue-600 text-white">ارسال از طریق مرکز ارتباطات</button>
+                    </form>
+                    <p class="mt-2 text-xs text-slate-500">پاسخ از مسیر canonical مرکز ارتباطات و هویت پشتیبانی ارسال می‌شود.</p>
+                @else
+                    <p class="text-sm text-slate-600">این پیام ایمیل معتبری برای پاسخ ندارد.</p>
+                @endif
             </div>
 
             <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
