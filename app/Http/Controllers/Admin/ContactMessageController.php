@@ -52,15 +52,17 @@ class ContactMessageController extends Controller
     public function show(ContactMessage $contactMessage)
     {
         $contactMessage->load(['user', 'convertedTicket', 'handler']);
-        $registeredUser = $contactMessage->email
-            ? User::query()->whereRaw('LOWER(email) = ?', [mb_strtolower($contactMessage->email)])->first()
-            : null;
+        $registeredUser = $contactMessage->user;
 
         return view('admin.contact-messages.show', compact('contactMessage', 'registeredUser'));
     }
 
     public function updateStatus(Request $request, ContactMessage $contactMessage)
     {
+        if ($contactMessage->converted_ticket_id) {
+            return back()->with('error', 'پیام تبدیل‌شده به تیکت از وضعیت تیکت پیروی می‌کند.');
+        }
+
         $data = $request->validate([
             'status' => 'required|in:new,reviewing,replied,closed,spam',
         ]);
@@ -105,7 +107,7 @@ class ContactMessageController extends Controller
         try {
             $ticket = $conversion->convert($contactMessage, (int) $request->user()->id);
         } catch (DomainException) {
-            return back()->with('error', 'این پیام به ایمیل یک عضو ثبت‌شده متصل نیست و نمی‌تواند به تیکت کاربری تبدیل شود.');
+            return back()->with('error', 'این پیام در زمان ارسال به یک حساب واردشده متصل نبوده و برای جلوگیری از جعل هویت نمی‌تواند به تیکت کاربری تبدیل شود.');
         }
 
         return redirect()
