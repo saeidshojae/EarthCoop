@@ -59,5 +59,7 @@ jobs:
           EOF
           php artisan key:generate --force
           php artisan migrate:fresh --force
-      - name: Run campaign temporal integration test
-        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/AdminCampaignManagementTest.php
+      - name: Run communication temporal checkpoint
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Communication/AdminCampaignManagementTest.php
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Temporal/TemporalArchitectureBoundaryTest.php
