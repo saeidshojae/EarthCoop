@@ -192,7 +192,7 @@
 
             @if($expireAt)
 
-            <p><strong>توجه:</strong> این کد تا {{ \Carbon\Carbon::parse($expireAt)->format('Y/m/d H:i') }} معتبر است.</p>
+            <p><strong>توجه:</strong> این کد تا <x-temporal.date-time :value="$expireAt" /> معتبر است.</p>
 
             @endif
 
