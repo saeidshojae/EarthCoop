@@ -111,8 +111,8 @@
                             <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">{{ optional($cycle->group)->name ?: '—' }}</td>
                             <td class="p-3">{{ $cycle->cycle_number ?: 1 }}</td>
                             <td class="p-3"><span class="inline-flex px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold">{{ $cycle->lifecycle_status?->value ?? $cycle->lifecycle_status ?? '—' }}</span></td>
-                            <td class="p-3 text-slate-500">{{ optional($cycle->starts_at)->format('Y-m-d H:i') ?: '—' }}</td>
-                            <td class="p-3 text-slate-500">{{ optional($cycle->ends_at)->format('Y-m-d H:i') ?: '—' }}</td>
+                            <td class="p-3 text-slate-500">@if($cycle->starts_at)<x-temporal.date-time :value="$cycle->starts_at" />@else—@endif</td>
+                            <td class="p-3 text-slate-500">@if($cycle->ends_at)<x-temporal.date-time :value="$cycle->ends_at" />@else—@endif</td>
                             <td class="p-3"><a href="{{ route('admin.elections.policy-override.edit', $cycle) }}" class="text-xs font-semibold text-indigo-600 hover:underline">override چرخه</a></td>
                         </tr>
                     @empty
