@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ asset('Css/unified-styles.css') }}">
     <link rel="stylesheet" href="{{ asset('Css/admin-styles.css') }}">
     <link rel="stylesheet" href="{{ asset('Css/najm-hoda-dark-mode.css') }}">
-    <script src="{{ asset("vendor/sweetalert2/sweetalert2.all.min.js") }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
     @stack('styles')
     @yield('head-tag')
     <style>
