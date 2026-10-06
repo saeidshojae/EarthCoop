@@ -159,7 +159,7 @@ class InvitationLaunchContractTest extends TestCase
 
         $this->assertStringContainsString("->paginate(50)->withQueryString()", $controller);
         $this->assertStringNotContainsString("->orderBy('created_at', 'desc')->get()", $controller);
-        $this->assertStringNotContainsString("foreach($checkExpire as $check){ $check->delete(); }", $view);
+        $this->assertStringNotContainsString('foreach($checkExpire as $check){ $check->delete(); }', $view);
         $this->assertStringNotContainsString("InvitationCode::where('used', 0)->where('expire_at', '<=', now())", $view);
         $this->assertStringContainsString('$codes->links()', $view);
         $this->assertStringContainsString('private function invitationMetrics', $controller);
