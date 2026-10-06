@@ -63,7 +63,7 @@ class BlogMetadataTest extends TestCase
 
         $this->assertSame('fa', $payload['inLanguage']);
         $this->assertSame('EarthCoop', $payload['publisher']['name']);
-        $this->assertSame('https://earthcoop.ir#website', $payload['isPartOf']['@id']);
+        $this->assertSame('https://earthcoop.ir/#website', $payload['isPartOf']['@id']);
         $this->assertArrayNotHasKey('about', $payload);
     }
 
