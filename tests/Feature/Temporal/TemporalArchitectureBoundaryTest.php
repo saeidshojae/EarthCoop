@@ -86,6 +86,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'verta(',
             "toLocaleDateString('fa-IR'",
             'toLocaleDateString("fa-IR"',
+            'date_default_timezone_set(',
         ];
     }
 
