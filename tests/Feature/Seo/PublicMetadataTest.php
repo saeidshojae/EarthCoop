@@ -21,11 +21,39 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('property="og:title"', $html);
         $this->assertStringContainsString('name="twitter:card"', $html);
         $this->assertStringContainsString('content="index,follow"', $html);
+        $this->assertStringContainsString('rel="icon" type="image/png" href="https://earthcoop.ir/icons/earthcoop-brand-192.png"', $html);
+        $this->assertStringContainsString('property="og:image" content="https://earthcoop.ir/icons/earthcoop-brand-192.png"', $html);
 
         preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $matches);
         $this->assertCount(2, $matches[1]);
-        $types = array_map(fn (string $json) => json_decode($json, true, 512, JSON_THROW_ON_ERROR)['@type'], $matches[1]);
-        $this->assertSame(['Organization', 'WebSite'], $types);
+        $payloads = array_map(
+            fn (string $json) => json_decode($json, true, 512, JSON_THROW_ON_ERROR),
+            $matches[1],
+        );
+        $this->assertSame(['Organization', 'WebSite'], array_column($payloads, '@type'));
+        $this->assertSame('https://earthcoop.ir/icons/earthcoop-brand-192.png', $payloads[0]['logo']);
+        $this->assertSame(['ارث‌کوپ', 'ارث کوپ'], $payloads[0]['alternateName']);
+        $this->assertSame(['ارث‌کوپ', 'ارث کوپ'], $payloads[1]['alternateName']);
+    }
+
+    public function test_search_brand_icon_is_a_real_square_png_and_manifest_uses_it(): void
+    {
+        $iconPath = public_path('icons/earthcoop-brand-192.png');
+
+        $this->assertFileExists($iconPath);
+        $this->assertSame([192, 192], array_slice(getimagesize($iconPath), 0, 2));
+
+        $manifest = json_decode(
+            file_get_contents(public_path('manifest.json')),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+
+        $this->assertSame('/icons/earthcoop-brand-192.png', $manifest['icons'][0]['src']);
+        $this->assertSame('192x192', $manifest['icons'][0]['sizes']);
+        $this->assertSame('image/png', $manifest['icons'][0]['type']);
+        $this->assertStringContainsString('ارث‌کوپ', $manifest['description']);
     }
 
     public function test_home_is_a_concise_semantic_hub_for_core_earthcoop_topics(): void
