@@ -1,10 +1,12 @@
 # EarthCoop Temporal System Implementation Plan
 
+> **Execution status — 2026-10-07:** This plan is no longer a purely prospective checklist. The central Temporal architecture and Communication Center integration are merged into `main` through PR #219 / merge commit `8b12a8e0554436a3c4c1b973748bd1c8168b36ea`. Final integration gates passed: Temporal System Targeted Gate #569, Responsive Contract Validation #1024, and Integration Full Validation #3948.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a single EarthCoop temporal layer that keeps UTC canonical, renders Jalali for Persian and Gregorian for other locales, separates LocalDate from Instant, and progressively migrates direct date/calendar usage behind stable internal interfaces.
 
-**Architecture:** Add `app/Temporal` as a bounded context with value objects, context resolution, calendar adapters and a TemporalService. Migrate product surfaces vertically with targeted tests; Chronicle is explicitly deferred to its own plan and consumes Temporal later.
+**Architecture:** `app/Temporal` now exists as the canonical bounded context with value objects, context resolution, calendar adapters and a TemporalService. Product surfaces have been migrated vertically with targeted tests; Chronicle remains explicitly deferred and consumes Temporal one-way later.
 
 **Tech Stack:** Laravel 12, PHP 8.2+, Carbon/CarbonImmutable, morilog/jalali, Blade, Vite/JavaScript, PHPUnit 11.
 
@@ -93,3 +95,33 @@ Run Temporal unit/feature suites, auth/registration, elections, communication, N
 
 ## Deferred to Chronicle Plan
 `/chronicle`, EarthCoop epoch/year calculation, milestones, historical timeline and Chronicle admin are intentionally outside this plan.
+
+
+---
+
+## Implementation reconciliation — 2026-10-07
+
+### Completed and merged
+
+- Temporal core contracts, context resolver, Gregorian/Jalali adapters, digit normalization and `TemporalManager`.
+- Shared Blade presentation components and bundled/localized date input path.
+- Canonical LocalDate handling for birth date and age policy.
+- Temporal migrations across registration, elections, major group/social surfaces, Najm Bahar, Stock/Auction, admin/report surfaces and Communication Center.
+- Repository architecture ratchet preventing direct first-party legacy Jalali APIs outside the canonical Jalali adapter; current known direct legacy-calendar debt baseline is empty.
+- Communication scheduling semantics hardened to canonical UTC clocks, explicit schedule timezone, planned occurrence persistence, drift-resistant recurrence and timezone-aware weekly-report periods.
+- Final merged validation gates: Temporal #569, Responsive #1024, Full Validation #3948.
+
+### Not yet closed globally
+
+The original Definition of Done says **all user-facing date presentation/input** must pass through Temporal System. That broader cleanup is not yet proven complete. During this reconciliation, at least these residual surfaces were confirmed on current `main`:
+
+- `resources/views/groups/modals/session_schedule.blade.php`: raw `datetime-local` input.
+- `app/Modules/Blog/Views/frontend/show.blade.php`: direct `format('Y/m/d')` and `diffForHumans()` presentation.
+
+These do not violate the current legacy-calendar architecture guard, but they are still presentation/input consolidation debt and should be migrated before declaring the repository-wide Temporal UI cleanup absolutely complete.
+
+### Chronicle status
+
+Chronicle / «گاه‌شمار EarthCoop» has **not** been implemented yet. The approved design exists, including the epoch `1401/01/01 SH = 2022-03-21 = EarthCoop Year 1`, but current `main` has no `/chronicle` route/page, no milestone model/admin UI and no Chronicle runtime bounded context.
+
+Therefore the next Chronicle milestone must be planned and implemented separately rather than being reported as part of the completed Temporal integration.

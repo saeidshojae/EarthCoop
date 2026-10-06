@@ -1,4 +1,6 @@
-# EarthCoop Temporal System & Chronicle — Design Spec v1.0
+# EarthCoop Temporal System & Chronicle — Design Spec v1.1
+
+> **Implementation status — 2026-10-07:** The canonical Temporal System foundation and its Communication Center integration are merged into `main` through PR #219 (merge commit `8b12a8e0554436a3c4c1b973748bd1c8168b36ea`). The Chronicle product remains intentionally unimplemented: there is currently no `/chronicle` route/page, milestone model, or Chronicle admin UI. Temporal and Chronicle remain separate bounded contexts.
 
 ## Goal
 Establish one canonical time architecture for EarthCoop and a separate Chronicle product for EarthCoop history.
@@ -76,6 +78,14 @@ Provide EarthCoop Blade components that emit semantic `<time datetime="...">` ma
 
 ## Migration
 No Big Bang. Migrate in vertical slices:
+
+Current implementation note (2026-10-07): the central Temporal bounded context, canonical UTC handling, Jalali/Gregorian adapters, localized Blade components, localized date input path, registration, elections, major group/social surfaces, Najm Bahar, Stock/Auction, admin/report surfaces, and Communication Center temporal integration have been implemented and validated. The repository-wide architecture guard has zero known direct legacy calendar-library debt outside the Jalali adapter. This does **not** yet mean every historical UI date expression has been normalized to the shared Temporal presentation/input components; residual ordinary Carbon/date HTML usages must continue to be migrated under the ratchet.
+
+Known concrete residuals discovered during the documentation sync:
+- `resources/views/groups/modals/session_schedule.blade.php` still contains a raw `datetime-local` input.
+- `app/Modules/Blog/Views/frontend/show.blade.php` still formats publication/comment dates directly.
+
+These are Temporal presentation/input follow-up debt, not Chronicle implementation.
 1. Temporal core
 2. Registration
 3. Elections
@@ -94,6 +104,8 @@ After migration, first-party application/view code must not directly use `Jalali
 
 ## Chronicle bounded context
 Chronicle is separate from Temporal System and depends on it one-way.
+
+**Current state (2026-10-07): planned only.** The constitutional epoch/year semantics below are approved design, but the product surface has not been built yet. There is no public Chronicle page, no `/chronicle` route, no milestone persistence/admin workflow, and no Chronicle-specific runtime domain in `app/Temporal`.
 
 ### Epoch
 - 1401/01/01 Solar Hijri
@@ -125,5 +137,7 @@ Targeted tests are the normal development gate. Full Validation is reserved for 
 
 ## Definition of done
 Temporal migration is complete when all user-facing date presentation/input passes through Temporal System, direct calendar-library usage is removed outside approved boundaries, localized filters/query periods are correct, communications/exports are context-aware, the architecture guard is green, and final Full Validation passes.
+
+**Status against this DoD (2026-10-07):** the architectural core, direct legacy-calendar removal, communication integration, and final validation gates are green; repository-wide presentation/input normalization is not yet formally closed because residual direct formatting/raw date-input surfaces still exist. Therefore the Temporal architecture is production-integrated, while the final "every user-facing surface" cleanup remains an explicit follow-up.
 
 Chronicle is complete when `/chronicle` correctly shows today and EarthCoop Year, epoch semantics are locked, milestones use canonical dates, admin management exists, localization is ready, and Chronicle has no effect on operational business date logic.
