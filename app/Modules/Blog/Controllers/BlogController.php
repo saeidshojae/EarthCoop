@@ -111,7 +111,6 @@ class BlogController extends Controller
         $siteUrl = $this->canonicalUrl->to('/');
         $description = Str::limit(strip_tags((string) ($post->meta_description ?: $post->excerpt)), 160);
         $authorName = trim((string) ($post->author?->fullName() ?? ''));
-        $pillarKey = PillarArticleRegistry::ownerForSlug($post->slug);
         $pillar = $pillarKey !== null ? PillarRegistry::get($pillarKey) : null;
 
         $article = array_filter([
