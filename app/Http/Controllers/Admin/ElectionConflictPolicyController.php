@@ -10,6 +10,9 @@ use App\Services\Elections\ElectionConflictPolicyVersionService;
 use App\Services\Elections\ElectionGroupDomainClassifier;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 
 class ElectionConflictPolicyController extends Controller
 {
@@ -21,7 +24,7 @@ class ElectionConflictPolicyController extends Controller
         return view('admin.system-settings.elections.conflict-policy', compact('current','versions','levels'));
     }
 
-    public function store(Request $request, ElectionConflictPolicyVersionService $versions)
+    public function store(Request $request, ElectionConflictPolicyVersionService $versions, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $validated = $request->validate([
             'current_position' => 'required|in:'.implode(',', ElectionConflictPolicyRule::POSITIONS),
@@ -33,8 +36,18 @@ class ElectionConflictPolicyController extends Controller
             'decision' => 'required|in:'.implode(',', ElectionConflictPolicyRule::DECISIONS),
             'rule_reason' => 'nullable|string|max:500',
             'change_reason' => 'required|string|max:500',
-            'effective_at' => 'nullable|date',
+            'effective_at' => 'nullable|string|max:80',
         ]);
+        if (! empty($validated['effective_at'])) {
+            try {
+                $validated['effective_at'] = $temporal
+                    ->parseDateTime((string) $validated['effective_at'], $contexts->defaultContext())
+                    ->format('Y-m-d H:i:s');
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['effective_at' => 'زمان اثر معتبر نیست.']);
+            }
+        }
+
         $rule = collect($validated)->only([
             'current_position','current_domain_type','current_level','new_position','new_domain_type','new_level','decision'
         ])->all();

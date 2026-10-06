@@ -3258,7 +3258,7 @@
 
 
 
-                            <div class="feedback-date">{{ $feedback->created_at->diffForHumans() }} - {{ $feedback->created_at->format('Y/m/d H:i') }}</div>
+                            <div class="feedback-date"><x-temporal.relative :value="$feedback->created_at" /> - <x-temporal.date-time :value="$feedback->created_at" /></div>
 
 
 

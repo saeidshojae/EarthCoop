@@ -3844,7 +3844,7 @@
 
 
 
-                        <td>{{ $conversation->updated_at->diffForHumans() }}</td>
+                        <td><x-temporal.relative :value="$conversation->updated_at" /></td>
 
 
 

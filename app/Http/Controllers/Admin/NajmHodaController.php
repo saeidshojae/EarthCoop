@@ -140,7 +140,7 @@ class NajmHodaController extends Controller
     /**
      * تحلیل‌ها و گزارش‌ها
      */
-    public function analytics()
+    public function analytics(TemporalService $temporal, TemporalContextResolver $contexts)
     {
         // آمار کلی
         $totalInteractions = AIInteraction::count();
@@ -159,6 +159,11 @@ class NajmHodaController extends Controller
             ->orderBy('date')
             ->get();
         
+        $temporalContext = $contexts->defaultContext();
+        $dailyUsageLabels = $dailyUsage->pluck('date')->map(
+            fn ($date) => $temporal->date((string) $date, $temporalContext, 'short')
+        )->values();
+
         // محبوب‌ترین عوامل
         $agentStats = AIInteraction::select(
                 'agent_role',
@@ -177,6 +182,7 @@ class NajmHodaController extends Controller
             'totalCost',
             'totalTokens',
             'dailyUsage',
+            'dailyUsageLabels',
             'agentStats',
             'avgResponseTime'
         ));
@@ -474,17 +480,27 @@ class NajmHodaController extends Controller
         ]);
     }
 
-    public function updateGroupActionItem(Request $request, NajmHodaGroupActionItem $actionItem)
+    public function updateGroupActionItem(Request $request, NajmHodaGroupActionItem $actionItem, TemporalService $temporal, TemporalContextResolver $contexts)
     {
         $validated = $request->validate([
             'status' => 'nullable|string|in:open,in_progress,blocked,done,cancelled',
             'priority' => 'nullable|string|in:low,medium,high,urgent',
             'assigned_user_id' => 'nullable|integer|exists:users,id',
             'assignee_name' => 'nullable|string|max:150',
-            'due_at' => 'nullable|date',
+            'due_at' => 'nullable|string|max:80',
             'title' => 'nullable|string|max:255',
             'details' => 'nullable|string',
         ]);
+
+        if (! empty($validated['due_at'])) {
+            try {
+                $validated['due_at'] = $temporal
+                    ->parseDateTime((string) $validated['due_at'], $contexts->defaultContext())
+                    ->format('Y-m-d H:i:s');
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages(['due_at' => 'زمان سررسید معتبر نیست.']);
+            }
+        }
 
         $updatePayload = [];
         foreach (['status', 'priority', 'assigned_user_id', 'assignee_name', 'due_at', 'title', 'details'] as $key) {

@@ -947,7 +947,7 @@
 
 
 
-                                    <span><i class="far fa-clock ml-1"></i>{{ optional($article->published_at)->format('Y/m/d') }}</span>
+                                    <span><i class="far fa-clock ml-1"></i>@if($article->published_at)<x-temporal.date :value="$article->published_at" />@endif</span>
 
 
 

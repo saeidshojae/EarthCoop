@@ -25,7 +25,7 @@
                 <option value="allowed_with_suspension">مجاز با تعلیق سمت قبلی</option>
             </select>
             <input name="rule_reason" maxlength="500" placeholder="توضیح این قاعده">
-            <input name="effective_at" type="datetime-local" placeholder="زمان اثر">
+            <x-temporal.date-time-input name="effective_at" :value="old('effective_at')" placeholder="زمان اثر" />
             <input name="change_reason" maxlength="500" required placeholder="دلیل انتشار نسخه جدید">
         </div>
         <button class="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white">انتشار نسخه جدید با این خانه ماتریس</button>
@@ -46,6 +46,6 @@
             </tbody>
         </table>
     </div>
-    <div class="mt-5 text-sm text-slate-500">تاریخچه نسخه‌ها: @foreach($versions as $v) v{{ $v->version }} ({{ optional($v->effective_at)->format('Y-m-d H:i') }}) @if(!$loop->last) — @endif @endforeach</div>
+    <div class="mt-5 text-sm text-slate-500">تاریخچه نسخه‌ها: @foreach($versions as $v) v{{ $v->version }} (@if($v->effective_at)<x-temporal.date-time :value="$v->effective_at" style="short" />@endif) @if(!$loop->last) — @endif @endforeach</div>
 </div>
 @endsection

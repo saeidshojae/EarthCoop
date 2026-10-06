@@ -102,9 +102,9 @@
                 <h2 class="font-bold mb-4">مشخصات پرونده</h2>
                 <dl class="space-y-3 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">دفتر</dt><dd>{{ $office->code }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">ایجاد</dt><dd>{{ optional($case->created_at)->format('Y-m-d H:i') }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">ایجاد</dt><dd>@if($case->created_at)<x-temporal.date-time :value="$case->created_at" />@endif</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">سازنده</dt><dd>{{ optional($case->createdBy)->email ?: ('#' . $case->created_by) }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">اختتام</dt><dd>{{ optional($case->closed_at)->format('Y-m-d H:i') ?: '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">اختتام</dt><dd>@if($case->closed_at)<x-temporal.date-time :value="$case->closed_at" />@else—@endif</dd></div>
                 </dl>
             </section>
             <section class="rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 p-5 text-sm leading-7">

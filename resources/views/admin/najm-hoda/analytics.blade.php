@@ -2848,27 +2848,7 @@ if (dailyUsageChartElement) {
 
 
 
-        labels: {!! json_encode($dailyUsage->pluck('date')->map(function($date) {
-
-
-
-
-
-
-
-
-
-            return \Carbon\Carbon::parse($date)->format('Y/m/d');
-
-
-
-
-
-
-
-
-
-        })->toArray()) !!},
+        labels: {!! json_encode($dailyUsageLabels->toArray()) !!},
 
 
 

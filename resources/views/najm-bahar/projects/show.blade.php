@@ -190,7 +190,7 @@
 
                                 <div class="text-gray-500">{{ $review->comment ?? '—' }}</div>
 
-                                <div class="text-xs text-gray-400">{{ $review->created_at->diffForHumans() }}</div>
+                                <div class="text-xs text-gray-400"><x-temporal.relative :value="$review->created_at" /></div>
 
                             </li>
 

@@ -151,7 +151,7 @@
                                             $isInternal = $isOutgoing && $isIncoming;
                                         @endphp
                                         <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $transaction->created_at->format('Y/m/d H:i') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><x-temporal.date-time :value="$transaction->created_at" /></td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @if($isInternal)<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">انتقال داخلی</span>
                                                 @elseif($isOutgoing)<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">برداشت</span>

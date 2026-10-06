@@ -2448,7 +2448,7 @@
 
 
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{{ optional($req->created_at)->format('Y-m-d H:i') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">@if($req->created_at)<x-temporal.date-time :value="$req->created_at" />@endif</td>
 
 
 
@@ -2458,7 +2458,7 @@
 
 
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{{ optional($req->reviewed_at)->format('Y-m-d H:i') ?: '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">@if($req->reviewed_at)<x-temporal.date-time :value="$req->reviewed_at" />@else-@endif</td>
 
 
 
@@ -4218,7 +4218,7 @@
 
 
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{{ optional($code->created_at)->format('Y-m-d H:i') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">@if($code->created_at)<x-temporal.date-time :value="$code->created_at" />@endif</td>
 
 
 
@@ -4268,7 +4268,7 @@
 
 
 
-                                        <span class="{{ $code->expire_at <= now() ? 'text-orange-600 dark:text-orange-400' : 'text-slate-600 dark:text-slate-300' }}">{{ $code->expire_at->format('Y-m-d H:i') }}</span>
+                                        <span class="{{ $code->expire_at <= now() ? 'text-orange-600 dark:text-orange-400' : 'text-slate-600 dark:text-slate-300' }}"><x-temporal.date-time :value="$code->expire_at" /></span>
 
 
 
@@ -4318,7 +4318,7 @@
 
 
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{{ $code->used_at ? $code->used_at->format('Y-m-d H:i') : '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">@if($code->used_at)<x-temporal.date-time :value="$code->used_at" />@else-@endif</td>
 
 
 

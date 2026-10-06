@@ -471,11 +471,12 @@
                     
                     <div class="blog-form-group">
                         <label for="published_at" class="blog-form-label">تاریخ انتشار</label>
-                        <input type="datetime-local" 
-                               class="blog-form-input" 
-                               id="published_at" 
-                               name="published_at" 
-                               value="{{ old('published_at', $post->published_at ? $post->published_at->format('Y-m-d\TH:i') : '') }}">
+                        <x-temporal.date-time-input
+                            name="published_at"
+                            id="published_at"
+                            :value="old('published_at', $post->published_at)"
+                            class="blog-form-input"
+                        />
                     </div>
                     
                     <div class="blog-form-checkbox">

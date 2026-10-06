@@ -14,6 +14,9 @@ use App\Modules\Secretariat\Services\SecretariatCorrespondenceService;
 use App\Modules\Secretariat\Services\SecretariatDispatchService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -38,6 +41,19 @@ class SecretariatCorrespondenceController extends Controller
         $direction = in_array($request->query('direction'), ['incoming', 'outgoing', 'internal'], true)
             ? (string) $request->query('direction')
             : 'incoming';
+        foreach (['received_at', 'sent_at'] as $field) {
+            if (empty($validated[$field])) {
+                continue;
+            }
+            try {
+                $validated[$field] = $temporal
+                    ->parseDateTime((string) $validated[$field], $contexts->defaultContext())
+                    ->format('Y-m-d H:i:s');
+            } catch (\InvalidArgumentException|\ValueError) {
+                throw ValidationException::withMessages([$field => 'تاریخ یا ساعت واردشده معتبر نیست.']);
+            }
+        }
+
         $group = $this->officeGroup($office);
 
         return view('secretariat.correspondence.create', [
@@ -50,7 +66,7 @@ class SecretariatCorrespondenceController extends Controller
         ]);
     }
 
-    public function store(Request $request, SecretariatOffice $office): RedirectResponse
+    public function store(Request $request, SecretariatOffice $office, TemporalService $temporal, TemporalContextResolver $contexts): RedirectResponse
     {
         $probe = new SecretariatRecord(['office_id' => $office->id, 'status' => 'draft']);
         $probe->setRelation('office', $office);
@@ -65,8 +81,8 @@ class SecretariatCorrespondenceController extends Controller
             'confidentiality' => ['required', Rule::in(['public', 'office_members', 'leadership', 'restricted', 'confidential'])],
             'channel' => ['nullable', Rule::in(['internal', 'email', 'physical', 'api', 'other'])],
             'external_reference_number' => ['nullable', 'string', 'max:255'],
-            'received_at' => ['nullable', 'date'],
-            'sent_at' => ['nullable', 'date'],
+            'received_at' => ['nullable', 'string', 'max:80'],
+            'sent_at' => ['nullable', 'string', 'max:80'],
             'external_party_name' => ['nullable', 'string', 'max:255'],
             'external_party_email' => ['nullable', 'email', 'max:320'],
             'internal_recipient_user_id' => ['nullable', 'integer', 'exists:users,id'],

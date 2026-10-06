@@ -3,6 +3,8 @@
 namespace App\Modules\Blog\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 
 class PostRequest extends FormRequest
 {
@@ -21,6 +23,24 @@ class PostRequest extends FormRequest
      *
      * @return array
      */
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('published_at')) {
+            return;
+        }
+
+        try {
+            $instant = app(TemporalService::class)->parseDateTime(
+                (string) $this->input('published_at'),
+                app(TemporalContextResolver::class)->defaultContext(),
+            );
+
+            $this->merge(['published_at' => $instant->format('Y-m-d H:i:s')]);
+        } catch (\InvalidArgumentException|\ValueError) {
+            // Preserve the submitted value so the ordinary validation rule reports it.
+        }
+    }
+
     public function rules()
     {
         $postId = $this->route('post') ? $this->route('post')->id : null;

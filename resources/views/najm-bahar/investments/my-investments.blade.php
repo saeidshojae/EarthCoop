@@ -94,7 +94,7 @@
 
                             <td class="px-6 py-4 text-sm">{{ $investment->status_label ?? $investment->status }}</td>
 
-                            <td class="px-6 py-4 text-sm text-gray-500">{{ $investment->created_at->diffForHumans() }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500"><x-temporal.relative :value="$investment->created_at" /></td>
 
                             <td class="px-6 py-4 text-sm">
 

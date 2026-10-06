@@ -492,7 +492,7 @@
                             </h3>
                             <p class="blog-card-description">{{ Str::limit($post->excerpt, 100) }}</p>
                             <div class="blog-card-meta">
-                                <span><i class="fas fa-calendar-alt ml-2"></i> {{ $post->published_at->format('Y/m/d') }}</span>
+                                <span><i class="fas fa-calendar-alt ml-2"></i> <x-temporal.date :value="$post->published_at" /></span>
                                 <span><i class="fas fa-eye ml-2"></i> {{ $post->views_count }}</span>
                             </div>
                         </div>
@@ -557,7 +557,7 @@
                         <div class="blog-card-meta">
                             <span><i class="fas fa-user ml-2"></i> {{ $post->author->name }}</span>
                             <span>
-                                <i class="fas fa-calendar-alt ml-2"></i> {{ $post->published_at->format('Y/m/d') }}
+                                <i class="fas fa-calendar-alt ml-2"></i> <x-temporal.date :value="$post->published_at" />
                                 <i class="fas fa-eye mr-2"></i> {{ $post->views_count }}
                             </span>
                         </div>

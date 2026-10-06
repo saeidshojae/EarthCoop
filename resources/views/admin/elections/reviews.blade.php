@@ -43,7 +43,7 @@
                         </div>
                         <div class="text-sm text-slate-500">درخواست‌کننده: {{ optional($review->requester)->name ?: '#'.$review->requester_user_id }} @if($review->subject_user_id) · موضوع: {{ optional($review->subject)->name ?: '#'.$review->subject_user_id }} @endif</div>
                         <div class="text-xs text-slate-400">رویداد: {{ $review->challenged_event }} #{{ $review->challenged_event_id }} · حمایت‌ها: {{ $review->support_count }}</div>
-                        @if($review->decision_due_at)<div class="text-xs {{ $review->decision_due_at->isPast() && !$review->decided_at ? 'text-rose-600 font-semibold' : 'text-slate-400' }}">مهلت تصمیم: {{ $review->decision_due_at->format('Y-m-d H:i') }}</div>@endif
+                        @if($review->decision_due_at)<div class="text-xs {{ $review->decision_due_at->isPast() && !$review->decided_at ? 'text-rose-600 font-semibold' : 'text-slate-400' }}">مهلت تصمیم: <x-temporal.date-time :value="$review->decision_due_at" /></div>@endif
                         @if($review->statement)<div class="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300">{{ $review->statement }}</div>@endif
                         @if($review->decision)<div class="mt-3 text-sm"><strong>تصمیم:</strong> {{ $review->decision }} — {{ $review->decision_reason }}</div>@endif
                     </div>

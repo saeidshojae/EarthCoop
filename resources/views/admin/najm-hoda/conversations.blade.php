@@ -544,13 +544,13 @@
 
                             <div class="text-sm text-gray-600">
 
-                                {{ $conversation->updated_at->diffForHumans() }}
+                                <x-temporal.relative :value="$conversation->updated_at" />
 
                             </div>
 
                             <div class="text-xs text-gray-500">
 
-                                {{ $conversation->updated_at->format('Y/m/d H:i') }}
+                                <x-temporal.date-time :value="$conversation->updated_at" />
 
                             </div>
 

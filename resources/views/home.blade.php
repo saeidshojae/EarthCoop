@@ -919,7 +919,7 @@
                             <article class="home-interactive-card home-auction-card" style="--card-accent: var(--color-digital-gold);">
                                 <div class="home-card-topline"><span class="home-card-icon"><i class="fas fa-gavel" aria-hidden="true"></i></span></div>
                                 <h3>{{ $auction->stock->name ?? 'حراج' }}</h3>
-                                <p>پایان: {{ $auction->ends_at->diffForHumans() }}</p>
+                                <p>پایان: <x-temporal.relative :value="$auction->ends_at" /></p>
                                 <span class="home-card-link">مشاهده جزئیات <i class="fas fa-arrow-left" aria-hidden="true"></i></span>
                             </article>
                         @endforeach

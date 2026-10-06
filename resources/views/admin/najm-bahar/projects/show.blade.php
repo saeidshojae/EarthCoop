@@ -304,7 +304,7 @@
 
                                 <div class="text-xs text-gray-400">
 
-                                    {{ optional($review->reviewer)->fullName() ?? 'سیستم' }} - {{ $review->created_at->diffForHumans() }}
+                                    {{ optional($review->reviewer)->fullName() ?? 'سیستم' }} - <x-temporal.relative :value="$review->created_at" />
 
                                 </div>
 
@@ -462,7 +462,7 @@
 
                         <span class="text-gray-600">تاریخ ارسال:</span>
 
-                        <span class="font-semibold">{{ $project->submitted_at ? $project->submitted_at->diffForHumans() : '—' }}</span>
+                        <span class="font-semibold">@if($project->submitted_at)<x-temporal.relative :value="$project->submitted_at" />@else—@endif</span>
 
                     </div>
 
@@ -678,7 +678,7 @@
 
                             <span class="text-gray-600">تاریخ ارجاع:</span>
 
-                            <span class="font-semibold">{{ optional($project->assigned_at)->diffForHumans() }}</span>
+                            <span class="font-semibold">@if($project->assigned_at)<x-temporal.relative :value="$project->assigned_at" />@endif</span>
 
                         </div>
 

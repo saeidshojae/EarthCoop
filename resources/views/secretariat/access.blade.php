@@ -38,7 +38,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2">انقضا (اختیاری)</label>
-                <input type="datetime-local" name="expires_at" class="w-full rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700">
+                <x-temporal.date-time-input name="expires_at" :value="old('expires_at')" class="w-full rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700" />
             </div>
             <button class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5">ثبت دسترسی</button>
         </form>
@@ -60,9 +60,9 @@
                         </span>
                     </div>
                     <div class="text-xs text-gray-500 mt-2">
-                        grant #{{ $entry->id }} · {{ optional($entry->granted_at)->format('Y-m-d H:i') }}
-                        @if($entry->expires_at) · انقضا {{ $entry->expires_at->format('Y-m-d H:i') }} @endif
-                        @if($entry->revoked_at) · لغو {{ $entry->revoked_at->format('Y-m-d H:i') }} @endif
+                        grant #{{ $entry->id }} · @if($entry->granted_at)<x-temporal.date-time :value="$entry->granted_at" style="short" />@endif
+                        @if($entry->expires_at) · انقضا <x-temporal.date-time :value="$entry->expires_at" style="short" /> @endif
+                        @if($entry->revoked_at) · لغو <x-temporal.date-time :value="$entry->revoked_at" style="short" /> @endif
                     </div>
                 </div>
                 @if($active)

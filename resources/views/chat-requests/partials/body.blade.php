@@ -368,7 +368,7 @@
                                 <span class="pm-request-name">عضو EarthCoop</span>
                             @endif
                             <time class="pm-request-time" datetime="{{ $requestItem->created_at?->toIso8601String() }}">
-                                {{ $requestItem->created_at?->diffForHumans() }}
+                                @if($requestItem->created_at)<x-temporal.relative :value="$requestItem->created_at" />@endif
                             </time>
                         </div>
                         <span class="pm-request-status {{ $statusClass }}">{{ $statusText }}</span>
@@ -427,7 +427,7 @@
                         </span>
                     </span>
                     <span class="pm-hub-conversation-side">
-                        <span>{{ $lastMessage ? $lastMessage->created_at->diffForHumans(null, true) : 'جدید' }}</span>
+                        <span>@if($lastMessage)<x-temporal.relative :value="$lastMessage->created_at" />@elseجدید@endif</span>
                         @if($unreadCount > 0)
                             <span class="pm-hub-unread" aria-label="{{ $unreadCount }} پیام خوانده‌نشده">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
                         @endif

@@ -488,7 +488,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="blog-post-meta">{{ $post->created_at->format('Y/m/d') }}</div>
+                            <div class="blog-post-meta"><x-temporal.date :value="$post->created_at" /></div>
                         </td>
                         <td>
                             <div class="blog-actions">

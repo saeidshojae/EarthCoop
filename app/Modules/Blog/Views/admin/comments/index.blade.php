@@ -392,7 +392,7 @@
                     <div class="blog-comment-user-info">
                         <div class="blog-comment-user-name">{{ $comment->user->name }}</div>
                         <div class="blog-comment-meta">
-                            {{ $comment->created_at->diffForHumans() }}
+                            <x-temporal.relative :value="$comment->created_at" />
                             @if($comment->post)
                             • در مقاله: 
                             <a href="{{ route('blog.show', $comment->post->slug) }}" class="blog-comment-post" target="_blank">

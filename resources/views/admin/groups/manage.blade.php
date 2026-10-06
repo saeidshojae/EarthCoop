@@ -2475,7 +2475,7 @@
 
                                     @if($user->pivot->role_override_active)
                                         <span class="text-xs text-amber-600 whitespace-normal">
-                                            {{ $user->pivot->role_override_expires_at ? 'موقت تا ' . \Carbon\Carbon::parse($user->pivot->role_override_expires_at)->format('Y-m-d H:i') : 'بدون محدودیت زمانی' }}
+                                            @if($user->pivot->role_override_expires_at)موقت تا <x-temporal.date-time :value="$user->pivot->role_override_expires_at" />@elseبدون محدودیت زمانی@endif
                                         </span>
                                     @endif
 

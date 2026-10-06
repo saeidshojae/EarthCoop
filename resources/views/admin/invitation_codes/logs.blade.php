@@ -178,7 +178,7 @@
 
                             <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ optional($log->actor)->fullName() ?? '-' }}</td>
 
-                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ optional($log->created_at)->format('Y-m-d H:i') }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">@if($log->created_at)<x-temporal.date-time :value="$log->created_at" />@endif</td>
 
                             <td class="px-6 py-4 text-xs text-slate-500 dark:text-slate-400">
 

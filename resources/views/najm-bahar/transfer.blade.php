@@ -238,7 +238,7 @@
 
                         </label>
 
-                        <input type="datetime-local" id="execute_at" name="execute_at" value="{{ old('execute_at') }}" class="nb-input">
+                        <x-temporal.date-time-input name="execute_at" id="execute_at" :value="old('execute_at')" class="nb-input" />
 
                         <span class="nb-help-text">تاریخ و زمان آینده را انتخاب کنید.</span>
 

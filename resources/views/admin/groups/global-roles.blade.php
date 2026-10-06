@@ -121,7 +121,7 @@
                         <td class="p-3">{{ data_get($operation->filters, 'group_category', 'all') }} / {{ data_get($operation->filters, 'location_level') ?: 'همه سطوح' }}</td>
                         <td class="p-3">{{ $operation->source_role == 0 ? 'ناظر' : 'فعال موقت' }} ← {{ $operation->target_role == 0 ? 'ناظر' : 'فعال موقت' }}</td>
                         <td class="p-3">{{ $operation->processed_items }} / {{ $operation->total_items }} ({{ $operation->status }})</td>
-                        <td class="p-3">{{ $operation->created_at?->format('Y-m-d H:i') }}</td>
+                        <td class="p-3">@if($operation->created_at)<x-temporal.date-time :value="$operation->created_at" />@endif</td>
                         <td class="p-3">
                             @if($operation->status !== 'completed')
                                 <button type="button" class="resume-operation px-3 py-1.5 rounded-lg bg-amber-500 text-white" data-operation-id="{{ $operation->id }}">ادامه اجرا</button>

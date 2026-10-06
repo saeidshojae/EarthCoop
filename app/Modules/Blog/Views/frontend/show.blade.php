@@ -412,7 +412,7 @@
                         </a>
                     <div class="post-meta-item">
                         <i class="far fa-calendar"></i>
-                        <span>{{ $post->published_at->format('Y/m/d') }}</span>
+                        <x-temporal.date :value="$post->published_at" style="medium" />
                     </div>
                     <div class="post-meta-item">
                         <i class="far fa-eye"></i>
@@ -482,7 +482,7 @@
                             </h3>
                             <div class="related-post-meta">
                                 <i class="far fa-calendar"></i>
-                                <span>{{ $relatedPost->published_at->format('Y/m/d') }}</span>
+                                <x-temporal.date :value="$relatedPost->published_at" style="medium" />
                             </div>
                         </div>
                     </div>
@@ -525,7 +525,7 @@
                 <div class="comment-item">
                     <div class="comment-header">
                         <div class="comment-author">{{ $comment->user->name }}</div>
-                        <div class="comment-time">{{ $comment->created_at->diffForHumans() }}</div>
+                        <div class="comment-time"><x-temporal.relative :value="$comment->created_at" /></div>
                             </div>
                     <div class="comment-content">{{ $comment->content }}</div>
 
@@ -536,7 +536,7 @@
                         <div class="comment-reply">
                             <div class="comment-header">
                                 <div class="comment-author" style="font-size: 0.95rem;">{{ $reply->user->name }}</div>
-                                <div class="comment-time">{{ $reply->created_at->diffForHumans() }}</div>
+                                <div class="comment-time"><x-temporal.relative :value="$reply->created_at" /></div>
                             </div>
                             <div class="comment-content" style="font-size: 0.95rem;">{{ $reply->content }}</div>
                         </div>

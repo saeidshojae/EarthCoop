@@ -72,7 +72,7 @@
                     </div>
                 </div>
                 <div class="small text-muted mt-3">
-                    زمان پنجره: {{ optional($election->starts_at)->format('Y-m-d H:i') }} تا {{ optional($election->ends_at)->format('Y-m-d H:i') }}.
+                    زمان پنجره: @if($election->starts_at)<x-temporal.date-time :value="$election->starts_at" />@endif تا @if($election->ends_at)<x-temporal.date-time :value="$election->ends_at" />@endif.
                     تغییر سیاست بعدی، این نسخه فریز‌شده را بازنویسی نمی‌کند.
                 </div>
             </div>
@@ -88,7 +88,7 @@
                                 <span>{{ $offer->position }} — رتبه {{ (int)$offer->ranking_position }}</span>
                                 <span class="badge bg-secondary">{{ $offer->status?->value ?? $offer->status }}</span>
                             </div>
-                            <div class="small text-muted mt-1">نسخه قرارداد: {{ (int)$offer->contract_version_id }} | مهلت: {{ optional($offer->expires_at)->format('Y-m-d H:i') }}</div>
+                            <div class="small text-muted mt-1">نسخه قرارداد: {{ (int)$offer->contract_version_id }} | مهلت: @if($offer->expires_at)<x-temporal.date-time :value="$offer->expires_at" />@endif</div>
                             @if(($offer->status?->value ?? $offer->status) === 'pending')
                                 <a class="btn btn-sm btn-primary mt-2" href="{{ route('profile.accept.candidate', ['type'=>$offer->position]) }}">مطالعه قرارداد و پاسخ صریح</a>
                             @endif
@@ -223,7 +223,7 @@
                                 <option value="{{ $event['type'] }}:{{ $event['id'] }}"
                                     data-subject="{{ $event['subject_user_id'] ?? '' }}"
                                     data-appointment="{{ $event['appointment_id'] ?? '' }}">
-                                    {{ $event['label'] }} — {{ $event['occurred_at']->format('Y-m-d H:i') }}
+                                    {{ $event['label'] }} — <x-temporal.date-time :value="$event['occurred_at']" />
                                 </option>
                             @endforeach
                         </select>
@@ -250,7 +250,7 @@
                             <strong>#{{ $review->id }} — {{ $review->ground }}</strong>
                             <span class="badge bg-secondary">خودکار: {{ $review->automatic_status }} | انسانی: {{ $review->human_status }}</span>
                         </div>
-                        <div class="small mt-1">مهلت درخواست انسانی: {{ optional($review->human_deadline_at)->format('Y-m-d H:i') }}</div>
+                        <div class="small mt-1">مهلت درخواست انسانی: @if($review->human_deadline_at)<x-temporal.date-time :value="$review->human_deadline_at" />@endif</div>
                         @if(in_array($review->human_status, ['not_requested','awaiting_support'], true) && optional($review->human_deadline_at)->isFuture())
                             <button class="btn btn-sm btn-outline-primary mt-2" data-request-human-review="{{ $review->id }}">درخواست رسیدگی انسانی</button>
                         @endif

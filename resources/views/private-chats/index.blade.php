@@ -343,7 +343,7 @@
 
                         <span class="pm-conversation-side">
                             <span class="pm-conversation-time">
-                                {{ $lastMessage ? $lastMessage->created_at->diffForHumans(null, true) : 'جدید' }}
+                                @if($lastMessage)<x-temporal.relative :value="$lastMessage->created_at" />@elseجدید@endif
                             </span>
                             @if($unreadCount > 0)
                                 <span class="pm-unread-badge" data-unread-count="{{ $unreadCount }}" aria-hidden="true">
