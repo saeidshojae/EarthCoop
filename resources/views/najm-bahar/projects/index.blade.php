@@ -264,7 +264,7 @@
 
                             <td class="px-6 py-4 text-sm text-gray-500">
 
-                                {{ $project->created_at->diffForHumans() }}
+                                <x-temporal.relative :value="$project->created_at" />
 
                             </td>
 
