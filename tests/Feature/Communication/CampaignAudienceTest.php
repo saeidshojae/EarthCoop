@@ -137,6 +137,28 @@ final class CampaignAudienceTest extends TestCase
         $this->assertSame('draft', $draft->fresh()->status);
     }
 
+    public function test_due_campaign_console_command_processes_due_scheduled_campaigns(): void
+    {
+        [$campaign] = $this->campaignWithUsers();
+        $clock = CarbonImmutable::parse('2026-10-07 12:00:00', 'UTC');
+        CarbonImmutable::setTestNow($clock);
+
+        try {
+            $campaign->update([
+                'status' => 'scheduled',
+                'scheduled_at' => $clock->subMinute(),
+            ]);
+
+            $this->artisan('communications:process-due-campaigns')
+                ->expectsOutput('Processed 1 due communication campaign(s).')
+                ->assertSuccessful();
+
+            $this->assertSame('running', $campaign->fresh()->status);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
     /** @return array{0:CommunicationCampaign,1:array<int,User>} */
     private function campaignWithUsers(): array
     {
