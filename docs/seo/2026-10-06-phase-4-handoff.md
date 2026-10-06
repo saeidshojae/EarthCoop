@@ -8,7 +8,7 @@ PR: #208
 
 ## Completion status
 
-Phase 4 implementation is complete pending the final integration gate.
+Phase 4 implementation is complete, merged to `main`, and Production UAT passed on 2026-10-06.
 
 Completed work:
 
@@ -74,15 +74,12 @@ Phase 5 should not infer success merely from submission. It should use actual Go
 - page-level performance;
 - evidence of intent overlap or cannibalisation.
 
-## Final integration gate
+## Final integration record
 
-Before merge:
+- Final validated Phase-4 branch HEAD: `9837e0806b5ec80384a03f2c24d2b370a2576bff`.
+- Final Full Validation: #3934 — success.
+- PR #208 merged to `main`.
+- Merge commit: `20f4cf0b6599db3381819aa3dc85367d468f48a7`.
+- Production UAT passed on 2026-10-06, including curated related-article behavior and live Article JSON-LD presence.
 
-1. verify the exact final HEAD;
-2. compare the branch with current `main` and resolve any staleness safely;
-3. review the final diff for scope hygiene;
-4. confirm PR review threads are resolved;
-5. require one successful Full Validation on the exact final HEAD;
-6. merge only that validated HEAD.
-
-No Production data migration or Seeder execution is required for the Phase-4 code changes themselves.
+No Production data migration or Seeder execution was required for the Phase-4 code changes themselves.
