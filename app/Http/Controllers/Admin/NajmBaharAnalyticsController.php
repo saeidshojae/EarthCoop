@@ -74,7 +74,16 @@ class NajmBaharAnalyticsController extends Controller
             ->where('status', 'completed')
             ->groupBy('date')
             ->orderBy('date')
-            ->get();
+            ->get()
+            ->map(function ($item) use ($context) {
+                $item->label = $this->temporal->date(
+                    LocalDate::fromCanonical((string) $item->date),
+                    $context,
+                    'month-day',
+                );
+
+                return $item;
+            });
 
         $dailyStats->each(function ($stat) use ($context) {
             $stat->date_label = $this->temporal->date(
