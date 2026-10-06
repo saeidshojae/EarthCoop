@@ -57,7 +57,7 @@
                             </div>
                             <div class="col-12 col-sm-6 col-lg-3">
                                 <label class="form-label">تاریخ مدرک</label>
-                                <input name="evidence_date" type="date" class="form-control">
+                                <x-temporal.date-input name="evidence_date" class="form-control" />
                             </div>
                             <div class="col-12 col-sm-6 col-lg-5">
                                 <label class="form-label">شناسه یا پیوند مدرک</label>
