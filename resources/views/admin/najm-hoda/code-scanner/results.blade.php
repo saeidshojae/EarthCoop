@@ -38,7 +38,9 @@
 
 
 
-@section('page-description', 'تاریخ اسکن: ' . (isset($results['scanned_at']) && is_object($results['scanned_at']) ? $results['scanned_at']->format('Y/m/d H:i') : (isset($results['scanned_at']) ? $results['scanned_at'] : now()->format('Y/m/d H:i'))))
+@section('page-description')
+تاریخ اسکن: <x-temporal.date-time :value="$results['scanned_at'] ?? now()" />
+@endsection
 
 
 
@@ -4458,7 +4460,7 @@
 
 
 
-            <p class="results-date">تاریخ اسکن: {{ isset($results['scanned_at']) && is_object($results['scanned_at']) ? $results['scanned_at']->format('Y/m/d H:i') : (isset($results['scanned_at']) ? $results['scanned_at'] : now()->format('Y/m/d H:i')) }}</p>
+            <p class="results-date">تاریخ اسکن: <x-temporal.date-time :value="$results['scanned_at'] ?? now()" /></p>
 
 
 
