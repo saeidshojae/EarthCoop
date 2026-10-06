@@ -16,6 +16,10 @@ class ContactMessageReplyService
 
     public function reply(ContactMessage $message, string $body, ?int $actorId = null): Communication
     {
+        if ($message->status === 'spam' || $message->converted_ticket_id) {
+            throw new DomainException('contact_message_reply_not_allowed');
+        }
+
         $email = trim((string) $message->email);
         if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             throw new DomainException('contact_message_valid_email_required');
