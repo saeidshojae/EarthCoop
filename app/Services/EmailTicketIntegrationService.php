@@ -3,16 +3,13 @@
 namespace App\Services;
 
 use App\Models\Ticket;
+use App\Models\ContactMessage;
 use App\Models\TicketComment;
-use App\Models\User;
 use App\Services\Communication\CommunicationDispatcher;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
-use App\Services\TicketTriageService;
-use App\Services\TicketSlaService;
 use App\Traits\LogsTicketActivity;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -26,27 +23,16 @@ class EmailTicketIntegrationService
 {
     use LogsTicketActivity;
 
-    protected TicketTriageService $triage;
-    protected TicketSlaService $sla;
-    protected SystemIdentityService $systemIdentities;
-    protected CommunicationDispatcher $communications;
-
     public function __construct(
-        TicketTriageService $triage,
-        TicketSlaService $sla,
-        SystemIdentityService $systemIdentities,
-        CommunicationDispatcher $communications,
+        protected CommunicationDispatcher $communications,
     ) {
-        $this->triage = $triage;
-        $this->sla = $sla;
-        $this->systemIdentities = $systemIdentities;
-        $this->communications = $communications;
     }
 
     /**
-     * تبدیل ایمیل دریافتی به تیکت یا کامنت
+     * Reply معتبر به تیکت موجود را به همان thread متصل می‌کند؛
+     * ایمیل مستقل جدید را به Contact Inbox می‌فرستد.
      */
-    public function processIncomingEmail(array $emailData): ?Ticket
+    public function processIncomingEmail(array $emailData): Ticket|ContactMessage|null
     {
         $context = [
             'scope' => 'support:email',
@@ -65,20 +51,20 @@ class EmailTicketIntegrationService
             $inReplyTo = $emailData['in_reply_to'] ?? null;
             $references = $emailData['references'] ?? null;
 
-            $user = User::where('email', $fromEmail)->first();
-
             if ($inReplyTo || $references) {
                 $ticket = $this->findTicketByMessageId($inReplyTo, $references);
 
-                if ($ticket) {
+                if ($ticket && strcasecmp(trim((string) $ticket->email), trim((string) $fromEmail)) === 0) {
                     TicketComment::create([
                         'ticket_id' => $ticket->id,
-                        'user_id' => $user?->id,
+                        // Email possession alone is not authenticated EarthCoop identity.
+                        'user_id' => null,
                         'message' => "**پیام از ایمیل**\n\n" . $body,
                         'metadata' => [
                             'from_email' => $fromEmail,
                             'from_name' => $fromName,
                             'message_id' => $messageId,
+                            'source' => 'email_webhook',
                         ],
                     ]);
 
@@ -92,17 +78,24 @@ class EmailTicketIntegrationService
                         'ticket_id' => (int) $ticket->id,
                         'mode' => 'append_comment',
                     ]));
+
                     return $ticket;
                 }
             }
 
-            $ticket = $this->createTicketFromEmail($fromEmail, $fromName, $subject, $body, $user, $messageId);
+            $contact = $this->createContactMessageFromEmail(
+                $fromEmail,
+                $fromName,
+                $subject,
+                $body,
+            );
+
             $this->emitRuntime('najm_hoda.input.support.service.email_integration.process.succeeded', array_merge($context, [
-                'ticket_id' => (int) $ticket->id,
-                'mode' => 'create_ticket',
+                'contact_message_id' => (int) $contact->id,
+                'mode' => 'create_contact_message',
             ]));
 
-            return $ticket;
+            return $contact;
 
         } catch (\Exception $e) {
             Log::error('خطا در پردازش ایمیل دریافتی: ' . $e->getMessage(), [
@@ -137,60 +130,65 @@ class EmailTicketIntegrationService
 
     protected function findTicketByMessageId(?string $inReplyTo, ?string $references): ?Ticket
     {
-        $comment = TicketComment::whereJsonContains('metadata->message_id', $inReplyTo)
-            ->orWhereJsonContains('metadata->message_id', $references)
+        $messageIds = collect([$inReplyTo, $references])
+            ->filter(fn ($value): bool => is_string($value) && trim($value) !== '')
+            ->flatMap(function (string $header): array {
+                preg_match_all('/<[^>]+>/', $header, $matches);
+
+                return $matches[0] !== [] ? $matches[0] : [trim($header)];
+            })
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($messageIds->isEmpty()) {
+            return null;
+        }
+
+        $comment = TicketComment::query()
+            ->where(function ($query) use ($messageIds): void {
+                foreach ($messageIds as $messageId) {
+                    $query->orWhereJsonContains('metadata->message_id', $messageId);
+                }
+            })
             ->first();
 
         if ($comment) {
             return $comment->ticket;
         }
 
-        return Ticket::whereJsonContains('metadata->message_id', $inReplyTo)
-            ->orWhereJsonContains('metadata->message_id', $references)
+        return Ticket::query()
+            ->where(function ($query) use ($messageIds): void {
+                foreach ($messageIds as $messageId) {
+                    $query->orWhereJsonContains('metadata->message_id', $messageId);
+                }
+            })
             ->first();
     }
 
-    protected function createTicketFromEmail(
-        string $fromEmail,
+    protected function createContactMessageFromEmail(
+        ?string $fromEmail,
         ?string $fromName,
         string $subject,
         string $body,
-        ?User $user,
-        ?string $messageId
-    ): Ticket {
-        $cleanSubject = preg_replace('/^(Re:|Fwd:|FW:)\s*/i', '', $subject);
-        $triageResult = $this->triage->triage($cleanSubject, $body);
+    ): ContactMessage {
+        $cleanSubject = trim((string) preg_replace('/^(Re:|Fwd:|FW:)\s*/i', '', $subject));
+        if ($cleanSubject === '') {
+            $cleanSubject = 'پیام دریافتی از ایمیل';
+        }
 
-        do {
-            $trackingCode = 'TK-' . strtoupper(Str::random(8));
-        } while (Ticket::where('tracking_code', $trackingCode)->exists());
-
-        $priority = $triageResult['priority'] ?? 'normal';
-        $slaDeadline = $this->sla->calculateDeadline(
-            new Ticket(['priority' => $priority, 'created_at' => now()])
-        );
-
-        $ticket = Ticket::create([
-            'user_id' => $user?->id,
-            'tracking_code' => $trackingCode,
+        return ContactMessage::query()->create([
+            // Never infer authenticated membership from a claimed From address.
+            'user_id' => null,
+            'name' => trim((string) $fromName) ?: (trim((string) $fromEmail) ?: 'فرستنده ایمیل'),
+            'email' => trim((string) $fromEmail) ?: null,
+            'phone' => null,
             'subject' => $cleanSubject,
-            'message' => $body,
-            'status' => 'open',
-            'priority' => $priority,
-            'assignee_id' => $triageResult['assignee_id'] ?? null,
-            'name' => $fromName ?? explode('@', $fromEmail)[0],
-            'email' => $fromEmail,
-            'category' => 'general',
-            'sla_deadline' => $slaDeadline,
-            'metadata' => [
-                'source' => 'email',
-                'message_id' => $messageId,
-            ],
+            'message' => $body !== '' ? $body : 'پیام بدون متن',
+            'status' => 'new',
+            'source' => 'email_webhook',
         ]);
-
-        $this->logTicketCreated($ticket);
-
-        return $ticket;
     }
 
     public function sendTicketReplyToEmail(Ticket $ticket, TicketComment $comment): bool

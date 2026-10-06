@@ -10,6 +10,7 @@ use App\Modules\NajmBahar\Models\ProjectReview;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Services\Projects\ProjectOwnerNotificationService;
+use App\Services\Projects\ProjectAssignmentNotificationService;
 use App\Notifications\NajmBahar\ProjectStatusChanged;
 use App\Notifications\NajmBahar\ProjectRevisionRequested;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class ProjectService
 {
     public function __construct(
         private readonly ProjectOwnerNotificationService $ownerNotifications,
+        private readonly ProjectAssignmentNotificationService $assignmentNotifications,
     ) {
     }
 
@@ -560,17 +562,18 @@ class ProjectService
                     'پروژه برای بررسی به ' . ($type === 'User' ? $target->name : $target->name) . ' ارجاع شد.' . ($note ? ' - ' . $note : '')
                 );
 
-                if ($type === 'User') {
-                    $target->notify(new \App\Notifications\NajmBahar\ProjectAssigned($project));
-                } else {
-                    $groupMembers = $target->users()->get();
-                    foreach ($groupMembers as $member) {
-                        $member->notify(new \App\Notifications\NajmBahar\ProjectAssigned($project));
-                    }
-                }
-
                 return $project->fresh();
             });
+
+            $assignmentTarget = $type === 'User'
+                ? User::query()->find($targetId)
+                : Group::query()->find($targetId);
+
+            $recipients = $assignmentTarget instanceof User
+                ? collect([$assignmentTarget])
+                : ($assignmentTarget instanceof Group ? $assignmentTarget->users()->get() : collect());
+
+            $this->assignmentNotifications->send($result, $recipients, $note);
 
             $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assign.succeeded', array_merge($context, [
                 'assignment_status' => (string) ($result->assignment_status ?? ''),

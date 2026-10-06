@@ -6,7 +6,6 @@ use App\Modules\NajmBahar\Models\Project;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class ProjectAssigned extends Notification implements ShouldQueue
@@ -23,26 +22,7 @@ class ProjectAssigned extends Notification implements ShouldQueue
      */
     public function via($notifiable): array
     {
-        return ['database', 'broadcast', 'mail'];
-    }
-
-    /**
-     * اعلان ایمیل
-     */
-    public function toMail($notifiable): MailMessage
-    {
-        return (new MailMessage)
-            ->greeting('سلام ' . $notifiable->name)
-            ->line('یک پروژه برای بررسی‌ و ارزیابی توسط شما منتخب شده است.')
-            ->line('**نام پروژه:** ' . $this->project->title)
-            ->line('**دسته‌بندی:** ' . ($this->project->categoryPath ?? 'نامشخص'))
-            ->line('**سرمایه مورد نیاز:** ' . number_format($this->project->required_capital) . ' تومان')
-            ->when($this->assignmentNote, function ($message) {
-                return $message->line('**توضیحات ارجاع دهنده:** ' . $this->assignmentNote);
-            })
-            ->action('مشاهده جزئیات پروژه', route('admin.najm-bahar.projects.show', $this->project))
-            ->line('لطفاً نظر و ارزیابی خود را در سایستم ثبت کنید.')
-            ->salutation('با تشکر،' . "\n" . config('app.name'));
+        return ['database', 'broadcast'];
     }
 
     /**
