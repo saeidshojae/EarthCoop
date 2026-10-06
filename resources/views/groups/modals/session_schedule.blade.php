@@ -9,7 +9,7 @@
             <label>نام جلسه<input name="title" maxlength="160" required placeholder="مثلاً جلسه بررسی برنامه ماهانه"></label>
             <label>موضوع<input name="subject" maxlength="1000" placeholder="موضوع اصلی جلسه"></label>
             <label>دستور جلسه<textarea name="agenda" maxlength="3000" rows="4" placeholder="محورهای گفتگو را هر کدام در یک سطر بنویسید"></textarea></label>
-            <label>زمان آغاز<input name="starts_at" type="datetime-local"><small>اگر خالی بماند، جلسه همین حالا آغاز می‌شود.</small></label>
+            <label>زمان آغاز<x-temporal.date-time-input name="starts_at" class="w-full"></x-temporal.date-time-input><small>اگر خالی بماند، جلسه همین حالا آغاز می‌شود.</small></label>
             <div id="sessionScheduleStatus" class="session-schedule-status" hidden></div>
             <footer><button type="button" class="btn-cancel" data-session-schedule-close>انصراف</button><button type="submit" class="btn-submit"><i class="fas fa-calendar-check"></i> ثبت جلسه</button></footer>
         </form>
