@@ -140,7 +140,7 @@ class NajmHodaController extends Controller
     /**
      * تحلیل‌ها و گزارش‌ها
      */
-    public function analytics()
+    public function analytics(TemporalService $temporal, TemporalContextResolver $contexts)
     {
         // آمار کلی
         $totalInteractions = AIInteraction::count();
@@ -159,6 +159,11 @@ class NajmHodaController extends Controller
             ->orderBy('date')
             ->get();
         
+        $temporalContext = $contexts->defaultContext();
+        $dailyUsageLabels = $dailyUsage->pluck('date')->map(
+            fn ($date) => $temporal->date((string) $date, $temporalContext, 'short')
+        )->values();
+
         // محبوب‌ترین عوامل
         $agentStats = AIInteraction::select(
                 'agent_role',
@@ -177,6 +182,7 @@ class NajmHodaController extends Controller
             'totalCost',
             'totalTokens',
             'dailyUsage',
+            'dailyUsageLabels',
             'agentStats',
             'avgResponseTime'
         ));
