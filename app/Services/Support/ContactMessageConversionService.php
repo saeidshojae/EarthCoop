@@ -26,13 +26,12 @@ class ContactMessageConversionService
             }
         }
 
-        $email = trim((string) $message->email);
-        $user = $email !== ''
-            ? User::query()->whereRaw('LOWER(email) = ?', [mb_strtolower($email)])->first()
+        $user = $message->user_id
+            ? User::query()->find($message->user_id)
             : null;
 
         if (! $user) {
-            throw new DomainException('contact_message_requires_registered_user');
+            throw new DomainException('contact_message_requires_authenticated_user');
         }
 
         return DB::transaction(function () use ($message, $user, $actorId): Ticket {
