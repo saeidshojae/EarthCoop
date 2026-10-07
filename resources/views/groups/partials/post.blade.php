@@ -45,7 +45,7 @@
 
     };
 
-    $authorName = $item->user ? ($item->user->first_name . ' ' . $item->user->last_name) : 'حساب حذف شده';
+    $authorName = $item->user ? $item->user->displayName() : 'حساب حذف شده';
 
     $profileUrl = $item->user ? route('profile.member.show', $item->user) : null;
 
