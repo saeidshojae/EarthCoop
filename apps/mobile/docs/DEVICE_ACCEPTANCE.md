@@ -328,3 +328,9 @@ When +18 exists, add these checks to the single consolidated phone run:
 - confirm logout/account change clears payment intent/terms and never auto-posts on restart.
 
 Until that signed artifact and physical run exist, all membership-payment device rows remain **NOT EXECUTED**. Historical +17 remains the latest actually signed artifact; do not repeat the accepted 81-group count unless a regression gives a reason.
+
+## Latest verified candidate — Android UAT +18
+
+Use only signed `1.0.0+18` for the next consolidated Android acceptance. Frozen software SHA: `17f6521c84508b6c7038757a88377135233b66df`. Artifact ID `11453868837`; APK SHA-256 `62ab9cda4f890be8c8cba2a8cb6bbcff822bca0dca5cf11d9b63c13ed2b03fea`; stable UAT certificate SHA-256 `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`.
+
+All automated software/package gates are complete. Physical membership-payment rows remain NOT EXECUTED. Before any live payment check, the compatible server payment contract must be deployed and separately verified; do not attempt payment against an older server contract. No phone result is inferred from the signed build.
