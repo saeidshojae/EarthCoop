@@ -327,6 +327,66 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(11, (int) $account->fresh()->balance);
     }
 
+
+    public function test_activation_reconciliation_is_read_only_and_user_scoped(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 0, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 400);
+
+        $key = 'activation-reconcile-0001';
+        $created = $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation',
+                'points' => 200,
+            ])
+            ->assertCreated();
+
+        $transactionId = $created->json('data.transaction.id');
+        $beforeConversions = DB::table('user_point_conversions')->count();
+        $beforeConsumptions = DB::table('user_point_consumptions')->count();
+        $beforeActive = (int) $account->fresh()->balance_active;
+        $beforeDim = (int) $account->fresh()->balance_faded;
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/by-idempotency/'.$key)
+            ->assertOk()
+            ->assertJsonPath('data.source', 'participation')
+            ->assertJsonPath('data.requested_points', 200)
+            ->assertJsonPath('data.consumed_points', 200)
+            ->assertJsonPath('data.activated_gol', 2)
+            ->assertJsonPath('data.transaction.id', $transactionId)
+            ->assertJsonPath('data.balance.local.active_gol', $beforeActive)
+            ->assertJsonPath('data.balance.local.dim_available_gol', $beforeDim);
+
+        $this->assertSame($beforeConversions, DB::table('user_point_conversions')->count());
+        $this->assertSame($beforeConsumptions, DB::table('user_point_consumptions')->count());
+        $this->assertSame($beforeActive, (int) $account->fresh()->balance_active);
+        $this->assertSame($beforeDim, (int) $account->fresh()->balance_faded);
+
+        [$other, $otherToken, $otherDeviceId] = $this->nativeSession();
+        $this->accountFor($other, active: 0, dim: 10);
+
+        $this->bearer($otherToken, $otherDeviceId)
+            ->getJson('/api/v1/najm-bahar/activation/by-idempotency/'.$key)
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'not_found');
+    }
+
+    public function test_activation_reconciliation_returns_not_found_for_unknown_key(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $this->accountFor($user, active: 0, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/by-idempotency/activation-missing-0001')
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'not_found');
+    }
+
     public function test_disabled_conversion_policy_fails_closed(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
