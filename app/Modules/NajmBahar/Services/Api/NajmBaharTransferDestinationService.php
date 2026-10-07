@@ -70,6 +70,67 @@ class NajmBaharTransferDestinationService
         ];
     }
 
+    public function verify(User $actor, string $token, string $rawAccountNumber): Account
+    {
+        $number = $this->normalize($rawAccountNumber);
+
+        try {
+            $decoded = json_decode(Crypt::decryptString($token), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable) {
+            $this->changed();
+        }
+
+        $valid = is_array($decoded ?? null)
+            && ($decoded['v'] ?? null) === 1
+            && is_int($decoded['account_id'] ?? null)
+            && is_string($decoded['account_number'] ?? null)
+            && is_string($decoded['owner_key'] ?? null)
+            && is_int($decoded['exp'] ?? null);
+
+        if (! $valid
+            || $decoded['account_number'] !== $number
+            || $decoded['exp'] < now()->timestamp) {
+            $this->changed();
+        }
+
+        $sub = SubAccount::query()
+            ->where('sub_account_code', $number)
+            ->where('status', 1)
+            ->first();
+        $mirror = Account::query()
+            ->whereKey((int) $decoded['account_id'])
+            ->where('type', 'subaccount')
+            ->where('account_number', $number)
+            ->first();
+
+        if (! $sub instanceof SubAccount || ! $mirror instanceof Account) {
+            $this->changed();
+        }
+
+        $parent = Account::query()->find((int) $sub->account_id);
+        if (! $parent instanceof Account) {
+            $this->changed();
+        }
+
+        [$ownerType, $ownerKey] = $this->owner($parent);
+        if (! in_array($ownerType, ['user', 'legal_entity'], true)
+            || $ownerKey !== $decoded['owner_key']
+            || $ownerKey === 'user:'.(int) $actor->id) {
+            $this->changed();
+        }
+
+        return $mirror;
+    }
+
+    private function changed(): never
+    {
+        throw new NajmBaharTransferException(
+            'transfer_destination_changed',
+            'The transfer destination changed; review it again before sending.',
+            409,
+        );
+    }
+
     private function normalize(string $raw): string
     {
         $value = preg_replace('/\s+/', '', trim($raw)) ?? '';
