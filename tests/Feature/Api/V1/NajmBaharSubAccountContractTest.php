@@ -139,6 +139,122 @@ class NajmBaharSubAccountContractTest extends TestCase
         $this->assertNotSame($foreign->sub_account_code, $response->json('data.subaccounts.0.account_number'));
     }
 
+
+    public function test_subaccount_create_is_idempotent_server_numbered_and_rejects_financial_authority_fields(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+
+        $headers = ['Idempotency-Key' => 'subaccount-create-native-0001'];
+        $payload = ['name' => '  روزمره  '];
+
+        $first = $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/subaccounts', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'روزمره')
+            ->assertJsonPath('data.status', 1)
+            ->assertJsonPath('data.active_gol', 0)
+            ->assertJsonPath('data.active_available_gol', 0)
+            ->assertJsonPath('data.dim_available_gol', 0);
+
+        $subId = (int) $first->json('data.sub_account_id');
+        $accountId = (int) $first->json('data.account_id');
+        $number = (string) $first->json('data.account_number');
+
+        $this->assertGreaterThan(0, $subId);
+        $this->assertGreaterThan(0, $accountId);
+        $this->assertSame($main->account_number.'-001', $number);
+        $this->assertDatabaseHas('najm_sub_accounts', [
+            'id' => $subId,
+            'account_id' => $main->id,
+            'sub_account_code' => $number,
+            'name' => 'روزمره',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseHas('najm_accounts', [
+            'id' => $accountId,
+            'account_number' => $number,
+            'type' => 'subaccount',
+            'name' => 'روزمره',
+        ]);
+
+        $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/subaccounts', $payload)
+            ->assertCreated()
+            ->assertHeader('Idempotency-Replayed', 'true')
+            ->assertJsonPath('data.sub_account_id', $subId)
+            ->assertJsonPath('data.account_id', $accountId);
+
+        $this->assertSame(1, SubAccount::query()->where('account_id', $main->id)->count());
+        $this->assertSame(1, Account::query()->where('account_number', $number)->count());
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'subaccount-create-authority-0001')
+            ->postJson('/api/v1/najm-bahar/subaccounts', [
+                'name' => 'نام',
+                'account_number' => 'forged',
+                'status' => 1,
+                'balance_active' => 999999,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'validation_failed');
+    }
+
+    public function test_subaccount_rename_is_owned_name_only_and_keeps_canonical_mirror_name_in_sync(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+        $sub = app(SubAccountService::class)->createSubAccount((int) $main->id, 'قدیمی');
+
+        $sub->forceFill([
+            'balance_active' => 123,
+            'balance_faded' => 456,
+            'balance' => 579,
+        ])->save();
+        $mirror = app(AccountService::class)->ensureSubAccountAccount($sub->fresh());
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'subaccount-rename-native-0001')
+            ->patchJson('/api/v1/najm-bahar/subaccounts/'.$sub->id, [
+                'name' => '  پس‌انداز  ',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.sub_account_id', $sub->id)
+            ->assertJsonPath('data.name', 'پس‌انداز')
+            ->assertJsonPath('data.active_gol', 123)
+            ->assertJsonPath('data.dim_available_gol', 456);
+
+        $this->assertSame('پس‌انداز', $sub->fresh()->name);
+        $this->assertSame('پس‌انداز', $mirror->fresh()->name);
+        $this->assertSame(123, (int) $sub->fresh()->balance_active);
+        $this->assertSame(456, (int) $sub->fresh()->balance_faded);
+
+        $other = User::factory()->create(['is_system' => false]);
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+        $foreign = app(SubAccountService::class)->createSubAccount((int) $otherMain->id, 'Foreign');
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'subaccount-rename-foreign-0001')
+            ->patchJson('/api/v1/najm-bahar/subaccounts/'.$foreign->id, [
+                'name' => 'هک',
+            ])
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'not_found');
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'subaccount-rename-authority-0001')
+            ->patchJson('/api/v1/najm-bahar/subaccounts/'.$sub->id, [
+                'name' => 'مجاز',
+                'status' => 0,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'validation_failed');
+
+        $this->assertSame(1, (int) $sub->fresh()->status);
+    }
+
     private function nativeSession(): array
     {
         $password = 'secret-password';
