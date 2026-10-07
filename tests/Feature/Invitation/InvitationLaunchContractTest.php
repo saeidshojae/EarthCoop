@@ -125,4 +125,43 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertTrue((bool) $rule->convertible);
         $this->assertSame('once_per_context', $rule->repeat_policy);
     }
+
+    #[Test]
+    public function admin_invitation_settings_checkbox_submits_a_boolean_value(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
+
+        $this->assertStringContainsString(
+            'name="invation_status" id="invation_status" value="1"',
+            $view
+        );
+    }
+
+
+    #[Test]
+    public function admin_invitation_page_does_not_load_the_missing_unused_chart_asset(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
+
+        $this->assertStringNotContainsString('vendor/chart.js/chart.umd.min.js', $view);
+        $this->assertStringNotContainsString('chart.umd.min.js', $view);
+    }
+
+
+    #[Test]
+    public function admin_invitation_index_is_bounded_and_view_is_read_only(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/InvitationCodeController.php'));
+        $view = file_get_contents(resource_path('views/admin/invitation_codes/index.blade.php'));
+
+        $this->assertStringContainsString("->paginate(50)->withQueryString()", $controller);
+        $this->assertStringNotContainsString("->orderBy('created_at', 'desc')->get()", $controller);
+        $this->assertStringNotContainsString('foreach($checkExpire as $check){ $check->delete(); }', $view);
+        $this->assertStringNotContainsString("InvitationCode::where('used', 0)->where('expire_at', '<=', now())", $view);
+        $this->assertStringContainsString('$codes->links()', $view);
+        $this->assertStringContainsString("->selectRaw(", $controller);
+        $this->assertStringContainsString('$charts = null;', $controller);
+        $this->assertStringNotContainsString('DATE_FORMAT(', $controller);
+    }
+
 }

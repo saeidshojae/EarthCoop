@@ -72,75 +72,37 @@ class InvitationCodeController extends Controller
                 $query->where('code', 'like', "%{$request->q}%");
             }
 
-            $codes = $query->orderBy('created_at', 'desc')->get();
+            $codes = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
             $now = now();
+            $summary = InvitationCode::query()
+                ->selectRaw(
+                    'COUNT(*) as total,
+                    SUM(CASE WHEN used = 1 THEN 1 ELSE 0 END) as used_count,
+                    SUM(CASE WHEN used = 0 AND expire_at IS NOT NULL AND expire_at <= ? THEN 1 ELSE 0 END) as expired_count,
+                    SUM(CASE WHEN used = 0 AND (expire_at IS NULL OR expire_at > ?) THEN 1 ELSE 0 END) as active_count,
+                    SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as today_count,
+                    SUM(CASE WHEN created_at >= ? AND created_at <= ? THEN 1 ELSE 0 END) as week_count',
+                    [
+                        $now,
+                        $now,
+                        $now->copy()->startOfDay(),
+                        $now->copy()->addDay()->startOfDay(),
+                        $now->copy()->startOfWeek(),
+                        $now->copy()->endOfWeek(),
+                    ]
+                )
+                ->first();
+
             $stats = [
-                'total' => InvitationCode::count(),
-                'used' => InvitationCode::where('used', 1)->count(),
-                'expired' => InvitationCode::where('used', 0)->whereNotNull('expire_at')->where('expire_at', '<=', $now)->count(),
-                'active' => InvitationCode::where('used', 0)->where(function($q) use ($now){
-                    $q->whereNull('expire_at')->orWhere('expire_at', '>', $now);
-                })->count(),
-                'today' => InvitationCode::whereDate('created_at', $now->toDateString())->count(),
-                'week' => InvitationCode::whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->count(),
+                'total' => (int) ($summary->total ?? 0),
+                'used' => (int) ($summary->used_count ?? 0),
+                'expired' => (int) ($summary->expired_count ?? 0),
+                'active' => (int) ($summary->active_count ?? 0),
+                'today' => (int) ($summary->today_count ?? 0),
+                'week' => (int) ($summary->week_count ?? 0),
             ];
-
-            $days = collect(range(7,0))->map(function($d){ return now()->subDays($d)->format('Y-m-d'); });
-            $createdDaily = [];
-            $usedDaily = [];
-            foreach ($days as $d) {
-                $createdDaily[] = InvitationCode::whereDate('created_at', $d)->count();
-                $usedDaily[] = InvitationCode::where('used', 1)
-                    ->where(function($q) use ($d){
-                        $q->whereDate('used_at', $d)->orWhere(function($qq) use ($d){ $qq->whereNull('used_at')->whereDate('updated_at', $d); });
-                    })->count();
-            }
-
-            $months = collect(range(11,0))->map(function($m){ return now()->subMonths($m)->format('Y-m'); });
-            $createdMonthly = [];
-            $usedMonthly = [];
-            foreach ($months as $m) {
-                $createdMonthly[] = InvitationCode::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$m])->count();
-                $usedMonthly[] = InvitationCode::where('used', 1)
-                    ->where(function($q) use ($m){
-                        $q->whereRaw("DATE_FORMAT(used_at, '%Y-%m') = ?", [$m])
-                          ->orWhere(function($qq) use ($m){ $qq->whereNull('used_at')->whereRaw("DATE_FORMAT(updated_at, '%Y-%m') = ?", [$m]); });
-                    })->count();
-            }
-
-            $weeks = collect(range(11,0))->map(function($w){ return now()->startOfWeek()->subWeeks($w); });
-            $weekLabels = [];
-            $createdWeekly = [];
-            $usedWeekly = [];
-            foreach ($weeks as $start) {
-                $end = (clone $start)->endOfWeek();
-                $weekLabels[] = $start->format('Y-m-d') . ' تا ' . $end->format('m-d');
-                $createdWeekly[] = InvitationCode::whereBetween('created_at', [$start, $end])->count();
-                $usedWeekly[] = InvitationCode::where('used', 1)
-                    ->where(function($q) use ($start, $end){
-                        $q->whereBetween('used_at', [$start, $end])
-                          ->orWhere(function($qq) use ($start, $end){ $qq->whereNull('used_at')->whereBetween('updated_at', [$start, $end]); });
-                    })->count();
-            }
-
-            $charts = [
-                'daily' => [
-                    'labels' => $days->map(fn($d)=>substr($d,5))->values(),
-                    'created' => $createdDaily,
-                    'used' => $usedDaily,
-                ],
-                'weekly' => [
-                    'labels' => $weekLabels,
-                    'created' => $createdWeekly,
-                    'used' => $usedWeekly,
-                ],
-                'monthly' => [
-                    'labels' => $months->values(),
-                    'created' => $createdMonthly,
-                    'used' => $usedMonthly,
-                ],
-            ];
+            $charts = null;
         }
 
         return view('admin.invitation_codes.index', compact('codes', 'stats', 'charts'));

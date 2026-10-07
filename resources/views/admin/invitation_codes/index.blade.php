@@ -848,7 +848,7 @@
 
 
 
-                <input type="checkbox" name="invation_status" id="invation_status" class="w-5 h-5" {{ old('invation_status', \App\Models\Setting::find(1)->invation_status) == 1 ? 'checked' : '' }}>
+                <input type="checkbox" name="invation_status" id="invation_status" value="1" class="w-5 h-5" {{ old('invation_status', \App\Models\Setting::find(1)->invation_status) == 1 ? 'checked' : '' }}>
 
 
 
@@ -3789,56 +3789,7 @@
 
 
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-
-
-
-
-
-
-
-
-
-                        @php
-
-
-
-
-
-
-
-
-
-                            $checkExpire = \App\Models\InvitationCode::where('used', 0)->where('expire_at', '<=', now())->where('user_id', auth()->user()->id)->orderBy('created_at', 'desc')->get();
-
-
-
-
-
-
-
-
-
-                            foreach($checkExpire as $check){ $check->delete(); }
-
-
-
-
-
-
-
-
-
-                        @endphp
-
-
-
-
-
-
-
-
-
-                        @foreach($codes as $code)
+@foreach($codes as $code)
 
 
 
@@ -4470,6 +4421,12 @@
 
             </div>
 
+            @if($codes instanceof \Illuminate\Contracts\Pagination\Paginator)
+                <div class="border-t border-slate-200 dark:border-slate-700 px-4 py-3">
+                    {{ $codes->links() }}
+                </div>
+            @endif
+
 
 
 
@@ -4708,7 +4665,7 @@
 
 
 
-<script src="{{ asset("vendor/chart.js/chart.umd.min.js") }}"></script>
+
 
 
 
