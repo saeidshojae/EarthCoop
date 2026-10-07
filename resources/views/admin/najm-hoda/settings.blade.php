@@ -1063,7 +1063,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// بارگذاری لیست فایل‌های دانش
+function escapeKnowledgeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+// بارگذاری لیست منابع دانش
 async function loadKnowledgeFiles() {
     try {
         console.log('Loading knowledge files from:', '/admin/najm-hoda/steward/knowledge-files-api');
@@ -1076,7 +1085,7 @@ async function loadKnowledgeFiles() {
             const listHtml = `
                 <div style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 8px;">
                     <h4 style="font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 12px;">
-                        📚 فایل‌های آپلودشده (${data.files.length})
+                        📚 منابع دانش (${data.files.length})
                     </h4>
                     <div style="max-height: 400px; overflow-y: auto;">
                         <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
@@ -1096,28 +1105,29 @@ async function loadKnowledgeFiles() {
                                     <tr style="border-bottom: 1px solid #e5e7eb;" id="file-row-${file.id}">
                                         <td style="padding: 8px;">
                                             <i class="fas ${file.icon}" style="color: #6366f1; margin-left: 4px;"></i>
-                                            <span id="file-title-${file.id}">${file.title}</span>
+                                            <span id="file-title-${Number(file.id)}">${escapeKnowledgeHtml(file.title)}</span>
+                                            ${file.source_url ? `<br><a href="${escapeKnowledgeHtml(file.source_url)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#0369a1;">${escapeKnowledgeHtml(file.source_url)}</a>` : ''}
                                         </td>
                                         <td style="padding: 8px; text-align: center;">
                                             <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
-                                                ${file.file_type.toUpperCase()}
+                                                ${escapeKnowledgeHtml(String(file.file_type || '').toUpperCase())}
                                             </span>
                                         </td>
-                                        <td style="padding: 8px; text-align: center; color: #6b7280;">${file.file_size}</td>
+                                        <td style="padding: 8px; text-align: center; color: #6b7280;">${escapeKnowledgeHtml(file.file_size)}</td>
                                         <td style="padding: 8px; text-align: center;">
                                             <span id="file-priority-${file.id}" style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 700;">
                                                 ${file.search_priority}
                                             </span>
                                         </td>
-                                        <td style="padding: 8px; text-align: center; color: #6b7280;">${file.uploader}</td>
-                                        <td style="padding: 8px; text-align: center; color: #6b7280; font-size: 11px;">${file.created_at}</td>
+                                        <td style="padding: 8px; text-align: center; color: #6b7280;">${escapeKnowledgeHtml(file.uploader)}</td>
+                                        <td style="padding: 8px; text-align: center; color: #6b7280; font-size: 11px;">${escapeKnowledgeHtml(file.created_at)}</td>
                                         <td style="padding: 8px; text-align: center;">
-                                            <button onclick="editKnowledgeFile(${file.id}, ${JSON.stringify(file.title)}, ${file.search_priority})" 
+                                            <button onclick="editKnowledgeFile(${Number(file.id)}, decodeURIComponent('${encodeURIComponent(String(file.title || ''))}'), ${Number(file.search_priority)})" 
                                                     style="border: none; background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-left: 4px; font-size: 11px;"
                                                     title="ویرایش">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button onclick="deleteKnowledgeFile(${file.id})" 
+                                            <button onclick="deleteKnowledgeFile(${Number(file.id)})" 
                                                     style="border: none; background: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"
                                                     title="حذف">
                                                 <i class="fas fa-trash"></i>
@@ -1132,7 +1142,7 @@ async function loadKnowledgeFiles() {
             `;
             document.getElementById('uploaded-files-list').innerHTML = listHtml;
         } else {
-            document.getElementById('uploaded-files-list').innerHTML = '<div style="padding: 12px; text-align: center; color: #9ca3af; font-size: 13px;">هیچ فایلی آپلود نشده است</div>';
+            document.getElementById('uploaded-files-list').innerHTML = '<div style="padding: 12px; text-align: center; color: #9ca3af; font-size: 13px;">هیچ منبع دانشی ثبت نشده است</div>';
         }
     } catch (error) {
         console.error('خطا در بارگذاری لیست فایل‌ها:', error);
