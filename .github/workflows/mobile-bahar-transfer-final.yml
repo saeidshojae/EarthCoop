@@ -1,6 +1,6 @@
 name: Native Bahar transfer final
 
-# Review-fix rerun: canonical mirror availability and active status are pinned.
+# Final rerun: no-eligible-source capability review fix is pinned.
 
 on:
   push:
