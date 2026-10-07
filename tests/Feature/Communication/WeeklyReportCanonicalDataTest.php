@@ -29,7 +29,11 @@ final class WeeklyReportCanonicalDataTest extends TestCase
                 ->whereNotNull('published_at')
                 ->orderByDesc('version')
                 ->firstOrFail();
-            $this->assertSame(1, (int) $version->version);
+            $this->assertGreaterThanOrEqual(2, (int) $version->version);
+            $this->assertTrue(
+                $template->versions()->where('locale', 'fa')->where('version', 1)->whereNotNull('published_at')->exists(),
+                $templateKey.' must preserve its historical v1 after publishing newer immutable versions.'
+            );
             $this->assertNotEmpty($version->variables_schema);
 
             $rule = CommunicationRule::query()
