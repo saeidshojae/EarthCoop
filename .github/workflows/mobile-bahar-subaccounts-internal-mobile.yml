@@ -34,3 +34,7 @@ jobs:
         run: |
           flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_repository_test.dart
           flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_controller_test.dart
+          flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_screen_test.dart
+      - name: Analyze internal Bahar mobile
+        working-directory: apps/mobile
+        run: flutter analyze
