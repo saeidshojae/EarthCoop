@@ -69,7 +69,7 @@ class ChatController extends Controller
         $messages = $group->messages()
             ->visibleInChat()
             ->select('id', 'user_id', 'parent_id', 'message as content', 'removed_by', 'edited_by', 'edited', 'created_at', 'updated_at', 'read_by', 'reply_count', 'voice_message', 'file_path', 'file_type', DB::raw("'message' as type"))
-            ->with(['reactions', 'user:id,first_name,last_name,avatar'])
+            ->with(['reactions', 'user:id,first_name,last_name,nickname,avatar'])
             ->when($focusedPinType === 'message' && $focusedPinId, fn ($query) => $query->orderByRaw('id = ? DESC', [$focusedPinId]))
             ->orderBy('id', 'desc')
             ->limit($initialMessageLimit)
@@ -85,7 +85,7 @@ class ChatController extends Controller
 
         $posts = $group->blogs()
             ->select('id', 'user_id', 'title', 'img','file_type',  'content', 'created_at', 'category_id', 'group_id', 'read_by', DB::raw("'post' as type"))
-            ->with(['user:id,first_name,last_name,avatar', 'reactions'])
+            ->with(['user:id,first_name,last_name,nickname,avatar', 'reactions'])
             ->withCount('comments')
             ->when($focusedPinType === 'post' && $focusedPinId, fn ($query) => $query->orderByRaw('id = ? DESC', [$focusedPinId]))
             ->orderBy('id', 'desc')
@@ -112,7 +112,7 @@ class ChatController extends Controller
         $polls = $group->polls()
             ->select('id', 'group_id', 'question','expires_at',  'created_at', 'type as real_type', 'main_type', 'created_by', 'skill_id', 'read_by', DB::raw("'poll' as type"))
             ->with([
-                'user:id,first_name,last_name,avatar',
+                'user:id,first_name,last_name,nickname,avatar',
                 'skill:id,name',
                 'options:id,poll_id,text',
             ])
