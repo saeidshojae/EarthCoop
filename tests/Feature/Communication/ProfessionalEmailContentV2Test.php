@@ -59,6 +59,10 @@ final class ProfessionalEmailContentV2Test extends TestCase
         $this->assertStringContainsString('images/logo.png', $html);
         $this->assertStringContainsString('<p>متن پیام</p>', $html);
         $this->assertStringContainsString('dir="rtl"', $html);
+
+        $linked = app(CommunicationEmailPresenter::class)
+            ->present('لینک آزمایشی', '<a href="/groups">گروه‌ها</a>');
+        $this->assertStringContainsString('href="'.rtrim((string) config('app.url'), '/').'/groups"', $linked);
     }
 
     public function test_shared_presenter_does_not_double_wrap_complete_html_document(): void
