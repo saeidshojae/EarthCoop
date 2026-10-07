@@ -470,7 +470,9 @@ class StewardAgent extends BaseAgent
 {$context}
 
 **منابع محتوایی مرتبط (مرتب‌شده بر اساس اولویت):**
+" . self::KNOWLEDGE_CONTEXT_START . "
 {$contentContext}
+" . self::KNOWLEDGE_CONTEXT_END . "
 
 لطفاً:
 1. پاسخ کامل و واضح بده (به زبان ساده)
