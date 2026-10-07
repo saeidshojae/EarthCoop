@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seo;
 
 use App\Http\Controllers\Controller;
+use App\Chronicle\ChronicleMilestone;
 use App\Models\Page;
 use App\Modules\Blog\Models\Post;
 use App\Support\Seo\CanonicalUrl;
@@ -20,13 +21,19 @@ final class SitemapController extends Controller
             new SitemapEntry($canonicalUrl->to('/terms')),
             new SitemapEntry($canonicalUrl->to('/privacy')),
             new SitemapEntry($canonicalUrl->to('/blog')),
+            new SitemapEntry(
+                $canonicalUrl->to('/chronicle'),
+                $this->optionalTableExists('chronicle_milestones')
+                    ? ChronicleMilestone::query()->published()->latest('updated_at')->first()?->updated_at
+                    : null,
+            ),
         ];
 
         foreach (PillarRegistry::paths() as $path) {
             $entries[] = new SitemapEntry($canonicalUrl->to($path));
         }
 
-        if (Schema::hasTable('pages')) {
+        if ($this->optionalTableExists('pages')) {
             Page::query()
                 ->where('is_published', true)
                 ->orderBy('slug')
@@ -39,7 +46,7 @@ final class SitemapController extends Controller
                 });
         }
 
-        if (Schema::hasTable('blog_posts')) {
+        if ($this->optionalTableExists('blog_posts')) {
             Post::query()
                 ->published()
                 ->orderBy('slug')
@@ -60,5 +67,14 @@ final class SitemapController extends Controller
         return response()
             ->view('seo.sitemap', ['entries' => $entries])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    private function optionalTableExists(string $table): bool
+    {
+        try {
+            return Schema::hasTable($table);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

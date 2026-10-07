@@ -25,6 +25,7 @@
     $navLinks = $isWelcomeHeader
         ? [
             ['url' => route('blog.index'), 'label' => __('navigation.blog'), 'icon' => 'fa-blog'],
+            ['url' => route('chronicle.index'), 'label' => __('navigation.chronicle'), 'icon' => 'fa-history'],
             ['url' => '#about', 'label' => __('langWelcome.nav_about'), 'icon' => 'fa-info-circle'],
             ['url' => '#how-it-works', 'label' => __('langWelcome.nav_guide'), 'icon' => 'fa-question-circle'],
             ['url' => '#projects', 'label' => __('langWelcome.nav_projects'), 'icon' => 'fa-seedling'],
@@ -33,6 +34,7 @@
         ]
         : [
             ['url' => route('blog.index'), 'label' => __('navigation.blog'), 'icon' => 'fa-blog'],
+            ['url' => route('chronicle.index'), 'label' => __('navigation.chronicle'), 'icon' => 'fa-history'],
             ...($isAuth ? [['url' => route('stock.book'), 'label' => __('navigation.stock_office'), 'icon' => 'fa-chart-line']] : []),
             ...$headerPages->map(fn ($page) => [
                 'url' => url('/pages/' . $page->slug),

@@ -12,6 +12,7 @@ return [
     'profile' => 'پروفایل',
     'charter' => 'اساسنامه',
     'financial_agreement' => 'توافقنامه مالی',
+    'chronicle' => 'گاه‌شمار ارث‌کوپ',
     'blog' => 'وبلاگ',
     'stock_office' => 'دفتر سهام',
     'auctions' => 'حراج‌های سهام',

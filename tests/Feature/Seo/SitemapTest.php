@@ -25,6 +25,7 @@ class SitemapTest extends TestCase
         $this->assertSame(1, count(array_keys($locations, 'https://earthcoop.ir/')));
         $this->assertContains('https://earthcoop.ir/terms', $locations);
         $this->assertContains('https://earthcoop.ir/privacy', $locations);
+        $this->assertContains('https://earthcoop.ir/chronicle', $locations);
         $this->assertContains('https://earthcoop.ir/blog', $locations);
         foreach ($locations as $location) {
             $this->assertStringStartsWith('https://earthcoop.ir', $location);
@@ -91,6 +92,9 @@ class SitemapTest extends TestCase
             ->andReturnFalse();
         Schema::shouldReceive('hasTable')
             ->with('blog_posts')
+            ->andReturnFalse();
+        Schema::shouldReceive('hasTable')
+            ->with('chronicle_milestones')
             ->andReturnFalse();
 
         $this->get('/sitemap.xml')

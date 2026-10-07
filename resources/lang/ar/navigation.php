@@ -12,6 +12,7 @@ return [
     'profile' => 'الملف الشخصي',
     'charter' => 'النظام الأساسي',
     'financial_agreement' => 'الاتفاقية المالية',
+    'chronicle' => 'السجل الزمني',
     'blog' => 'المدونة',
     'stock_office' => 'مكتب الأسهم',
     'auctions' => 'مزادات الأسهم',
