@@ -26,7 +26,7 @@ class PrivateChatController extends Controller
             },
         ])
         ->with([
-            'users:id,first_name,last_name,avatar',
+            'users:id,first_name,last_name,nickname,avatar',
             'messages' => function ($query) {
                 $query->latest('id')->limit(1);
             }
@@ -47,7 +47,7 @@ class PrivateChatController extends Controller
 
         $this->markIncomingMessagesRead($conversation, $currentUserId);
 
-        $conversation->load('users:id,first_name,last_name,avatar');
+        $conversation->load('users:id,first_name,last_name,nickname,avatar');
 
         $recentMessages = $conversation->messages()
             ->with([
@@ -177,7 +177,7 @@ class PrivateChatController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $conversation->load('users:id,first_name,last_name,avatar');
+        $conversation->load('users:id,first_name,last_name,nickname,avatar');
 
         $lastReadOutgoingMessageId = $conversation->messages()
             ->where('sender_id', $currentUserId)
