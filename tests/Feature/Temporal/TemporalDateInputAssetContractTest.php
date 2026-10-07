@@ -134,4 +134,22 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringNotContainsString('unpkg.com/persian-datepicker', $app);
         $this->assertStringNotContainsString('unpkg.com/persian-datepicker', $runtime);
     }
+
+    public function test_profile_edit_uses_vite_jquery_for_temporal_datepicker_runtime(): void
+    {
+        $app = file_get_contents(resource_path('js/app.js'));
+        $profile = file_get_contents(resource_path('views/profile/edit.blade.php'));
+
+        $this->assertStringContainsString(
+            "window.location.pathname.replace(/\\/+$/, '') === '/profile/edit'",
+            $app
+        );
+        $this->assertStringContainsString(
+            'const appJQuery = profileEditUsesLegacyJQuery ? $ : (window.jQuery || $);',
+            $app
+        );
+        $this->assertStringContainsString("profile-assets/js/jquery.min.js", $profile);
+        $this->assertStringContainsString('temporal-input.js', $app);
+    }
+
 }
