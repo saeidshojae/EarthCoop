@@ -67,6 +67,9 @@ class StewardKnowledgeFile extends Model
     public function getFormattedFileSizeAttribute()
     {
         $bytes = $this->file_size;
+        if ($bytes === null) {
+            return '—';
+        }
         if ($bytes >= 1048576) {
             return round($bytes / 1048576, 2) . ' MB';
         } elseif ($bytes >= 1024) {
