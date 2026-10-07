@@ -14,6 +14,7 @@ use App\Modules\NajmBahar\Services\Api\NajmBaharTransferApplicationService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferCapabilityService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferDestinationService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferException;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferReconciliationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class NajmBaharTransactionController extends Controller
         private readonly NajmBaharAccountQueryService $accounts,
         private readonly NajmBaharTransferCapabilityService $transferCapability,
         private readonly NajmBaharTransferDestinationService $transferDestinations,
+        private readonly NajmBaharTransferReconciliationService $transferReconciliation,
     ) {
     }
 
@@ -95,6 +97,30 @@ class NajmBaharTransactionController extends Controller
                 null,
                 false,
             );
+        }
+    }
+
+    public function transferByIdempotency(Request $request, string $key): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        if (! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $key)) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => ['Invalid idempotency key.'],
+            ]);
+        }
+
+        try {
+            $transaction = $this->transferReconciliation->findCompleted($user, $key);
+
+            return ApiResponse::success([
+                'transaction' => (new NajmBaharTransactionResource($transaction))->resolve($request),
+            ]);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
         }
     }
 
