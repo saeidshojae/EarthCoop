@@ -8,7 +8,6 @@ use App\Models\UserPointConversion;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountService;
-use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Services\ParticipationPointSummaryService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -20,7 +19,7 @@ class NajmBaharActivationApplicationService
     public function __construct(
         private readonly AccountService $accounts,
         private readonly MonetaryService $monetary,
-        private readonly MonetaryPolicyService $policy,
+        private readonly NajmBaharActivationPolicyService $policy,
         private readonly ParticipationPointSummaryService $points,
     ) {
     }
@@ -43,6 +42,7 @@ class NajmBaharActivationApplicationService
         $dimAvailable = max(0, (int) ($account->balance_faded ?? 0));
 
         return [
+            'activation_contract_version' => 1,
             'enabled' => true,
             'source' => 'participation',
             'remaining_convertible_points' => $remaining,
@@ -51,6 +51,7 @@ class NajmBaharActivationApplicationService
             'max_activation_gol' => min($pointCapacityGol, $dimAvailable),
             'dim_available_gol' => $dimAvailable,
             'active_gol' => max(0, (int) ($account->balance_active ?? 0)),
+            'policy_version_id' => $policy['version_id'] ?? null,
             'policy_version' => $policy['version'] ?? null,
             'policy_source' => (string) ($policy['source'] ?? 'unknown'),
         ];
