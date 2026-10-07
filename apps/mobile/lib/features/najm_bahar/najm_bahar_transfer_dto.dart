@@ -37,8 +37,7 @@ class NajmBaharTransferSource {
     if (status != 1) {
       throw const FormatException('Transfer source is not active');
     }
-    activeAvailableGol =
-        _transferInt(value, 'active_available_gol');
+    activeAvailableGol = _transferInt(value, 'active_available_gol');
     final canTransfer = value['can_transfer_active'];
     if (canTransfer is! bool) {
       throw const FormatException('Invalid can_transfer_active');
@@ -89,7 +88,8 @@ class NajmBaharTransferCapability {
     );
 
     if (externalTransferEnabled && disabledReason != null) {
-      throw const FormatException('Enabled transfer cannot have disabled reason');
+      throw const FormatException(
+          'Enabled transfer cannot have disabled reason');
     }
     if (!externalTransferEnabled && disabledReason == null) {
       throw const FormatException('Disabled transfer requires a reason');
