@@ -46,6 +46,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
@@ -2235,11 +2236,11 @@ class NajmHodaController extends Controller
             $extension = strtolower($file->getClientOriginalExtension());
             $fileSize = $file->getSize();
             
-            // ایجاد نام فایل منحصر به فرد
-            $fileName = time() . '_' . str_replace(' ', '_', preg_replace('/[^\w.-]/u', '', basename($originalName)));
-            
-            // ذخیره فایل در storage
-            $filePath = $file->storeAs('steward/knowledge', $fileName, 'public');
+            // نام داخلی تصادفی/برخوردناپذیر؛ نام اصلی فقط به‌عنوان metadata نگه داشته می‌شود.
+            $fileName = (string) Str::uuid() . '.' . $extension;
+
+            // منابع دانش داخلی روی دیسک خصوصی ذخیره می‌شوند و زیر public/storage قابل دسترس نیستند.
+            $filePath = $file->storeAs('steward/knowledge', $fileName, 'local');
             
             if (!$filePath) {
                 return response()->json([
@@ -2253,6 +2254,7 @@ class NajmHodaController extends Controller
             if (empty($extractedContent)) {
                 $extractedContent = "فایل: {$originalName}";
             }
+            $extractedContent = $this->limitKnowledgeContent($extractedContent);
             
             // ذخیره در دیتابیس
             $knowledgeFile = StewardKnowledgeFile::create([
@@ -2288,8 +2290,8 @@ class NajmHodaController extends Controller
             ], 422);
             
         } catch (\Throwable $e) {
-            if ($filePath && Storage::disk('public')->exists($filePath)) {
-                Storage::disk('public')->delete($filePath);
+            if ($filePath && Storage::disk('local')->exists($filePath)) {
+                Storage::disk('local')->delete($filePath);
             }
 
             \Log::error('Knowledge file upload error: ' . $e->getMessage(), [
@@ -2451,9 +2453,13 @@ class NajmHodaController extends Controller
         try {
             $file = StewardKnowledgeFile::findOrFail($id);
             
-            // حذف فایل از storage
-            if ($file->file_path && Storage::disk('public')->exists($file->file_path)) {
-                Storage::disk('public')->delete($file->file_path);
+            // حذف منبع خصوصی؛ fallback دیسک public فقط برای فایل‌های legacy قبل از migration.
+            if ($file->file_path) {
+                if (Storage::disk('local')->exists($file->file_path)) {
+                    Storage::disk('local')->delete($file->file_path);
+                } elseif (Storage::disk('public')->exists($file->file_path)) {
+                    Storage::disk('public')->delete($file->file_path);
+                }
             }
             
             // حذف از دیتابیس
@@ -2566,6 +2572,17 @@ class NajmHodaController extends Controller
         }
 
         return $content;
+    }
+
+    private function limitKnowledgeContent(string $content): string
+    {
+        $maxChars = 1_000_000;
+        if (mb_strlen($content) <= $maxChars) {
+            return $content;
+        }
+
+        return mb_substr($content, 0, $maxChars)
+            . "\n\n[محتوای استخراج‌شده به سقف ایمن یک‌میلیون نویسه محدود شد.]";
     }
 
     private function extractPhpWordElementText($element): string
