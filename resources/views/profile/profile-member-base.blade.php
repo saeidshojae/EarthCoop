@@ -4330,7 +4330,12 @@
 
 
 
-                        <td>{{ $user->fullName() }}</td>
+                        <td>
+                            {{ $user->fullName() }}
+                            @if($user->nickname)
+                                <div class="text-xs text-gray-500 mt-1">نام مستعار: {{ $user->nickname }}</div>
+                            @endif
+                        </td>
 
 
 
@@ -4470,7 +4475,7 @@
 
 
 
-                        <td>{{ $user->phone }}</td>
+                        <td>{{ $user->formattedPhone() }}</td>
 
 
 

@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\ChatRequest;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProfileController 
 {
@@ -227,74 +228,8 @@ class ProfileController
         $level1Fields = OccupationalField::whereNull('parent_id')->get();
         $level1ExperienceFields = ExperienceField::whereNull('parent_id')->get();
 
-        $countryCodes = [
-            ['name' => 'ایران', 'code' => '+98', 'example' => '9123456789', 'flag' => '🇮🇷'],
-            ['name' => 'آمریکا', 'code' => '+1', 'example' => '4151234567', 'flag' => '🇺🇸'],
-            ['name' => 'انگلستان', 'code' => '+44', 'example' => '7123456789', 'flag' => '🇬🇧'],
-            ['name' => 'آلمان', 'code' => '+49', 'example' => '1512345678', 'flag' => '🇩🇪'],
-            ['name' => 'فرانسه', 'code' => '+33', 'example' => '612345678', 'flag' => '🇫🇷'],
-            ['name' => 'ژاپن', 'code' => '+81', 'example' => '901234567', 'flag' => '🇯🇵'],
-            ['name' => 'هند', 'code' => '+91', 'example' => '9123456789', 'flag' => '🇮🇳'],
-            ['name' => 'ترکیه', 'code' => '+90', 'example' => '5012345678', 'flag' => '🇹🇷'],
-            ['name' => 'مصر', 'code' => '+20', 'example' => '1012345678', 'flag' => '🇪🇬'],
-            ['name' => 'عربستان', 'code' => '+966', 'example' => '501234567', 'flag' => '🇸🇦'],
-            ['name' => 'امارات', 'code' => '+971', 'example' => '501234567', 'flag' => '🇦🇪'],
-            ['name' => 'افغانستان', 'code' => '+93', 'example' => '701234567', 'flag' => '🇦🇫'],
-            ['name' => 'آلبانی', 'code' => '+355', 'example' => '672345678', 'flag' => '🇦🇱'],
-            ['name' => 'الجزایر', 'code' => '+213', 'example' => '551234567', 'flag' => '🇩🇿'],
-            ['name' => 'آندورا', 'code' => '+376', 'example' => '312345', 'flag' => '🇦🇩'],
-            ['name' => 'آنگولا', 'code' => '+244', 'example' => '923456789', 'flag' => '🇦🇴'],
-            ['name' => 'آرژانتین', 'code' => '+54', 'example' => '91123456789', 'flag' => '🇦🇷'],
-            ['name' => 'ارمنستان', 'code' => '+374', 'example' => '91234567', 'flag' => '🇦🇲'],
-            ['name' => 'استرالیا', 'code' => '+61', 'example' => '412345678', 'flag' => '🇦🇺'],
-            ['name' => 'اتریش', 'code' => '+43', 'example' => '6641234567', 'flag' => '🇦🇹'],
-            ['name' => 'آذربایجان', 'code' => '+994', 'example' => '512345678', 'flag' => '🇦🇿'],
-            ['name' => 'باهاما', 'code' => '+1-242', 'example' => '3591234', 'flag' => '🇧🇸'],
-            ['name' => 'بحرین', 'code' => '+973', 'example' => '36001234', 'flag' => '🇧🇭'],
-            ['name' => 'بنگلادش', 'code' => '+880', 'example' => '1712345678', 'flag' => '🇧🇩'],
-            ['name' => 'باربادوس', 'code' => '+1-246', 'example' => '2501234', 'flag' => '🇧🇧'],
-            ['name' => 'بلاروس', 'code' => '+375', 'example' => '291234567', 'flag' => '🇧🇾'],
-            ['name' => 'بلژیک', 'code' => '+32', 'example' => '471234567', 'flag' => '🇧🇪'],
-            ['name' => 'بلیز', 'code' => '+501', 'example' => '6221234', 'flag' => '🇧🇿'],
-            ['name' => 'بنین', 'code' => '+229', 'example' => '90011234', 'flag' => '🇧🇯'],
-            ['name' => 'بوتان', 'code' => '+975', 'example' => '17123456', 'flag' => '🇧🇹'],
-            ['name' => 'بولیوی', 'code' => '+591', 'example' => '71234567', 'flag' => '🇧🇴'],
-            ['name' => 'بوسنی و هرزگوین', 'code' => '+387', 'example' => '61123456', 'flag' => '🇧🇦'],
-            ['name' => 'بوتسوانا', 'code' => '+267', 'example' => '71234567', 'flag' => '🇧🇼'],
-            ['name' => 'برزیل', 'code' => '+55', 'example' => '11912345678', 'flag' => '🇧🇷'],
-            ['name' => 'برونئی', 'code' => '+673', 'example' => '7123456', 'flag' => '🇧🇳'],
-            ['name' => 'بلغارستان', 'code' => '+359', 'example' => '878123456', 'flag' => '🇧🇬'],
-            ['name' => 'بورکینافاسو', 'code' => '+226', 'example' => '70123456', 'flag' => '🇧🇫'],
-            ['name' => 'بوروندی', 'code' => '+257', 'example' => '79123456', 'flag' => '🇧🇮'],
-            ['name' => 'کاپ‌ورد', 'code' => '+238', 'example' => '9911234', 'flag' => '🇨🇻'],
-            ['name' => 'کامبوج', 'code' => '+855', 'example' => '91234567', 'flag' => '🇰🇭'],
-            ['name' => 'کامرون', 'code' => '+237', 'example' => '671234567', 'flag' => '🇨🇲'],
-            ['name' => 'کانادا', 'code' => '+1', 'example' => '4161234567', 'flag' => '🇨🇦'],
-            ['name' => 'جمهوری آفریقای مرکزی', 'code' => '+236', 'example' => '70012345', 'flag' => '🇨🇫'],
-            ['name' => 'چاد', 'code' => '+235', 'example' => '63012345', 'flag' => '🇹🇩'],
-            ['name' => 'شیلی', 'code' => '+56', 'example' => '912345678', 'flag' => '🇨🇱'],
-            ['name' => 'چین', 'code' => '+86', 'example' => '13123456789', 'flag' => '🇨🇳'],
-            ['name' => 'کلمبیا', 'code' => '+57', 'example' => '3211234567', 'flag' => '🇨🇴'],
-            ['name' => 'کومور', 'code' => '+269', 'example' => '3212345', 'flag' => '🇰🇲'],
-            ['name' => 'کنگو (جمهوری دموکراتیک)', 'code' => '+243', 'example' => '991234567', 'flag' => '🇨🇩'],
-            ['name' => 'کنگو (جمهوری)', 'code' => '+242', 'example' => '061234567', 'flag' => '🇨🇬'],
-            ['name' => 'کاستاریکا', 'code' => '+506', 'example' => '83123456', 'flag' => '🇨🇷'],
-            ['name' => 'کرواسی', 'code' => '+385', 'example' => '912345678', 'flag' => '🇭🇷'],
-            ['name' => 'کوبا', 'code' => '+53', 'example' => '51234567', 'flag' => '🇨🇺'],
-            ['name' => 'قبرس', 'code' => '+357', 'example' => '96123456', 'flag' => '🇨🇾'],
-            ['name' => 'جمهوری چک', 'code' => '+420', 'example' => '601123456', 'flag' => '🇨🇿'],
-            ['name' => 'دانمارک', 'code' => '+45', 'example' => '20123456', 'flag' => '🇩🇰'],
-            ['name' => 'جیبوتی', 'code' => '+253', 'example' => '77831001', 'flag' => '🇩🇯'],
-            ['name' => 'دومینیکا', 'code' => '+1-767', 'example' => '2251234', 'flag' => '🇩🇲'],
-            ['name' => 'جمهوری دومینیکن', 'code' => '+1-809', 'example' => '2345678', 'flag' => '🇩🇴'],
-            ['name' => 'اکوادور', 'code' => '+593', 'example' => '991234567', 'flag' => '🇪🇨'],
-            ['name' => 'مصر', 'code' => '+20', 'example' => '1001234567', 'flag' => '🇪🇬'],
-            ['name' => 'السالوادور', 'code' => '+503', 'example' => '70123456', 'flag' => '🇸🇻'],
-            ['name' => 'گینه استوایی', 'code' => '+240', 'example' => '222123456', 'flag' => '🇬🇶'],
-            ['name' => 'اریتره', 'code' => '+291', 'example' => '7123456', 'flag' => '🇪🇷'],
-            ['name' => 'استونی', 'code' => '+372', 'example' => '51234567', 'flag' => '🇪🇪'],
-            ['name' => 'اسواتینی', 'code' => '+268', 'example' => '76123456', 'flag' => '🇸🇿'],
-        ];
+        $countryCodes = config('phone-countries', []);
+
 
         return view('profile.edit', compact('user', 'occupationalFields', 'level1ExperienceFields', 'level1Fields', 'counties', 'sections', 'cities', 'regions', 'neighborhoods', 'streets', 'alleys', 'experienceFields', 'continents', 'countries', 'provinces', 'allOccupationalFields', 'allExperienceFields', 'countryCodes'));
     }
@@ -314,13 +249,97 @@ class ProfileController
 
     public function updateGeneral(Request $request)
     {
+        /** @var User $user */
+        $user = User::findOrFail(auth()->id());
+
+        if ($request->exists('phone') && $request->input('phone') !== null) {
+            $normalizedPhone = preg_replace('/\s+/', '', (string) $request->input('phone')) ?? '';
+            if (str_starts_with($normalizedPhone, '0')) {
+                $normalizedPhone = substr($normalizedPhone, 1);
+            }
+            $request->merge(['phone' => $normalizedPhone]);
+        }
+
+        // Phone number + calling code are one identity value. If a crafted
+        // request submits only one half, validate it against the persisted other half.
+        if ($request->exists('phone') && ! $request->exists('country_code')) {
+            $request->merge(['country_code' => $user->phone_country_code ?: '+98']);
+        } elseif ($request->exists('country_code') && ! $request->exists('phone')) {
+            $request->merge(['phone' => $user->phone]);
+        }
+
+        $immutableErrors = [];
+        if ($request->has('email') && (string) $request->input('email') !== (string) $user->email) {
+            $immutableErrors['email'] = 'ایمیل حساب قابل تغییر نیست.';
+        }
+        if ($request->has('national_id') && (string) $request->input('national_id') !== (string) $user->national_id) {
+            $immutableErrors['national_id'] = 'کد ملی پس از ثبت اولیه قابل تغییر نیست.';
+        }
+        if ($immutableErrors !== []) {
+            throw \Illuminate\Validation\ValidationException::withMessages($immutableErrors);
+        }
+
+        $identityFields = ['first_name', 'last_name', 'birth_date', 'gender', 'phone', 'country_code'];
+        if ($user->hasUsedIdentityEdit()) {
+            $lockedErrors = [];
+            foreach ($identityFields as $field) {
+                if (! $request->exists($field)) {
+                    continue;
+                }
+
+                $incoming = $request->input($field);
+                if ($field === 'country_code') {
+                    $current = $user->phone_country_code ?: '+98';
+                } elseif ($field === 'birth_date') {
+                    $current = $user->getRawOriginal('birth_date');
+                } else {
+                    $current = $user->{$field};
+                }
+
+                if (is_array($incoming) || (string) $incoming !== (string) $current) {
+                    $lockedErrors[$field] = 'این بخش از اطلاعات هویتی قبلاً یک‌بار ویرایش شده و دیگر قابل تغییر نیست.';
+                }
+            }
+
+            if ($lockedErrors !== []) {
+                throw \Illuminate\Validation\ValidationException::withMessages($lockedErrors);
+            }
+        }
+
+        if ($request->exists('phone') || $request->exists('country_code')) {
+            $candidateCode = (string) $request->input('country_code', $user->phone_country_code ?: '+98');
+            $candidatePhone = (string) $request->input('phone', $user->phone);
+
+            $phoneCollision = User::query()
+                ->where('phone_country_code', $candidateCode)
+                ->where('phone', $candidatePhone)
+                ->whereKeyNot($user->id)
+                ->exists();
+
+            if ($phoneCollision) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'phone' => 'این شماره تلفن با همین کد کشور قبلاً ثبت شده است.',
+                ]);
+            }
+        }
+
         $inputs = $request->validate([
             'first_name'   => 'nullable|string|max:50|regex:/^[آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی\s]+$/u',
             'last_name'    => 'nullable|string|max:50|regex:/^[آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی\s]+$/u',
             'birth_date'   => 'nullable|array|min:3',
             'gender'       => 'nullable|in:male,female',
-            'national_id'  => 'nullable|string|regex:/^\d{10}$/|unique:users,national_id,' . auth()->user()->id,
-            'phone' => 'nullable|regex:/^(0)?9\d{9}$/|unique:users,phone,' . auth()->user()->id,
+            'nickname' => 'nullable|string|max:80',
+            'country_code' => ['nullable', Rule::in(array_column(config('phone-countries', []), 'code'))],
+            'phone' => [
+                'nullable',
+                'regex:/^\d{6,15}$/',
+                Rule::unique('users', 'phone')
+                    ->where(fn ($query) => $query->where(
+                        'phone_country_code',
+                        $request->input('country_code', $user->phone_country_code ?: '+98')
+                    ))
+                    ->ignore($user->id),
+            ],
             'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4084',
             'document_names.*' => 'nullable|string|max:100',
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:4084',
@@ -379,12 +398,29 @@ class ProfileController
             $inputs['documents'] = json_encode($allDocuments, JSON_UNESCAPED_UNICODE);
         }
 
-        $user = User::find(auth()->user()->id);
+        $identityBefore = [
+            'first_name' => (string) $user->first_name,
+            'last_name' => (string) $user->last_name,
+            'birth_date' => (string) $user->getRawOriginal('birth_date'),
+            'gender' => (string) $user->gender,
+            'phone' => (string) $user->phone,
+            'country_code' => (string) ($user->phone_country_code ?: '+98'),
+        ];
+
+        if (array_key_exists('phone', $inputs) && $inputs['phone'] !== null) {
+            $phone = preg_replace('/\s+/', '', (string) $inputs['phone']) ?? '';
+            if (str_starts_with($phone, '0')) {
+                $phone = substr($phone, 1);
+            }
+            $inputs['phone'] = $phone;
+        }
+        if (array_key_exists('country_code', $inputs)) {
+            $inputs['phone_country_code'] = $inputs['country_code'];
+            unset($inputs['country_code']);
+        }
+
         $oldBirthDate = $user->birth_date;
         $newBirthDate = $inputs['birth_date'] ?? null;
-        if(isset($inputs['national_id']) AND $inputs['national_id'] != null){
-            if (!$this->isValidIranianNationalCode($inputs['national_id'])) return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
-        }
         if ($newBirthDate && $oldBirthDate !== $newBirthDate) {
             $groupService = new \App\Services\GroupService();
             $oldAgeGroup = $groupService->getAgeGroup($user);
@@ -413,9 +449,23 @@ class ProfileController
         } else {
             $user->update($inputs);
         }
-        if($user->first_name != null AND $user->last_name != null AND $user->gender != null AND $user->national_id != null AND $user->phone != null){
+        $user->refresh();
+        $identityAfter = [
+            'first_name' => (string) $user->first_name,
+            'last_name' => (string) $user->last_name,
+            'birth_date' => (string) $user->getRawOriginal('birth_date'),
+            'gender' => (string) $user->gender,
+            'phone' => (string) $user->phone,
+            'country_code' => (string) ($user->phone_country_code ?: '+98'),
+        ];
+        $identityChanged = $identityBefore !== $identityAfter;
+
+        if ($user->first_name != null AND $user->last_name != null AND $user->gender != null AND $user->national_id != null AND $user->phone != null){
             $user->status = 1;
-            $user->edited = 1;
+            if ($identityChanged && ! $user->hasUsedIdentityEdit()) {
+                $user->identity_edit_used_at = now();
+                $user->edited = 1;
+            }
             $user->save();
         }
         app(ProfileCompletionService::class)->maybeAward($user);

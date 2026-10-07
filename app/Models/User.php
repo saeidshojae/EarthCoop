@@ -15,8 +15,8 @@ class User extends Authenticatable
     use Notifiable;
     
     protected $fillable = [
-        'email', 'locale', 'timezone', 'phone', 'password', 'fingerprint_id', 'terms_accepted_at', 'status', 'is_system',
-        'first_name', 'last_name', 'birth_date', 'gender', 'nationality', 'national_id', 'show_national_id', 'show_gender', 'avatar', 'show_birthdate', 'show_phone', 'show_email', 'show_name', 'biografie', 'social_networks', 'show_biografie', 'show_social_networks', 'show_documents', 'documents', 'experience_status', 'occupational_status', 'last_seen', 'show_groups', 'show_created_at', 'email_verified_at', 'edited', 'last_login_ip', 'last_login_at'
+        'email', 'locale', 'timezone', 'phone', 'phone_country_code', 'password', 'fingerprint_id', 'terms_accepted_at', 'status', 'is_system',
+        'first_name', 'last_name', 'nickname', 'birth_date', 'gender', 'nationality', 'national_id', 'show_national_id', 'show_gender', 'avatar', 'show_birthdate', 'show_phone', 'show_email', 'show_name', 'biografie', 'social_networks', 'show_biografie', 'show_social_networks', 'show_documents', 'documents', 'experience_status', 'occupational_status', 'last_seen', 'show_groups', 'show_created_at', 'email_verified_at', 'edited', 'identity_edit_used_at', 'last_login_ip', 'last_login_at'
     ];
 
     protected $hidden = ['password'];
@@ -38,6 +38,7 @@ class User extends Authenticatable
         'birth_date' => 'date',
         'terms_accepted_at' => 'datetime',
         'email_verified_at' => 'datetime',
+        'identity_edit_used_at' => 'datetime',
         'last_login_at' => 'datetime',
     ];
 
@@ -122,6 +123,30 @@ class User extends Authenticatable
     public function fullName()
     {
         return $this->first_name . ' ' . $this->last_name;
+    }
+
+    public function hasUsedIdentityEdit(): bool
+    {
+        return $this->identity_edit_used_at !== null || (bool) $this->edited;
+    }
+
+    public function displayName(): string
+    {
+        $nickname = trim((string) $this->nickname);
+
+        return $nickname !== '' ? $nickname : trim($this->fullName());
+    }
+
+    public function formattedPhone(): string
+    {
+        $phone = trim((string) $this->phone);
+        if ($phone === '') {
+            return '';
+        }
+
+        $code = trim((string) ($this->phone_country_code ?: '+98'));
+
+        return trim($code . ' ' . $phone);
     }
 
     public function specialties()

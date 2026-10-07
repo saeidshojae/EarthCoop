@@ -238,7 +238,7 @@ Route::middleware(Authenticate::class)->group(function () {
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'showProfile'])->name('profile.show');
-    Route::get('/profile/edit', [ProfileController::class, 'editModifiable'])->name('profile.edit');
+    Route::get('/profile/edit', \App\Http\Controllers\LocationGovernance\ProfileEditController::class)->name('profile.edit');
     Route::delete('/profile/document/{index}', [ProfileController::class, 'deleteDocument'])->name('profile.document.delete');
 
     Route::get('/profile/edit-oc', function(){
@@ -253,11 +253,11 @@ Route::middleware(Authenticate::class)->group(function () {
     })->name('profile.edit-oc');
     Route::get('/profile/invation-code-generate', [ProfileController::class, 'generateInvationCode'])->name('profile.generate-code');
 
-    Route::put('/profile/update/general', [ProfileController::class, 'updateGeneral'])->name('profile.update.general');
+    Route::put('/profile/update/general', [\App\Http\Controllers\LocationGovernance\CanonicalProfileMembershipController::class, 'updateGeneral'])->name('profile.update.general');
     Route::put('/profile/update/password', [ProfileController::class, 'updatePassword'])->name('profile.update.password');
     Route::put('/profile/update/social-network', [ProfileController::class, 'updateSocialNetworks'])->name('profile.update.social-network');
     Route::put('/profile/update/experience', [ProfileController::class, 'updateExperience'])->name('profile.update.experience');
-    Route::put('/profile/update/address', [ProfileController::class, 'updateAddress'])->name('profile.update.address');
+    Route::put('/profile/update/address', [\App\Http\Controllers\LocationGovernance\ProfileResidenceController::class, 'update'])->name('profile.update.address');
 
     // Debug route to check profile completion status
     Route::get('/debug/profile-status', function() {

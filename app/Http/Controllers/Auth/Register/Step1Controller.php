@@ -13,6 +13,7 @@ use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class Step1Controller extends Controller
 {
@@ -68,6 +69,15 @@ class Step1Controller extends Controller
 
     public function validateData(Request $request)
     {
+        if (auth()->user()?->national_id !== null) {
+            return response()->json([
+                'success' => false,
+                'errors' => ['national_id' => ['کد ملی پس از ثبت اولیه قابل تغییر نیست.']],
+            ], 422);
+        }
+
+        $this->normalizePhoneRequest($request);
+
         $rules = [
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
@@ -75,8 +85,14 @@ class Step1Controller extends Controller
             'gender' => 'required|in:male,female',
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
-            'country_code' => ['nullable', 'in:+98,+1,+44,+49'],
-            'phone' => 'required|regex:/^(0)?9\d{9}$/',
+            'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))],
+            'phone' => [
+                'required',
+                'regex:/^\d{6,15}$/',
+                Rule::unique('users', 'phone')->where(
+                    fn ($query) => $query->where('phone_country_code', $request->input('country_code'))
+                ),
+            ],
         ];
 
         $rules['password'] = auth()->user()->password
@@ -89,7 +105,7 @@ class Step1Controller extends Controller
             'last_name.required' => 'وارد کردن نام خانوادگی الزامی است.',
             'last_name.regex' => 'نام خانوادگی باید به زبان فارسی وارد شود.',
             'phone.required' => 'وارد کردن شماره تلفن الزامی است.',
-            'phone.regex' => 'شماره تلفن باید دقیقاً ۱۰ رقم باشد و با ۹ شروع شود.',
+            'phone.regex' => 'شماره تلفن را بدون کد کشور و فقط با رقم وارد کنید.',
             'national_id.required' => 'وارد کردن کد ملی الزامی است.',
             'national_id.regex' => 'کد ملی باید دقیقاً ۱۰ رقم باشد.',
             'national_id.unique' => 'این کد ملی قبلاً در سیستم ثبت شده است.',
@@ -105,7 +121,10 @@ class Step1Controller extends Controller
         $nationalId = $this->convertNumbersToEnglish($validated['national_id']);
         $phone = $this->normalizePhoneNumber($this->convertNumbersToEnglish($validated['phone']));
 
-        $checkPhoneUser = User::where('phone', $phone)->where('id', '!=', auth()->id())->first();
+        $checkPhoneUser = User::where('phone_country_code', $validated['country_code'])
+            ->where('phone', $phone)
+            ->where('id', '!=', auth()->id())
+            ->first();
         if ($checkPhoneUser != null) {
             return response()->json([
                 'success' => false,
@@ -158,6 +177,13 @@ class Step1Controller extends Controller
 
     public function process(Request $request)
     {
+        if (auth()->user()?->national_id !== null) {
+            return redirect()->route('profile.edit')
+                ->withErrors(['national_id' => 'کد ملی پس از ثبت اولیه قابل تغییر نیست.']);
+        }
+
+        $this->normalizePhoneRequest($request);
+
         $rules = [
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
@@ -165,8 +191,14 @@ class Step1Controller extends Controller
             'gender' => 'required|in:male,female',
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
-            'country_code' => ['nullable', 'in:+98,+1,+44,+49'],
-            'phone' => 'required|regex:/^(0)?9\d{9}$/',
+            'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))],
+            'phone' => [
+                'required',
+                'regex:/^\d{6,15}$/',
+                Rule::unique('users', 'phone')->where(
+                    fn ($query) => $query->where('phone_country_code', $request->input('country_code'))
+                ),
+            ],
         ];
 
         $rules['password'] = auth()->user()->password
@@ -181,7 +213,7 @@ class Step1Controller extends Controller
             'last_name.regex' => 'نام خانوادگی باید به زبان فارسی وارد شود. لطفاً از حروف فارسی استفاده کنید و از تایپ لاتین خودداری کنید.',
             'last_name.max' => 'نام خانوادگی نمی‌تواند بیشتر از ۵۰ کاراکتر باشد.',
             'phone.required' => 'وارد کردن شماره تلفن الزامی است.',
-            'phone.regex' => 'شماره تلفن باید دقیقاً ۱۰ رقم باشد و با ۹ شروع شود. مثال صحیح: 9123456789',
+            'phone.regex' => 'شماره تلفن را بدون کد کشور و فقط با رقم وارد کنید.',
             'national_id.required' => 'وارد کردن کد ملی الزامی است.',
             'national_id.regex' => 'کد ملی باید دقیقاً ۱۰ رقم باشد. لطفاً کد ملی ۱۰ رقمی خود را وارد کنید.',
             'national_id.unique' => 'این کد ملی قبلاً در سیستم ثبت شده است. لطفاً کد ملی صحیح خود را وارد کنید.',
@@ -206,7 +238,9 @@ class Step1Controller extends Controller
         }
 
         if (isset($validated['phone']) && $validated['phone'] != null) {
-            $checkPhoneUser = User::where('phone', $phone)->first();
+            $checkPhoneUser = User::where('phone_country_code', $validated['country_code'])
+                ->where('phone', $phone)
+                ->first();
             if ($checkPhoneUser != null) {
                 return back()
                     ->withInput()
@@ -246,7 +280,7 @@ class Step1Controller extends Controller
                 'gender' => $validated['gender'],
                 'nationality' => $validated['nationality'],
                 'national_id' => $nationalId,
-                'country_code' => $validated['country_code'],
+                'phone_country_code' => $validated['country_code'],
                 'phone' => $phone,
                 'status' => 1,
             ];
@@ -265,6 +299,19 @@ class Step1Controller extends Controller
                 ->with('error', 'خطایی در ثبت اطلاعات رخ داد. لطفاً دوباره تلاش کنید.')
                 ->withInput();
         }
+    }
+
+    private function normalizePhoneRequest(Request $request): void
+    {
+        if (! $request->exists('phone') || $request->input('phone') === null) {
+            return;
+        }
+
+        $normalized = $this->normalizePhoneNumber(
+            $this->convertNumbersToEnglish((string) $request->input('phone'))
+        );
+
+        $request->merge(['phone' => $normalized]);
     }
 
     private function parseBirthDate(array $parts, TemporalContext $context): LocalDate

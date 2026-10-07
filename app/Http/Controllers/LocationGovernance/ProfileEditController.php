@@ -91,7 +91,7 @@ final class ProfileEditController extends Controller
             'neighborhoods' => $empty,
             'streets' => $empty,
             'alleys' => $empty,
-            'countryCodes' => [],
+            'countryCodes' => config('phone-countries', []),
         ]);
     }
 

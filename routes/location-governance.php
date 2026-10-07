@@ -5,8 +5,6 @@ use App\Http\Controllers\LocationGovernance\CommunityAreaController;
 use App\Http\Controllers\LocationGovernance\GeolocationController;
 use App\Http\Controllers\LocationGovernance\LocationOptionsController;
 use App\Http\Controllers\LocationGovernance\MyLocationGovernanceController;
-use App\Http\Controllers\LocationGovernance\ProfileEditController;
-use App\Http\Controllers\LocationGovernance\ProfileResidenceController;
 use App\Http\Controllers\LocationGovernance\ResidenceOptionsController;
 use App\Http\Controllers\LocationGovernance\ProjectScopeOptionsController;
 use Illuminate\Support\Facades\Route;
@@ -42,15 +40,6 @@ Route::middleware('auth')->post('/location-governance/community/{community}/join
 
 Route::middleware('auth')->delete('/location-governance/community/{community}/membership', [CommunityAreaController::class, 'leave'])
     ->name('location-governance.community.leave');
-
-// Loaded after routes/web.php. These deliberately shadow the legacy profile
-// location endpoints. Each canonical adapter delegates straight back to the
-// legacy controller/view while the rollout flag is disabled.
-Route::middleware('auth')->get('/profile/edit', ProfileEditController::class)
-    ->name('profile.edit');
-
-Route::middleware('auth')->put('/profile/update/address', [ProfileResidenceController::class, 'update'])
-    ->name('profile.update.address');
 
 Route::middleware(['auth', 'admin', 'permission:users.edit'])
     ->put('/admin/user/{user}/residence', [UserResidenceController::class, 'update'])

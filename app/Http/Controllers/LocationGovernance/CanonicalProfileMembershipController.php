@@ -55,14 +55,28 @@ final class CanonicalProfileMembershipController extends Controller
         CanonicalGroupMembershipReconciler $reconciler,
     ): RedirectResponse {
         if (! (bool) config('location-governance.registration_enabled', false)) {
-            return app(ProfileController::class)->updateGeneral($request);
+            try {
+                return app(ProfileController::class)->updateGeneral($request);
+            } catch (ValidationException $e) {
+                return redirect()->route('profile.edit')
+                    ->withErrors($e->errors())
+                    ->withInput();
+            }
         }
 
         $user = $request->user();
         abort_unless($user !== null, 401);
 
+        $identityPolicyErrors = $this->identityPolicyErrors($request, $user);
+        if ($identityPolicyErrors !== []) {
+            return redirect()->route('profile.edit')
+                ->withErrors($identityPolicyErrors)
+                ->withInput();
+        }
+
         $birthDate = $request->input('birth_date');
         $canonicalBirthDate = null;
+        $originalBirthDate = (string) $user->getRawOriginal('birth_date');
 
         if ($birthDate !== null) {
             $context = app(TemporalContextResolver::class)->forUser($user);
@@ -96,6 +110,14 @@ final class CanonicalProfileMembershipController extends Controller
                 ]);
             }
 
+            if ($user->hasUsedIdentityEdit()
+                && $canonicalBirthDate !== null
+                && $canonicalBirthDate->toCanonical() !== substr($originalBirthDate, 0, 10)) {
+                throw ValidationException::withMessages([
+                    'birth_date' => 'تاریخ تولد قبلاً یک‌بار ویرایش شده و دیگر قابل تغییر نیست.',
+                ]);
+            }
+
             // Registration cutover owns the canonical birth-date value even while
             // Stage C groups are dark. Remove it from the mature profile request so
             // the legacy age-group detach/materialize block can never run here.
@@ -103,20 +125,46 @@ final class CanonicalProfileMembershipController extends Controller
             $request->request->remove('birth_date');
         }
 
-        $response = app(ProfileController::class)->updateGeneral($request);
+        try {
+            $response = app(ProfileController::class)->updateGeneral($request);
+        } catch (ValidationException $e) {
+            return redirect()->route('profile.edit')
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         // Legacy validation exceptions never reach this point. Explicit mature
         // business-rule errors are flashed and must not be followed by canonical
-        // mutation of the withheld birth date.
+        // mutation of the withheld birth date or nickname.
         if (session()->has('error')) {
             return $response;
         }
 
-        DB::transaction(function () use ($user, $birthDate, $canonicalBirthDate, $reconciler): void {
+        // Nickname is intentionally outside the one-time identity-edit lock.
+        // Persist it explicitly at the canonical boundary so this contract does not
+        // depend on legacy-controller mutation details.
+        if ($request->exists('nickname')) {
+            $validatedNickname = $request->validate([
+                'nickname' => ['nullable', 'string', 'max:80'],
+            ])['nickname'] ?? null;
+
+            $user->forceFill([
+                'nickname' => $validatedNickname !== null ? trim((string) $validatedNickname) : null,
+            ])->save();
+        }
+
+        DB::transaction(function () use ($user, $birthDate, $canonicalBirthDate, $originalBirthDate, $reconciler): void {
             if ($birthDate !== null && $canonicalBirthDate !== null) {
-                $user->forceFill([
-                    'birth_date' => $canonicalBirthDate->toCanonical(),
-                ])->save();
+                $newBirthDate = $canonicalBirthDate->toCanonical();
+                $birthDateChanged = $newBirthDate !== substr($originalBirthDate, 0, 10);
+
+                $changes = ['birth_date' => $newBirthDate];
+                if ($birthDateChanged && ! $user->hasUsedIdentityEdit()) {
+                    $changes['identity_edit_used_at'] = now();
+                    $changes['edited'] = 1;
+                }
+
+                $user->forceFill($changes)->save();
             }
 
             // Gender is saved by the mature controller above; age is saved here.
@@ -131,4 +179,58 @@ final class CanonicalProfileMembershipController extends Controller
 
         return $response;
     }
+
+    /**
+     * Enforce account identity invariants at the canonical boundary so the
+     * behaviour is identical regardless of legacy/canonical runtime fallback.
+     *
+     * @return array<string,string>
+     */
+    private function identityPolicyErrors(Request $request, $user): array
+    {
+        $errors = [];
+
+        if ($request->has('email') && (string) $request->input('email') !== (string) $user->email) {
+            $errors['email'] = 'ایمیل حساب قابل تغییر نیست.';
+        }
+        if ($request->has('national_id') && (string) $request->input('national_id') !== (string) $user->national_id) {
+            $errors['national_id'] = 'کد ملی پس از ثبت اولیه قابل تغییر نیست.';
+        }
+
+        $identityFields = ['first_name', 'last_name', 'gender', 'phone', 'country_code'];
+        if ($user->hasUsedIdentityEdit()) {
+            foreach ($identityFields as $field) {
+                if (! $request->exists($field)) {
+                    continue;
+                }
+
+                $incoming = $request->input($field);
+                $current = $field === 'country_code'
+                    ? ($user->phone_country_code ?: '+98')
+                    : $user->{$field};
+
+                if ((string) $incoming !== (string) $current) {
+                    $errors[$field] = 'این بخش از اطلاعات هویتی قبلاً یک‌بار ویرایش شده و دیگر قابل تغییر نیست.';
+                }
+            }
+        }
+
+        if (($request->exists('phone') || $request->exists('country_code')) && ! isset($errors['phone'])) {
+            $candidateCode = (string) $request->input('country_code', $user->phone_country_code ?: '+98');
+            $candidatePhone = (string) $request->input('phone', $user->phone);
+
+            $collision = \App\Models\User::query()
+                ->where('phone_country_code', $candidateCode)
+                ->where('phone', $candidatePhone)
+                ->whereKeyNot($user->id)
+                ->exists();
+
+            if ($collision) {
+                $errors['phone'] = 'این شماره تلفن با همین کد کشور قبلاً ثبت شده است.';
+            }
+        }
+
+        return $errors;
+    }
+
 }

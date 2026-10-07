@@ -8967,26 +8967,6 @@
 
 
 
-<script src="{{ asset('profile-assets/js/persian-date.min.js') }}"></script>
-
-
-
-
-
-
-
-
-
-<script src="{{ asset('profile-assets/js/persian-datepicker.js') }}"></script>
-
-
-
-
-
-
-
-
-
 <script src="{{ asset('profile-assets/js/cropper.min.js') }}"></script>
 
 
@@ -9597,7 +9577,7 @@
 
 
 
-        $('.location-select, select').select2({
+        $('.location-select, select:not(#country_code)').select2({
 
 
 
@@ -9638,136 +9618,7 @@
 
 
         });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // Initialize Persian Datepicker
-
-
-
-
-
-
-
-
-
-        $('#birth_date').persianDatepicker({
-
-
-
-
-
-
-
-
-
-            initialValueType: 'gregorian',
-
-
-
-
-
-
-
-
-
-            format: 'YYYY-MM-DD',
-
-
-
-
-
-
-
-
-
-            autoClose: true,
-
-
-
-
-
-
-
-
-
-            toolbox: {
-
-
-
-
-
-
-
-
-
-                calendarSwitch: {
-
-
-
-
-
-
-
-
-
-                    enabled: false
-
-
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-
-
-        });
-
-
-
-
-
-
-
-
-
-    });
+});
 
 
 

@@ -101,4 +101,53 @@ class ProfileResidenceTransferTest extends TestCase
         $this->assertTrue($claim->fresh()->evidence()->where('user_id', $user->id)->exists());
     }
 
+
+    public function test_profile_transfer_limit_is_reported_as_validation_error_instead_of_server_error(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $homes = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $homes[] = LocationFixture::createPath(
+                $schema,
+                ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'],
+                [
+                    "country {$i}",
+                    "province {$i}",
+                    "county {$i}",
+                    "section {$i}",
+                    "city {$i}",
+                    "region {$i}",
+                    "neighborhood {$i}",
+                ]
+            )->last();
+        }
+
+        $user = User::factory()->create();
+        $service = app(ResidenceService::class);
+        $service->setInitialPrimaryResidence($user, $homes[0], ['source' => 'test']);
+        $service->transferPrimaryResidence($user, $homes[1], $user, 'first test move');
+        $service->transferPrimaryResidence($user, $homes[2], $user, 'second test move');
+
+        $response = $this->actingAs($user)
+            ->from('/profile/edit')
+            ->put(route('profile.update.address'), [
+                'location_id' => $homes[3]->id,
+            ]);
+
+        $response->assertRedirect('/profile/edit');
+        $response->assertSessionHasErrors('location_id');
+
+        $current = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($homes[2]->id, $current->location_id);
+    }
+
 }

@@ -5547,6 +5547,18 @@
 
 
 
+                @if(Auth::user()->nickname)
+                    <small class="text-gray-500">نام مستعار: {{ Auth::user()->nickname }}</small>
+                @endif
+
+
+
+
+
+
+
+
+
             </div>
 
 
@@ -5757,7 +5769,7 @@
 
 
 
-                <span class="info-value">{{ Auth::user()->phone }}</span>
+                <span class="info-value">{{ Auth::user()->formattedPhone() }}</span>
 
 
 
