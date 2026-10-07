@@ -437,7 +437,7 @@
 
 
 
-                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبان: {{ $chat->agent->fullName() }}</p>
+                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبان: {{ $chat->agent->displayName() }}</p>
 
 
 
@@ -1067,7 +1067,7 @@
 
 
 
-                                    {{ $message->user->fullName() }}
+                                    {{ $message->user->displayName() }}
 
 
 
