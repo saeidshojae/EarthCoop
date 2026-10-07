@@ -8,6 +8,7 @@ use App\Http\Support\Api\V1\ApiResponse;
 use App\Models\User;
 use App\Modules\NajmBahar\Services\Api\NajmBaharInternalTransferApplicationService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharInternalTransferException;
+use App\Modules\NajmBahar\Services\Api\NajmBaharInternalTransferReconciliationService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharLedgerQueryService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,36 @@ class NajmBaharInternalTransferController extends Controller
     public function __construct(
         private readonly NajmBaharInternalTransferApplicationService $transfers,
         private readonly NajmBaharLedgerQueryService $ledger,
+        private readonly NajmBaharInternalTransferReconciliationService $reconciliation,
     ) {
+    }
+
+    public function byIdempotency(Request $request, string $key): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        if (! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $key)) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => ['Invalid idempotency key.'],
+            ]);
+        }
+
+        try {
+            return ApiResponse::success(
+                $this->reconciliation->findCompleted($user, $key),
+            );
+        } catch (ModelNotFoundException) {
+            return ApiResponse::error(
+                'not_found',
+                'Internal transfer receipt not found.',
+                404,
+                null,
+                false,
+            );
+        }
     }
 
     public function store(Request $request): JsonResponse
