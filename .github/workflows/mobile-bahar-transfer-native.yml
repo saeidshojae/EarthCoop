@@ -1,0 +1,35 @@
+name: Native Bahar transfer mobile
+
+on:
+  push:
+    branches: [agent/mobile-bahar-transfer-20261007]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-bahar-transfer-native.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-bahar-transfer-mobile
+  cancel-in-progress: true
+
+jobs:
+  native-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/mobile
+      - name: Transfer wire contract
+        working-directory: apps/mobile
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_transfer_repository_test.dart test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart test/core/api/api_client_test.dart
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
