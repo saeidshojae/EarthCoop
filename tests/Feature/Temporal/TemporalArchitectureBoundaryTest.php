@@ -197,6 +197,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
         $roots = [resource_path('views'), app_path('Modules')];
         $needles = [
             'type="datetime-local"',
+            'type="date"',
             "type='datetime-local'",
             'diffForHumans(',
             "->format('Y/m/d')",

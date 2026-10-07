@@ -5,12 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminActionLog;
 use App\Models\User;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Http\Request;
 
 class NajmBaharLogsController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, TemporalService $temporal, TemporalContextResolver $contexts)
     {
+        $context = $contexts->forUser($request->user());
+        $dateFrom = null;
+        $dateTo = null;
+        try {
+            $dateFrom = $request->filled('date_from') ? $temporal->parseDate((string) $request->input('date_from'), $context)->toCanonical() : null;
+            $dateTo = $request->filled('date_to') ? $temporal->parseDate((string) $request->input('date_to'), $context)->toCanonical() : null;
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored; the submitted value remains visible in the form.
+        }
+
         $logsQuery = AdminActionLog::with('adminUser');
 
         if ($request->filled('action')) {
@@ -25,12 +37,12 @@ class NajmBaharLogsController extends Controller
             $logsQuery->where('target_type', $request->target_type);
         }
 
-        if ($request->filled('date_from')) {
-            $logsQuery->whereDate('created_at', '>=', $request->date_from);
+        if ($dateFrom) {
+            $logsQuery->whereDate('created_at', '>=', $dateFrom);
         }
 
-        if ($request->filled('date_to')) {
-            $logsQuery->whereDate('created_at', '<=', $request->date_to);
+        if ($dateTo) {
+            $logsQuery->whereDate('created_at', '<=', $dateTo);
         }
 
         $logs = $logsQuery

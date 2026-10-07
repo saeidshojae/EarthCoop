@@ -132,8 +132,8 @@
             <input type="text" name="title" value="{{ request('title') }}" placeholder="عنوان یا موضوع" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700">
             <select name="record_type" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700"><option value="">همه انواع</option>@foreach($recordTypes as $type)<option value="{{ $type }}" @selected(request('record_type') === $type)>{{ $type }}</option>@endforeach</select>
             <select name="status" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700"><option value="">همه وضعیت‌ها</option>@foreach($statusLabels as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach</select>
-            <input type="date" name="date_from" value="{{ request('date_from') }}" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-            <input type="date" name="date_to" value="{{ request('date_to') }}" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700">
+            <x-temporal.date-input name="date_from" :value="request('date_from')" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700" />
+            <x-temporal.date-input name="date_to" :value="request('date_to')" class="rounded-xl border-gray-300 dark:bg-gray-900 dark:border-gray-700" />
         </div>
         <div class="mt-4 flex gap-2"><button class="rounded-xl bg-gray-900 dark:bg-gray-100 dark:text-gray-900 px-5 py-2.5 text-white">جست‌وجو</button><a href="{{ route('secretariat.index', $office) }}" class="rounded-xl border px-5 py-2.5">پاک‌کردن فیلتر</a></div>
     </form>

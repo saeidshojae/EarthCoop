@@ -62,7 +62,7 @@
 
                 <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">تاریخ اجرا</label>
 
-                <input type="date" name="run_date" value="{{ now()->format('Y-m-d') }}"
+                <x-temporal.date-input name="run_date" />format('Y-m-d') }}"
 
                        class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
 

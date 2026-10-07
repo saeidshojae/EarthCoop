@@ -9458,7 +9458,7 @@
 
 
 
-                    <input type="date" name="created_from" class="user-filter-input" value="{{ request('created_from') }}">
+                    <x-temporal.date-input name="created_from" :value="request('created_from')" class="user-filter-input" />
 
 
 
@@ -9498,7 +9498,7 @@
 
 
 
-                    <input type="date" name="created_to" class="user-filter-input" value="{{ request('created_to') }}">
+                    <x-temporal.date-input name="created_to" :value="request('created_to')" class="user-filter-input" />
 
 
 

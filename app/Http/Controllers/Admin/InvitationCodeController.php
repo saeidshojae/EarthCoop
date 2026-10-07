@@ -10,6 +10,8 @@ use App\Services\Invitation\InvitationManagementService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 
 class InvitationCodeController extends Controller
 {
@@ -21,8 +23,8 @@ class InvitationCodeController extends Controller
             if ($request->filled('status') && isset($statusMap[$request->status])) {
                 $reqQuery->where('status', $statusMap[$request->status]);
             }
-            if ($request->filled('from')) { $reqQuery->whereDate('created_at', '>=', $request->from); }
-            if ($request->filled('to')) { $reqQuery->whereDate('created_at', '<=', $request->to); }
+            if ($request->filled('from')) { $reqQuery->whereDate('created_at', '>=', $this->canonicalDateFilter($request, 'from')); }
+            if ($request->filled('to')) { $reqQuery->whereDate('created_at', '<=', $this->canonicalDateFilter($request, 'to')); }
             if ($request->filled('q')) { $reqQuery->where('email', 'like', "%{$request->q}%"); }
             $requests = $reqQuery->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
             $codes = collect();
@@ -60,10 +62,10 @@ class InvitationCodeController extends Controller
             }
 
             if ($request->filled('from')) {
-                $query->whereDate('created_at', '>=', $request->from);
+                $query->whereDate('created_at', '>=', $this->canonicalDateFilter($request, 'from'));
             }
             if ($request->filled('to')) {
-                $query->whereDate('created_at', '<=', $request->to);
+                $query->whereDate('created_at', '<=', $this->canonicalDateFilter($request, 'to'));
             }
 
             if ($request->filled('q')) {
@@ -235,8 +237,8 @@ class InvitationCodeController extends Controller
             if ($request->issuer === 'system') $query->where('user_id', 171);
             if ($request->issuer === 'user') $query->where('user_id', '!=', 171);
         }
-        if ($request->filled('from')) { $query->whereDate('created_at', '>=', $request->from); }
-        if ($request->filled('to')) { $query->whereDate('created_at', '<=', $request->to); }
+        if ($request->filled('from')) { $query->whereDate('created_at', '>=', $this->canonicalDateFilter($request, 'from')); }
+        if ($request->filled('to')) { $query->whereDate('created_at', '<=', $this->canonicalDateFilter($request, 'to')); }
         if ($request->filled('q')) { $query->where('code', 'like', "%{$request->q}%"); }
 
         $filename = 'invitation-codes-' . date('Ymd-His') . '.csv';
@@ -275,10 +277,10 @@ class InvitationCodeController extends Controller
             $query->where('action', $request->action);
         }
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+            $query->whereDate('created_at', '>=', $this->canonicalDateFilter($request, 'from'));
         }
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+            $query->whereDate('created_at', '<=', $this->canonicalDateFilter($request, 'to'));
         }
         if ($request->filled('q')) {
             $q = $request->q;
@@ -300,8 +302,8 @@ class InvitationCodeController extends Controller
     {
         $query = InvitationCodeLog::with(['code.user', 'actor']);
         if ($request->filled('action')) $query->where('action', $request->action);
-        if ($request->filled('from')) $query->whereDate('created_at', '>=', $request->from);
-        if ($request->filled('to')) $query->whereDate('created_at', '<=', $request->to);
+        if ($request->filled('from')) $query->whereDate('created_at', '>=', $this->canonicalDateFilter($request, 'from'));
+        if ($request->filled('to')) $query->whereDate('created_at', '<=', $this->canonicalDateFilter($request, 'to'));
         if ($request->filled('q')) {
             $q = $request->q;
             $query->whereHas('code', function ($sub) use ($q) {
@@ -431,4 +433,22 @@ class InvitationCodeController extends Controller
             ]);
         }
     }
+    private function canonicalDateFilter(Request $request, string $field): ?string
+    {
+        if (! $request->filled($field)) {
+            return null;
+        }
+
+        try {
+            return app(TemporalService::class)
+                ->parseDate(
+                    (string) $request->input($field),
+                    app(TemporalContextResolver::class)->forUser($request->user()),
+                )
+                ->toCanonical();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
 }
