@@ -152,4 +152,17 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringContainsString('temporal-input.js', $app);
     }
 
+
+    public function test_temporal_datepicker_owns_its_jquery_instance_instead_of_legacy_globals(): void
+    {
+        $runtime = file_get_contents(resource_path('js/temporal-input.js'));
+
+        $this->assertStringContainsString("import $ from 'jquery';", $runtime);
+        $this->assertStringContainsString('const temporalJQuery = $;', $runtime);
+        $this->assertStringContainsString('window.jQuery = temporalJQuery;', $runtime);
+        $this->assertStringContainsString('window.$ = temporalJQuery;', $runtime);
+        $this->assertStringContainsString('const $input = temporalJQuery(input);', $runtime);
+        $this->assertStringNotContainsString('const $input = window.jQuery(input);', $runtime);
+    }
+
 }
