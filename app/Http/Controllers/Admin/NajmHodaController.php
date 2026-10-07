@@ -2199,7 +2199,16 @@ class NajmHodaController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('admin.najm-hoda.knowledge-files', compact('files'));
+        $sourceStats = StewardKnowledgeFile::query()
+            ->selectRaw(
+                "COUNT(*) as total,
+                SUM(CASE WHEN source_type = 'url' THEN 1 ELSE 0 END) as urls,
+                SUM(CASE WHEN file_type = 'pdf' THEN 1 ELSE 0 END) as pdfs,
+                SUM(CASE WHEN file_type IN ('doc', 'docx') THEN 1 ELSE 0 END) as word_files"
+            )
+            ->first();
+
+        return view('admin.najm-hoda.knowledge-files', compact('files', 'sourceStats'));
     }
 
     /**
