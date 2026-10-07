@@ -197,4 +197,52 @@ class ProfileIdentityContractTest extends TestCase
         $this->assertStringNotContainsString(':disabled="$user->status == 1 && $user->edited == 1"', $general);
     }
 
+
+    public function test_profile_birth_date_renders_the_stored_value_instead_of_today(): void
+    {
+        config()->set('location-governance.registration_enabled', true);
+
+        $user = User::factory()->create([
+            'locale' => 'fa',
+            'birth_date' => '1989-04-10',
+            'national_id' => '0013546880',
+            'phone_country_code' => '+98',
+            'phone' => '9123456789',
+            'edited' => false,
+        ]);
+
+        $response = $this->actingAs($user)->get('/profile/edit');
+
+        $response->assertOk();
+        $response->assertSee('۱۳۶۸/۰۱/۲۱', false);
+    }
+
+    public function test_country_code_only_profile_change_is_validated_with_existing_phone_number(): void
+    {
+        config()->set('location-governance.registration_enabled', true);
+        config()->set('location-governance.groups_enabled', false);
+
+        $user = User::factory()->create([
+            'national_id' => '0013546880',
+            'phone_country_code' => '+98',
+            'phone' => '9123456789',
+            'edited' => false,
+        ]);
+        User::factory()->create([
+            'national_id' => '0077617747',
+            'phone_country_code' => '+90',
+            'phone' => '9123456789',
+        ]);
+
+        $this->actingAs($user)
+            ->from('/profile/edit')
+            ->put(route('profile.update.general'), [
+                'country_code' => '+90',
+            ])
+            ->assertRedirect('/profile/edit')
+            ->assertSessionHasErrors('phone');
+
+        $this->assertSame('+98', $user->fresh()->phone_country_code);
+    }
+
 }
