@@ -97,4 +97,53 @@ class UserDisplayNameContractTest extends TestCase
 
         $this->assertStringContainsString('fullName()', $adminHeader);
     }
+
+    public function test_group_chat_and_election_surfaces_do_not_rebuild_public_names_from_identity_fields(): void
+    {
+        $paths = [
+            'resources/views/groups/partials/comment.blade.php',
+            'resources/views/groups/partials/message.blade.php',
+            'resources/views/groups/partials/post.blade.php',
+            'resources/views/groups/partials/poll.blade.php',
+            'resources/views/groups/partials/group_info_panel.blade.php',
+            'resources/views/groups/modals/election_modal.blade.php',
+            'resources/views/elections/portal.blade.php',
+            'resources/views/history/election-history.blade.php',
+        ];
+
+        foreach ($paths as $path) {
+            $source = file_get_contents(base_path($path));
+            $this->assertStringContainsString('displayName()', $source, $path);
+        }
+
+        $chatController = file_get_contents(app_path('Http/Controllers/Group/ChatController.php'));
+        $systemicController = file_get_contents(app_path('Http/Controllers/Group/SystemicElectionChatController.php'));
+        $electionPortal = file_get_contents(app_path('Http/Controllers/Elections/ElectionUserPortalController.php'));
+
+        $this->assertStringContainsString('user:id,first_name,last_name,nickname,avatar', $chatController);
+        $this->assertStringContainsString('user:id,first_name,last_name,nickname,avatar', $systemicController);
+        $this->assertStringContainsString("'users.nickname'", $electionPortal);
+    }
+
+    public function test_public_financial_and_secretariat_surfaces_use_display_name_but_admin_keeps_legal_identity(): void
+    {
+        $publicPaths = [
+            'resources/views/najm-bahar/reports/index.blade.php',
+            'resources/views/najm-bahar/reports/pdf.blade.php',
+            'resources/views/secretariat/show.blade.php',
+            'resources/views/secretariat/correspondence/show.blade.php',
+            'resources/views/secretariat/correspondence/create.blade.php',
+            'app/Http/Controllers/NajmBaharReportController.php',
+            'app/Http/Controllers/NajmBaharTransferController.php',
+        ];
+
+        foreach ($publicPaths as $path) {
+            $source = file_get_contents(base_path($path));
+            $this->assertStringContainsString('displayName()', $source, $path);
+        }
+
+        $adminHeader = file_get_contents(resource_path('views/admin/partials/header.blade.php'));
+        $this->assertStringContainsString('fullName()', $adminHeader);
+    }
+
 }
