@@ -66,7 +66,7 @@ class MessageReactionController extends Controller
             ->groupBy('reaction_type')
             ->map(fn($group) => [
                 'count' => $group->count(),
-                'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->fullName() : '')
+                'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->displayName() : '')
                     ->filter()
                     ->unique()
                     ->values()
