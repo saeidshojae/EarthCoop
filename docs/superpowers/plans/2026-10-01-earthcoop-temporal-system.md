@@ -111,14 +111,22 @@ Run Temporal unit/feature suites, auth/registration, elections, communication, N
 - Communication scheduling semantics hardened to canonical UTC clocks, explicit schedule timezone, planned occurrence persistence, drift-resistant recurrence and timezone-aware weekly-report periods.
 - Final merged validation gates: Temporal #569, Responsive #1024, Full Validation #3948.
 
-### Not yet closed globally
+### Repository-wide UI closure
 
-The original Definition of Done says **all user-facing date presentation/input** must pass through Temporal System. That broader cleanup is not yet proven complete. During this reconciliation, at least these residual surfaces were confirmed on current `main`:
+The residual human-facing Temporal debt identified during the reconciliation has now been closed.
 
-- `resources/views/groups/modals/session_schedule.blade.php`: raw `datetime-local` input.
-- `app/Modules/Blog/Views/frontend/show.blade.php`: direct `format('Y/m/d')` and `diffForHumans()` presentation.
+PR #223 migrated remaining raw `datetime-local` inputs and direct human-facing Blade date rendering through the shared Temporal input/presentation boundary, added canonical/ISO compatibility at the parser boundary, and extended the architecture ratchet.
 
-These do not violate the current legacy-calendar architecture guard, but they are still presentation/input consolidation debt and should be migrated before declaring the repository-wide Temporal UI cleanup absolutely complete.
+PR #225 then closed the date-only layer by migrating raw `type="date"` surfaces and local-date filters/persistence paths through Temporal parsing while preserving canonical `Y-m-d` machine compatibility.
+
+The first-party Blade architecture ratchet now forbids raw `datetime-local`, raw `type="date"`, direct `diffForHumans()` and the known direct human-facing date-format patterns. The direct legacy-calendar debt baseline remains empty outside the canonical Jalali adapter.
+
+Final validation for PR #225:
+- Temporal System Targeted Gate #577 — success
+- Iran 1404 Reference Staging Validation #462 — success
+- Integration Full Validation #3963 — success
+
+Accordingly, the repository-wide Temporal presentation/input migration is considered closed as of 2026-10-07.
 
 ### Chronicle status
 
