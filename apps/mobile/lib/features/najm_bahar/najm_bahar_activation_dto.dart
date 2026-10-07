@@ -63,17 +63,14 @@ class NajmBaharActivationEligibilityV1 {
       throw const FormatException('Unsupported activation source');
     }
 
-    remainingPoints =
-        _activationInt(value, 'remaining_convertible_points');
+    remainingPoints = _activationInt(value, 'remaining_convertible_points');
     pointsPerGol = _activationInt(
       value,
       'conversion_ratio_points_per_gol',
       positive: true,
     );
-    maxConvertiblePoints =
-        _activationInt(value, 'max_convertible_points');
-    maxActivationPoints =
-        _activationInt(value, 'max_activation_points');
+    maxConvertiblePoints = _activationInt(value, 'max_convertible_points');
+    maxActivationPoints = _activationInt(value, 'max_activation_points');
     maxActivationGol = _activationInt(value, 'max_activation_gol');
     dimAvailableGol = _activationInt(value, 'dim_available_gol');
     activeGol = _activationInt(value, 'active_gol');
@@ -108,7 +105,8 @@ class NajmBaharActivationEligibilityV1 {
     }
     if (policySource == 'legacy_settings' &&
         (policyVersionId != null || policyVersion != null)) {
-      throw const FormatException('Legacy activation policy must be unversioned');
+      throw const FormatException(
+          'Legacy activation policy must be unversioned');
     }
   }
 
@@ -181,12 +179,9 @@ class NajmBaharActivationReceipt {
       throw const FormatException('Unsupported activation receipt source');
     }
 
-    requestedPoints =
-        _activationInt(value, 'requested_points', positive: true);
-    consumedPoints =
-        _activationInt(value, 'consumed_points', positive: true);
-    activatedGol =
-        _activationInt(value, 'activated_gol', positive: true);
+    requestedPoints = _activationInt(value, 'requested_points', positive: true);
+    consumedPoints = _activationInt(value, 'consumed_points', positive: true);
+    activatedGol = _activationInt(value, 'activated_gol', positive: true);
     transaction = NajmBaharTransaction.fromJson(value['transaction']);
 
     final rawBalance = value['balance'];
