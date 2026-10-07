@@ -92,3 +92,18 @@ test('Home reserves the tri-color identity stripe for the Hero and demotes secon
     assert.ok(today < groups, 'today should precede groups');
     assert.ok(groups < admin, 'admin/news content should follow personal surfaces');
 });
+
+
+test('Home promotes the docs participation CTA and managed slider before the journey', () => {
+    assert.match(home, /ارث‌کوپ را بفهمید و مشارکت کنید/);
+    assert.match(home, /home-docs-action/);
+    assert.match(home, /data-home-priority-slider/);
+
+    const hero = home.indexOf('data-home-identity-surface');
+    const slider = home.indexOf('data-home-priority-slider');
+    const journey = home.indexOf('data-home-journey');
+
+    assert.ok(hero !== -1 && slider !== -1 && journey !== -1);
+    assert.ok(hero < slider, 'priority slider should follow the hero');
+    assert.ok(slider < journey, 'priority slider should precede the onboarding journey');
+});
