@@ -2,6 +2,11 @@ name: Mobile membership signed UAT +18
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - agent/flutter-native-client-foundation-20260929
+    paths:
+      - '.github/workflows/mobile-membership-signed-uat.yml'
 
 permissions:
   contents: read
