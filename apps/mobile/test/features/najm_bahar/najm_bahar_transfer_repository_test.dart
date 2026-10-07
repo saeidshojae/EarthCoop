@@ -89,8 +89,8 @@ void main() {
       {...transferSource(), 'kind': 'main'},
       {...transferSource(), 'account_number': ''},
     ]) {
-      expect(() => NajmBaharTransferSource.fromJson(bad),
-          throwsFormatException);
+      expect(
+          () => NajmBaharTransferSource.fromJson(bad), throwsFormatException);
     }
 
     expect(
@@ -130,8 +130,7 @@ void main() {
         () => NajmBaharTransferIntent(
               contractVersion: 1,
               source: NajmBaharTransferSource.fromJson(transferSource()),
-              destination:
-                  NajmBaharTransferDestination.fromJson(destination()),
+              destination: NajmBaharTransferDestination.fromJson(destination()),
               amountGol: 1201,
               description: null,
               key: 'too-large-0001',
@@ -181,8 +180,7 @@ void main() {
           type: DioExceptionType.receiveTimeout,
         ));
 
-    await expectLater(
-        f.repository(adapter).sendTransfer(intent()),
+    await expectLater(f.repository(adapter).sendTransfer(intent()),
         throwsA(isA<ApiFailure>()));
     expect(adapter.requests.length, 1);
   });
