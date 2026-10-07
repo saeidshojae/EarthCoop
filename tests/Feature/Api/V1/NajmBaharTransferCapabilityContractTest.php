@@ -103,6 +103,86 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
         ]);
     }
 
+
+    public function test_destination_preview_resolves_exact_active_external_subaccount_with_minimal_identity(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create([
+            'is_system' => false,
+            'first_name' => 'Mina',
+            'last_name' => 'Example',
+        ]);
+
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+        $destination = $this->subAccount($otherMain, '004', 0, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($destination);
+
+        $beforeAccounts = Account::count();
+        $beforeTransactions = Transaction::count();
+        $slash = str_replace('-', '/', $destination->sub_account_code);
+
+        $response = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                'account_number' => '  '.$slash.'  ',
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.account_number', $destination->sub_account_code)
+            ->assertJsonPath('data.name', $destination->name)
+            ->assertJsonPath('data.owner_type', 'user')
+            ->assertJsonPath('data.owner_display_name', 'Mina Example')
+            ->assertJsonPath('data.kind', 'subaccount')
+            ->assertJsonPath('data.status', 1)
+            ->assertJsonMissingPath('data.user_id')
+            ->assertJsonMissingPath('data.email')
+            ->assertJsonMissingPath('data.balance')
+            ->assertJsonMissingPath('data.account_id');
+
+        $tokenValue = $response->json('data.destination_token');
+        $this->assertIsString($tokenValue);
+        $this->assertNotSame('', trim($tokenValue));
+        $this->assertSame($beforeAccounts, Account::count());
+        $this->assertSame($beforeTransactions, Transaction::count());
+    }
+
+    public function test_destination_preview_hides_missing_disabled_and_unmirrored_destinations(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+
+        $disabled = $this->subAccount($otherMain, '005', 100, 0, 0);
+        app(AccountService::class)->ensureSubAccountAccount($disabled);
+        $unmirrored = $this->subAccount($otherMain, '006', 100, 0, 1);
+
+        foreach ([
+            '9999999999-999',
+            $disabled->sub_account_code,
+            $unmirrored->sub_account_code,
+        ] as $number) {
+            $this->bearer($token, $deviceId)
+                ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                    'account_number' => $number,
+                ]))
+                ->assertStatus(404)
+                ->assertJsonPath('error.code', 'not_found');
+        }
+    }
+
+    public function test_destination_preview_rejects_same_owner_destination_for_external_flow(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+        $own = $this->subAccount($main, '007', 100, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($own);
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                'account_number' => $own->sub_account_code,
+            ]))
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'transfer_destination_internal');
+    }
+
     private function subAccount(
         Account $main,
         string $suffix,
