@@ -1148,7 +1148,7 @@
 
 
 
-        $reportOwnerName = $reportOwnerName ?? (isset($user) ? trim($user->first_name . ' ' . $user->last_name) : '');
+        $reportOwnerName = $reportOwnerName ?? (isset($user) ? $user->displayName() : '');
 
 
 
@@ -1848,7 +1848,7 @@
 
 
 
-                            $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                            $userName = $user ? $user->displayName() : 'کاربر';
 
 
 
@@ -1898,7 +1898,7 @@
 
 
 
-                        $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                        $userName = $user ? $user->displayName() : 'کاربر';
 
 
 
