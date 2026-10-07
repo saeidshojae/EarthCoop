@@ -4057,7 +4057,7 @@
 
 
 
-                                    name: userData.name || (userData.first_name && userData.last_name ? userData.first_name + ' ' + userData.last_name : 'کاربر')
+                                    name: userData.name || userData.nickname || (userData.first_name && userData.last_name ? userData.first_name + ' ' + userData.last_name : 'کاربر')
 
 
 
@@ -4467,7 +4467,7 @@
 
 
 
-                                    name: message.user.name || (message.user.first_name + ' ' + message.user.last_name)
+                                    name: message.user.name || message.user.nickname || (message.user.first_name + ' ' + message.user.last_name)
 
 
 
