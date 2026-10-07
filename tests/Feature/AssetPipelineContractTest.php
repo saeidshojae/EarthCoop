@@ -115,4 +115,18 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringContainsString('test -f public/build/manifest.json', $validation);
         $this->assertStringContainsString('test -f public/build/manifest.json', $deploy);
     }
+
+    public function test_shared_layouts_do_not_reference_the_missing_local_sweetalert_asset(): void
+    {
+        $admin = file_get_contents(resource_path('views/layouts/admin.blade.php'));
+        $master = file_get_contents(resource_path('views/layouts/master.blade.php'));
+        $missingLocalAsset = 'vendor/sweetalert2/sweetalert2.all.min.js';
+        $pinnedCdnAsset = 'https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js';
+
+        $this->assertStringNotContainsString($missingLocalAsset, $admin);
+        $this->assertStringNotContainsString($missingLocalAsset, $master);
+        $this->assertStringContainsString($pinnedCdnAsset, $admin);
+        $this->assertStringContainsString($pinnedCdnAsset, $master);
+    }
+
 }

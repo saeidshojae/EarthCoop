@@ -35,7 +35,7 @@
     <!-- Dark Mode Script (Load Early) -->
     <script src="{{ asset('js/dark-mode.js') }}"></script>
     <!-- SweetAlert2 -->
-    <script src="{{ asset("vendor/sweetalert2/sweetalert2.all.min.js") }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
     <!-- Page Specific Styles -->
     @stack('styles')
     @yield('head-tag')
