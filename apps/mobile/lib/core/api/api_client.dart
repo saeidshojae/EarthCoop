@@ -157,6 +157,20 @@ class ApiClient {
         decodeData: decodeData,
       );
 
+  Future<ApiSuccess<T>> patch<T>(
+    String path, {
+    Object? data,
+    RequestContext? context,
+    required T Function(Object? json) decodeData,
+  }) =>
+      _request<T>(
+        'PATCH',
+        path,
+        data: data,
+        context: context,
+        decodeData: decodeData,
+      );
+
   Future<ApiSuccess<T>> postMultipart<T>(
     String path, {
     required FormData data,
