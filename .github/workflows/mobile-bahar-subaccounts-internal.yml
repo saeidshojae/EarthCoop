@@ -1,0 +1,77 @@
+name: Native Bahar subaccounts internal
+
+on:
+  push:
+    branches:
+      - agent/mobile-bahar-subaccounts-internal-20261007
+    paths:
+      - 'app/**'
+      - 'routes/**'
+      - 'tests/Feature/Api/V1/NajmBaharSubAccountContractTest.php'
+      - 'tests/Feature/NajmBahar/InternalAccountTransferServiceTest.php'
+      - 'tests/Feature/NajmBahar/InternalSubAccountTransferServiceTest.php'
+      - '.github/workflows/mobile-bahar-subaccounts-internal.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-bahar-subaccounts-internal
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql
+          coverage: none
+      - name: Prepare isolated Laravel test runtime
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop-test
+          DB_USERNAME=root
+          DB_PASSWORD=
+          EOF
+          php artisan key:generate --force
+          php artisan migrate:fresh --force
+      - name: Native subaccount contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharSubAccountContractTest.php
+      - name: Canonical internal transfer regressions
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/InternalAccountTransferServiceTest.php tests/Feature/NajmBahar/InternalSubAccountTransferServiceTest.php
