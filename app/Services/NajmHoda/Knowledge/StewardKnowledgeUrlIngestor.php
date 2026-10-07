@@ -24,13 +24,21 @@ class StewardKnowledgeUrlIngestor
             throw new RuntimeException('فقط لینک‌های HTTP و HTTPS مجاز هستند.');
         }
 
+        if (isset($parts['user']) || isset($parts['pass'])) {
+            throw new RuntimeException('لینک منبع نباید شامل نام کاربری یا رمز عبور باشد.');
+        }
+
         $host = strtolower(rtrim((string) $parts['host'], '.'));
         if ($host === 'localhost' || str_ends_with($host, '.local')) {
             throw new RuntimeException('آدرس‌های محلی به‌عنوان منبع دانش مجاز نیستند.');
         }
 
-        $resolvedIp = $this->resolvePublicHost($host);
         $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
+        if (!in_array($port, [80, 443], true)) {
+            throw new RuntimeException('فقط پورت‌های استاندارد وب 80 و 443 برای منابع دانش مجاز هستند.');
+        }
+
+        $resolvedIp = $this->resolvePublicHost($host);
         $resolvedTarget = str_contains($resolvedIp, ':') ? "[{$resolvedIp}]" : $resolvedIp;
 
         $response = Http::connectTimeout(5)
@@ -41,6 +49,16 @@ class StewardKnowledgeUrlIngestor
             ])
             ->withOptions([
                 'allow_redirects' => false,
+                'progress' => function (
+                    int $downloadTotal,
+                    int $downloadedBytes,
+                    int $uploadTotal,
+                    int $uploadedBytes
+                ): void {
+                    if ($downloadTotal > self::MAX_BODY_BYTES || $downloadedBytes > self::MAX_BODY_BYTES) {
+                        throw new RuntimeException('حجم محتوای لینک بیشتر از حد مجاز 2MB است.');
+                    }
+                },
                 'curl' => [
                     CURLOPT_RESOLVE => ["{$host}:{$port}:{$resolvedTarget}"],
                 ],
@@ -53,6 +71,11 @@ class StewardKnowledgeUrlIngestor
 
         if (!$response->successful()) {
             throw new RuntimeException('دریافت منبع با HTTP ' . $response->status() . ' ناموفق بود.');
+        }
+
+        $contentLength = (int) ($response->header('Content-Length') ?? 0);
+        if ($contentLength > self::MAX_BODY_BYTES) {
+            throw new RuntimeException('حجم محتوای لینک بیشتر از حد مجاز 2MB است.');
         }
 
         $contentType = strtolower((string) $response->header('Content-Type'));
