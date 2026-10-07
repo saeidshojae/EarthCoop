@@ -31,4 +31,6 @@ jobs:
         run: flutter pub get
       - name: Internal wire contract
         working-directory: apps/mobile
-        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_repository_test.dart
+        run: |
+          flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_repository_test.dart
+          flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_controller_test.dart
