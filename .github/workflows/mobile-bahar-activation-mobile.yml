@@ -32,3 +32,6 @@ jobs:
       - name: Activation wire contract
         working-directory: apps/mobile
         run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_repository_test.dart
+      - name: Activation controller contract
+        working-directory: apps/mobile
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_controller_test.dart
