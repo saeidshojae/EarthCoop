@@ -38,6 +38,7 @@ class NajmBaharTransferCapabilityService
             ->orderBy('id')
             ->get()
             ->map(fn (SubAccount $sub) => $this->projectSource($sub))
+            ->filter()
             ->values()
             ->all();
 
@@ -56,7 +57,7 @@ class NajmBaharTransferCapabilityService
         ];
     }
 
-    private function projectSource(SubAccount $sub): array
+    private function projectSource(SubAccount $sub): ?array
     {
         $active = max(0, (int) ($sub->balance_active ?? 0));
 
@@ -65,17 +66,19 @@ class NajmBaharTransferCapabilityService
             ->where('account_number', (string) $sub->sub_account_code)
             ->first();
 
-        $reserved = $mirror instanceof Account
-            ? (int) ActiveBaharReservation::query()
-                ->where('payer_account_id', (int) $mirror->id)
-                ->where('status', ActiveBaharReservation::RESERVED)
-                ->sum('amount')
-            : 0;
+        if (! $mirror instanceof Account) {
+            return null;
+        }
+
+        $reserved = (int) ActiveBaharReservation::query()
+            ->where('payer_account_id', (int) $mirror->id)
+            ->where('status', ActiveBaharReservation::RESERVED)
+            ->sum('amount');
 
         $available = max(0, $active - $reserved);
 
         return [
-            'account_id' => $mirror instanceof Account ? (int) $mirror->id : null,
+            'account_id' => (int) $mirror->id,
             'sub_account_id' => (int) $sub->id,
             'account_number' => (string) $sub->sub_account_code,
             'name' => (string) $sub->name,
