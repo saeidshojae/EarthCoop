@@ -1,5 +1,8 @@
 # EarthCoop Communication Center — Design Specification
 
+> **Document role after implementation:** This is the approved historical design baseline. Use `docs/operations/COMMUNICATION_CENTER_CLOSURE_STATUS.md` and current `main` for authoritative as-built behavior. Later Time/Temporal integration is already merged and may supersede early scheduling examples. The implemented Najm Bahar assignment purpose is `najm_bahar.project_assigned`, not the earlier illustrative `projects.project_assigned`.
+
+
 **Date:** 2026-09-30
 **Implementation reconciliation:** 2026-10-07
 
