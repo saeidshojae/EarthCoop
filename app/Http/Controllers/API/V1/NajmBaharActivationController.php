@@ -40,6 +40,36 @@ class NajmBaharActivationController extends Controller
         }
     }
 
+    public function byIdempotency(Request $request, string $key): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        if (! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $key)) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => ['Invalid idempotency key.'],
+            ]);
+        }
+
+        try {
+            $result = $this->activation->reconcile($user, $key);
+            $transaction = $this->ledger->transactionFor($user, $result['transaction']);
+
+            return ApiResponse::success([
+                'source' => 'participation',
+                'requested_points' => (int) $result['requested_points'],
+                'consumed_points' => (int) $result['consumed_points'],
+                'activated_gol' => (int) $result['activated_gol'],
+                'transaction' => (new NajmBaharTransactionResource($transaction))->resolve($request),
+                'balance' => $this->accounts->balance($result['account']),
+            ]);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        }
+    }
+
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
