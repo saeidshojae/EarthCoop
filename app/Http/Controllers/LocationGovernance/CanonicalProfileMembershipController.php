@@ -135,9 +135,22 @@ final class CanonicalProfileMembershipController extends Controller
 
         // Legacy validation exceptions never reach this point. Explicit mature
         // business-rule errors are flashed and must not be followed by canonical
-        // mutation of the withheld birth date.
+        // mutation of the withheld birth date or nickname.
         if (session()->has('error')) {
             return $response;
+        }
+
+        // Nickname is intentionally outside the one-time identity-edit lock.
+        // Persist it explicitly at the canonical boundary so this contract does not
+        // depend on legacy-controller mutation details.
+        if ($request->exists('nickname')) {
+            $validatedNickname = $request->validate([
+                'nickname' => ['nullable', 'string', 'max:80'],
+            ])['nickname'] ?? null;
+
+            $user->forceFill([
+                'nickname' => $validatedNickname !== null ? trim((string) $validatedNickname) : null,
+            ])->save();
         }
 
         DB::transaction(function () use ($user, $birthDate, $canonicalBirthDate, $originalBirthDate, $reconciler): void {
