@@ -8,6 +8,7 @@ on:
       - 'app/**'
       - 'routes/**'
       - 'tests/Feature/Api/V1/NajmBaharSubAccountContractTest.php'
+      - 'tests/Feature/Api/V1/NajmBaharInternalTransferContractTest.php'
       - 'tests/Feature/NajmBahar/InternalAccountTransferServiceTest.php'
       - 'tests/Feature/NajmBahar/InternalSubAccountTransferServiceTest.php'
       - '.github/workflows/mobile-bahar-subaccounts-internal.yml'
@@ -73,5 +74,7 @@ jobs:
           php artisan migrate:fresh --force
       - name: Native subaccount contract
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharSubAccountContractTest.php
+      - name: Native internal transfer contract
+        run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/Api/V1/NajmBaharInternalTransferContractTest.php
       - name: Canonical internal transfer regressions
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Feature/NajmBahar/InternalAccountTransferServiceTest.php tests/Feature/NajmBahar/InternalSubAccountTransferServiceTest.php
