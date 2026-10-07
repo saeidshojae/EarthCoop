@@ -471,8 +471,7 @@ class _NajmBaharTransferSectionState extends State<NajmBaharTransferSection> {
     final parts = value.split('.');
     final whole = BigInt.tryParse(parts[0]);
     if (whole == null) return null;
-    final fractionText =
-        parts.length == 1 ? '00' : parts[1].padRight(2, '0');
+    final fractionText = parts.length == 1 ? '00' : parts[1].padRight(2, '0');
     final fraction = BigInt.tryParse(fractionText);
     if (fraction == null) return null;
     final total = whole * BigInt.from(100) + fraction;
@@ -494,7 +493,8 @@ class _NajmBaharTransferSectionState extends State<NajmBaharTransferSection> {
           'بهار فعال قابل انتقال برای این مبلغ کافی نیست.',
         'transfer_not_allowed' =>
           'این انتقال طبق سیاست فعلی نجم بهار مجاز نیست.',
-        'unauthenticated' || 'session_changed' =>
+        'unauthenticated' ||
+        'session_changed' =>
           'برای ادامه دوباره وارد حساب شوید.',
         'bootstrap_unavailable' =>
           'اتصال امن فعلاً آماده نیست. پس از بازیابی دوباره تلاش کنید.',
