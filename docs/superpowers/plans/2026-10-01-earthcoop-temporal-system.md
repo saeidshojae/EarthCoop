@@ -122,6 +122,8 @@ These do not violate the current legacy-calendar architecture guard, but they ar
 
 ### Chronicle status
 
-Chronicle / «گاه‌شمار EarthCoop» has **not** been implemented yet. The approved design exists, including the epoch `1401/01/01 SH = 2022-03-21 = EarthCoop Year 1`, but current `main` has no `/chronicle` route/page, no milestone model/admin UI and no Chronicle runtime bounded context.
+The earlier “not implemented” reconciliation was incorrect. Chronicle / «گاه‌شمار EarthCoop» already had a public `/chronicle` route/page, the constitutional epoch `1401/01/01 SH = 2022-03-21 = EarthCoop Year 1`, an EarthCoop-year calculator, localized copy and Chronicle tests outside Temporal core.
 
-Therefore the next Chronicle milestone must be planned and implemented separately rather than being reported as part of the completed Temporal integration.
+The Chronicle completion work adds the missing product layer: canonical milestone persistence, multilingual milestone content, admin management, public milestone rendering, navigation and sitemap discovery. EarthCoop Year is derived and never stored. Chronicle remains a one-way consumer of Temporal and does not participate in operational business-date logic.
+
+Detailed completion contract: `docs/superpowers/plans/2026-10-07-earthcoop-chronicle-completion.md`.
