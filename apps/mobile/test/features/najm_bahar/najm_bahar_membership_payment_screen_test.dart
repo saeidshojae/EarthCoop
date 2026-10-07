@@ -8,12 +8,19 @@ import 'najm_bahar_repository_test.dart' as f;
 import 'najm_bahar_membership_payment_repository_test.dart' as p;
 import 'najm_bahar_policy_test.dart' as policy;
 
-Future<void> show(WidgetTester tester, MembershipPaymentController c, {double scale=1}) async {
-  await tester.pumpWidget(MaterialApp(home:Directionality(textDirection:TextDirection.rtl,
-    child:MediaQuery(data:MediaQueryData(textScaler:TextScaler.linear(scale)),
-      child:Scaffold(body:SingleChildScrollView(child:NajmBaharMembershipPaymentSection(controller:c)))))));
+Future<void> show(WidgetTester tester, MembershipPaymentController c,
+    {double scale = 1}) async {
+  await tester.pumpWidget(MaterialApp(
+      home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+              child: Scaffold(
+                  body: SingleChildScrollView(
+                      child: NajmBaharMembershipPaymentSection(
+                          controller: c)))))));
   await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+  await tester.pump(const Duration(milliseconds: 50));
 }
 
 Future<void> runControllerAsync(
@@ -25,14 +32,20 @@ Future<void> runControllerAsync(
   await tester.pump(const Duration(milliseconds: 50));
 }
 
-void main(){
-  testWidgets('both buckets appear and opening or cancelling never POSTs',(tester)async{
-    final a=f.BoundaryAdapter((_)=>f.envelope(p.fee()));
-    final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await tester.runAsync(c.prepare);await show(tester,c);
-    expect(find.text('بهار کمرنگ'),findsOneWidget);expect(find.text('بهار فعال'),findsOneWidget);
-    await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
+void main() {
+  testWidgets('both buckets appear and opening or cancelling never POSTs',
+      (tester) async {
+    final a = f.BoundaryAdapter((_) => f.envelope(p.fee()));
+    final c = MembershipPaymentController(f.repository(a));
+    addTearDown(c.dispose);
+    await tester.runAsync(c.prepare);
+    await show(tester, c);
+    expect(find.text('بهار کمرنگ'), findsOneWidget);
+    expect(find.text('بهار فعال'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('membership-review')));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('تأیید و پرداخت'),findsOneWidget);
+    expect(find.text('تأیید و پرداخت'), findsOneWidget);
     final cancelButton = tester.widget<TextButton>(
       find.byKey(const Key('membership-cancel')),
     );
@@ -42,14 +55,20 @@ void main(){
     });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(a.requests.where((r)=>r.method=='POST'),isEmpty);
+    expect(a.requests.where((r) => r.method == 'POST'), isEmpty);
   });
-  testWidgets('explicit confirmation pays once and retains exact source',(tester)async{
-    final a=f.BoundaryAdapter((r)=>f.envelope(r.method=='GET'?p.fee():p.receipt()));
-    final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await tester.runAsync(c.prepare);await show(tester,c);
-    await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
+  testWidgets('explicit confirmation pays once and retains exact source',
+      (tester) async {
+    final a = f.BoundaryAdapter(
+        (r) => f.envelope(r.method == 'GET' ? p.fee() : p.receipt()));
+    final c = MembershipPaymentController(f.repository(a));
+    addTearDown(c.dispose);
+    await tester.runAsync(c.prepare);
+    await show(tester, c);
+    await tester.tap(find.byKey(const Key('membership-review')));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.textContaining('NB-7'),findsWidgets);
+    expect(find.textContaining('NB-7'), findsWidgets);
     final payButton = tester.widget<FilledButton>(
       find.byKey(const Key('membership-pay')),
     );
@@ -59,13 +78,22 @@ void main(){
     });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(a.requests.where((r)=>r.method=='POST').length,1);expect(c.receipt?.hasPaid,true);
+    expect(a.requests.where((r) => r.method == 'POST').length, 1);
+    expect(c.receipt?.hasPaid, true);
   });
-  testWidgets('unknown result freezes selection and reconciliation never POSTs',(tester)async{
-    final a=f.BoundaryAdapter((r){if(r.method=='GET')return f.envelope(p.fee());
-      throw DioException(requestOptions:r,type:DioExceptionType.receiveTimeout);});
-    final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await tester.runAsync(c.prepare);await show(tester,c);
-    await tester.tap(find.byKey(const Key('membership-review')));await tester.pump();
+  testWidgets('unknown result freezes selection and reconciliation never POSTs',
+      (tester) async {
+    final a = f.BoundaryAdapter((r) {
+      if (r.method == 'GET') return f.envelope(p.fee());
+      throw DioException(
+          requestOptions: r, type: DioExceptionType.receiveTimeout);
+    });
+    final c = MembershipPaymentController(f.repository(a));
+    addTearDown(c.dispose);
+    await tester.runAsync(c.prepare);
+    await show(tester, c);
+    await tester.tap(find.byKey(const Key('membership-review')));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     final payButton = tester.widget<FilledButton>(
       find.byKey(const Key('membership-pay')),
@@ -76,8 +104,8 @@ void main(){
     });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('نتیجهٔ پرداخت هنوز مشخص نیست'),findsOneWidget);
-    expect(find.byKey(const Key('membership-review')),findsNothing);
+    expect(find.text('نتیجهٔ پرداخت هنوز مشخص نیست'), findsOneWidget);
+    expect(find.byKey(const Key('membership-review')), findsNothing);
     final reconcileButton = tester.widget<FilledButton>(
       find.byKey(const Key('membership-reconcile')),
     );
@@ -87,10 +115,11 @@ void main(){
     });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(a.requests.where((r)=>r.method=='POST').length,1);
+    expect(a.requests.where((r) => r.method == 'POST').length, 1);
   });
 
-  testWidgets('active subaccount stays synchronized across bucket changes and confirmation',
+  testWidgets(
+      'active subaccount stays synchronized across bucket changes and confirmation',
       (tester) async {
     final a = f.BoundaryAdapter((_) => f.envelope(p.fee()));
     final c = MembershipPaymentController(f.repository(a));
@@ -136,21 +165,43 @@ void main(){
     expect(find.textContaining('بهار فعال'), findsWidgets);
     expect(a.requests.where((r) => r.method == 'POST'), isEmpty);
   });
-  testWidgets('old server contract stays read only',(tester)async{
-    final a=f.BoundaryAdapter((_)=>f.envelope({...policy.fee(),'has_paid':false}));
-    final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await tester.runAsync(c.prepare);await show(tester,c);
-    expect(find.byKey(const Key('membership-review')),findsNothing);
-    expect(a.requests.where((r)=>r.method=='POST'),isEmpty);
+  testWidgets('old server contract stays read only', (tester) async {
+    final a = f.BoundaryAdapter(
+        (_) => f.envelope({...policy.fee(), 'has_paid': false}));
+    final c = MembershipPaymentController(f.repository(a));
+    addTearDown(c.dispose);
+    await tester.runAsync(c.prepare);
+    await show(tester, c);
+    expect(find.byKey(const Key('membership-review')), findsNothing);
+    expect(a.requests.where((r) => r.method == 'POST'), isEmpty);
   });
-  testWidgets('narrow RTL and enlarged exact monetary values do not overflow',(tester)async{
-    tester.view.physicalSize=const Size(320,900);tester.view.devicePixelRatio=1;
-    addTearDown(tester.view.resetPhysicalSize);addTearDown(tester.view.resetDevicePixelRatio);
-    final huge={...p.fee(),'fee_gol':9000000000000001,'breakdown':{
-      'operations_salary_gol':9000000000000001,'central_insurance_gol':0,'money_destruction_gol':0},
-      'payment_sources':[{...p.source(),'active_available_gol':9000000000000001,
-        'dim_available_gol':9000000000000001}]};
-    final a=f.BoundaryAdapter((_)=>f.envelope(huge));
-    final c=MembershipPaymentController(f.repository(a));addTearDown(c.dispose);await tester.runAsync(c.prepare);await show(tester,c,scale:2);
-    expect(tester.takeException(),isNull);
+  testWidgets('narrow RTL and enlarged exact monetary values do not overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final huge = {
+      ...p.fee(),
+      'fee_gol': 9000000000000001,
+      'breakdown': {
+        'operations_salary_gol': 9000000000000001,
+        'central_insurance_gol': 0,
+        'money_destruction_gol': 0
+      },
+      'payment_sources': [
+        {
+          ...p.source(),
+          'active_available_gol': 9000000000000001,
+          'dim_available_gol': 9000000000000001
+        }
+      ]
+    };
+    final a = f.BoundaryAdapter((_) => f.envelope(huge));
+    final c = MembershipPaymentController(f.repository(a));
+    addTearDown(c.dispose);
+    await tester.runAsync(c.prepare);
+    await show(tester, c, scale: 2);
+    expect(tester.takeException(), isNull);
   });
 }
