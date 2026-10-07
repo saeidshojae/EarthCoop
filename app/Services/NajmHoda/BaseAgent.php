@@ -53,7 +53,7 @@ abstract class BaseAgent
 
         try {
             $response = $this->callAI($messages);
-            $this->logInteraction($prompt, $response);
+            $this->logInteraction($this->interactionLogInput($prompt, $context), $response);
 
             return $response;
         } catch (\Throwable $e) {
@@ -331,6 +331,15 @@ abstract class BaseAgent
     protected function unavailableResponse(): string
     {
         return "متأسفم، در حال حاضر قادر به پاسخگویی نیستم. لطفاً بعداً تلاش کنید.";
+    }
+
+    /**
+     * Input persisted for observability. Subclasses may redact transient
+     * retrieval/context payloads while preserving the user's actual request.
+     */
+    protected function interactionLogInput(string $prompt, array $context = []): string
+    {
+        return $prompt;
     }
 
     protected function logInteraction(string $input, string $output): void
