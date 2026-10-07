@@ -67,7 +67,12 @@ class NajmBaharActivationApplicationService
      *   account:Account
      * }
      */
-    public function activate(User $user, int $requestedPoints, string $requestKey): array
+    public function activate(
+        User $user,
+        int $requestedPoints,
+        string $requestKey,
+        ?array $expected = null,
+    ): array
     {
         if ($requestedPoints <= 0) {
             throw new NajmBaharActivationException(
@@ -91,6 +96,19 @@ class NajmBaharActivationApplicationService
         }
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
+
+        if ($expected !== null) {
+            $this->assertPolicySnapshot($policy, $expected);
+
+            if ($requestedPoints % $ratio !== 0) {
+                throw new NajmBaharActivationException(
+                    'activation_not_eligible',
+                    'Native activation points must be an exact multiple of the current conversion ratio.',
+                    409,
+                );
+            }
+        }
+
         $convertiblePoints = intdiv($requestedPoints, $ratio) * $ratio;
         $amountGol = intdiv($convertiblePoints, $ratio);
 
@@ -105,6 +123,7 @@ class NajmBaharActivationApplicationService
         $conversionKey = 'reputation-conversion:'.(int) $user->id.':'.$requestKey;
         $policyVersionId = $policy['version_id'] ?? null;
         $policyVersion = $policy['version'] ?? null;
+        $policySource = (string) ($policy['source'] ?? 'unknown');
 
         return DB::transaction(function () use (
             $user,
@@ -115,8 +134,10 @@ class NajmBaharActivationApplicationService
             $ratio,
             $policyVersionId,
             $policyVersion,
+            $policySource,
             $requestKey,
             $conversionKey,
+            $expected,
         ) {
             $identity = UserPointConversion::firstOrCreate(
                 [
@@ -194,7 +215,43 @@ class NajmBaharActivationApplicationService
                 throw (new ModelNotFoundException())->setModel(Account::class);
             }
 
-            if ((int) ($lockedAccount->balance_faded ?? 0) < $amountGol) {
+            $dimAvailable = max(0, (int) ($lockedAccount->balance_faded ?? 0));
+
+            if ($expected !== null) {
+                $wholePoints = intdiv($availablePoints, $ratio) * $ratio;
+                $pointCapacityGol = intdiv($wholePoints, $ratio);
+                $maxActivationGol = min($pointCapacityGol, $dimAvailable);
+
+                $currentTerms = [
+                    'activation_contract_version' => 1,
+                    'remaining_convertible_points' => $availablePoints,
+                    'conversion_ratio_points_per_gol' => $ratio,
+                    'max_convertible_points' => $wholePoints,
+                    'max_activation_gol' => $maxActivationGol,
+                    'dim_available_gol' => $dimAvailable,
+                    'policy_version_id' => $policyVersionId,
+                    'policy_version' => $policyVersion,
+                    'policy_source' => $policySource,
+                ];
+
+                if (! $this->sameExpectedTerms($expected, $currentTerms)) {
+                    throw new NajmBaharActivationException(
+                        'activation_terms_changed',
+                        'Activation terms changed; review current eligibility before confirming.',
+                        409,
+                    );
+                }
+
+                if ($convertiblePoints > $wholePoints || $amountGol > $maxActivationGol) {
+                    throw new NajmBaharActivationException(
+                        'activation_not_eligible',
+                        'Requested activation exceeds the exact current eligibility.',
+                        409,
+                    );
+                }
+            }
+
+            if ($dimAvailable < $amountGol) {
                 throw new NajmBaharActivationException(
                     'insufficient_dim',
                     'Dim balance is insufficient for this activation.',
@@ -278,6 +335,41 @@ class NajmBaharActivationApplicationService
                 'account' => Account::query()->findOrFail($lockedAccount->id),
             ];
         });
+    }
+
+    private function assertPolicySnapshot(array $policy, array $expected): void
+    {
+        $current = [
+            'activation_contract_version' => 1,
+            'conversion_ratio_points_per_gol' => max(
+                1,
+                (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100),
+            ),
+            'policy_version_id' => $policy['version_id'] ?? null,
+            'policy_version' => $policy['version'] ?? null,
+            'policy_source' => (string) ($policy['source'] ?? 'unknown'),
+        ];
+
+        foreach ($current as $field => $value) {
+            if (($expected[$field] ?? null) !== $value) {
+                throw new NajmBaharActivationException(
+                    'activation_terms_changed',
+                    'Activation policy changed; review current eligibility before confirming.',
+                    409,
+                );
+            }
+        }
+    }
+
+    private function sameExpectedTerms(array $expected, array $current): bool
+    {
+        foreach ($current as $field => $value) {
+            if (($expected[$field] ?? null) !== $value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function assertEnabled(array $policy): void
