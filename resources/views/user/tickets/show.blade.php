@@ -1207,7 +1207,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                                        {{ $comment->user ? substr($comment->user->fullName(), 0, 1) : '?' }}
+                                        {{ $comment->user ? substr($comment->user->displayName(), 0, 1) : '?' }}
 
 
 
@@ -1247,7 +1247,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                                            {{ $comment->user ? $comment->user->fullName() : 'کاربر' }}
+                                            {{ $comment->user ? $comment->user->displayName() : 'کاربر' }}
 
 
 
@@ -2577,7 +2577,7 @@ use Illuminate\Support\Facades\Storage;
 
 
 
-                                {{ $ticket->assignee->fullName() }}
+                                {{ $ticket->assignee->displayName() }}
 
 
 
