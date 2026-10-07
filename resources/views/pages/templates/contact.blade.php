@@ -4,12 +4,175 @@
 
 @push('styles')
 <style>
+    .contact-page-shell {
+        padding-block: 1.25rem 2.5rem;
+        overflow-x: clip;
+    }
+
+    .contact-page-container {
+        width: min(100% - 1.25rem, 72rem);
+        margin-inline: auto;
+        display: grid;
+        gap: 1.25rem;
+    }
+
     .contact-hero {
         position: relative;
         overflow: hidden;
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(59, 130, 246, 0.15) 100%);
-        border-radius: 1.75rem;
-        padding: 3rem 2rem;
+        border-radius: 1.35rem;
+        padding: 1.35rem;
+    }
+
+    .contact-hero-grid {
+        position: relative;
+        z-index: 10;
+        display: grid;
+        gap: 1.25rem;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .contact-hero-copy {
+        min-width: 0;
+        text-align: center;
+    }
+
+    .contact-hero-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        max-width: 100%;
+        padding: .55rem .85rem;
+        border: 1px solid rgba(16, 185, 129, .2);
+        border-radius: 999px;
+        background: rgba(255,255,255,.86);
+        color: var(--color-earth-green);
+        box-shadow: 0 4px 14px rgba(15,23,42,.06);
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .contact-hero-title {
+        margin: 1rem 0 0;
+        color: var(--color-gentle-black);
+        font-size: clamp(1.8rem, 8vw, 3rem);
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .contact-hero-subtitle {
+        max-width: 42rem;
+        margin: .75rem auto 0;
+        color: #64748b;
+        font-size: .95rem;
+        line-height: 1.9;
+    }
+
+    .contact-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: .65rem;
+        width: min(100%, 24rem);
+        margin: 1.1rem auto 0;
+    }
+
+    .contact-hero-action {
+        min-height: 48px;
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        padding: .75rem 1.1rem;
+        border-radius: 999px;
+        font-size: .88rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+    }
+
+    .contact-hero-action:hover,
+    .contact-hero-action:focus-visible {
+        transform: translateY(-2px);
+    }
+
+    .contact-hero-action:focus-visible {
+        outline: 3px solid rgba(59,130,246,.18);
+        outline-offset: 3px;
+    }
+
+    .contact-hero-action--primary {
+        border: 1px solid transparent;
+        color: #fff;
+        background: var(--color-earth-green);
+        box-shadow: 0 8px 20px rgba(16,185,129,.22);
+    }
+
+    .contact-hero-action--secondary {
+        border: 1px solid rgba(148,163,184,.45);
+        color: #334155;
+        background: rgba(255,255,255,.92);
+        box-shadow: 0 6px 16px rgba(15,23,42,.06);
+    }
+
+    .contact-hero-action--primary:hover,
+    .contact-hero-action--primary:focus-visible { color: #fff; background: var(--color-dark-green); }
+
+    .contact-hero-action--secondary:hover,
+    .contact-hero-action--secondary:focus-visible {
+        color: var(--color-earth-green);
+        border-color: rgba(16,185,129,.45);
+        background: #fff;
+    }
+
+    .contact-hero-info {
+        display: grid;
+        gap: .75rem;
+        min-width: 0;
+    }
+
+    .contact-info-card {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: .85rem;
+        padding: .9rem 1rem;
+        border: 1px solid rgba(226,232,240,.95);
+        border-radius: 1rem;
+        background: rgba(255,255,255,.95);
+        box-shadow: 0 5px 16px rgba(15,23,42,.06);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .contact-info-card__icon {
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 44px;
+        border-radius: 999px;
+        font-size: 1rem;
+    }
+
+    .contact-info-card__copy {
+        min-width: 0;
+        text-align: start;
+    }
+
+    .contact-info-card__copy p {
+        margin: 0;
+    }
+
+    .contact-info-card__value {
+        display: inline-block;
+        max-width: 100%;
+        margin-top: .15rem;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .contact-hero::before,
@@ -77,9 +240,97 @@
         transform: translateY(0);
     }
 
-    @media (max-width: 768px) {
-        .contact-hero {
-            padding: 2.5rem 1.5rem;
+    .contact-main-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+    }
+
+    .contact-form-submit {
+        display: flex;
+        justify-content: center;
+    }
+
+    .contact-form-submit button {
+        width: 100%;
+        min-height: 48px;
+    }
+
+    .contact-side-stack {
+        display: grid;
+        gap: 1rem;
+        min-width: 0;
+    }
+
+    .contact-feature-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+        .contact-page-shell { padding-block: 2rem 3rem; }
+        .contact-page-container { width: min(100% - 2rem, 72rem); gap: 1.5rem; }
+        .contact-hero { padding: 2rem; border-radius: 1.6rem; }
+        .contact-hero-actions {
+            display: flex;
+            justify-content: center;
+            width: auto;
+        }
+        .contact-hero-action { width: auto; min-width: 9.5rem; }
+        .contact-hero-info { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .contact-info-card {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: center;
+            padding: 1rem;
+        }
+        .contact-info-card__copy { text-align: center; }
+        .contact-feature-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .contact-form-submit button { width: auto; min-width: 11rem; }
+    }
+
+    @media (min-width: 1024px) {
+        .contact-page-shell { padding-block: 4rem; }
+        .contact-page-container { gap: 2.5rem; }
+        .contact-hero { padding: 3rem 2rem; border-radius: 1.75rem; }
+        .contact-hero-grid { grid-template-columns: minmax(0, 1.2fr) minmax(18rem, .8fr); gap: 2.25rem; }
+        .contact-hero-copy { text-align: center; }
+        .contact-hero-subtitle { font-size: 1.08rem; }
+        .contact-hero-info { grid-template-columns: 1fr; gap: 1rem; }
+        .contact-info-card {
+            grid-template-columns: auto minmax(0, 1fr);
+            justify-items: stretch;
+            text-align: start;
+            padding: 1rem 1.25rem;
+        }
+        .contact-info-card__copy { text-align: start; }
+        .contact-main-grid { grid-template-columns: minmax(0, 1.15fr) minmax(18rem, .85fr); gap: 2rem; }
+        .contact-feature-grid { gap: 1.5rem; }
+    }
+
+    @media (max-width: 639.98px) {
+        .contact-section { border-radius: 1.1rem; box-shadow: 0 10px 28px rgba(15,23,42,.07); }
+        .contact-info-card:hover { transform: none; }
+        .contact-hero::before,
+        .contact-hero::after { opacity: .32; }
+        .contact-form-group input,
+        .contact-form-group textarea { font-size: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .contact-info-card,
+        .contact-hero-action,
+        .contact-form-group input,
+        .contact-form-group textarea,
+        .fade-in-section {
+            transition: none !important;
+        }
+
+        .contact-info-card:hover,
+        .contact-hero-action:hover,
+        .contact-hero-action:focus-visible {
+            transform: none !important;
         }
     }
 </style>
@@ -90,59 +341,59 @@
     $metaDescription = $page->translated_meta_description ?? __('navigation.footer_contact_description', []);
 @endphp
 
-<div class="bg-light-gray/70 py-12 md:py-16" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-10">
+<div class="contact-page-shell bg-light-gray/70" style="background-color: var(--color-light-gray);">
+    <div class="contact-page-container">
         {{-- Hero Section --}}
         <section class="contact-hero fade-in-section">
-            <div class="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] items-center">
-                <div class="space-y-6 text-center md:text-right">
-                    <div class="inline-flex items-center gap-2 rounded-full border border-earth-green/20 bg-white/80 px-4 py-2 text-sm font-semibold text-earth-green shadow-sm">
+            <div class="contact-hero-grid">
+                <div class="contact-hero-copy">
+                    <div class="contact-hero-badge">
                         <i class="fas fa-comments"></i>
                         {{ __('pages.contact.hero_badge') }}
                     </div>
-                    <h1 class="text-3xl md:text-5xl font-extrabold text-gentle-black font-vazirmatn leading-tight">
+                    <h1 class="contact-hero-title font-vazirmatn">
                         {{ $page->translated_title }}
                     </h1>
-                    <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto md:mx-0 leading-8">
+                    <p class="contact-hero-subtitle">
                         {{ $metaDescription ?? __('pages.contact.subtitle') }}
                     </p>
-                    <div class="flex flex-wrap gap-3 justify-center md:justify-start">
-                        <a href="#contact-form" class="inline-flex items-center gap-2 rounded-full bg-earth-green px-6 py-3 text-sm font-semibold text-white transition hover:bg-dark-green">
-                            <i class="fas fa-paper-plane"></i>
+                    <div class="contact-hero-actions">
+                        <a href="#contact-form" class="contact-hero-action contact-hero-action--primary">
+                            <i class="fas fa-paper-plane" aria-hidden="true"></i>
                             {{ __('pages.contact.send_message') }}
                         </a>
-                        <a href="tel:+982112345678" class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-earth-green hover:text-earth-green">
-                            <i class="fas fa-phone-alt"></i>
+                        <a href="tel:+989394765289" class="contact-hero-action contact-hero-action--secondary">
+                            <i class="fas fa-phone-alt" aria-hidden="true"></i>
                             {{ __('pages.contact.direct_call') }}
                         </a>
                     </div>
                 </div>
-                <div class="grid gap-4">
-                    <div class="contact-info-card bg-white/95 rounded-2xl border border-slate-200 px-5 py-4 flex items-center gap-4 shadow-sm">
-                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-earth-green/10 text-earth-green text-xl">
+                <div class="contact-hero-info">
+                    <div class="contact-info-card">
+                        <span class="contact-info-card__icon bg-earth-green/10 text-earth-green text-xl">
                             <i class="fas fa-phone"></i>
                         </span>
-                        <div class="text-right">
+                        <div class="contact-info-card__copy">
                             <p class="text-xs text-slate-500">{{ __('pages.contact.direct_call') }}</p>
-                            <a href="tel:+982112345678" class="font-bold text-slate-700 hover:text-earth-green transition" dir="ltr">+98 9394765289</a>
+                            <a href="tel:+989394765289" class="contact-info-card__value font-bold text-slate-700 hover:text-earth-green transition" dir="ltr">+98 9394765289</a>
                         </div>
                     </div>
-                    <div class="contact-info-card bg-white/95 rounded-2xl border border-slate-200 px-5 py-4 flex items-center gap-4 shadow-sm">
-                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-ocean-blue/10 text-ocean-blue text-xl">
+                    <div class="contact-info-card">
+                        <span class="contact-info-card__icon bg-ocean-blue/10 text-ocean-blue text-xl">
                             <i class="fas fa-envelope"></i>
                         </span>
-                        <div class="text-right">
+                        <div class="contact-info-card__copy">
                             <p class="text-xs text-slate-500">{{ __('pages.contact.email_support') }}</p>
-                            <a href="mailto:contact@earthcoop.ir" class="font-bold text-slate-700 hover:text-earth-green transition">contact@earthcoop.ir</a>
+                            <a href="mailto:contact@earthcoop.ir" class="contact-info-card__value font-bold text-slate-700 hover:text-earth-green transition">contact@earthcoop.ir</a>
                         </div>
                     </div>
-                    <div class="contact-info-card bg-white/95 rounded-2xl border border-slate-200 px-5 py-4 flex items-center gap-4 shadow-sm">
-                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-digital-gold/10 text-digital-gold text-xl">
+                    <div class="contact-info-card">
+                        <span class="contact-info-card__icon bg-digital-gold/10 text-digital-gold text-xl">
                             <i class="fas fa-map-marker-alt"></i>
                         </span>
-                        <div class="text-right">
+                        <div class="contact-info-card__copy">
                             <p class="text-xs text-slate-500">{{ __('pages.contact.office') }}</p>
-                            <p class="font-bold text-slate-700">{{ __('pages.contact.address_line') }}</p>
+                            <p class="contact-info-card__value font-bold text-slate-700">{{ __('pages.contact.address_line') }}</p>
                         </div>
                     </div>
                 </div>
@@ -150,7 +401,7 @@
         </section>
 
         {{-- Contact Form & Info --}}
-        <section class="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 fade-in-section">
+        <section class="contact-main-grid fade-in-section">
             {{-- Form --}}
             <div id="contact-form" class="contact-section p-6 lg:p-8 space-y-6">
                 <div class="space-y-3">
@@ -192,7 +443,7 @@
                         <label for="message" class="block text-sm font-semibold text-slate-600 mb-2">{{ __('pages.contact.form.message_label') }}</label>
                         <textarea id="message" name="message" rows="5" class="w-full border border-slate-200 rounded-xl px-4 py-3 resize-none" placeholder="{{ __('pages.contact.form.message_placeholder') }}" required>{{ old('message') }}</textarea>
                     </div>
-                    <div class="md:col-span-2 flex justify-end">
+                    <div class="contact-form-submit md:col-span-2">
                         <button type="submit" class="px-8 py-3 rounded-full bg-earth-green text-white font-semibold transition hover:bg-dark-green">
                             {{ __('pages.contact.form.submit') }}
                         </button>
@@ -201,7 +452,7 @@
             </div>
 
             {{-- Sidebar Info --}}
-            <div class="space-y-6">
+            <div class="contact-side-stack">
                 <div class="contact-section p-6 space-y-4">
                     <h3 class="text-xl font-extrabold text-gentle-black font-vazirmatn">{{ __('pages.contact.channels_title') }}</h3>
                     <ul class="space-y-3 text-slate-600">
@@ -211,7 +462,7 @@
                             </span>
                             <div>
                                 <p class="font-semibold">{{ __('pages.contact.direct_call') }}</p>
-                                <a href="tel:+989394765289" class="text-sm text-slate-700 hover:text-earth-green transition" dir="ltr">+98 9394865289</a>
+                                <a href="tel:+989394765289" class="text-sm text-slate-700 hover:text-earth-green transition" dir="ltr">+98 9394765289</a>
                             </div>
                         </li>
                         <li class="flex items-start gap-3">
@@ -250,7 +501,7 @@
         </section>
 
         {{-- Features Section --}}
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-section">
+        <section class="contact-feature-grid fade-in-section">
             <div class="contact-section p-6 space-y-3">
                 <div class="w-12 h-12 rounded-2xl bg-earth-green/10 text-earth-green flex items-center justify-center text-xl">
                     <i class="fas fa-hands-helping"></i>
