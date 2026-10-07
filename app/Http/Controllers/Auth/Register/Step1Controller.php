@@ -77,7 +77,13 @@ class Step1Controller extends Controller
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
             'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))],
-            'phone' => 'required|regex:/^\d{6,15}$/',
+            'phone' => [
+                'required',
+                'regex:/^\d{6,15}$/',
+                Rule::unique('users', 'phone')->where(
+                    fn ($query) => $query->where('phone_country_code', $request->input('country_code'))
+                ),
+            ],
         ];
 
         $rules['password'] = auth()->user()->password
@@ -106,7 +112,10 @@ class Step1Controller extends Controller
         $nationalId = $this->convertNumbersToEnglish($validated['national_id']);
         $phone = $this->normalizePhoneNumber($this->convertNumbersToEnglish($validated['phone']));
 
-        $checkPhoneUser = User::where('phone', $phone)->where('id', '!=', auth()->id())->first();
+        $checkPhoneUser = User::where('phone_country_code', $validated['country_code'])
+            ->where('phone', $phone)
+            ->where('id', '!=', auth()->id())
+            ->first();
         if ($checkPhoneUser != null) {
             return response()->json([
                 'success' => false,
@@ -167,7 +176,13 @@ class Step1Controller extends Controller
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
             'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))],
-            'phone' => 'required|regex:/^\d{6,15}$/',
+            'phone' => [
+                'required',
+                'regex:/^\d{6,15}$/',
+                Rule::unique('users', 'phone')->where(
+                    fn ($query) => $query->where('phone_country_code', $request->input('country_code'))
+                ),
+            ],
         ];
 
         $rules['password'] = auth()->user()->password
@@ -207,7 +222,9 @@ class Step1Controller extends Controller
         }
 
         if (isset($validated['phone']) && $validated['phone'] != null) {
-            $checkPhoneUser = User::where('phone', $phone)->first();
+            $checkPhoneUser = User::where('phone_country_code', $validated['country_code'])
+                ->where('phone', $phone)
+                ->first();
             if ($checkPhoneUser != null) {
                 return back()
                     ->withInput()
