@@ -94,7 +94,7 @@
                         <option value="{{ $country['code'] }}"
                             data-placeholder="{{ $country['example'] }}"
                             {{ old('country_code', $user->phone_country_code ?: '+98') == $country['code'] ? 'selected' : '' }}>
-                            {{ $country['flag'] }} {{ $country['code'] }}
+                            {{ $country['flag'] }} {{ $country['name'] }} ({{ $country['code'] }})
                         </option>
                     @endforeach
                 </select>
