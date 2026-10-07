@@ -123,6 +123,7 @@ class NajmBaharActivationController extends Controller
             'remaining_convertible_points',
             'conversion_ratio_points_per_gol',
             'max_convertible_points',
+            'max_activation_points',
             'max_activation_gol',
             'dim_available_gol',
             'policy_version_id',
@@ -133,6 +134,7 @@ class NajmBaharActivationController extends Controller
         $nonNegativeIntegers = [
             'remaining_convertible_points',
             'max_convertible_points',
+            'max_activation_points',
             'max_activation_gol',
             'dim_available_gol',
         ];
