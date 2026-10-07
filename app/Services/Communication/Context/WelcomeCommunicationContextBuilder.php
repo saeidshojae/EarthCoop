@@ -6,7 +6,7 @@ use App\Models\User;
 
 final class WelcomeCommunicationContextBuilder
 {
-    /** @return array<string,string> */
+    /** @return array{display_name:string,email:string,profile_url:string} */
     public function build(User $user): array
     {
         $displayName = trim(implode(' ', array_filter([
@@ -21,12 +21,7 @@ final class WelcomeCommunicationContextBuilder
         return [
             'display_name' => $displayName,
             'email' => (string) $user->email,
-            'home_url' => route('home'),
             'profile_url' => route('profile.show'),
-            'groups_url' => route('groups.index'),
-            'participation_url' => route('history.index'),
-            'governance_url' => route('location-governance.me'),
-            'communication_preferences_url' => route('profile.communication-preferences'),
         ];
     }
 }
