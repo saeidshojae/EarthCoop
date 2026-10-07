@@ -79,13 +79,7 @@ Provide EarthCoop Blade components that emit semantic `<time datetime="...">` ma
 ## Migration
 No Big Bang. Migrate in vertical slices:
 
-Current implementation note (2026-10-07): the central Temporal bounded context, canonical UTC handling, Jalali/Gregorian adapters, localized Blade components, localized date input path, registration, elections, major group/social surfaces, Najm Bahar, Stock/Auction, admin/report surfaces, and Communication Center temporal integration have been implemented and validated. The repository-wide architecture guard has zero known direct legacy calendar-library debt outside the Jalali adapter. This does **not** yet mean every historical UI date expression has been normalized to the shared Temporal presentation/input components; residual ordinary Carbon/date HTML usages must continue to be migrated under the ratchet.
-
-Known concrete residuals discovered during the documentation sync:
-- `resources/views/groups/modals/session_schedule.blade.php` still contains a raw `datetime-local` input.
-- `app/Modules/Blog/Views/frontend/show.blade.php` still formats publication/comment dates directly.
-
-These are Temporal presentation/input follow-up debt, not Chronicle implementation.
+Current implementation note (2026-10-07): the central Temporal bounded context, canonical UTC handling, Jalali/Gregorian adapters, localized Blade components, localized date/date-time input paths, registration, elections, major group/social surfaces, Najm Bahar, Stock/Auction, admin/report surfaces and Communication Center temporal integration are implemented and validated. PR #223 closed the remaining date-time presentation/input debt; PR #225 closed the date-only presentation/filter/persistence layer. The repository-wide architecture guard has zero known direct legacy calendar-library debt outside the Jalali adapter and now also ratchets raw human-facing Blade date/date-time inputs and direct date rendering patterns.
 1. Temporal core
 2. Registration
 3. Elections
@@ -138,7 +132,7 @@ Targeted tests are the normal development gate. Full Validation is reserved for 
 ## Definition of done
 Temporal migration is complete when all user-facing date presentation/input passes through Temporal System, direct calendar-library usage is removed outside approved boundaries, localized filters/query periods are correct, communications/exports are context-aware, the architecture guard is green, and final Full Validation passes.
 
-**Status against this DoD (2026-10-07):** the architectural core, direct legacy-calendar removal, communication integration, and final validation gates are green; repository-wide presentation/input normalization is not yet formally closed because residual direct formatting/raw date-input surfaces still exist. Therefore the Temporal architecture is production-integrated, while the final "every user-facing surface" cleanup remains an explicit follow-up.
+**Status against this DoD (2026-10-07): complete.** The architectural core, direct legacy-calendar removal, Communication Center integration, repository-wide date-time cleanup (PR #223), date-only cleanup (PR #225), architecture ratchets and final validation gates are green. The Temporal presentation/input migration is therefore considered closed.
 
 Chronicle is complete when `/chronicle` correctly shows today and EarthCoop Year, epoch semantics are locked, milestones use canonical dates, admin management exists, localization is ready, and Chronicle has no effect on operational business date logic.
 
