@@ -41,6 +41,10 @@ class ProfileIdentityContractTest extends TestCase
         $view = file_get_contents(resource_path('views/profile/edit.blade.php'));
         $this->assertStringNotContainsString("$('#birth_date').persianDatepicker(", $view);
         $this->assertStringNotContainsString('persian-datepicker.js', $view);
+        $this->assertStringContainsString("select:not(#country_code)", $view);
+
+        $general = file_get_contents(resource_path('views/profile/partials/general.blade.php'));
+        $this->assertStringContainsString("{{ \$country['flag'] }} {{ \$country['name'] }} ({{ \$country['code'] }})", $general);
     }
 
     public function test_email_and_national_id_cannot_be_changed_from_profile(): void
