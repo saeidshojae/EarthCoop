@@ -24,6 +24,7 @@ class StewardAgent extends BaseAgent
 {
     public const KNOWLEDGE_CONTEXT_START = '<<<STEWARD_KNOWLEDGE_CONTEXT>>>';
     public const KNOWLEDGE_CONTEXT_END = '<<<END_STEWARD_KNOWLEDGE_CONTEXT>>>';
+    private const MAX_RETRIEVED_CONTEXT_CHARS = 8000;
 
     protected string $role = 'steward';
     
@@ -136,7 +137,9 @@ class StewardAgent extends BaseAgent
      */
     protected function knowledgeContextFor(string $question): string
     {
-        return trim($this->formatContentForPrompt($this->findRelatedContent($question)));
+        $formatted = trim($this->formatContentForPrompt($this->findRelatedContent($question)));
+
+        return mb_substr($formatted, 0, self::MAX_RETRIEVED_CONTEXT_CHARS);
     }
 
     /**
@@ -267,6 +270,11 @@ class StewardAgent extends BaseAgent
 
     protected function matchedSnippet(string $text, array $terms, int $limit = 1000): string
     {
+        $text = str_replace(
+            [self::KNOWLEDGE_CONTEXT_START, self::KNOWLEDGE_CONTEXT_END],
+            ['[knowledge-marker]', '[knowledge-marker]'],
+            $text
+        );
         $text = trim(preg_replace('/\s+/u', ' ', strip_tags($text)) ?? '');
         if ($text === '') {
             return '';
