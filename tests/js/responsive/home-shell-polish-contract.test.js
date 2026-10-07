@@ -62,7 +62,7 @@ test('Najm Hoda mobile launcher respects safe areas and keeps a compact Home foo
 test('Home desktop sidebar is desktop-only, immediately visible and not collapsible', () => {
     assert.match(sidebar, /hidden\s+lg:block\s+lg:w-80/);
     assert.match(sidebar, /home-sidebar-heading/);
-    assert.doesNotMatch(sidebar, /x-data=["']\{\s*open:\s*false\s*\}["']/);
-    assert.doesNotMatch(sidebar, /@click=["']open\s*=\s*!open["']/);
+    assert.doesNotMatch(sidebar, /<aside[^>]*\bx-data=/s);
+    assert.doesNotMatch(sidebar, /home-sidebar-toggle/);
     assert.doesNotMatch(sidebar, /نسخه\s*۲\.۱\.۰\s*-\s*EarthCoop/);
 });
