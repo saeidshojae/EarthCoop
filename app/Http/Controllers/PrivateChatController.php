@@ -277,7 +277,7 @@ class PrivateChatController extends Controller
                 ->map(function ($group) {
                     return [
                         'count' => $group->count(),
-                        'users' => $group->map(fn($reaction) => $reaction->user?->fullName() ?? '')
+                        'users' => $group->map(fn($reaction) => $reaction->user?->displayName() ?? '')
                             ->filter()
                             ->unique()
                             ->values()
