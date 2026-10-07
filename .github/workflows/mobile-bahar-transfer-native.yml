@@ -29,7 +29,7 @@ jobs:
         working-directory: apps/mobile
       - name: Transfer wire contract
         working-directory: apps/mobile
-        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_transfer_repository_test.dart test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart test/core/api/api_client_test.dart
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_transfer_repository_test.dart test/features/najm_bahar/najm_bahar_transfer_controller_test.dart test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart test/core/api/api_client_test.dart
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
