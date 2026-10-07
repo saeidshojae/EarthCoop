@@ -108,7 +108,8 @@
     }
 
     .home-primary-action,
-    .home-secondary-action {
+    .home-secondary-action,
+    .home-docs-action {
         min-height: 46px;
         display: inline-flex;
         align-items: center;
@@ -137,10 +138,31 @@
         box-shadow: 0 5px 14px rgba(15, 23, 42, .05);
     }
 
+    .home-docs-action {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(245, 158, 11, .28);
+        color: #fff;
+        background: linear-gradient(135deg, var(--color-digital-gold), var(--color-ocean-blue));
+        box-shadow: 0 8px 20px rgba(59, 130, 246, .16);
+    }
+
+    .home-docs-action::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,.22) 45%, transparent 70%);
+        transform: translateX(-140%);
+        transition: transform .55s ease;
+        pointer-events: none;
+    }
+
     .home-primary-action:hover,
     .home-primary-action:focus-visible,
     .home-secondary-action:hover,
-    .home-secondary-action:focus-visible {
+    .home-secondary-action:focus-visible,
+    .home-docs-action:hover,
+    .home-docs-action:focus-visible {
         transform: translateY(-2px);
     }
 
@@ -155,8 +177,21 @@
         box-shadow: 0 8px 18px rgba(59, 130, 246, .1);
     }
 
+    .home-docs-action:hover,
+    .home-docs-action:focus-visible {
+        color: #fff;
+        border-color: rgba(245, 158, 11, .45);
+        box-shadow: 0 12px 26px rgba(59, 130, 246, .22);
+    }
+
+    .home-docs-action:hover::after,
+    .home-docs-action:focus-visible::after {
+        transform: translateX(140%);
+    }
+
     .home-primary-action:focus-visible,
     .home-secondary-action:focus-visible,
+    .home-docs-action:focus-visible,
     .home-interactive-card:focus-visible {
         outline: 3px solid rgba(59, 130, 246, .2);
         outline-offset: 3px;
@@ -620,7 +655,8 @@
         }
 
         .home-primary-action,
-        .home-secondary-action {
+        .home-secondary-action,
+        .home-docs-action {
             width: 100%;
             min-height: 48px;
         }
@@ -694,6 +730,8 @@
     @media (prefers-reduced-motion: reduce) {
         .home-primary-action,
         .home-secondary-action,
+        .home-docs-action,
+        .home-docs-action::after,
         .home-interactive-card,
         swiper-slide img { transition: none !important; }
 
@@ -701,6 +739,10 @@
         .home-primary-action:focus-visible,
         .home-secondary-action:hover,
         .home-secondary-action:focus-visible,
+        .home-docs-action:hover,
+        .home-docs-action:focus-visible,
+        .home-docs-action:hover::after,
+        .home-docs-action:focus-visible::after,
         .home-interactive-card:hover,
         .home-interactive-card:focus-visible,
         .home-slider-shell:hover swiper-slide img { transform: none !important; }
@@ -713,6 +755,7 @@
     $journey = $homeDashboard['journey'];
     $today = $homeDashboard['today'];
     $nextAction = $homeDashboard['next_action'];
+    $homeDocsLinks = config('docs-links');
     $todayTotal = (int) $today['unread_notifications']
         + (int) $today['election_action_required']
         + (int) $today['poll_action_required']
@@ -731,6 +774,9 @@
                         <h1 class="home-hero-title">{{ $homeSetting?->home_titre ?: 'به زمین نو خوش آمدید' }}</h1>
                         <p class="home-hero-subtitle">از همین‌جا مسیر عضویت، حکمرانی، گروه‌ها و مشارکت اقتصادی خود را دنبال کنید. هر بخش یک قدم روشن برای حضور فعال‌تر شما در ارث‌کوپ است.</p>
                         <div class="home-hero-actions">
+                            <a href="{{ $homeDocsLinks['center']['href'] }}" target="_blank" rel="noopener noreferrer" class="home-docs-action">
+                                <i class="fas fa-book-open" aria-hidden="true"></i>ارث‌کوپ را بفهمید و مشارکت کنید
+                            </a>
                             <a href="#home-journey" class="home-primary-action"><i class="fas fa-route" aria-hidden="true"></i>شروع مسیر من</a>
                             <a href="{{ route('groups.index') }}" class="home-secondary-action"><i class="fas fa-users" aria-hidden="true"></i>مشاهده گروه‌های من</a>
                         </div>
@@ -740,6 +786,22 @@
                     </div>
                 </div>
             </section>
+
+            @if($homeSliders->isNotEmpty())
+                <section class="home-section" data-home-priority-slider aria-label="اطلاعیه‌ها و پیام‌های ارث‌کوپ">
+                    <div class="home-slider-shell">
+                        <swiper-container class="mySwiper"
+                            @if($homeSliders->count() > 1) pagination="true" loop="true" autoplay-delay="6000" autoplay-disable-on-interaction="false" @endif
+                            style="--swiper-pagination-color: var(--color-earth-green); --swiper-pagination-bullet-inactive-color: #d1d5db;">
+                            @foreach($homeSliders as $slider)
+                                <swiper-slide>
+                                    <img src="{{ asset('images/sliders/' . $slider->src) }}" alt="{{ $slider->alt ?: 'اسلایدر ' . $loop->iteration }}">
+                                </swiper-slide>
+                            @endforeach
+                        </swiper-container>
+                    </div>
+                </section>
+            @endif
 
             <section class="home-section home-secondary-surface home-journey-surface" id="home-journey" data-home-journey>
                 <div class="home-section-header">
@@ -877,34 +939,19 @@
                 </section>
             @endif
 
-            <section class="home-section home-secondary-surface home-admin-surface" data-home-admin-content>
-                <div class="home-section-header">
-                    <div>
-                        <span class="home-eyebrow"><i class="fas fa-bullhorn" aria-hidden="true"></i>از ارث‌کوپ</span>
-                        <h2 class="home-section-title">تازه‌ها و راهنمای مسیر</h2>
+            @if(filled($homeSetting?->home_content))
+                <section class="home-section home-secondary-surface home-admin-surface" data-home-admin-content>
+                    <div class="home-section-header">
+                        <div>
+                            <span class="home-eyebrow"><i class="fas fa-bullhorn" aria-hidden="true"></i>از ارث‌کوپ</span>
+                            <h2 class="home-section-title">تازه‌ها و راهنمای مسیر</h2>
+                        </div>
                     </div>
-                </div>
-
-                @if($homeSliders->isNotEmpty())
-                    <div class="home-slider-shell">
-                        <swiper-container class="mySwiper"
-                            @if($homeSliders->count() > 1) pagination="true" loop="true" autoplay-delay="6000" autoplay-disable-on-interaction="false" @endif
-                            style="--swiper-pagination-color: var(--color-earth-green); --swiper-pagination-bullet-inactive-color: #d1d5db;">
-                            @foreach($homeSliders as $slider)
-                                <swiper-slide>
-                                    <img src="{{ asset('images/sliders/' . $slider->src) }}" alt="{{ $slider->alt ?: 'اسلایدر ' . $loop->iteration }}">
-                                </swiper-slide>
-                            @endforeach
-                        </swiper-container>
-                    </div>
-                @endif
-
-                @if(filled($homeSetting?->home_content))
                     <div class="home-admin-copy prose max-w-none">
                         {!! $homeSetting?->home_content !!}
                     </div>
-                @endif
-            </section>
+                </section>
+            @endif
 
             @if(isset($activeAuctions) && $activeAuctions->count() > 0)
                 <section class="home-section home-secondary-surface home-auctions-surface" data-home-auctions>
