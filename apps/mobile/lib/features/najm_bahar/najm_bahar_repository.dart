@@ -7,6 +7,7 @@ import 'najm_bahar_policy_dto.dart';
 import 'najm_bahar_membership_payment_dto.dart';
 import 'najm_bahar_transfer_dto.dart';
 import 'najm_bahar_activation_dto.dart';
+import 'najm_bahar_internal_transfer_dto.dart';
 
 class NajmBaharRepository {
   NajmBaharRepository(
@@ -173,6 +174,86 @@ class NajmBaharRepository {
       final response = await _api.get<NajmBaharTransferReceipt>(
         '/najm-bahar/transfers/by-idempotency/$encodedKey',
         decodeData: NajmBaharTransferReceipt.fromReconciliationJson,
+      );
+      _guard();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+
+  Future<NajmBaharSubAccountSnapshot> subAccounts() => _policy(
+      '/najm-bahar/subaccounts', NajmBaharSubAccountSnapshot.fromJson);
+
+  Future<NajmBaharSubAccount> createSubAccount(
+      String? name, String idempotencyKey) async {
+    _guard();
+    try {
+      final response = await _api.post<NajmBaharSubAccount>(
+        '/najm-bahar/subaccounts',
+        data: {'name': name},
+        context: RequestContext(idempotencyKey: idempotencyKey),
+        decodeData: NajmBaharSubAccount.fromJson,
+      );
+      _guard();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharSubAccount> renameSubAccount(
+      int subAccountId, String name, String idempotencyKey) async {
+    _guard();
+    try {
+      final response = await _api.patch<NajmBaharSubAccount>(
+        '/najm-bahar/subaccounts/$subAccountId',
+        data: {'name': name},
+        context: RequestContext(idempotencyKey: idempotencyKey),
+        decodeData: NajmBaharSubAccount.fromJson,
+      );
+      _guard();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharInternalTransferReceipt> sendInternalTransfer(
+      NajmBaharInternalTransferIntent intent) async {
+    _guard();
+    try {
+      final response = await _api.post<NajmBaharInternalTransferReceipt>(
+        '/najm-bahar/internal-transfers',
+        data: intent.toJson(),
+        context: RequestContext(
+          idempotencyKey: intent.key,
+          allowAutomaticRetry: false,
+        ),
+        decodeData: NajmBaharInternalTransferReceipt.fromJson,
+      );
+      _guardSession();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharInternalTransferReceipt> reconcileInternalTransfer(
+      NajmBaharInternalTransferIntent intent) async {
+    _guard();
+    try {
+      final encodedKey = Uri.encodeComponent(intent.key);
+      final response = await _api.get<NajmBaharInternalTransferReceipt>(
+        '/najm-bahar/internal-transfers/by-idempotency/$encodedKey',
+        decodeData: NajmBaharInternalTransferReceipt.fromJson,
       );
       _guard();
       if (!response.data.matches(intent)) throw malformedResponse();
