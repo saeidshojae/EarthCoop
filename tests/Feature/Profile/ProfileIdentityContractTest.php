@@ -245,4 +245,21 @@ class ProfileIdentityContractTest extends TestCase
         $this->assertSame('+98', $user->fresh()->phone_country_code);
     }
 
+
+    public function test_profile_general_update_has_one_canonical_route_definition(): void
+    {
+        $matching = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) =>
+                in_array('PUT', $route->methods(), true)
+                && $route->uri() === 'profile/update/general'
+            )
+            ->values();
+
+        $this->assertCount(1, $matching);
+        $this->assertSame(
+            'App\\Http\\Controllers\\LocationGovernance\\CanonicalProfileMembershipController@updateGeneral',
+            $matching->first()->getActionName()
+        );
+    }
+
 }
