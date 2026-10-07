@@ -18,7 +18,7 @@ class NajmBaharTransferReconciliationService
     {
         $record = DB::table('api_v1_idempotency_keys')
             ->where('actor_key', 'user:'.$user->getAuthIdentifier())
-            ->where('scope', 'najm-bahar.transfers.store')
+            ->where('scope', 'api.v1.najm-bahar.transfers.store')
             ->where('idempotency_key', $idempotencyKey)
             ->where('state', 'completed')
             ->first();
