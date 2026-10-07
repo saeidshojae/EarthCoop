@@ -48,10 +48,12 @@ class NajmBaharActivationController extends Controller
         }
 
         $this->rejectUnexpectedFields($request);
+        $this->validateExpectedActivation($request);
 
         $validated = $request->validate([
             'source' => ['required', 'in:participation'],
             'points' => ['required', 'integer', 'min:1'],
+            'expected' => ['sometimes', 'required', 'array'],
         ]);
 
         try {
@@ -59,6 +61,7 @@ class NajmBaharActivationController extends Controller
                 $user,
                 (int) $validated['points'],
                 trim((string) $request->header('Idempotency-Key')),
+                $validated['expected'] ?? null,
             );
 
             $transaction = $this->ledger->transactionFor($user, $result['transaction']);
@@ -78,9 +81,65 @@ class NajmBaharActivationController extends Controller
         }
     }
 
+    private function validateExpectedActivation(Request $request): void
+    {
+        if (! array_key_exists('expected', $request->all())) {
+            return;
+        }
+
+        $expected = $request->input('expected');
+        $keys = [
+            'activation_contract_version',
+            'remaining_convertible_points',
+            'conversion_ratio_points_per_gol',
+            'max_convertible_points',
+            'max_activation_gol',
+            'dim_available_gol',
+            'policy_version_id',
+            'policy_version',
+            'policy_source',
+        ];
+
+        $nonNegativeIntegers = [
+            'remaining_convertible_points',
+            'max_convertible_points',
+            'max_activation_gol',
+            'dim_available_gol',
+        ];
+
+        $valid = is_array($expected)
+            && count($expected) === count($keys)
+            && array_diff($keys, array_keys($expected)) === []
+            && ($expected['activation_contract_version'] ?? null) === 1
+            && is_int($expected['conversion_ratio_points_per_gol'] ?? null)
+            && $expected['conversion_ratio_points_per_gol'] > 0
+            && is_string($expected['policy_source'] ?? null)
+            && in_array($expected['policy_source'], ['versioned_policy', 'legacy_settings'], true)
+            && (
+                ($expected['policy_version_id'] ?? null) === null
+                || (is_int($expected['policy_version_id']) && $expected['policy_version_id'] > 0)
+            )
+            && (
+                ($expected['policy_version'] ?? null) === null
+                || is_int($expected['policy_version'])
+            );
+
+        foreach ($nonNegativeIntegers as $field) {
+            $valid = $valid
+                && is_int($expected[$field] ?? null)
+                && $expected[$field] >= 0;
+        }
+
+        if (! $valid) {
+            throw ValidationException::withMessages([
+                'expected' => ['A complete exact native activation consent snapshot is required.'],
+            ]);
+        }
+    }
+
     private function rejectUnexpectedFields(Request $request): void
     {
-        $unexpected = array_values(array_diff(array_keys($request->all()), ['source', 'points']));
+        $unexpected = array_values(array_diff(array_keys($request->all()), ['source', 'points', 'expected']));
         if ($unexpected !== []) {
             throw ValidationException::withMessages([
                 'request' => ['Unsupported activation fields: '.implode(', ', $unexpected)],
