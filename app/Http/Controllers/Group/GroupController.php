@@ -401,7 +401,7 @@ class GroupController extends Controller
 
         $members = $group->users()
             ->wherePivotIn('role', [0, 1, 3, 5])
-            ->select('users.id', 'users.first_name', 'users.last_name', 'users.email')
+            ->select('users.id', 'users.first_name', 'users.last_name', 'users.nickname', 'users.email')
             ->withPivot('role', 'status', 'role_override_active', 'role_override_expires_at')
             ->orderBy('group_user.role', 'desc')
             ->orderBy('users.first_name', 'asc')
