@@ -115,7 +115,15 @@ class ProfileResidenceTransferTest extends TestCase
             $homes[] = LocationFixture::createPath(
                 $schema,
                 ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'],
-                'transfer-limit-'.$i
+                [
+                    "country {$i}",
+                    "province {$i}",
+                    "county {$i}",
+                    "section {$i}",
+                    "city {$i}",
+                    "region {$i}",
+                    "neighborhood {$i}",
+                ]
             )->last();
         }
 
