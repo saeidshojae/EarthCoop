@@ -30,8 +30,8 @@ class SendCandidateAcceptedNotifications
                 ->count();
             $position = $inspectorVotes > 0 ? 'بازرس' : 'مدیر';
             
-            $title = $user->fullName() . ' مسئولیت ' . $position . ' را در گروه ' . ($group->name ?? '') . ' پذیرفت';
-            $preview = "{$user->fullName()} به عنوان {$position} در گروه {$group->name} مسئولیت خود را پذیرفت.";
+            $title = $user->displayName() . ' مسئولیت ' . $position . ' را در گروه ' . ($group->name ?? '') . ' پذیرفت';
+            $preview = "{$user->displayName()} به عنوان {$position} در گروه {$group->name} مسئولیت خود را پذیرفت.";
             
             $url = route('groups.chat', $group->id);
             $context = [
