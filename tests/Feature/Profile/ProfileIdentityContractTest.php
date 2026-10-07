@@ -163,4 +163,38 @@ class ProfileIdentityContractTest extends TestCase
         $this->assertSame('9123456789', $other->phone);
     }
 
+
+    public function test_registration_step_one_cannot_rewrite_an_existing_national_id(): void
+    {
+        $user = User::factory()->create([
+            'national_id' => '0013546880',
+            'phone_country_code' => '+98',
+            'phone' => '9123456789',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('register.step1.process'), [
+                'first_name' => 'علی',
+                'last_name' => 'احمدی',
+                'birth_date' => [1, 1, 1369],
+                'gender' => 'male',
+                'nationality' => 'ایرانی',
+                'national_id' => '0077617747',
+                'country_code' => '+98',
+                'phone' => '9394765289',
+            ])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHasErrors('national_id');
+
+        $this->assertSame('0013546880', $user->fresh()->national_id);
+    }
+
+    public function test_birth_date_uses_the_same_one_time_identity_lock_as_other_identity_fields(): void
+    {
+        $general = file_get_contents(resource_path('views/profile/partials/general.blade.php'));
+
+        $this->assertStringContainsString(':disabled="$user->hasUsedIdentityEdit()"', $general);
+        $this->assertStringNotContainsString(':disabled="$user->status == 1 && $user->edited == 1"', $general);
+    }
+
 }
