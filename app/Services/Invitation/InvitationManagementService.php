@@ -9,6 +9,8 @@ use App\Models\Setting;
 use App\Services\Communication\CommunicationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 use RuntimeException;
 
 class InvitationManagementService
@@ -16,6 +18,8 @@ class InvitationManagementService
     public function __construct(
         protected InvitationSystemIssuerResolver $systemIssuer,
         protected CommunicationDispatcher $communications,
+        protected TemporalService $temporal,
+        protected TemporalContextResolver $temporalContexts,
     ) {}
 
     public function recommend(Invitation $invitation): array
@@ -65,7 +69,11 @@ class InvitationManagementService
                 ]],
                 [
                     'code' => (string) $result['code']->code,
-                    'expire_at' => $result['code']->expire_at->toISOString(),
+                    'expire_at' => $this->temporal->dateTime(
+                        $result['code']->expire_at,
+                        $this->temporalContexts->forLocale('fa', (string) config('app.timezone', 'Asia/Tehran')),
+                        'short',
+                    ),
                 ],
                 [
                     'locale' => 'fa',
