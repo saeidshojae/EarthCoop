@@ -69,6 +69,8 @@ class Step1Controller extends Controller
 
     public function validateData(Request $request)
     {
+        $this->normalizePhoneRequest($request);
+
         $rules = [
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
@@ -168,6 +170,8 @@ class Step1Controller extends Controller
 
     public function process(Request $request)
     {
+        $this->normalizePhoneRequest($request);
+
         $rules = [
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
@@ -283,6 +287,19 @@ class Step1Controller extends Controller
                 ->with('error', 'خطایی در ثبت اطلاعات رخ داد. لطفاً دوباره تلاش کنید.')
                 ->withInput();
         }
+    }
+
+    private function normalizePhoneRequest(Request $request): void
+    {
+        if (! $request->exists('phone') || $request->input('phone') === null) {
+            return;
+        }
+
+        $normalized = $this->normalizePhoneNumber(
+            $this->convertNumbersToEnglish((string) $request->input('phone'))
+        );
+
+        $request->merge(['phone' => $normalized]);
     }
 
     private function parseBirthDate(array $parts, TemporalContext $context): LocalDate
