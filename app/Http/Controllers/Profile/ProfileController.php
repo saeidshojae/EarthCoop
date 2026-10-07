@@ -40,6 +40,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\ChatRequest;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProfileController 
 {
@@ -313,13 +314,55 @@ class ProfileController
 
     public function updateGeneral(Request $request)
     {
+        /** @var User $user */
+        $user = User::findOrFail(auth()->id());
+
+        $immutableErrors = [];
+        if ($request->has('email') && (string) $request->input('email') !== (string) $user->email) {
+            $immutableErrors['email'] = 'ایمیل حساب قابل تغییر نیست.';
+        }
+        if ($request->has('national_id') && (string) $request->input('national_id') !== (string) $user->national_id) {
+            $immutableErrors['national_id'] = 'کد ملی پس از ثبت اولیه قابل تغییر نیست.';
+        }
+        if ($immutableErrors !== []) {
+            return back()->withErrors($immutableErrors)->withInput();
+        }
+
+        $identityFields = ['first_name', 'last_name', 'birth_date', 'gender', 'phone', 'country_code'];
+        if ($user->hasUsedIdentityEdit()) {
+            $lockedErrors = [];
+            foreach ($identityFields as $field) {
+                if (! $request->exists($field)) {
+                    continue;
+                }
+
+                $incoming = $request->input($field);
+                if ($field === 'country_code') {
+                    $current = $user->phone_country_code ?: '+98';
+                } elseif ($field === 'birth_date') {
+                    $current = $user->getRawOriginal('birth_date');
+                } else {
+                    $current = $user->{$field};
+                }
+
+                if (is_array($incoming) || (string) $incoming !== (string) $current) {
+                    $lockedErrors[$field] = 'این بخش از اطلاعات هویتی قبلاً یک‌بار ویرایش شده و دیگر قابل تغییر نیست.';
+                }
+            }
+
+            if ($lockedErrors !== []) {
+                return back()->withErrors($lockedErrors)->withInput();
+            }
+        }
+
         $inputs = $request->validate([
             'first_name'   => 'nullable|string|max:50|regex:/^[آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی\s]+$/u',
             'last_name'    => 'nullable|string|max:50|regex:/^[آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی\s]+$/u',
             'birth_date'   => 'nullable|array|min:3',
             'gender'       => 'nullable|in:male,female',
-            'national_id'  => 'nullable|string|regex:/^\d{10}$/|unique:users,national_id,' . auth()->user()->id,
-            'phone' => 'nullable|regex:/^(0)?9\d{9}$/|unique:users,phone,' . auth()->user()->id,
+            'nickname' => 'nullable|string|max:80',
+            'country_code' => ['nullable', Rule::in(array_column(config('phone-countries', []), 'code'))],
+            'phone' => 'nullable|regex:/^\d{6,15}$/|unique:users,phone,' . auth()->user()->id,
             'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4084',
             'document_names.*' => 'nullable|string|max:100',
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:4084',
@@ -378,12 +421,29 @@ class ProfileController
             $inputs['documents'] = json_encode($allDocuments, JSON_UNESCAPED_UNICODE);
         }
 
-        $user = User::find(auth()->user()->id);
+        $identityBefore = [
+            'first_name' => (string) $user->first_name,
+            'last_name' => (string) $user->last_name,
+            'birth_date' => (string) $user->getRawOriginal('birth_date'),
+            'gender' => (string) $user->gender,
+            'phone' => (string) $user->phone,
+            'country_code' => (string) ($user->phone_country_code ?: '+98'),
+        ];
+
+        if (array_key_exists('phone', $inputs) && $inputs['phone'] !== null) {
+            $phone = preg_replace('/\s+/', '', (string) $inputs['phone']) ?? '';
+            if (str_starts_with($phone, '0')) {
+                $phone = substr($phone, 1);
+            }
+            $inputs['phone'] = $phone;
+        }
+        if (array_key_exists('country_code', $inputs)) {
+            $inputs['phone_country_code'] = $inputs['country_code'];
+            unset($inputs['country_code']);
+        }
+
         $oldBirthDate = $user->birth_date;
         $newBirthDate = $inputs['birth_date'] ?? null;
-        if(isset($inputs['national_id']) AND $inputs['national_id'] != null){
-            if (!$this->isValidIranianNationalCode($inputs['national_id'])) return back()->with('error', 'کد ملی وارد شده معتبر نیست')->withInput();
-        }
         if ($newBirthDate && $oldBirthDate !== $newBirthDate) {
             $groupService = new \App\Services\GroupService();
             $oldAgeGroup = $groupService->getAgeGroup($user);
@@ -412,9 +472,23 @@ class ProfileController
         } else {
             $user->update($inputs);
         }
-        if($user->first_name != null AND $user->last_name != null AND $user->gender != null AND $user->national_id != null AND $user->phone != null){
+        $user->refresh();
+        $identityAfter = [
+            'first_name' => (string) $user->first_name,
+            'last_name' => (string) $user->last_name,
+            'birth_date' => (string) $user->getRawOriginal('birth_date'),
+            'gender' => (string) $user->gender,
+            'phone' => (string) $user->phone,
+            'country_code' => (string) ($user->phone_country_code ?: '+98'),
+        ];
+        $identityChanged = $identityBefore !== $identityAfter;
+
+        if ($user->first_name != null AND $user->last_name != null AND $user->gender != null AND $user->national_id != null AND $user->phone != null){
             $user->status = 1;
-            $user->edited = 1;
+            if ($identityChanged && ! $user->hasUsedIdentityEdit()) {
+                $user->identity_edit_used_at = now();
+                $user->edited = 1;
+            }
             $user->save();
         }
         app(ProfileCompletionService::class)->maybeAward($user);
