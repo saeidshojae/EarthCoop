@@ -15,8 +15,6 @@ Route::middleware(Authenticate::class)->group(function (): void {
     Route::put('/profile/update/experience', [CanonicalProfileMembershipController::class, 'updateExperience'])
         ->name('profile.update.experience');
 
-    Route::put('/profile/update/general', [CanonicalProfileMembershipController::class, 'updateGeneral'])
-        ->name('profile.update.general');
 });
 
 // Communication preferences belong to the profile/settings surface but keep their
