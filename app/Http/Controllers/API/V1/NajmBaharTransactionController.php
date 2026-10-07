@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Modules\NajmBahar\Services\Api\NajmBaharAccountQueryService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharLedgerQueryService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferApplicationService;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferCapabilityService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class NajmBaharTransactionController extends Controller
         private readonly NajmBaharLedgerQueryService $ledger,
         private readonly NajmBaharTransferApplicationService $transfers,
         private readonly NajmBaharAccountQueryService $accounts,
+        private readonly NajmBaharTransferCapabilityService $transferCapability,
     ) {
     }
 
@@ -53,6 +55,16 @@ class NajmBaharTransactionController extends Controller
         return ApiResponse::success($items, 200, [
             'pagination' => $result['pagination'],
         ]);
+    }
+
+    public function transferCapability(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        return ApiResponse::success($this->transferCapability->forUser($user));
     }
 
     public function storeTransfer(Request $request): JsonResponse
