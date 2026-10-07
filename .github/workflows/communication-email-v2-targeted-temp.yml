@@ -67,4 +67,7 @@ jobs:
             tests/Feature/Communication/ProfessionalEmailContentV2Test.php \
             tests/Feature/Communication/WeeklyMemberReportTest.php \
             tests/Feature/Communication/CommunicationCenterClosureTest.php \
+            tests/Feature/Communication/InvitationEmailMigrationTest.php \
+            tests/Feature/Communication/InvitationLegacyPathMigrationTest.php \
+            tests/Feature/NajmHoda/InvitationManagementServiceTest.php \
             tests/Architecture/CommunicationDeliveryBoundaryTest.php
