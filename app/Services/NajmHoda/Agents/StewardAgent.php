@@ -225,25 +225,98 @@ class StewardAgent extends BaseAgent
     }
     
     /**
+     * استخراج واژگان معنادار برای جستجوی فارسی/انگلیسی.
+     */
+    protected function extractSearchTerms(string $question): array
+    {
+        $normalized = strtr(mb_strtolower($question), [
+            'ي' => 'ی',
+            'ى' => 'ی',
+            'ك' => 'ک',
+            'ۀ' => 'ه',
+            'ة' => 'ه',
+        ]);
+
+        $normalized = preg_replace('/[^\p{L}\p{N}_-]+/u', ' ', $normalized) ?? '';
+        $tokens = preg_split('/\s+/u', trim($normalized), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $stopWords = [
+            'لطفا', 'لطفاً', 'به', 'من', 'با', 'برای', 'از', 'در', 'و', 'یا', 'را', 'که',
+            'این', 'آن', 'یک', 'چه', 'چی', 'چیست', 'هست', 'است', 'بود', 'بگو', 'بده',
+            'توضیح', 'روشن', 'درباره', 'مورد', 'شود', 'شده', 'دارد', 'دارند',
+            'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'is', 'are', 'what',
+        ];
+
+        $terms = [];
+        foreach ($tokens as $token) {
+            if (mb_strlen($token) < 3 || in_array($token, $stopWords, true)) {
+                continue;
+            }
+
+            if (!in_array($token, $terms, true)) {
+                $terms[] = $token;
+            }
+
+            if (count($terms) >= 8) {
+                break;
+            }
+        }
+
+        return $terms;
+    }
+
+    protected function matchedSnippet(string $text, array $terms, int $limit = 1000): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags($text)) ?? '');
+        if ($text === '') {
+            return '';
+        }
+
+        $bestPosition = null;
+        foreach ($terms as $term) {
+            $position = mb_stripos($text, $term);
+            if ($position !== false && ($bestPosition === null || $position < $bestPosition)) {
+                $bestPosition = $position;
+            }
+        }
+
+        if ($bestPosition === null) {
+            return mb_substr($text, 0, $limit);
+        }
+
+        $before = min(250, $bestPosition);
+        $start = max(0, $bestPosition - $before);
+        $snippet = mb_substr($text, $start, $limit);
+
+        if ($start > 0) {
+            $snippet = '…' . $snippet;
+        }
+        if ($start + mb_strlen($snippet) < mb_strlen($text)) {
+            $snippet .= '…';
+        }
+
+        return $snippet;
+    }
+
+    /**
      * جستجوی مقالات مرتبط
      */
     protected function findRelatedArticles(string $question): array
     {
-        $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
-        $keywords = array_slice($keywords, 0, 5); // حداکثر 5 کلیدواژه
-        
-        $query = KbArticle::published()->with('category');
+        $keywords = $this->extractSearchTerms($question);
+        if ($keywords === []) {
+            return [];
+        }
 
+        $query = KbArticle::published()->with('category');
         $query->where(function ($matches) use ($keywords) {
             foreach ($keywords as $keyword) {
-                if (mb_strlen($keyword) > 2) {
-                    $matches->orWhere('title', 'like', "%{$keyword}%")
-                        ->orWhere('excerpt', 'like', "%{$keyword}%")
-                        ->orWhere('content', 'like', "%{$keyword}%");
-                }
+                $matches->orWhere('title', 'like', "%{$keyword}%")
+                    ->orWhere('excerpt', 'like', "%{$keyword}%")
+                    ->orWhere('content', 'like', "%{$keyword}%");
             }
         });
-        
+
         return $query->take(5)->get()->toArray();
     }
     
@@ -252,8 +325,7 @@ class StewardAgent extends BaseAgent
      */
     protected function findRelatedContent(string $question): array
     {
-        $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
-        $keywords = array_values(array_filter(array_slice($keywords ?: [], 0, 5), fn ($keyword) => mb_strlen($keyword) > 2));
+        $keywords = $this->extractSearchTerms($question);
 
         $results = [
             'kb_articles' => [],
@@ -276,12 +348,14 @@ class StewardAgent extends BaseAgent
                 }
             });
 
-        $results['kb_articles'] = $kbQuery->take(3)->get()->map(function ($article) {
+        $results['kb_articles'] = $kbQuery->take(3)->get()->map(function ($article) use ($keywords) {
+            $body = trim(((string) $article->excerpt) . "\n" . ((string) $article->content));
+
             return [
                 'type' => 'KB',
                 'title' => $article->title,
                 'category' => $article->category?->name ?? 'عمومی',
-                'excerpt' => $article->excerpt ?: mb_substr(strip_tags((string) $article->content), 0, 500),
+                'excerpt' => $this->matchedSnippet($body, $keywords, 700),
                 'url' => "/support/knowledge-base/{$article->slug}",
             ];
         })->toArray();
@@ -297,13 +371,13 @@ class StewardAgent extends BaseAgent
                 }
             });
 
-        $results['faq_questions'] = $faqQuery->take(3)->get()->map(function ($faq) {
+        $results['faq_questions'] = $faqQuery->take(3)->get()->map(function ($faq) use ($keywords) {
             return [
                 'type' => 'FAQ',
                 'title' => $faq->title,
                 'category' => $faq->category ?? 'سایر',
                 'question' => $faq->question,
-                'answer' => mb_substr((string) $faq->answer, 0, 700),
+                'answer' => $this->matchedSnippet((string) $faq->answer, $keywords, 700),
             ];
         })->toArray();
 
@@ -317,12 +391,14 @@ class StewardAgent extends BaseAgent
                 }
             });
 
-        $results['blog_posts'] = $blogQuery->take(3)->get()->map(function ($post) {
+        $results['blog_posts'] = $blogQuery->take(3)->get()->map(function ($post) use ($keywords) {
+            $body = trim(((string) $post->excerpt) . "\n" . ((string) $post->content));
+
             return [
                 'type' => 'Blog',
                 'title' => $post->title,
                 'category' => $post->category?->name ?? 'عمومی',
-                'excerpt' => $post->excerpt ?: mb_substr(strip_tags((string) $post->content), 0, 500),
+                'excerpt' => $this->matchedSnippet($body, $keywords, 700),
                 'url' => "/blog/{$post->slug}",
             ];
         })->toArray();
@@ -506,35 +582,35 @@ class StewardAgent extends BaseAgent
      */
     protected function searchKnowledgeFiles(string $question): array
     {
-        $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
-        $keywords = array_slice($keywords, 0, 5);
-        
-        $query = StewardKnowledgeFile::active();
-        
-        // جستجوی کلمات کلیدی در عنوان و محتوا
-        $query->where(function($q) use ($keywords) {
-            foreach ($keywords as $keyword) {
-                if (strlen($keyword) > 2) {
-                    $q->orWhere('title', 'like', "%{$keyword}%")
-                      ->orWhere('extracted_content', 'like', "%{$keyword}%");
+        $keywords = $this->extractSearchTerms($question);
+        if ($keywords === []) {
+            return [];
+        }
+
+        $query = StewardKnowledgeFile::active()
+            ->where(function ($matches) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $matches->orWhere('title', 'like', "%{$keyword}%")
+                        ->orWhere('extracted_content', 'like', "%{$keyword}%");
                 }
-            }
-        });
-        
+            });
+
         return $query->orderBy('search_priority', 'desc')
-                     ->take(3)
-                     ->get()
-                     ->map(function($file) {
-                         return [
-                             'type' => 'File',
-                             'title' => $file->title,
-                             'file_type' => strtoupper((string) $file->file_type),
-                             'url' => $file->source_url,
-                             'excerpt' => $file->summary ?? mb_substr((string) $file->extracted_content, 0, 200),
-                             'content' => mb_substr((string) $file->extracted_content, 0, 1000),
-                             'priority' => $file->search_priority,
-                         ];
-                     })->toArray();
+            ->take(3)
+            ->get()
+            ->map(function ($file) use ($keywords) {
+                $content = (string) $file->extracted_content;
+
+                return [
+                    'type' => 'File',
+                    'title' => $file->title,
+                    'file_type' => strtoupper((string) $file->file_type),
+                    'url' => $file->source_url,
+                    'excerpt' => $this->matchedSnippet((string) ($file->summary ?: $content), $keywords, 250),
+                    'content' => $this->matchedSnippet($content, $keywords, 1200),
+                    'priority' => $file->search_priority,
+                ];
+            })->toArray();
     }
     
     /**
