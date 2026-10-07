@@ -56,4 +56,37 @@ class HomeDashboardViewContractTest extends TestCase
         $this->assertStringContainsString('$nextAction[\'label\']', $view);
         $this->assertStringContainsString('$nextAction[\'description\']', $view);
     }
+
+    public function test_home_prioritizes_docs_cta_and_slider_directly_after_hero(): void
+    {
+        $view = file_get_contents(resource_path('views/home.blade.php'));
+
+        $this->assertStringContainsString("config('docs-links')", $view);
+        $this->assertStringContainsString("['center']['href']", $view);
+        $this->assertStringContainsString('ارث‌کوپ را بفهمید و مشارکت کنید', $view);
+        $this->assertStringContainsString('data-home-priority-slider', $view);
+
+        $hero = strpos($view, 'data-home-identity-surface');
+        $slider = strpos($view, 'data-home-priority-slider');
+        $journey = strpos($view, 'data-home-journey');
+
+        $this->assertNotFalse($hero);
+        $this->assertNotFalse($slider);
+        $this->assertNotFalse($journey);
+        $this->assertTrue($hero < $slider);
+        $this->assertTrue($slider < $journey);
+    }
+
+    public function test_desktop_home_sidebar_is_static_open_and_has_no_fake_version_label(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
+
+        $this->assertStringContainsString('hidden lg:block lg:w-80', $sidebar);
+        $this->assertStringContainsString('home-sidebar-heading', $sidebar);
+        $this->assertStringNotContainsString('x-data="{ open: false }"', $sidebar);
+        $this->assertStringNotContainsString('@click="open = !open"', $sidebar);
+        $this->assertStringNotContainsString("open ? 'block' : 'hidden lg:block'", $sidebar);
+        $this->assertStringNotContainsString('نسخه ۲.۱.۰ - EarthCoop', $sidebar);
+    }
+
 }
