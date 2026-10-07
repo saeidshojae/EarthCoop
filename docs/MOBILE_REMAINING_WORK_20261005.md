@@ -77,3 +77,22 @@ This implementation covers only immediate **external Active Bahar** transfer fro
 Because a physical phone is currently unavailable, do **not** create a new signed APK solely for this transfer feature. Continue phone-free work and later produce one consolidated signed candidate. Signed +18 remains the latest actually packaged candidate, but it predates this transfer implementation and must not be described as transfer-capable.
 
 Still prohibited without separate approval: main merge, production API deployment, FTP/host publication and real monetary transfer.
+
+
+## Native Bahar participation activation — software complete
+
+The native participation-point activation flow is software-complete. Server evidence source `2dbc210dfd3ec51d14df4fc8125140503704958f`; pinned final mobile product source `82b1097aa621fef9b16e9cf4e03f6443e0c8b224`. See `docs/MOBILE_BAHAR_ACTIVATION_CHECKPOINT_20261007.md`.
+
+Final evidence:
+- activation contract 13 tests / 154 assertions;
+- financial architecture green;
+- full server 2446 tests / 14012 assertions, 47 PHPUnit deprecations, 2 skipped;
+- mobile formatter 154 files / 0 changed;
+- analyzer clean;
+- complete Flutter suite 336 tests passed.
+
+This implementation covers only participation-point activation of the authenticated user's own Dim Bahar. It does not cover admin/monthly activation, project-investment activation, group/legal-entity activation or any live production action.
+
+Signed +18 remains the latest actually packaged APK, but it predates both native external transfer and this activation flow. While no phone is available, continue phone-free work and later package one consolidated signed candidate rather than rebuilding per feature.
+
+Still prohibited without separate approval: main merge, production API deployment, FTP/host publication, provider activation and real monetary/point activation.
