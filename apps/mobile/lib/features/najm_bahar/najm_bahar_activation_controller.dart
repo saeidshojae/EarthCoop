@@ -59,10 +59,9 @@ class NajmBaharActivationController extends ChangeNotifier {
   bool _sessionInvalidated = false;
 
   int? get reviewPoints => _reviewPoints;
-  int? get reviewActivatedGol =>
-      _reviewPoints == null || eligibility == null
-          ? null
-          : _reviewPoints! ~/ eligibility!.pointsPerGol;
+  int? get reviewActivatedGol => _reviewPoints == null || eligibility == null
+      ? null
+      : _reviewPoints! ~/ eligibility!.pointsPerGol;
   bool get hasFrozenIntent => _intent != null;
 
   Future<void> prepare() async {
