@@ -42,6 +42,10 @@ final class WeeklyMemberReportContextBuilder
             'open_elections_count' => $this->openElectionsCount($groupIds),
             'open_polls_count' => $this->openPollsCount($groupIds),
             'unread_notifications_count' => $user->unreadNotifications()->count(),
+            'dashboard_url' => route('home'),
+            'groups_url' => route('groups.index'),
+            'participation_url' => route('history.index'),
+            'preferences_url' => route('profile.communication-preferences'),
         ];
     }
 
