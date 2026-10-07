@@ -325,7 +325,7 @@ class MessageController extends Controller
                 $id = (int) Str::after($parentId, 'poll-');
                 $parent = Poll::with('user')->find($id);
                 if ($parent && $parent->user) {
-                    $payload['parent_sender'] = $parent->user->first_name . ' ' . $parent->user->last_name;
+                    $payload['parent_sender'] = $parent->user->displayName();
                     $payload['parent_content'] = $parent->title ?? $parent->question ?? '';
                 }
             } elseif (Str::startsWith($parentId, 'post-')) {
@@ -548,7 +548,7 @@ class MessageController extends Controller
             'thread_root' => [
                 'id' => $threadRoot->id,
                 'message' => $threadRoot->message,
-                'sender' => $threadRoot->user->first_name . ' ' . $threadRoot->user->last_name,
+                'sender' => $threadRoot->user->displayName(),
                 'created_at' => $threadRoot->created_at->format('Y-m-d H:i:s'),
             ],
             'replies' => $replies,
