@@ -27,23 +27,9 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: apps/mobile
-      - name: Normalize formatter and expose canonical transfer sources
+      - name: Strict formatter
         working-directory: apps/mobile
-        run: |
-          set -euo pipefail
-          dart format lib test
-          for file in \
-            lib/features/najm_bahar/najm_bahar_repository.dart \
-            lib/features/najm_bahar/najm_bahar_transfer_dto.dart \
-            lib/features/najm_bahar/najm_bahar_transfer_section.dart \
-            test/features/najm_bahar/najm_bahar_transfer_controller_test.dart \
-            test/features/najm_bahar/najm_bahar_transfer_repository_test.dart
-          do
-            echo "TRANSFER_FORMAT_BEGIN:$file"
-            base64 -w0 "$file"
-            echo
-            echo "TRANSFER_FORMAT_END:$file"
-          done
+        run: dart format --output=none --set-exit-if-changed lib test
       - name: Transfer widget contract
         working-directory: apps/mobile
         run: timeout 180s flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_transfer_screen_test.dart
