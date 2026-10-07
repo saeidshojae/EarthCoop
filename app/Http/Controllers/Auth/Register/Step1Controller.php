@@ -13,6 +13,7 @@ use App\Temporal\ValueObjects\LocalDate;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class Step1Controller extends Controller
 {
@@ -75,8 +76,8 @@ class Step1Controller extends Controller
             'gender' => 'required|in:male,female',
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
-            'country_code' => ['nullable', 'in:+98,+1,+44,+49'],
-            'phone' => 'required|regex:/^(0)?9\d{9}$/',
+            'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))],
+            'phone' => 'required|regex:/^\d{6,15}$/',
         ];
 
         $rules['password'] = auth()->user()->password
@@ -89,7 +90,7 @@ class Step1Controller extends Controller
             'last_name.required' => 'وارد کردن نام خانوادگی الزامی است.',
             'last_name.regex' => 'نام خانوادگی باید به زبان فارسی وارد شود.',
             'phone.required' => 'وارد کردن شماره تلفن الزامی است.',
-            'phone.regex' => 'شماره تلفن باید دقیقاً ۱۰ رقم باشد و با ۹ شروع شود.',
+            'phone.regex' => 'شماره تلفن را بدون کد کشور و فقط با رقم وارد کنید.',
             'national_id.required' => 'وارد کردن کد ملی الزامی است.',
             'national_id.regex' => 'کد ملی باید دقیقاً ۱۰ رقم باشد.',
             'national_id.unique' => 'این کد ملی قبلاً در سیستم ثبت شده است.',
@@ -165,8 +166,8 @@ class Step1Controller extends Controller
             'gender' => 'required|in:male,female',
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
-            'country_code' => ['nullable', 'in:+98,+1,+44,+49'],
-            'phone' => 'required|regex:/^(0)?9\d{9}$/',
+            'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))],
+            'phone' => 'required|regex:/^\d{6,15}$/',
         ];
 
         $rules['password'] = auth()->user()->password
@@ -181,7 +182,7 @@ class Step1Controller extends Controller
             'last_name.regex' => 'نام خانوادگی باید به زبان فارسی وارد شود. لطفاً از حروف فارسی استفاده کنید و از تایپ لاتین خودداری کنید.',
             'last_name.max' => 'نام خانوادگی نمی‌تواند بیشتر از ۵۰ کاراکتر باشد.',
             'phone.required' => 'وارد کردن شماره تلفن الزامی است.',
-            'phone.regex' => 'شماره تلفن باید دقیقاً ۱۰ رقم باشد و با ۹ شروع شود. مثال صحیح: 9123456789',
+            'phone.regex' => 'شماره تلفن را بدون کد کشور و فقط با رقم وارد کنید.',
             'national_id.required' => 'وارد کردن کد ملی الزامی است.',
             'national_id.regex' => 'کد ملی باید دقیقاً ۱۰ رقم باشد. لطفاً کد ملی ۱۰ رقمی خود را وارد کنید.',
             'national_id.unique' => 'این کد ملی قبلاً در سیستم ثبت شده است. لطفاً کد ملی صحیح خود را وارد کنید.',
@@ -246,7 +247,7 @@ class Step1Controller extends Controller
                 'gender' => $validated['gender'],
                 'nationality' => $validated['nationality'],
                 'national_id' => $nationalId,
-                'country_code' => $validated['country_code'],
+                'phone_country_code' => $validated['country_code'],
                 'phone' => $phone,
                 'status' => 1,
             ];
