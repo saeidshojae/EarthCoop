@@ -296,7 +296,16 @@ class ProfileController
             'gender'       => 'nullable|in:male,female',
             'nickname' => 'nullable|string|max:80',
             'country_code' => ['nullable', Rule::in(array_column(config('phone-countries', []), 'code'))],
-            'phone' => 'nullable|regex:/^\d{6,15}$/|unique:users,phone,' . auth()->user()->id,
+            'phone' => [
+                'nullable',
+                'regex:/^\d{6,15}$/',
+                Rule::unique('users', 'phone')
+                    ->where(fn ($query) => $query->where(
+                        'phone_country_code',
+                        $request->input('country_code', $user->phone_country_code ?: '+98')
+                    ))
+                    ->ignore($user->id),
+            ],
             'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4084',
             'document_names.*' => 'nullable|string|max:100',
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:4084',
