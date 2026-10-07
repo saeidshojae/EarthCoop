@@ -1,5 +1,7 @@
 name: Native Bahar transfer final
 
+# Review-fix rerun: canonical mirror availability and active status are pinned.
+
 on:
   push:
     branches: [agent/mobile-bahar-transfer-20261007]
