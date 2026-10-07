@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 17f6521c84508b6c7038757a88377135233b66df
 
       - name: Require +18 source
         run: |
@@ -91,6 +93,11 @@ jobs:
           APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           APK_SIZE_BYTES="$(stat -c%s "$APK")"
           CERT_SHA256="$(awk '/certificate SHA-256 digest:/ {print $NF; exit}' mobile-uat-18/certificate.txt)"
+          EXPECTED_CERT_SHA256="eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543"
+          test "$CERT_SHA256" = "$EXPECTED_CERT_SHA256" || {
+            echo "::error::Stable UAT certificate continuity failed."
+            exit 1
+          }
           BUILT_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
           cat > mobile-uat-18/build.json <<EOF
@@ -99,7 +106,8 @@ jobs:
             "platform": "android",
             "build_type": "release",
             "version": "1.0.0+18",
-            "git_sha": "${GITHUB_SHA}",
+            "git_sha": "17f6521c84508b6c7038757a88377135233b66df",
+            "workflow_sha": "${GITHUB_SHA}",
             "fcm_configured": true,
             "signing_mode": "stable-uat",
             "certificate_sha256": "${CERT_SHA256}",
@@ -121,7 +129,7 @@ jobs:
       - name: Retain exact signed +18 candidate
         uses: actions/upload-artifact@v4
         with:
-          name: earthcoop-android-uat-18-${{ github.sha }}
+          name: earthcoop-android-uat-18-17f6521c84508b6c7038757a88377135233b66df
           path: mobile-uat-18/
           if-no-files-found: error
           retention-days: 30
