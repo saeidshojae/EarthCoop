@@ -183,6 +183,209 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
             ->assertJsonPath('error.code', 'transfer_destination_internal');
     }
 
+
+    public function test_strict_native_transfer_binds_source_destination_amount_and_returns_matchable_receipt(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create([
+            'is_system' => false,
+            'first_name' => 'Receiver',
+            'last_name' => 'Example',
+        ]);
+
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+        $source = $this->subAccount($main, '011', 1_500, 0, 1);
+        $sourceMirror = app(AccountService::class)->ensureSubAccountAccount($source);
+
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+        $destination = $this->subAccount($otherMain, '012', 0, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($destination);
+
+        $this->openTransfers();
+
+        $capability = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/capability')
+            ->assertOk()
+            ->json('data');
+        $sourceRow = collect($capability['sources'])
+            ->firstWhere('account_number', $source->sub_account_code);
+
+        $preview = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                'account_number' => $destination->sub_account_code,
+            ]))
+            ->assertOk()
+            ->json('data');
+
+        $response = $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-transfer-strict-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', [
+                'source_account_id' => $sourceMirror->id,
+                'destination_account_number' => $destination->sub_account_code,
+                'amount_gol' => 250,
+                'balance_bucket' => 'active',
+                'description' => 'Native transfer',
+                'expected' => [
+                    'transfer_contract_version' => 1,
+                    'source_account_number' => $source->sub_account_code,
+                    'source_active_available_gol' => $sourceRow['active_available_gol'],
+                    'destination_token' => $preview['destination_token'],
+                ],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.transaction.amount_gol', 250)
+            ->assertJsonPath('data.transaction.balance_bucket', 'active')
+            ->assertJsonPath('data.transaction.direction', 'outgoing')
+            ->assertJsonPath('data.transaction.counterparty.account_number', $destination->sub_account_code);
+
+        $this->assertIsInt($response->json('data.transaction.amount_gol'));
+        $this->assertSame(1_250, (int) $source->fresh()->balance_active);
+        $this->assertSame(250, (int) $destination->fresh()->balance_active);
+    }
+
+    public function test_strict_native_transfer_rejects_changed_source_availability_without_financial_mutation(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+        $source = $this->subAccount($main, '013', 1_500, 0, 1);
+        $sourceMirror = app(AccountService::class)->ensureSubAccountAccount($source);
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+        $destination = $this->subAccount($otherMain, '014', 0, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($destination);
+        $this->openTransfers();
+
+        $sourceRow = collect($this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/capability')->assertOk()->json('data.sources'))
+            ->firstWhere('account_number', $source->sub_account_code);
+        $preview = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                'account_number' => $destination->sub_account_code,
+            ]))->assertOk()->json('data');
+
+        app(ActiveBaharReservationService::class)->reserve(
+            $sourceMirror->account_number,
+            100,
+            'native-transfer-race-reservation',
+            'test',
+            1,
+        );
+
+        $beforeTransactions = Transaction::count();
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-transfer-race-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', [
+                'source_account_id' => $sourceMirror->id,
+                'destination_account_number' => $destination->sub_account_code,
+                'amount_gol' => 250,
+                'balance_bucket' => 'active',
+                'expected' => [
+                    'transfer_contract_version' => 1,
+                    'source_account_number' => $source->sub_account_code,
+                    'source_active_available_gol' => $sourceRow['active_available_gol'],
+                    'destination_token' => $preview['destination_token'],
+                ],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'transfer_terms_changed');
+
+        $this->assertSame($beforeTransactions, Transaction::count());
+        $this->assertSame(1_500, (int) $source->fresh()->balance_active);
+        $this->assertSame(0, (int) $destination->fresh()->balance_active);
+    }
+
+    public function test_strict_native_transfer_rejects_destination_token_mismatch_without_financial_mutation(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+        $source = $this->subAccount($main, '015', 1_500, 0, 1);
+        $sourceMirror = app(AccountService::class)->ensureSubAccountAccount($source);
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+        $destinationA = $this->subAccount($otherMain, '016', 0, 0, 1);
+        $destinationB = $this->subAccount($otherMain, '017', 0, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($destinationA);
+        app(AccountService::class)->ensureSubAccountAccount($destinationB);
+        $this->openTransfers();
+
+        $sourceRow = collect($this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/capability')->assertOk()->json('data.sources'))
+            ->firstWhere('account_number', $source->sub_account_code);
+        $previewA = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                'account_number' => $destinationA->sub_account_code,
+            ]))->assertOk()->json('data');
+
+        $beforeTransactions = Transaction::count();
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-transfer-destination-mismatch-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', [
+                'source_account_id' => $sourceMirror->id,
+                'destination_account_number' => $destinationB->sub_account_code,
+                'amount_gol' => 250,
+                'balance_bucket' => 'active',
+                'expected' => [
+                    'transfer_contract_version' => 1,
+                    'source_account_number' => $source->sub_account_code,
+                    'source_active_available_gol' => $sourceRow['active_available_gol'],
+                    'destination_token' => $previewA['destination_token'],
+                ],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'transfer_destination_changed');
+
+        $this->assertSame($beforeTransactions, Transaction::count());
+    }
+
+    public function test_strict_native_transfer_never_allows_dim_external_movement(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $other = User::factory()->create(['is_system' => false]);
+
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+        $source = $this->subAccount($main, '018', 1_500, 500, 1);
+        $sourceMirror = app(AccountService::class)->ensureSubAccountAccount($source);
+        $otherMain = app(AccountService::class)->createMainAccountForUser((int) $other->id, 'Other');
+        $destination = $this->subAccount($otherMain, '019', 0, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($destination);
+        $this->openTransfers();
+
+        $sourceRow = collect($this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/capability')->assertOk()->json('data.sources'))
+            ->firstWhere('account_number', $source->sub_account_code);
+        $preview = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
+                'account_number' => $destination->sub_account_code,
+            ]))->assertOk()->json('data');
+
+        $beforeTransactions = Transaction::count();
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-transfer-dim-block-0001')
+            ->postJson('/api/v1/najm-bahar/transfers', [
+                'source_account_id' => $sourceMirror->id,
+                'destination_account_number' => $destination->sub_account_code,
+                'amount_gol' => 100,
+                'balance_bucket' => 'dim',
+                'expected' => [
+                    'transfer_contract_version' => 1,
+                    'source_account_number' => $source->sub_account_code,
+                    'source_active_available_gol' => $sourceRow['active_available_gol'],
+                    'destination_token' => $preview['destination_token'],
+                ],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'transfer_not_allowed');
+
+        $this->assertSame($beforeTransactions, Transaction::count());
+        $this->assertSame(500, (int) $source->fresh()->balance_faded);
+        $this->assertSame(0, (int) $destination->fresh()->balance_faded);
+    }
+
     private function subAccount(
         Account $main,
         string $suffix,
@@ -199,6 +402,13 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
             'balance_faded' => $dim,
             'status' => $status,
         ]);
+    }
+
+    private function openTransfers(): void
+    {
+        $setting = Setting::singleton();
+        $setting->najm_bahar_user_threshold = User::count();
+        $setting->save();
     }
 
     private function nativeSession(): array
