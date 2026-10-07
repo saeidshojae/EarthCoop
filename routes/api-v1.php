@@ -108,6 +108,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
             ->name('najm-bahar.transfers.store');
         Route::get('/najm-bahar/activation/eligibility', [NajmBaharActivationController::class, 'eligibility'])
             ->name('najm-bahar.activation.eligibility');
+        Route::get('/najm-bahar/activation/by-idempotency/{key}', [NajmBaharActivationController::class, 'byIdempotency'])
+            ->name('najm-bahar.activation.by-idempotency');
         Route::post('/najm-bahar/activation', [NajmBaharActivationController::class, 'store'])
             ->middleware('api.v1.idempotency')
             ->name('najm-bahar.activation.store');
