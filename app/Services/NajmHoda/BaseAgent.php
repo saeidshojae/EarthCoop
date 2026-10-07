@@ -53,7 +53,11 @@ abstract class BaseAgent
 
         try {
             $response = $this->callAI($messages);
-            $this->logInteraction($this->interactionLogInput($prompt, $context), $response);
+            $this->logInteraction(
+                $this->interactionLogInput($prompt, $context),
+                $response,
+                $prompt
+            );
 
             return $response;
         } catch (\Throwable $e) {
@@ -342,10 +346,10 @@ abstract class BaseAgent
         return $prompt;
     }
 
-    protected function logInteraction(string $input, string $output): void
+    protected function logInteraction(string $input, string $output, ?string $tokenAccountingInput = null): void
     {
         try {
-            $tokensUsed = $this->estimateTokens($input . $output);
+            $tokensUsed = $this->estimateTokens(($tokenAccountingInput ?? $input) . $output);
             $cost = $this->calculateCost($tokensUsed);
 
             AIInteraction::create([
