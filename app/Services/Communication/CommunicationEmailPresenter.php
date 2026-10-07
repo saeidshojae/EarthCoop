@@ -27,7 +27,7 @@ final class CommunicationEmailPresenter
         }
 
         return preg_replace_callback(
-            '/\\b(href|src)=(["\\'])\\/(?!\\/)([^"\\']*)\\2/i',
+            "~\\b(href|src)=([\"'])/(?!/)([^\"']*)\\2~i",
             static fn (array $match): string => $match[1].'='.$match[2].$origin.'/'.$match[3].$match[2],
             $html,
         ) ?? $html;
