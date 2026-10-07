@@ -46,10 +46,12 @@ class RegistrationTemporalContractTest extends TestCase
         $this->assertStringContainsString("'first_name' => 'required|string|max:50|regex:", $source);
         $this->assertStringContainsString("'last_name' => 'required|string|max:50|regex:", $source);
         $this->assertStringContainsString("'national_id' => 'required|string|regex:/^\\d{10}$/|unique:users,national_id'", $source);
-        $this->assertStringContainsString("'phone' => 'required|regex:/^(0)?9\\d{9}$/'", $source);
+        $this->assertStringContainsString("'country_code' => ['required', Rule::in(array_column(config('phone-countries', []), 'code'))]", $source);
+        $this->assertStringContainsString("'regex:/^\\d{6,15}$/'", $source);
         $this->assertStringContainsString("? 'nullable|min:6|confirmed'", $source);
         $this->assertStringContainsString(": 'required|min:6|confirmed'", $source);
-        $this->assertStringContainsString("User::where('phone', \$phone)", $source);
+        $this->assertStringContainsString("User::where('phone_country_code', \$validated['country_code'])", $source);
+        $this->assertStringContainsString("->where('phone', \$phone)", $source);
         $this->assertStringContainsString("'status' => 1", $source);
         $this->assertStringContainsString("redirect()->route('register.step2')", $source);
     }
