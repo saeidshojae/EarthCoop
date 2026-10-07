@@ -106,6 +106,7 @@ class NajmBaharTransactionController extends Controller
         }
 
         $this->rejectUnexpectedTransferFields($request);
+        $this->validateExpectedTransfer($request);
 
         $validated = $request->validate([
             'source_account_id' => ['required', 'integer', 'min:1'],
@@ -113,6 +114,7 @@ class NajmBaharTransactionController extends Controller
             'amount_gol' => ['required', 'integer', 'min:1'],
             'balance_bucket' => ['required', 'in:active,dim'],
             'description' => ['nullable', 'string', 'max:500'],
+            'expected' => ['sometimes', 'required', 'array'],
         ]);
 
         try {
@@ -126,6 +128,7 @@ class NajmBaharTransactionController extends Controller
                 array_key_exists('description', $validated)
                     ? ($validated['description'] === null ? null : (string) $validated['description'])
                     : null,
+                $validated['expected'] ?? null,
             );
 
             $transaction = $this->ledger->transactionFor($user, $result['transaction']);
@@ -136,6 +139,14 @@ class NajmBaharTransactionController extends Controller
             ], 201);
         } catch (ModelNotFoundException) {
             return $this->notFound();
+        } catch (NajmBaharTransferException $exception) {
+            return ApiResponse::error(
+                $exception->errorCode,
+                $exception->getMessage(),
+                $exception->httpStatus,
+                null,
+                false,
+            );
         } catch (\RuntimeException $exception) {
             $message = mb_strtolower($exception->getMessage());
             $insufficient = str_contains($message, 'insufficient')
@@ -153,6 +164,38 @@ class NajmBaharTransactionController extends Controller
         }
     }
 
+    private function validateExpectedTransfer(Request $request): void
+    {
+        if (! array_key_exists('expected', $request->all())) {
+            return;
+        }
+
+        $expected = $request->input('expected');
+        $keys = [
+            'transfer_contract_version',
+            'source_account_number',
+            'source_active_available_gol',
+            'destination_token',
+        ];
+
+        $valid = is_array($expected)
+            && count($expected) === count($keys)
+            && array_diff($keys, array_keys($expected)) === []
+            && ($expected['transfer_contract_version'] ?? null) === 1
+            && is_string($expected['source_account_number'] ?? null)
+            && trim((string) $expected['source_account_number']) !== ''
+            && is_int($expected['source_active_available_gol'] ?? null)
+            && $expected['source_active_available_gol'] >= 0
+            && is_string($expected['destination_token'] ?? null)
+            && trim((string) $expected['destination_token']) !== '';
+
+        if (! $valid) {
+            throw ValidationException::withMessages([
+                'expected' => ['A complete exact native transfer consent snapshot is required.'],
+            ]);
+        }
+    }
+
     private function rejectUnexpectedTransferFields(Request $request): void
     {
         $allowed = [
@@ -161,6 +204,7 @@ class NajmBaharTransactionController extends Controller
             'amount_gol',
             'balance_bucket',
             'description',
+            'expected',
         ];
 
         $unexpected = array_values(array_diff(array_keys($request->all()), $allowed));
