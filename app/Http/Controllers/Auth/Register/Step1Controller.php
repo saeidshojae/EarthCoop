@@ -69,6 +69,13 @@ class Step1Controller extends Controller
 
     public function validateData(Request $request)
     {
+        if (auth()->user()?->national_id !== null) {
+            return response()->json([
+                'success' => false,
+                'errors' => ['national_id' => ['کد ملی پس از ثبت اولیه قابل تغییر نیست.']],
+            ], 422);
+        }
+
         $this->normalizePhoneRequest($request);
 
         $rules = [
@@ -170,6 +177,11 @@ class Step1Controller extends Controller
 
     public function process(Request $request)
     {
+        if (auth()->user()?->national_id !== null) {
+            return redirect()->route('profile.edit')
+                ->withErrors(['national_id' => 'کد ملی پس از ثبت اولیه قابل تغییر نیست.']);
+        }
+
         $this->normalizePhoneRequest($request);
 
         $rules = [
