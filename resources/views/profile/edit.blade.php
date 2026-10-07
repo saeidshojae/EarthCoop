@@ -9577,7 +9577,7 @@
 
 
 
-        $('.location-select, select').select2({
+        $('.location-select, select:not(#country_code)').select2({
 
 
 
