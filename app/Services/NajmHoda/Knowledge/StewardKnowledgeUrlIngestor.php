@@ -55,10 +55,10 @@ class StewardKnowledgeUrlIngestor
             ->withOptions([
                 'allow_redirects' => false,
                 'progress' => function (
-                    int $downloadTotal,
-                    int $downloadedBytes,
-                    int $uploadTotal,
-                    int $uploadedBytes
+                    $downloadTotal,
+                    $downloadedBytes,
+                    $uploadTotal,
+                    $uploadedBytes
                 ): void {
                     if ($downloadTotal > self::MAX_BODY_BYTES || $downloadedBytes > self::MAX_BODY_BYTES) {
                         throw new RuntimeException('حجم محتوای لینک بیشتر از حد مجاز 2MB است.');
