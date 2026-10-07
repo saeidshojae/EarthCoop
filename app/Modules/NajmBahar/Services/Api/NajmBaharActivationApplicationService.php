@@ -41,6 +41,8 @@ class NajmBaharActivationApplicationService
         $pointCapacityGol = intdiv($wholePoints, $ratio);
         $dimAvailable = max(0, (int) ($account->balance_faded ?? 0));
 
+        $maxActivationGol = min($pointCapacityGol, $dimAvailable);
+
         return [
             'activation_contract_version' => 1,
             'enabled' => true,
@@ -48,7 +50,8 @@ class NajmBaharActivationApplicationService
             'remaining_convertible_points' => $remaining,
             'conversion_ratio_points_per_gol' => $ratio,
             'max_convertible_points' => $wholePoints,
-            'max_activation_gol' => min($pointCapacityGol, $dimAvailable),
+            'max_activation_points' => $maxActivationGol * $ratio,
+            'max_activation_gol' => $maxActivationGol,
             'dim_available_gol' => $dimAvailable,
             'active_gol' => max(0, (int) ($account->balance_active ?? 0)),
             'policy_version_id' => $policy['version_id'] ?? null,
@@ -227,6 +230,7 @@ class NajmBaharActivationApplicationService
                     'remaining_convertible_points' => $availablePoints,
                     'conversion_ratio_points_per_gol' => $ratio,
                     'max_convertible_points' => $wholePoints,
+                    'max_activation_points' => $maxActivationGol * $ratio,
                     'max_activation_gol' => $maxActivationGol,
                     'dim_available_gol' => $dimAvailable,
                     'policy_version_id' => $policyVersionId,
