@@ -104,6 +104,42 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
     }
 
 
+    public function test_capability_uses_canonical_mirror_availability_and_hides_inactive_mirrors(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+
+        $drifted = $this->subAccount($main, '031', 1_500, 0, 1);
+        $driftedMirror = app(AccountService::class)->ensureSubAccountAccount($drifted);
+        $driftedMirror->balance_active = 800;
+        $driftedMirror->balance = 800;
+        $driftedMirror->save();
+
+        $inactive = $this->subAccount($main, '032', 2_000, 0, 1);
+        $inactiveMirror = app(AccountService::class)->ensureSubAccountAccount($inactive);
+        $inactiveMirror->status = 0;
+        $inactiveMirror->save();
+
+        app(ActiveBaharReservationService::class)->reserve(
+            $driftedMirror->account_number,
+            300,
+            'transfer-capability-mirror-reservation',
+            'test',
+            31,
+        );
+
+        $this->openTransfers();
+
+        $sources = collect($this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/capability')
+            ->assertOk()
+            ->json('data.sources'))
+            ->keyBy('account_number');
+
+        $this->assertSame(500, $sources[$drifted->sub_account_code]['active_available_gol']);
+        $this->assertFalse($sources->has($inactive->sub_account_code));
+    }
+
     public function test_destination_preview_resolves_exact_active_external_subaccount_with_minimal_identity(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
@@ -153,11 +189,16 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
         $disabled = $this->subAccount($otherMain, '005', 100, 0, 0);
         app(AccountService::class)->ensureSubAccountAccount($disabled);
         $unmirrored = $this->subAccount($otherMain, '006', 100, 0, 1);
+        $inactiveMirrorDestination = $this->subAccount($otherMain, '008', 100, 0, 1);
+        $inactiveMirror = app(AccountService::class)->ensureSubAccountAccount($inactiveMirrorDestination);
+        $inactiveMirror->status = 0;
+        $inactiveMirror->save();
 
         foreach ([
             '9999999999-999',
             $disabled->sub_account_code,
             $unmirrored->sub_account_code,
+            $inactiveMirrorDestination->sub_account_code,
         ] as $number) {
             $this->bearer($token, $deviceId)
                 ->getJson('/api/v1/najm-bahar/transfers/destination?'.http_build_query([
