@@ -253,7 +253,7 @@ Route::middleware(Authenticate::class)->group(function () {
     })->name('profile.edit-oc');
     Route::get('/profile/invation-code-generate', [ProfileController::class, 'generateInvationCode'])->name('profile.generate-code');
 
-    Route::put('/profile/update/general', [ProfileController::class, 'updateGeneral'])->name('profile.update.general');
+    Route::put('/profile/update/general', [\App\Http\Controllers\LocationGovernance\CanonicalProfileMembershipController::class, 'updateGeneral'])->name('profile.update.general');
     Route::put('/profile/update/password', [ProfileController::class, 'updatePassword'])->name('profile.update.password');
     Route::put('/profile/update/social-network', [ProfileController::class, 'updateSocialNetworks'])->name('profile.update.social-network');
     Route::put('/profile/update/experience', [ProfileController::class, 'updateExperience'])->name('profile.update.experience');
