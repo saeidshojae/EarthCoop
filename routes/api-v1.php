@@ -95,6 +95,13 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::get('/najm-bahar/account', [NajmBaharAccountController::class, 'show'])->name('najm-bahar.account.show');
         Route::get('/najm-bahar/subaccounts', [NajmBaharSubAccountController::class, 'index'])
             ->name('najm-bahar.subaccounts.index');
+        Route::post('/najm-bahar/subaccounts', [NajmBaharSubAccountController::class, 'store'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.subaccounts.store');
+        Route::patch('/najm-bahar/subaccounts/{subAccount}', [NajmBaharSubAccountController::class, 'update'])
+            ->whereNumber('subAccount')
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.subaccounts.update');
         Route::get('/najm-bahar/accounts/{account}/balance', [NajmBaharAccountController::class, 'balance'])
             ->whereNumber('account')
             ->name('najm-bahar.accounts.balance');
