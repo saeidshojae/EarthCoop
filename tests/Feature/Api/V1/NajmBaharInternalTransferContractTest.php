@@ -215,6 +215,95 @@ class NajmBaharInternalTransferContractTest extends TestCase
             ->assertJsonPath('error.code', 'internal_transfer_not_allowed');
     }
 
+
+    public function test_internal_transfer_reconciliation_returns_original_success_receipt_without_writes(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $main = $this->main($user, active: 800, dim: 200, committed: 0);
+        $sub = app(SubAccountService::class)->createSubAccount((int) $main->id, 'مصرف');
+
+        $snapshot = $this->subaccountSnapshot($token, $deviceId);
+        $key = 'internal-reconcile-0001';
+
+        $created = $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/najm-bahar/internal-transfers', [
+                'direction' => 'main_to_sub',
+                'source_sub_account_id' => null,
+                'destination_sub_account_id' => $sub->id,
+                'amount_gol' => 175,
+                'balance_bucket' => 'active',
+                'description' => 'Reconcile me',
+                'expected' => [
+                    'internal_transfer_contract_version' => 1,
+                    'source_account_number' => $snapshot['main']['account_number'],
+                    'source_available_gol' => $snapshot['main']['active_available_gol'],
+                    'destination_account_number' => $sub->sub_account_code,
+                ],
+            ])
+            ->assertCreated();
+
+        $transactionId = (int) $created->json('data.transaction.id');
+        $beforeTransactions = \App\Modules\NajmBahar\Models\Transaction::count();
+        $beforeLedger = LedgerEntry::count();
+        $beforeAccounts = Account::count();
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/internal-transfers/by-idempotency/'.$key)
+            ->assertOk()
+            ->assertJsonPath('data.transaction.id', $transactionId)
+            ->assertJsonPath('data.transaction.status', 'completed')
+            ->assertJsonPath('data.transaction.direction', 'internal')
+            ->assertJsonPath('data.transaction.balance_bucket', 'active')
+            ->assertJsonPath('data.transaction.amount_gol', 175)
+            ->assertJsonPath('data.source.account_number', $main->account_number)
+            ->assertJsonPath('data.destination.account_number', $sub->sub_account_code)
+            ->assertJsonMissingPath('data.transaction.metadata')
+            ->assertJsonMissingPath('data.idempotency_key');
+
+        $this->assertSame($beforeTransactions, \App\Modules\NajmBahar\Models\Transaction::count());
+        $this->assertSame($beforeLedger, LedgerEntry::count());
+        $this->assertSame($beforeAccounts, Account::count());
+    }
+
+    public function test_internal_transfer_reconciliation_is_user_scoped_and_unknown_keys_are_not_found(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        [$other, $otherToken, $otherDeviceId] = $this->nativeSession();
+
+        $main = $this->main($user, active: 500, dim: 0, committed: 0);
+        $sub = app(SubAccountService::class)->createSubAccount((int) $main->id, 'مقصد');
+        $snapshot = $this->subaccountSnapshot($token, $deviceId);
+        $key = 'internal-private-0001';
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/najm-bahar/internal-transfers', [
+                'direction' => 'main_to_sub',
+                'source_sub_account_id' => null,
+                'destination_sub_account_id' => $sub->id,
+                'amount_gol' => 100,
+                'balance_bucket' => 'active',
+                'expected' => [
+                    'internal_transfer_contract_version' => 1,
+                    'source_account_number' => $snapshot['main']['account_number'],
+                    'source_available_gol' => $snapshot['main']['active_available_gol'],
+                    'destination_account_number' => $sub->sub_account_code,
+                ],
+            ])
+            ->assertCreated();
+
+        $this->bearer($otherToken, $otherDeviceId)
+            ->getJson('/api/v1/najm-bahar/internal-transfers/by-idempotency/'.$key)
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'not_found');
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/internal-transfers/by-idempotency/internal-unknown-0001')
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'not_found');
+    }
+
     private function subaccountSnapshot(string $token, string $deviceId): array
     {
         return $this->bearer($token, $deviceId)
