@@ -35,34 +35,7 @@ class NajmBaharSubAccountQueryService
             ->where('status', 1)
             ->orderBy('id')
             ->get()
-            ->map(function (SubAccount $sub): ?array {
-                $mirror = Account::query()
-                    ->where('type', 'subaccount')
-                    ->where('account_number', (string) $sub->sub_account_code)
-                    ->where('status', 1)
-                    ->first();
-
-                if (! $mirror instanceof Account) {
-                    return null;
-                }
-
-                $active = max(0, (int) ($sub->balance_active ?? 0));
-                $availableActive = min(
-                    $active,
-                    $this->reservations->availableActive($mirror),
-                );
-
-                return [
-                    'sub_account_id' => (int) $sub->id,
-                    'account_id' => (int) $mirror->id,
-                    'account_number' => (string) $sub->sub_account_code,
-                    'name' => (string) $sub->name,
-                    'status' => (int) $sub->status,
-                    'active_gol' => $active,
-                    'active_available_gol' => max(0, $availableActive),
-                    'dim_available_gol' => max(0, (int) ($sub->balance_faded ?? 0)),
-                ];
-            })
+            ->map(fn (SubAccount $sub) => $this->projectSubAccount($sub))
             ->filter()
             ->values()
             ->all();
@@ -85,6 +58,61 @@ class NajmBaharSubAccountQueryService
                 'dim_committed_gol' => max(0, (int) $mainBalance['dim_committed']),
             ],
             'subaccounts' => $subaccounts,
+        ];
+    }
+
+    public function oneForUser(User $user, int $subAccountId): array
+    {
+        $main = $this->accounts->getMainAccountForUser((int) $user->id);
+        if (! $main instanceof Account || (int) $main->user_id !== (int) $user->id) {
+            throw (new ModelNotFoundException())->setModel(Account::class);
+        }
+
+        $sub = SubAccount::query()
+            ->whereKey($subAccountId)
+            ->where('account_id', (int) $main->id)
+            ->where('status', 1)
+            ->first();
+
+        if (! $sub instanceof SubAccount) {
+            throw (new ModelNotFoundException())->setModel(SubAccount::class);
+        }
+
+        $projected = $this->projectSubAccount($sub);
+        if ($projected === null) {
+            throw (new ModelNotFoundException())->setModel(Account::class);
+        }
+
+        return $projected;
+    }
+
+    private function projectSubAccount(SubAccount $sub): ?array
+    {
+        $mirror = Account::query()
+            ->where('type', 'subaccount')
+            ->where('account_number', (string) $sub->sub_account_code)
+            ->where('status', 1)
+            ->first();
+
+        if (! $mirror instanceof Account) {
+            return null;
+        }
+
+        $active = max(0, (int) ($sub->balance_active ?? 0));
+        $availableActive = min(
+            $active,
+            $this->reservations->availableActive($mirror),
+        );
+
+        return [
+            'sub_account_id' => (int) $sub->id,
+            'account_id' => (int) $mirror->id,
+            'account_number' => (string) $sub->sub_account_code,
+            'name' => (string) $sub->name,
+            'status' => (int) $sub->status,
+            'active_gol' => $active,
+            'active_available_gol' => max(0, $availableActive),
+            'dim_available_gol' => max(0, (int) ($sub->balance_faded ?? 0)),
         ];
     }
 }
