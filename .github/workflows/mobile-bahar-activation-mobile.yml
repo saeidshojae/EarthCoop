@@ -29,6 +29,26 @@ jobs:
       - name: Resolve locked dependencies
         working-directory: apps/mobile
         run: flutter pub get
+      - name: Normalize activation Dart sources for canonical capture
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+          dart format \
+            lib/features/najm_bahar/najm_bahar_activation_controller.dart \
+            lib/features/najm_bahar/najm_bahar_activation_dto.dart \
+            lib/features/najm_bahar/najm_bahar_repository.dart \
+            test/features/najm_bahar/najm_bahar_activation_repository_test.dart
+          for file in \
+            lib/features/najm_bahar/najm_bahar_activation_controller.dart \
+            lib/features/najm_bahar/najm_bahar_activation_dto.dart \
+            lib/features/najm_bahar/najm_bahar_repository.dart \
+            test/features/najm_bahar/najm_bahar_activation_repository_test.dart
+          do
+            echo "ACTIVATION_FORMAT_BEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "ACTIVATION_FORMAT_END:$file"
+          done
       - name: Activation wire contract
         working-directory: apps/mobile
         run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_repository_test.dart
