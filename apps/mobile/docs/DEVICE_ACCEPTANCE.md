@@ -311,3 +311,20 @@ Verification run https://github.com/saeidshojae/EarthCoop/actions/runs/373310033
 Actual APK: 1.0.0+15, 67,362,191 bytes, SHA256 26f7cb13640ac2b042e28be085fe75ea167b15f6ceca0ba24e531a8242325a9b. Signature verifies; non-debuggable, expected package and Internet permission confirmed. Actual +14 and +15 certificate equality passed, public SHA256 eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543. Final artifact https://github.com/saeidshojae/EarthCoop/actions/runs/37331003335/artifacts/11353588861 contains APK and build metadata; ZIP 33,676,704 bytes, SHA256 2cc99218da70bbe7790c853bd885c908c9b1ba4a0310096c8df420debc187426, expires 2026-11-04T15:13:22Z.
 
 Use +15 for one consolidated physical run; historical candidates do not require separate installs. Physical acceptance remains NOT EXECUTED. No FTP APK publication, main merge or push-driver activation. Host download +15 availability is not claimed. Independent review found no Critical/Important findings. Keyless Debug graph coverage is deferred; current unminified Release profile also applies to production, whose credentials/distribution and optimization remain open. Existing Drift test warnings do not constitute warning-free test logs. Earlier deferred review items remain open. iOS +14 unsigned compilation passed, but iOS runtime identity/provider/signing and HMS physical acceptance remain unverified. Google/network resilience remains deferred to final completion.
+
+## Pending candidate +18 — native membership payment
+
+The software candidate for the next consolidated Android UAT is frozen at `17f6521c84508b6c7038757a88377135233b66df`. Automated final gates passed in run `37551833441`: complete Flutter suite 285 PASS, analyzer no issues, formatter zero changes, and the server full suite 2426 PASS with the financial architecture gate green.
+
+The signed +18 APK has not yet been produced. Do not install or claim +18 until the pinned artifact-only workflow succeeds and its package/version/signature/non-debuggable/Internet/Firebase/build.json/hash evidence is recorded. The workflow is pinned to the frozen source and enforces the stable UAT certificate fingerprint.
+
+When +18 exists, add these checks to the single consolidated phone run:
+- compare the displayed server-controlled membership year, exact fee and split with the same web account;
+- verify Dim and Active choices reflect actual eligible balances and do not aggregate multiple accounts;
+- for Active, explicitly choose an eligible owned subaccount and confirm the confirmation screen names that exact account;
+- cancel from confirmation and verify no payment occurred;
+- perform at most one approved test payment only when a deliberate live-money UAT is separately authorized;
+- if the result is deliberately made ambiguous by a network interruption, verify the UI shows «نتیجهٔ پرداخت هنوز مشخص نیست», does not change source, and uses «بررسی نتیجه» before any retry;
+- confirm logout/account change clears payment intent/terms and never auto-posts on restart.
+
+Until that signed artifact and physical run exist, all membership-payment device rows remain **NOT EXECUTED**. Historical +17 remains the latest actually signed artifact; do not repeat the accepted 81-group count unless a regression gives a reason.
