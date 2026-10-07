@@ -112,7 +112,13 @@ final class CanonicalProfileMembershipController extends Controller
             $request->request->remove('birth_date');
         }
 
-        $response = app(ProfileController::class)->updateGeneral($request);
+        try {
+            $response = app(ProfileController::class)->updateGeneral($request);
+        } catch (ValidationException $e) {
+            return redirect()->route('profile.edit')
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         // Legacy validation exceptions never reach this point. Explicit mature
         // business-rule errors are flashed and must not be followed by canonical
