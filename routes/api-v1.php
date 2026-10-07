@@ -15,6 +15,7 @@ use App\Http\Controllers\API\V1\NajmBaharAccountController;
 use App\Http\Controllers\API\V1\NajmBaharActivationController;
 use App\Http\Controllers\API\V1\NajmBaharMembershipFeeController;
 use App\Http\Controllers\API\V1\NajmBaharScheduledOperationController;
+use App\Http\Controllers\API\V1\NajmBaharSubAccountController;
 use App\Http\Controllers\API\V1\NajmBaharTransactionController;
 use App\Http\Controllers\API\V1\NajmHodaActionController;
 use App\Http\Controllers\API\V1\NajmHodaCapabilityController;
@@ -92,6 +93,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
         Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences'])->middleware('api.v1.idempotency')->name('notifications.preferences.update');
 
         Route::get('/najm-bahar/account', [NajmBaharAccountController::class, 'show'])->name('najm-bahar.account.show');
+        Route::get('/najm-bahar/subaccounts', [NajmBaharSubAccountController::class, 'index'])
+            ->name('najm-bahar.subaccounts.index');
         Route::get('/najm-bahar/accounts/{account}/balance', [NajmBaharAccountController::class, 'balance'])
             ->whereNumber('account')
             ->name('najm-bahar.accounts.balance');
