@@ -54,10 +54,7 @@ final class ActorDiscoveryService
 
     private function userDisplayName(User $user): string
     {
-        $name = trim(implode(' ', array_filter([
-            trim((string) ($user->first_name ?? '')),
-            trim((string) ($user->last_name ?? '')),
-        ])));
+        $name = trim($user->displayName());
 
         return $name !== '' ? $name : (string) $user->email;
     }
