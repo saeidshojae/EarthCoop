@@ -197,18 +197,18 @@ class StewardAgent extends BaseAgent
                 $summary .= "  (هیچ سوالی)\n\n";
             }
             
-            // 4. Uploaded Knowledge Files
-            $summary .= "📎 فایل‌های دانش آپلودشده:\n";
+            // 4. Uploaded / linked knowledge sources
+            $summary .= "📎 منابع دانش بارگذاری‌شده و لینک‌ها:\n";
             $knowledgeFiles = StewardKnowledgeFile::active()->get();
             
             if ($knowledgeFiles->isNotEmpty()) {
                 $filesByType = $knowledgeFiles->groupBy('file_type');
                 foreach ($filesByType as $type => $files) {
-                    $summary .= "  • {$type}: {$files->count()} فایل\n";
+                    $summary .= "  • {$type}: {$files->count()} منبع\n";
                 }
                 $summary .= "\n";
             } else {
-                $summary .= "  (هیچ فایلی)\n\n";
+                $summary .= "  (هیچ منبعی)\n\n";
             }
             
             $summary .= "✅ تمام این منابع در پاسخ‌های من استفاده می‌شوند";
