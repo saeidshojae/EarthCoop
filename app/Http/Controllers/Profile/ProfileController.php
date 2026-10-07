@@ -259,6 +259,14 @@ class ProfileController
             $request->merge(['phone' => $normalizedPhone]);
         }
 
+        // Phone number + calling code are one identity value. If a crafted
+        // request submits only one half, validate it against the persisted other half.
+        if ($request->exists('phone') && ! $request->exists('country_code')) {
+            $request->merge(['country_code' => $user->phone_country_code ?: '+98']);
+        } elseif ($request->exists('country_code') && ! $request->exists('phone')) {
+            $request->merge(['phone' => $user->phone]);
+        }
+
         $immutableErrors = [];
         if ($request->has('email') && (string) $request->input('email') !== (string) $user->email) {
             $immutableErrors['email'] = 'ایمیل حساب قابل تغییر نیست.';
