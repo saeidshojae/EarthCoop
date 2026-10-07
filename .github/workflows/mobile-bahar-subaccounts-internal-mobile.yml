@@ -1,0 +1,34 @@
+name: Native Bahar subaccounts internal mobile
+
+on:
+  push:
+    branches:
+      - agent/mobile-bahar-subaccounts-internal-20261007
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-bahar-subaccounts-internal-mobile.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-bahar-subaccounts-internal-mobile
+  cancel-in-progress: true
+
+jobs:
+  internal-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Internal wire contract
+        working-directory: apps/mobile
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_internal_transfer_repository_test.dart
