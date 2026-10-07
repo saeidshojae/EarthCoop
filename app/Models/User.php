@@ -194,7 +194,9 @@ class User extends Authenticatable
 
     public function profileInChat(){
         if($this->avatar == null){
-            return '<div class="group-avatar" style="width: 2rem; height: 2rem; font-size: .6rem; margin: 0; background-color: #e3f2fd; color: #1976d2;">\n                        <span>' . mb_substr($this->first_name, 0, 1) . ' ' . mb_substr($this->last_name, 0, 1) . '</span>\n                    </div>';
+            $displayName = $this->displayName();
+
+            return '<div class="group-avatar" style="width: 2rem; height: 2rem; font-size: .6rem; margin: 0; background-color: #e3f2fd; color: #1976d2;">\n                        <span>' . e(mb_substr($displayName, 0, 1)) . '</span>\n                    </div>';
         }else{
             return '<img alt="تصویر پروفایل" class="rounded-circle" width="32" height="32" src=' . asset('/images/users/avatars/' . $this->avatar) . '>';
         }
