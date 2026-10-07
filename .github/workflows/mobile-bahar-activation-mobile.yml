@@ -35,3 +35,6 @@ jobs:
       - name: Activation controller contract
         working-directory: apps/mobile
         run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_controller_test.dart
+      - name: Activation widget contract
+        working-directory: apps/mobile
+        run: timeout 180s flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_screen_test.dart
