@@ -11,6 +11,8 @@ import 'najm_bahar_transfer_controller.dart';
 import 'najm_bahar_transfer_section.dart';
 import 'najm_bahar_activation_controller.dart';
 import 'najm_bahar_activation_section.dart';
+import 'najm_bahar_internal_transfer_controller.dart';
+import 'najm_bahar_internal_transfer_section.dart';
 
 class NajmBaharScreen extends StatefulWidget {
   const NajmBaharScreen({
@@ -20,12 +22,14 @@ class NajmBaharScreen extends StatefulWidget {
     this.paymentController,
     this.transferController,
     this.activationController,
+    this.internalTransferController,
   });
   final NajmBaharController controller;
   final NajmBaharPolicyController? policyController;
   final MembershipPaymentController? paymentController;
   final NajmBaharTransferController? transferController;
   final NajmBaharActivationController? activationController;
+  final NajmBaharInternalTransferController? internalTransferController;
   @override
   State<NajmBaharScreen> createState() => _NajmBaharScreenState();
 }
@@ -158,6 +162,11 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
                           const SizedBox(height: 16),
                           NajmBaharTransferSection(
                               controller: widget.transferController!),
+                        ],
+                        if (widget.internalTransferController != null) ...[
+                          const SizedBox(height: 16),
+                          NajmBaharInternalTransferSection(
+                              controller: widget.internalTransferController!),
                         ],
                       ]))),
         ));
