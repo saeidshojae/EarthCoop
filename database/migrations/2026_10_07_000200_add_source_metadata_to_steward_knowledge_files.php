@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -22,6 +23,25 @@ return new class extends Migration
 
     public function down(): void
     {
+        $hasUrlSources = DB::table('steward_knowledge_files')
+            ->where('source_type', 'url')
+            ->exists();
+
+        $hasNullLegacyFields = DB::table('steward_knowledge_files')
+            ->where(function ($query) {
+                $query->whereNull('original_filename')
+                    ->orWhereNull('file_path')
+                    ->orWhereNull('file_type')
+                    ->orWhereNull('file_size');
+            })
+            ->exists();
+
+        if ($hasUrlSources || $hasNullLegacyFields) {
+            throw new \RuntimeException(
+                'Cannot rollback steward source metadata while URL sources or nullable source fields exist.'
+            );
+        }
+
         Schema::table('steward_knowledge_files', function (Blueprint $table) {
             $table->dropIndex(['source_type']);
             $table->dropColumn(['source_type', 'source_url']);
