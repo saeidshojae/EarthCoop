@@ -1,4 +1,4 @@
-@if($user->edited == 0)
+@if(! $user->hasUsedIdentityEdit())
 
     <div class="warning-box">
         <i class="fas fa-exclamation-triangle"></i>
@@ -23,7 +23,7 @@
                    name="first_name"
                    placeholder="نام خود را وارد کنید"
                    class="form-input-enhanced"
-                   @if($user->status == 1) {{ $user->edited == 1 ? 'disabled' : '' }} @endif
+                   {{ $user->hasUsedIdentityEdit() ? 'disabled' : '' }}
                    @error('first_name') style="border-color: #ef4444;" @enderror
                    value="{{ old('first_name', auth()->user()->first_name) }}">
             @error('first_name')
@@ -41,7 +41,7 @@
                    name="last_name"
                    placeholder="نام خانوادگی خود را وارد کنید"
                    class="form-input-enhanced"
-                   @if($user->status == 1) {{ $user->edited == 1 ? 'disabled' : '' }} @endif
+                   {{ $user->hasUsedIdentityEdit() ? 'disabled' : '' }}
                    @error('last_name') style="border-color: #ef4444;" @enderror
                    value="{{ old('last_name', auth()->user()->last_name) }}">
             @error('last_name')
@@ -78,13 +78,14 @@
                 <input type="text"
                        name="phone"
                        id="phone"
-                       {{ $user->status == 1 ? 'disabled' : '' }}
+                       {{ $user->hasUsedIdentityEdit() ? 'disabled' : '' }}
                        class="form-input-enhanced"
                        style="padding-right: 120px;"
                        @error('phone') style="border-color: #ef4444;" @enderror
                        placeholder="برای مثال: 9123456789"
                        value="{{ old('phone', auth()->user()->phone) }}">
                 <select name="country_code"
+                        {{ $user->hasUsedIdentityEdit() ? 'disabled' : '' }}
                         class="form-input-enhanced"
                         id="country_code"
                         onchange="updatePlaceholder()"
@@ -92,7 +93,7 @@
                     @foreach ($countryCodes as $country)
                         <option value="{{ $country['code'] }}"
                             data-placeholder="{{ $country['example'] }}"
-                            {{ old('country_code', '+98') == $country['code'] ? 'selected' : '' }}>
+                            {{ old('country_code', $user->phone_country_code ?: '+98') == $country['code'] ? 'selected' : '' }}>
                             {{ $country['flag'] }} {{ $country['code'] }}
                         </option>
                     @endforeach
@@ -129,7 +130,7 @@
             </label>
             <input type="text"
                    name="national_id"
-                   {{ $user->status == 1 ? 'disabled' : '' }}
+                   disabled
                    placeholder="کد ملی خود را وارد کنید"
                    class="form-input-enhanced"
                    @error('national_id') style="border-color: #ef4444;" @enderror
@@ -137,6 +138,26 @@
             @error('national_id')
                 <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
             @enderror
+            <small class="text-gray-500 text-sm">کد ملی پس از ثبت اولیه قابل تغییر نیست</small>
+        </div>
+
+        <!-- Nickname -->
+        <div class="form-group-enhanced">
+            <label class="form-label-enhanced">
+                <i class="fas fa-user-tag"></i>
+                نام مستعار (اختیاری)
+            </label>
+            <input type="text"
+                   name="nickname"
+                   maxlength="80"
+                   placeholder="نامی که دوست دارید با آن دیده شوید"
+                   class="form-input-enhanced"
+                   @error('nickname') style="border-color: #ef4444;" @enderror
+                   value="{{ old('nickname', $user->nickname) }}">
+            @error('nickname')
+                <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
+            @enderror
+            <small class="text-gray-500 text-sm">نام مستعار محدودیت ویرایش یک‌باره اطلاعات هویتی را ندارد.</small>
         </div>
 
         <!-- Gender -->
@@ -147,7 +168,7 @@
             </label>
             <select name="gender"
                     id="gender"
-                    @if($user->status == 1) {{ $user->edited == 1 ? 'disabled' : '' }} @endif
+                    {{ $user->hasUsedIdentityEdit() ? 'disabled' : '' }}
                     class="form-input-enhanced"
                     @error('gender') style="border-color: #ef4444;" @enderror>
                 <option value="">انتخاب کنید</option>
