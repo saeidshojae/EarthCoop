@@ -507,7 +507,7 @@
 
 
 
-    margin-top: 0.5rem;">نویسنده: <a style='color :blue' href='{{ route('profile.member.show', $blog->user->id) }}'>{{ $blog->user->fullName() }}</a></p>
+    margin-top: 0.5rem;">نویسنده: <a style='color :blue' href='{{ route('profile.member.show', $blog->user->id) }}'>{{ $blog->user->displayName() }}</a></p>
 
 
 
