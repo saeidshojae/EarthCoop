@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_transfer_controller.dart';
+import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_transfer_dto.dart';
 import 'najm_bahar_repository_test.dart' as f;
 import 'najm_bahar_transfer_repository_test.dart' as p;
 
