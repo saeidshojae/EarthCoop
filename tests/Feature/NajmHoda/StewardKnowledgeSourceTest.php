@@ -44,7 +44,7 @@ class StewardKnowledgeSourceTest extends TestCase
 
     public function test_admin_can_upload_a_large_text_knowledge_source(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $this->withoutMiddleware([
             AdminMiddleware::class,
@@ -66,7 +66,7 @@ class StewardKnowledgeSourceTest extends TestCase
 
         $stored = StewardKnowledgeFile::where('title', 'قانون اساسی ارث‌کوپ')->firstOrFail();
         $this->assertSame($content, $stored->extracted_content);
-        Storage::disk('public')->assertExists($stored->file_path);
+        Storage::disk('local')->assertExists($stored->file_path);
     }
 
     public function test_normal_steward_ask_path_has_retrievable_uploaded_knowledge_context(): void
