@@ -16,6 +16,14 @@ Map<String, Object?> error(String code, {bool retryable = false}) => {
       'error': {'code': code, 'message': '', 'retryable': retryable},
     };
 
+Future<void> waitForPost(f.BoundaryAdapter adapter) async {
+  for (var i = 0; i < 50; i++) {
+    if (adapter.requests.any((request) => request.method == 'POST')) return;
+    await Future<void>.delayed(const Duration(milliseconds: 2));
+  }
+  fail('Transfer POST did not start within the bounded test window.');
+}
+
 Future<void> prepareTransfer(NajmBaharTransferController controller) async {
   await controller.prepare();
   controller.selectSource(controller.capability!.sources.first);
@@ -71,7 +79,7 @@ void main() {
     await prepareTransfer(controller);
     final first = controller.confirm();
     final second = controller.confirm();
-    await Future<void>.delayed(Duration.zero);
+    await waitForPost(adapter);
 
     expect(controller.state, NajmBaharTransferState.submitting);
     expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
