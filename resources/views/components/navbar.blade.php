@@ -13,7 +13,7 @@
     ];
     $currentLocale = app()->getLocale();
     $user = auth()->user();
-    $userName = $user ? ($user->fullName() ?? $user->name ?? 'کاربر') : null;
+    $userName = $user ? ($user->displayName() ?? $user->name ?? 'کاربر') : null;
     $isAdmin = $user && $user->is_admin == 1;
 @endphp
 
