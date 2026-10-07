@@ -93,6 +93,9 @@ class SitemapTest extends TestCase
         Schema::shouldReceive('hasTable')
             ->with('blog_posts')
             ->andReturnFalse();
+        Schema::shouldReceive('hasTable')
+            ->with('chronicle_milestones')
+            ->andReturnFalse();
 
         $this->get('/sitemap.xml')
             ->assertOk()
