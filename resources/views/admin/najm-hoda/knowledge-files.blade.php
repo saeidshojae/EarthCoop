@@ -2,7 +2,7 @@
 
 
 
-@section('title', 'مدیریت فایل‌های دانش Steward')
+@section('title', 'مدیریت منابع دانش Steward')
 
 
 
@@ -16,13 +16,13 @@
 
             <h1 style="font-size: 28px; font-weight: 700; color: #1f2937; margin: 0;">
 
-                📎 مدیریت فایل‌های دانش Steward
+                📚 مدیریت منابع دانش Steward
 
             </h1>
 
             <p style="color: #6b7280; margin-top: 4px; font-size: 14px;">
 
-                مدیریت و نظارت بر فایل‌های آپلودشده برای سیستم هوش مصنوعی Steward
+                مدیریت فایل‌ها و لینک‌های مرجع مورد استفاده مهماندار نجم هدا
 
             </p>
 
@@ -46,11 +46,11 @@
 
         <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
 
-            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">کل فایل‌ها</div>
+            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">کل منابع</div>
 
             <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-top: 8px;">
 
-                {{ $files->total() }}
+                {{ (int) ($sourceStats->total ?? 0) }}
 
             </div>
 
@@ -64,7 +64,7 @@
 
             <div style="font-size: 32px; font-weight: 700; color: #ef4444; margin-top: 8px;">
 
-                {{ $files->pluck('file_type')->filter(fn($t) => $t === 'pdf')->count() }}
+                {{ (int) ($sourceStats->pdfs ?? 0) }}
 
             </div>
 
@@ -74,11 +74,11 @@
 
         <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
 
-            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">فایل‌های TXT</div>
+            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">منابع لینک</div>
 
             <div style="font-size: 32px; font-weight: 700; color: #3b82f6; margin-top: 8px;">
 
-                {{ $files->pluck('file_type')->filter(fn($t) => $t === 'txt')->count() }}
+                {{ (int) ($sourceStats->urls ?? 0) }}
 
             </div>
 
@@ -92,7 +92,7 @@
 
             <div style="font-size: 32px; font-weight: 700; color: #2563eb; margin-top: 8px;">
 
-                {{ $files->pluck('file_type')->filter(fn($t) => in_array($t, ['doc', 'docx']))->count() }}
+                {{ (int) ($sourceStats->word_files ?? 0) }}
 
             </div>
 
@@ -110,7 +110,7 @@
 
             <h3 style="font-size: 16px; font-weight: 700; color: #1f2937; margin: 0;">
 
-                📚 لیست فایل‌های آپلودشده
+                📚 فهرست منابع دانش
 
             </h3>
 
@@ -162,7 +162,15 @@
 
                                     <br>
 
-                                    <small style="color: #9ca3af; font-size: 11px;">{{ $file->original_filename }}</small>
+                                    @if($file->source_type === 'url' && $file->source_url)
+                                        <small style="font-size: 11px;">
+                                            <a href="{{ $file->source_url }}" target="_blank" rel="noopener noreferrer" style="color:#0369a1;">
+                                                {{ $file->source_url }}
+                                            </a>
+                                        </small>
+                                    @elseif($file->original_filename)
+                                        <small style="color: #9ca3af; font-size: 11px;">{{ $file->original_filename }}</small>
+                                    @endif
 
                                 </td>
 
@@ -234,7 +242,9 @@
 
                                 <td style="padding: 12px; text-align: center;">
 
-                                    <button onclick="editFileModal({{ $file->id }}, '{{ $file->title }}', {{ $file->search_priority }})" 
+                                    <button data-title="{{ $file->title }}"
+                                            data-priority="{{ (int) $file->search_priority }}"
+                                            onclick="editFileModalFromButton(this, {{ (int) $file->id }})" 
 
                                             style="border: none; background: #3b82f6; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px; font-size: 11px;"
 
@@ -282,7 +292,7 @@
 
                 <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px; color: #d1d5db;"></i>
 
-                <p style="margin: 0;">هیچ فایلی آپلود نشده است</p>
+                <p style="margin: 0;">هیچ منبع دانشی ثبت نشده است</p>
 
             </div>
 
@@ -296,6 +306,12 @@
 
 <script>
 
+function editFileModalFromButton(button, id) {
+    const title = button.dataset.title || '';
+    const priority = Number(button.dataset.priority || 5);
+    editFileModal(id, title, priority);
+}
+
 function editFileModal(id, title, priority) {
 
     const newTitle = prompt('عنوان جدید:', title);
