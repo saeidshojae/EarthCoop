@@ -13,6 +13,7 @@ use App\Http\Controllers\API\V1\LocationGovernanceController;
 use App\Http\Controllers\API\V1\MediaController;
 use App\Http\Controllers\API\V1\NajmBaharAccountController;
 use App\Http\Controllers\API\V1\NajmBaharActivationController;
+use App\Http\Controllers\API\V1\NajmBaharInternalTransferController;
 use App\Http\Controllers\API\V1\NajmBaharMembershipFeeController;
 use App\Http\Controllers\API\V1\NajmBaharScheduledOperationController;
 use App\Http\Controllers\API\V1\NajmBaharSubAccountController;
@@ -107,6 +108,9 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
             ->name('najm-bahar.accounts.balance');
         Route::get('/najm-bahar/transactions', [NajmBaharTransactionController::class, 'index'])
             ->name('najm-bahar.transactions.index');
+        Route::post('/najm-bahar/internal-transfers', [NajmBaharInternalTransferController::class, 'store'])
+            ->middleware('api.v1.idempotency')
+            ->name('najm-bahar.internal-transfers.store');
         Route::get('/najm-bahar/transfers/capability', [NajmBaharTransactionController::class, 'transferCapability'])
             ->name('najm-bahar.transfers.capability');
         Route::get('/najm-bahar/transfers/destination', [NajmBaharTransactionController::class, 'transferDestination'])
