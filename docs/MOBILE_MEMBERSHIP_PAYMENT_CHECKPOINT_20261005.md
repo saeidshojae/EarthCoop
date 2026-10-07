@@ -55,3 +55,27 @@ The signed +18 workflow is prepared as artifact-only packaging. It is pinned to 
 `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`.
 
 **Still open:** the +18 workflow has not been dispatched from this connector, so no +18 APK or +18 build.json/hash receipt is claimed yet. No `main` merge, production/FTP publication, live financial charge, push-driver activation or physical phone acceptance has been performed.
+
+## Signed Android UAT +18 — final receipt
+
+Signed packaging run `37553750514` / job `112575051462` completed **SUCCESS** on 2026-10-07. The workflow commit was `a2ee1a7e4b3f0900d15411ac70492d4cd461a865`, but the job explicitly checked out and built the frozen reviewed software source `17f6521c84508b6c7038757a88377135233b66df`.
+
+Verified artifact:
+- Artifact ID: `11453868837`
+- Artifact name: `earthcoop-android-uat-18-17f6521c84508b6c7038757a88377135233b66df`
+- Artifact ZIP digest reported by GitHub: `sha256:046546f05c1cc1f8e322c16e64e896117a1d965dee557ec72793a9039d20992e`
+- Retention expiry: 2026-11-06T00:54:08Z
+- APK: `earthcoop-android-uat-1.0.0+18.apk`
+- APK size: **67,952,215 bytes**
+- APK SHA-256: `62ab9cda4f890be8c8cba2a8cb6bbcff822bca0dca5cf11d9b63c13ed2b03fea`
+- Package: `coop.earthcoop.earthcoop_mobile`
+- versionCode: `18`
+- versionName: `1.0.0`
+- INTERNET permission verified
+- Release/non-debuggable/signature verification passed
+- FCM client configuration: `true`
+- signing mode: `stable-uat`
+- certificate SHA-256: `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`, matching the established stable UAT certificate lineage
+- `host_published=false`
+
+This +18 supersedes +17 for the next single consolidated physical Android acceptance. No FTP/host publication, `main` merge, production API deployment, push-driver activation or live financial charge was performed.
