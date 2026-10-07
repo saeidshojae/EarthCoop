@@ -11,6 +11,10 @@ use App\Models\User;
 use App\Modules\NajmBahar\Services\Api\NajmBaharAccountQueryService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharLedgerQueryService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferApplicationService;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferCapabilityService;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferDestinationService;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferException;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferReconciliationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +26,9 @@ class NajmBaharTransactionController extends Controller
         private readonly NajmBaharLedgerQueryService $ledger,
         private readonly NajmBaharTransferApplicationService $transfers,
         private readonly NajmBaharAccountQueryService $accounts,
+        private readonly NajmBaharTransferCapabilityService $transferCapability,
+        private readonly NajmBaharTransferDestinationService $transferDestinations,
+        private readonly NajmBaharTransferReconciliationService $transferReconciliation,
     ) {
     }
 
@@ -55,6 +62,68 @@ class NajmBaharTransactionController extends Controller
         ]);
     }
 
+    public function transferCapability(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        return ApiResponse::success($this->transferCapability->forUser($user));
+    }
+
+    public function transferDestination(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        $validated = $request->validate([
+            'account_number' => ['required', 'string', 'max:128'],
+        ]);
+
+        try {
+            return ApiResponse::success(
+                $this->transferDestinations->preview($user, (string) $validated['account_number']),
+            );
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (NajmBaharTransferException $exception) {
+            return ApiResponse::error(
+                $exception->errorCode,
+                $exception->getMessage(),
+                $exception->httpStatus,
+                null,
+                false,
+            );
+        }
+    }
+
+    public function transferByIdempotency(Request $request, string $key): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        if (! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $key)) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => ['Invalid idempotency key.'],
+            ]);
+        }
+
+        try {
+            $transaction = $this->transferReconciliation->findCompleted($user, $key);
+
+            return ApiResponse::success([
+                'transaction' => (new NajmBaharTransactionResource($transaction))->resolve($request),
+            ]);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        }
+    }
+
     public function storeTransfer(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -63,6 +132,7 @@ class NajmBaharTransactionController extends Controller
         }
 
         $this->rejectUnexpectedTransferFields($request);
+        $this->validateExpectedTransfer($request);
 
         $validated = $request->validate([
             'source_account_id' => ['required', 'integer', 'min:1'],
@@ -70,6 +140,7 @@ class NajmBaharTransactionController extends Controller
             'amount_gol' => ['required', 'integer', 'min:1'],
             'balance_bucket' => ['required', 'in:active,dim'],
             'description' => ['nullable', 'string', 'max:500'],
+            'expected' => ['sometimes', 'required', 'array'],
         ]);
 
         try {
@@ -83,6 +154,7 @@ class NajmBaharTransactionController extends Controller
                 array_key_exists('description', $validated)
                     ? ($validated['description'] === null ? null : (string) $validated['description'])
                     : null,
+                $validated['expected'] ?? null,
             );
 
             $transaction = $this->ledger->transactionFor($user, $result['transaction']);
@@ -93,6 +165,14 @@ class NajmBaharTransactionController extends Controller
             ], 201);
         } catch (ModelNotFoundException) {
             return $this->notFound();
+        } catch (NajmBaharTransferException $exception) {
+            return ApiResponse::error(
+                $exception->errorCode,
+                $exception->getMessage(),
+                $exception->httpStatus,
+                null,
+                false,
+            );
         } catch (\RuntimeException $exception) {
             $message = mb_strtolower($exception->getMessage());
             $insufficient = str_contains($message, 'insufficient')
@@ -110,6 +190,38 @@ class NajmBaharTransactionController extends Controller
         }
     }
 
+    private function validateExpectedTransfer(Request $request): void
+    {
+        if (! array_key_exists('expected', $request->all())) {
+            return;
+        }
+
+        $expected = $request->input('expected');
+        $keys = [
+            'transfer_contract_version',
+            'source_account_number',
+            'source_active_available_gol',
+            'destination_token',
+        ];
+
+        $valid = is_array($expected)
+            && count($expected) === count($keys)
+            && array_diff($keys, array_keys($expected)) === []
+            && ($expected['transfer_contract_version'] ?? null) === 1
+            && is_string($expected['source_account_number'] ?? null)
+            && trim((string) $expected['source_account_number']) !== ''
+            && is_int($expected['source_active_available_gol'] ?? null)
+            && $expected['source_active_available_gol'] >= 0
+            && is_string($expected['destination_token'] ?? null)
+            && trim((string) $expected['destination_token']) !== '';
+
+        if (! $valid) {
+            throw ValidationException::withMessages([
+                'expected' => ['A complete exact native transfer consent snapshot is required.'],
+            ]);
+        }
+    }
+
     private function rejectUnexpectedTransferFields(Request $request): void
     {
         $allowed = [
@@ -118,6 +230,7 @@ class NajmBaharTransactionController extends Controller
             'amount_gol',
             'balance_bucket',
             'description',
+            'expected',
         ];
 
         $unexpected = array_values(array_diff(array_keys($request->all()), $allowed));

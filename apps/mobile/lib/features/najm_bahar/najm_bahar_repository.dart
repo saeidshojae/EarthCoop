@@ -5,6 +5,7 @@ import '../../core/api/request_context.dart';
 import 'najm_bahar_dto.dart';
 import 'najm_bahar_policy_dto.dart';
 import 'najm_bahar_membership_payment_dto.dart';
+import 'najm_bahar_transfer_dto.dart';
 
 class NajmBaharRepository {
   NajmBaharRepository(
@@ -68,6 +69,66 @@ class NajmBaharRepository {
         decodeData: MembershipPaymentReceipt.fromJson,
       );
       _guardSession();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharTransferCapability> transferCapability() => _policy(
+      '/najm-bahar/transfers/capability', NajmBaharTransferCapability.fromJson);
+
+  Future<NajmBaharTransferDestination> transferDestination(
+      String accountNumber) async {
+    _guard();
+    try {
+      final response = await _api.get<NajmBaharTransferDestination>(
+        '/najm-bahar/transfers/destination',
+        queryParameters: {'account_number': accountNumber},
+        decodeData: NajmBaharTransferDestination.fromJson,
+      );
+      _guard();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharTransferReceipt> sendTransfer(
+      NajmBaharTransferIntent intent) async {
+    _guard();
+    try {
+      final response = await _api.post<NajmBaharTransferReceipt>(
+        '/najm-bahar/transfers',
+        data: intent.toJson(),
+        context: RequestContext(
+          idempotencyKey: intent.key,
+          allowAutomaticRetry: false,
+        ),
+        decodeData: NajmBaharTransferReceipt.fromMutationJson,
+      );
+      _guardSession();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharTransferReceipt> reconcileTransfer(
+      NajmBaharTransferIntent intent) async {
+    _guard();
+    try {
+      final encodedKey = Uri.encodeComponent(intent.key);
+      final response = await _api.get<NajmBaharTransferReceipt>(
+        '/najm-bahar/transfers/by-idempotency/$encodedKey',
+        decodeData: NajmBaharTransferReceipt.fromReconciliationJson,
+      );
+      _guard();
       if (!response.data.matches(intent)) throw malformedResponse();
       return response.data;
     } catch (_) {

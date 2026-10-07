@@ -64,7 +64,8 @@ Response data:
 Rules:
 - read-only: must not create a mirror, reconcile balances, reserve funds or write policy;
 - only source accounts effectively owned by the authenticated user;
-- only active subaccount sources are projected for external transfer;
+- only active subaccounts with an existing canonical Account mirror are projected for external transfer;
+- missing mirrors are fail-closed and are never created by this read endpoint;
 - availability subtracts Active reservations;
 - no aggregate balance is treated as spendable;
 - capability is authoritative but not a reservation; POST rechecks everything;
