@@ -41,6 +41,11 @@ class StewardKnowledgeUrlIngestor
         $resolvedIp = $this->resolvePublicHost($host);
         $resolvedTarget = str_contains($resolvedIp, ':') ? "[{$resolvedIp}]" : $resolvedIp;
 
+        if (!defined('CURLOPT_RESOLVE')) {
+            throw new RuntimeException('امکان pin کردن DNS برای دریافت امن لینک در این سرور فعال نیست.');
+        }
+        $curlResolveOption = constant('CURLOPT_RESOLVE');
+
         $response = Http::connectTimeout(5)
             ->timeout(12)
             ->withHeaders([
@@ -60,7 +65,7 @@ class StewardKnowledgeUrlIngestor
                     }
                 },
                 'curl' => [
-                    CURLOPT_RESOLVE => ["{$host}:{$port}:{$resolvedTarget}"],
+                    $curlResolveOption => ["{$host}:{$port}:{$resolvedTarget}"],
                 ],
             ])
             ->get($url);
