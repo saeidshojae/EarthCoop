@@ -4167,7 +4167,7 @@ $groupId = $routeParams['group'] ?? null;
 
 
 
-                                                    $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                                    $userName = $user ? $user->displayName() : 'کاربر';
 
 
 
@@ -4217,7 +4217,7 @@ $groupId = $routeParams['group'] ?? null;
 
 
 
-                                                $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                                $userName = $user ? $user->displayName() : 'کاربر';
 
 
 
@@ -5057,7 +5057,7 @@ $groupId = $routeParams['group'] ?? null;
 
 
 
-                                        $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                        $userName = $user ? $user->displayName() : 'کاربر';
 
 
 
@@ -5107,7 +5107,7 @@ $groupId = $routeParams['group'] ?? null;
 
 
 
-                                    $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                    $userName = $user ? $user->displayName() : 'کاربر';
 
 
 
