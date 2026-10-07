@@ -66,11 +66,11 @@ class ElectionUserPortalController extends Controller
             ->where('group_user.status', 1)
             ->where('group_user.role', '!=', 4)
             ->where('users.is_system', false)
-            ->select('users.id', 'users.first_name', 'users.last_name')
+            ->select('users.id', 'users.first_name', 'users.last_name', 'users.nickname')
             ->orderBy('users.first_name')->orderBy('users.last_name')->get();
 
         $memberNames = $members->mapWithKeys(function ($member) {
-            $name = trim(($member->first_name ?? '').' '.($member->last_name ?? ''));
+            $name = $member->displayName();
             return [(int) $member->id => $name !== '' ? $name : ('عضو #'.$member->id)];
         })->all();
 
