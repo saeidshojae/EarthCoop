@@ -82,7 +82,7 @@ class ChatRequestController extends Controller
                 },
             ])
             ->with([
-                'users:id,first_name,last_name,avatar',
+                'users:id,first_name,last_name,nickname,avatar',
                 'messages' => function ($query) {
                     $query->latest('id')->limit(1);
                 },
