@@ -55,7 +55,13 @@ final class CanonicalProfileMembershipController extends Controller
         CanonicalGroupMembershipReconciler $reconciler,
     ): RedirectResponse {
         if (! (bool) config('location-governance.registration_enabled', false)) {
-            return app(ProfileController::class)->updateGeneral($request);
+            try {
+                return app(ProfileController::class)->updateGeneral($request);
+            } catch (ValidationException $e) {
+                return redirect()->route('profile.edit')
+                    ->withErrors($e->errors())
+                    ->withInput();
+            }
         }
 
         $user = $request->user();
