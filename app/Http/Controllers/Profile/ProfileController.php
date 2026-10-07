@@ -251,6 +251,14 @@ class ProfileController
         /** @var User $user */
         $user = User::findOrFail(auth()->id());
 
+        if ($request->exists('phone') && $request->input('phone') !== null) {
+            $normalizedPhone = preg_replace('/\s+/', '', (string) $request->input('phone')) ?? '';
+            if (str_starts_with($normalizedPhone, '0')) {
+                $normalizedPhone = substr($normalizedPhone, 1);
+            }
+            $request->merge(['phone' => $normalizedPhone]);
+        }
+
         $immutableErrors = [];
         if ($request->has('email') && (string) $request->input('email') !== (string) $user->email) {
             $immutableErrors['email'] = 'ایمیل حساب قابل تغییر نیست.';
