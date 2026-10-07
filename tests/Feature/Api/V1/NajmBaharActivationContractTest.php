@@ -236,6 +236,97 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(8, (int) $account->fresh()->balance_faded);
     }
 
+
+    public function test_native_activation_exact_snapshot_consumes_exact_points_without_flooring(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 1, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 350);
+
+        $eligibility = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()
+            ->json('data');
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'activation-native-exact-0001')
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation',
+                'points' => 200,
+                'expected' => $this->expectedActivation($eligibility),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.requested_points', 200)
+            ->assertJsonPath('data.consumed_points', 200)
+            ->assertJsonPath('data.activated_gol', 2);
+
+        $this->assertSame(3, (int) $account->fresh()->balance_active);
+        $this->assertSame(8, (int) $account->fresh()->balance_faded);
+        $this->assertSame(11, (int) $account->fresh()->balance);
+        $this->assertSame(200, (int) DB::table('user_point_consumptions')->sum('points_consumed'));
+    }
+
+    public function test_native_activation_rejects_non_multiple_points_instead_of_flooring(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 1, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 350);
+
+        $eligibility = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()
+            ->json('data');
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'activation-native-nonmultiple-0001')
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation',
+                'points' => 250,
+                'expected' => $this->expectedActivation($eligibility),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'activation_not_eligible');
+
+        $this->assertSame(0, DB::table('user_point_conversions')->count());
+        $this->assertSame(0, DB::table('user_point_consumptions')->count());
+        $this->assertSame(1, (int) $account->fresh()->balance_active);
+        $this->assertSame(10, (int) $account->fresh()->balance_faded);
+    }
+
+    public function test_native_activation_stale_snapshot_fails_closed_without_consuming_points_or_dim(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 1, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 300);
+
+        $eligibility = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()
+            ->json('data');
+
+        // A later participation award changes the authoritative terms the user reviewed.
+        $this->awardConvertibleParticipationPoints($user, 100);
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'activation-native-stale-0001')
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation',
+                'points' => 200,
+                'expected' => $this->expectedActivation($eligibility),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'activation_terms_changed');
+
+        $this->assertSame(0, DB::table('user_point_conversions')->count());
+        $this->assertSame(0, DB::table('user_point_consumptions')->count());
+        $this->assertSame(1, (int) $account->fresh()->balance_active);
+        $this->assertSame(10, (int) $account->fresh()->balance_faded);
+        $this->assertSame(11, (int) $account->fresh()->balance);
+    }
+
     public function test_disabled_conversion_policy_fails_closed(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
@@ -324,6 +415,22 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(6, (int) $afterModel->najm_bahar_membership_fee_membership_amount);
         $this->assertSame(3, (int) $afterModel->najm_bahar_membership_fee_insurance_amount);
         $this->assertSame(3, (int) $afterModel->najm_bahar_membership_fee_burn_amount);
+    }
+
+
+    private function expectedActivation(array $eligibility): array
+    {
+        return [
+            'activation_contract_version' => $eligibility['activation_contract_version'],
+            'remaining_convertible_points' => $eligibility['remaining_convertible_points'],
+            'conversion_ratio_points_per_gol' => $eligibility['conversion_ratio_points_per_gol'],
+            'max_convertible_points' => $eligibility['max_convertible_points'],
+            'max_activation_gol' => $eligibility['max_activation_gol'],
+            'dim_available_gol' => $eligibility['dim_available_gol'],
+            'policy_version_id' => $eligibility['policy_version_id'],
+            'policy_version' => $eligibility['policy_version'],
+            'policy_source' => $eligibility['policy_source'],
+        ];
     }
 
     private function accountFor(User $user, int $active, int $dim): Account
