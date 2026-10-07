@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Modules\NajmBahar\Models\SalaryRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 
 class NajmBaharSalaryRuleController extends Controller
 {
@@ -128,7 +130,21 @@ class NajmBaharSalaryRuleController extends Controller
         $groupTypeValues = array_keys($this->groupTypeOptions());
         $locationLevelValues = array_keys($this->locationLevelOptions());
 
-        $validator = Validator::make($request->all(), [
+        $payload = $request->all();
+        $context = app(TemporalContextResolver::class)->forUser($request->user());
+        $temporal = app(TemporalService::class);
+        foreach (['start_at', 'end_at'] as $field) {
+            if (empty($payload[$field])) {
+                continue;
+            }
+            try {
+                $payload[$field] = $temporal->parseDate((string) $payload[$field], $context)->toCanonical();
+            } catch (\Throwable) {
+                // Leave the original value in place so Laravel validation reports it.
+            }
+        }
+
+        $validator = Validator::make($payload, [
             'name' => 'required|string|max:255',
             'rule_type' => 'required|in:role,user,project',
             'group_id' => 'nullable|exists:groups,id',

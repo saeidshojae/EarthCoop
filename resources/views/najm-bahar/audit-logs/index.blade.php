@@ -1127,17 +1127,7 @@ $roleLabels = [
 
 
 
-                        <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"
-
-
-
-
-
-
-
-
-
-                               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-earth-green focus:border-transparent">
+                        <x-temporal.date-input name="date_from" :value="$filters['date_from'] ?? ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-earth-green focus:border-transparent" />
 
 
 
@@ -1177,17 +1167,7 @@ $roleLabels = [
 
 
 
-                        <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"
-
-
-
-
-
-
-
-
-
-                               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-earth-green focus:border-transparent">
+                        <x-temporal.date-input name="date_to" :value="$filters['date_to'] ?? ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-earth-green focus:border-transparent" />
 
 
 

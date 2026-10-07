@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\NajmBaharAuditLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 
 class NajmBaharAuditLogController extends Controller
 {
@@ -108,10 +110,26 @@ class NajmBaharAuditLogController extends Controller
 
     private function parseFilters(Request $request): array
     {
+        $context = app(TemporalContextResolver::class)->forUser($request->user());
+        $temporal = app(TemporalService::class);
+        $dateFrom = null;
+        $dateTo = null;
+
+        try {
+            $dateFrom = $request->filled('date_from')
+                ? $temporal->parseDate((string) $request->input('date_from'), $context)->toCanonical()
+                : null;
+            $dateTo = $request->filled('date_to')
+                ? $temporal->parseDate((string) $request->input('date_to'), $context)->toCanonical()
+                : null;
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored.
+        }
+
         return [
             'group_id' => $request->input('group_id'),
-            'date_from' => $request->input('date_from'),
-            'date_to' => $request->input('date_to'),
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
             'actor' => $request->input('actor'),
             'action' => $request->input('action'),
             'search' => $request->input('search'),

@@ -44,9 +44,7 @@
 
                 <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">از تاریخ</label>
 
-                <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"
-
-                       class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                <x-temporal.date-input name="date_from" :value="$filters['date_from'] ?? ''" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
 
             </div>
 
@@ -54,9 +52,7 @@
 
                 <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">تا تاریخ</label>
 
-                <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"
-
-                       class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                <x-temporal.date-input name="date_to" :value="$filters['date_to'] ?? ''" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
 
             </div>
 

@@ -71,11 +71,19 @@ class UserController extends Controller
             });
         }
 
-        if ($request->filled('created_from')) {
-            $query->whereDate('created_at', '>=', $request->created_from);
-        }
-        if ($request->filled('created_to')) {
-            $query->whereDate('created_at', '<=', $request->created_to);
+        $temporal = app(TemporalService::class);
+        $temporalContext = app(TemporalContextResolver::class)->forUser($request->user());
+        try {
+            if ($request->filled('created_from')) {
+                $createdFrom = $temporal->parseDate((string) $request->input('created_from'), $temporalContext);
+                $query->where('created_at', '>=', $temporal->startOfDay($createdFrom, $temporalContext));
+            }
+            if ($request->filled('created_to')) {
+                $createdTo = $temporal->parseDate((string) $request->input('created_to'), $temporalContext);
+                $query->where('created_at', '<=', $temporal->endOfDay($createdTo, $temporalContext));
+            }
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored.
         }
 
         $users = $query->orderBy('created_at', 'desc')->get();
@@ -95,7 +103,7 @@ class UserController extends Controller
         $provinces = \App\Models\Province::orderBy('name')->get();
 
         $temporal = app(TemporalService::class);
-        $temporalContext = app(TemporalContextResolver::class)->defaultContext();
+        $temporalContext = app(TemporalContextResolver::class)->forUser($request->user());
         $registrationChartData = [];
         for ($i = 29; $i >= 0; $i--) {
             $date = now()->subDays($i);
@@ -312,11 +320,19 @@ class UserController extends Controller
         if ($request->filled('action')) {
             $query->where('action', $request->action);
         }
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+        $temporal = app(TemporalService::class);
+        $context = app(TemporalContextResolver::class)->forUser($request->user());
+        try {
+            if ($request->filled('date_from')) {
+                $dateFrom = $temporal->parseDate((string) $request->input('date_from'), $context);
+                $query->where('created_at', '>=', $temporal->startOfDay($dateFrom, $context));
+            }
+            if ($request->filled('date_to')) {
+                $dateTo = $temporal->parseDate((string) $request->input('date_to'), $context);
+                $query->where('created_at', '<=', $temporal->endOfDay($dateTo, $context));
+            }
+        } catch (\Throwable) {
+            // Invalid optional filters are ignored.
         }
 
         $transactions = $query->orderByDesc('created_at')->paginate(25)->appends($request->except('page'));

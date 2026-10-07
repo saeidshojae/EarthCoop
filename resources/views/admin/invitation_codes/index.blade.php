@@ -1918,7 +1918,7 @@
 
 
 
-                    <input type="date" name="from" value="{{ request('from') }}" class="px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-white">
+                    <x-temporal.date-input name="from" :value="request('from')" class="px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-white" />
 
 
 
@@ -1928,7 +1928,7 @@
 
 
 
-                    <input type="date" name="to" value="{{ request('to') }}" class="px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-white">
+                    <x-temporal.date-input name="to" :value="request('to')" class="px-3 py-2 rounded-lg border dark:bg-slate-700 dark:text-white" />
 
 
 
@@ -3178,7 +3178,7 @@
 
 
 
-                    <input type="date" name="from" value="{{ request('from') }}" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white">
+                    <x-temporal.date-input name="from" :value="request('from')" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" />
 
 
 
@@ -3218,7 +3218,7 @@
 
 
 
-                    <input type="date" name="to" value="{{ request('to') }}" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white">
+                    <x-temporal.date-input name="to" :value="request('to')" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" />
 
 
 

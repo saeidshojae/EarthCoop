@@ -17,13 +17,18 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 
 class NajmBaharReportController extends Controller
 {
     private TransactionService $transactionService;
 
-    public function __construct(TransactionService $transactionService)
-    {
+    public function __construct(
+        TransactionService $transactionService,
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
+    ) {
         $this->transactionService = $transactionService;
     }
 
@@ -38,8 +43,8 @@ class NajmBaharReportController extends Controller
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
-        $dateFrom = $request->input('date_from', Carbon::now()->subMonths(3)->format('Y-m-d'));
-        $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
+        $dateFrom = $this->canonicalDateInput($request, 'date_from', Carbon::now()->subMonths(3)->format('Y-m-d'));
+        $dateTo = $this->canonicalDateInput($request, 'date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
@@ -63,8 +68,8 @@ class NajmBaharReportController extends Controller
                 ->with('error', 'دسترسی به گزارش مالی گروه برای شما مجاز نیست.');
         }
 
-        $dateFrom = $request->input('date_from', Carbon::now()->subMonths(3)->format('Y-m-d'));
-        $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
+        $dateFrom = $this->canonicalDateInput($request, 'date_from', Carbon::now()->subMonths(3)->format('Y-m-d'));
+        $dateTo = $this->canonicalDateInput($request, 'date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
         $accountIds = $this->resolveAccountIds($account, null);
@@ -114,8 +119,8 @@ class NajmBaharReportController extends Controller
         }
 
         [$dateFrom, $dateTo] = $this->clampDateRange(
-            $request->input('date_from', Carbon::now()->subMonths(3)->format('Y-m-d')),
-            $request->input('date_to', Carbon::now()->format('Y-m-d')),
+            $this->canonicalDateInput($request, 'date_from', Carbon::now()->subMonths(3)->format('Y-m-d')),
+            $this->canonicalDateInput($request, 'date_to', Carbon::now()->format('Y-m-d')),
             $window['allowed_from'],
             $window['allowed_to']
         );
@@ -536,6 +541,24 @@ class NajmBaharReportController extends Controller
         }
 
         return collect($leaders)->values();
+    }
+
+    private function canonicalDateInput(Request $request, string $field, string $default): string
+    {
+        if (! $request->filled($field)) {
+            return $default;
+        }
+
+        try {
+            return $this->temporal
+                ->parseDate(
+                    (string) $request->input($field),
+                    $this->temporalContexts->forUser($request->user()),
+                )
+                ->toCanonical();
+        } catch (\Throwable) {
+            return $default;
+        }
     }
 
     private function getLeaderResponsibilityWindow(Group $group, int $userId): ?array

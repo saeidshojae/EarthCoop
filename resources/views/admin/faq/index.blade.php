@@ -310,13 +310,7 @@
 
                 <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">از تاریخ</label>
 
-                <input type="date" 
-
-                       name="from" 
-
-                       value="{{ request('from') }}"
-
-                       class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white">
+                <x-temporal.date-input name="from" :value="request('from')" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white" />
 
             </div>
 
@@ -326,13 +320,7 @@
 
                 <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">تا تاریخ</label>
 
-                <input type="date" 
-
-                       name="to" 
-
-                       value="{{ request('to') }}"
-
-                       class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white">
+                <x-temporal.date-input name="to" :value="request('to')" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white" />
 
             </div>
 

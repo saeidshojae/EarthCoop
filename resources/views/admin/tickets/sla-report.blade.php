@@ -338,27 +338,7 @@
 
 
 
-                <input type="date" 
-
-
-
-
-
-
-
-
-
-                       name="from" 
-
-
-
-
-
-
-
-
-
-                       value="{{ request('from', $fromDate->format('Y-m-d')) }}"
+                <x-temporal.date-input name="from" />format('Y-m-d')) }}"
 
 
 
@@ -408,27 +388,7 @@
 
 
 
-                <input type="date" 
-
-
-
-
-
-
-
-
-
-                       name="to" 
-
-
-
-
-
-
-
-
-
-                       value="{{ request('to', $toDate->format('Y-m-d')) }}"
+                <x-temporal.date-input name="to" />format('Y-m-d')) }}"
 
 
 
