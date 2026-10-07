@@ -2268,6 +2268,8 @@ class NajmHodaController extends Controller
             // ذخیره در دیتابیس
             $knowledgeFile = StewardKnowledgeFile::create([
                 'title' => trim($validated['title']),
+                'source_type' => 'file',
+                'source_url' => null,
                 'original_filename' => $originalName,
                 'file_path' => $filePath,
                 'file_type' => $extension,
@@ -2439,7 +2441,7 @@ class NajmHodaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'فایل با موفقیت ویرایش شد',
+                'message' => 'منبع با موفقیت ویرایش شد',
                 'file' => [
                     'id' => $file->id,
                     'title' => $file->title,
@@ -2476,7 +2478,7 @@ class NajmHodaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'فایل با موفقیت حذف شد'
+                'message' => 'منبع با موفقیت حذف شد'
             ]);
         } catch (\Exception $e) {
             return response()->json([
