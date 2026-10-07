@@ -58,3 +58,9 @@ Frozen payment-capable software source is `17f6521c84508b6c7038757a88377135233b6
 The +18 signed workflow is prepared and pinned to that exact software SHA. It enforces required Firebase configuration, stable UAT signing, release/nondebuggable/package/Internet checks and certificate SHA-256 continuity against `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`. The workflow has **not** been dispatched from the current connector, so no +18 APK/hash/build.json is claimed yet.
 
 Next mobile action is therefore only packaging the pinned +18 and then one consolidated physical acceptance run. Do not rebuild from a different software SHA merely for inspection. No main merge, FTP/host publication, real-money charge or push-driver activation has been performed.
+
+## Verified signed Android +18
+
+Android UAT `1.0.0+18` is now built and verified from frozen software source `17f6521c84508b6c7038757a88377135233b66df`. Packaging run `37553750514` succeeded. Artifact `11453868837`; inner APK SHA-256 `62ab9cda4f890be8c8cba2a8cb6bbcff822bca0dca5cf11d9b63c13ed2b03fea`; size 67,952,215 bytes; stable certificate SHA-256 `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`; FCM configured; host publication false.
+
+The remaining payment work is no longer software packaging. It is the controlled deployment/physical-acceptance sequence: deploy the compatible server capability when explicitly approved, then install only +18 for one consolidated device run. A real membership-fee charge remains a separate explicit UAT authorization. Do not repeat historical +17 or earlier candidate checks individually.
