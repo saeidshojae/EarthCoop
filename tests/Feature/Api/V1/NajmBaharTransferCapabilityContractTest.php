@@ -83,7 +83,7 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
             ->assertJsonPath('data.transfer_contract_version', 1)
             ->assertJsonPath('data.external_transfer_enabled', true)
             ->assertJsonPath('data.disabled_reason', null)
-            ->assertJsonCount(2, 'data.sources');
+            ->assertJsonCount(1, 'data.sources');
 
         $sources = collect($response->json('data.sources'))->keyBy('account_number');
 
@@ -92,10 +92,7 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
         $this->assertTrue($sources[$eligible->sub_account_code]['can_transfer_active']);
         $this->assertSame('subaccount', $sources[$eligible->sub_account_code]['kind']);
 
-        $this->assertTrue($sources->has($noMirror->sub_account_code));
-        $this->assertSame(700, $sources[$noMirror->sub_account_code]['active_available_gol']);
-        $this->assertTrue($sources[$noMirror->sub_account_code]['can_transfer_active']);
-
+        $this->assertFalse($sources->has($noMirror->sub_account_code));
         $this->assertFalse($sources->has($disabled->sub_account_code));
         $this->assertFalse($sources->has($foreign->sub_account_code));
 
