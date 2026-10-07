@@ -83,8 +83,8 @@ class HomeDashboardViewContractTest extends TestCase
 
         $this->assertStringContainsString('hidden lg:block lg:w-80', $sidebar);
         $this->assertStringContainsString('home-sidebar-heading', $sidebar);
-        $this->assertStringNotContainsString('x-data="{ open: false }"', $sidebar);
-        $this->assertStringNotContainsString('@click="open = !open"', $sidebar);
+        $this->assertStringNotContainsString('<aside x-data=', $sidebar);
+        $this->assertStringNotContainsString('home-sidebar-toggle', $sidebar);
         $this->assertStringNotContainsString("open ? 'block' : 'hidden lg:block'", $sidebar);
         $this->assertStringNotContainsString('نسخه ۲.۱.۰ - EarthCoop', $sidebar);
     }
