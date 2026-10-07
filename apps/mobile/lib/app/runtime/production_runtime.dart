@@ -32,6 +32,7 @@ import '../../features/najm_bahar/najm_bahar_membership_payment_controller.dart'
 import '../../features/najm_bahar/najm_bahar_repository.dart';
 import '../../features/najm_bahar/najm_bahar_screen.dart';
 import '../../features/najm_bahar/najm_bahar_transfer_controller.dart';
+import '../../features/najm_bahar/najm_bahar_activation_controller.dart';
 import '../../features/groups/group_cache.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/group_repository.dart';
@@ -622,6 +623,7 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
   late final NajmBaharPolicyController _policies;
   late final MembershipPaymentController _payment;
   late final NajmBaharTransferController _transfer;
+  late final NajmBaharActivationController _activation;
   bool _invalidating = false;
 
   @override
@@ -657,10 +659,21 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
         _controller.refreshHistory(),
       ]),
     );
+    _activation = NajmBaharActivationController(
+      widget.repository,
+      sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: _invalidateAll,
+      refreshFinancialViews: () => Future.wait<void>([
+        _controller.refreshAccount(),
+        _controller.refreshHistory(),
+        _policies.refreshActivation(),
+      ]),
+    );
     unawaited(_controller.load());
     unawaited(_policies.load());
     unawaited(_payment.prepare());
     unawaited(_transfer.prepare());
+    unawaited(_activation.prepare());
   }
 
   void _invalidateAll() {
@@ -673,6 +686,7 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
       _policies.invalidateSession();
       _payment.invalidateSession();
       _transfer.invalidateSession();
+      _activation.invalidateSession();
     } finally {
       _invalidating = false;
     }
@@ -684,6 +698,7 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
     _policies.dispose();
     _payment.dispose();
     _transfer.dispose();
+    _activation.dispose();
     super.dispose();
   }
 
@@ -693,5 +708,6 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
         policyController: _policies,
         paymentController: _payment,
         transferController: _transfer,
+        activationController: _activation,
       );
 }
