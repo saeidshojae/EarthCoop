@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
+use App\Models\Setting;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\MonetaryPolicyVersion;
@@ -255,6 +256,74 @@ class NajmBaharActivationContractTest extends TestCase
             ])
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'activation_disabled');
+    }
+
+
+    public function test_eligibility_v1_exposes_policy_identity_without_writing_versioned_state(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $this->accountFor($user, active: 5, dim: 10);
+        $policy = $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 350);
+
+        $beforePolicy = $policy->fresh()->toArray();
+        $beforeConversions = DB::table('user_point_conversions')->count();
+        $beforeConsumptions = DB::table('user_point_consumptions')->count();
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()
+            ->assertJsonPath('data.activation_contract_version', 1)
+            ->assertJsonPath('data.policy_version_id', $policy->id)
+            ->assertJsonPath('data.policy_version', 1)
+            ->assertJsonPath('data.policy_source', 'versioned_policy');
+
+        $this->assertSame($beforePolicy, $policy->fresh()->toArray());
+        $this->assertSame($beforeConversions, DB::table('user_point_conversions')->count());
+        $this->assertSame($beforeConsumptions, DB::table('user_point_consumptions')->count());
+    }
+
+    public function test_legacy_eligibility_v1_is_zero_write_and_does_not_migrate_setting_amounts(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $this->accountFor($user, active: 1, dim: 5);
+        $this->awardConvertibleParticipationPoints($user, 250);
+
+        MonetaryPolicyVersion::query()->delete();
+
+        $setting = Setting::singleton();
+        $setting->forceFill([
+            'reputation_conversion_enabled' => true,
+            'reputation_to_gol_ratio' => 100,
+            'najm_bahar_amounts_in_gol' => false,
+            'najm_bahar_initial_amount' => 10000,
+            'najm_bahar_membership_fee_amount' => 12,
+            'najm_bahar_membership_fee_membership_amount' => 6,
+            'najm_bahar_membership_fee_insurance_amount' => 3,
+            'najm_bahar_membership_fee_burn_amount' => 3,
+        ])->save();
+
+        $before = Setting::query()->findOrFail($setting->id)->getAttributes();
+        $beforeUpdatedAt = (string) $setting->fresh()->updated_at;
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()
+            ->assertJsonPath('data.activation_contract_version', 1)
+            ->assertJsonPath('data.policy_version_id', null)
+            ->assertJsonPath('data.policy_version', null)
+            ->assertJsonPath('data.policy_source', 'legacy_settings')
+            ->assertJsonPath('data.conversion_ratio_points_per_gol', 100)
+            ->assertJsonPath('data.max_activation_gol', 2);
+
+        $afterModel = Setting::query()->findOrFail($setting->id);
+        $this->assertSame($before, $afterModel->getAttributes());
+        $this->assertSame($beforeUpdatedAt, (string) $afterModel->updated_at);
+        $this->assertFalse((bool) $afterModel->najm_bahar_amounts_in_gol);
+        $this->assertSame(12, (int) $afterModel->najm_bahar_membership_fee_amount);
+        $this->assertSame(6, (int) $afterModel->najm_bahar_membership_fee_membership_amount);
+        $this->assertSame(3, (int) $afterModel->najm_bahar_membership_fee_insurance_amount);
+        $this->assertSame(3, (int) $afterModel->najm_bahar_membership_fee_burn_amount);
     }
 
     private function accountFor(User $user, int $active, int $dim): Account
