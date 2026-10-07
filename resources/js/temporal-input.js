@@ -1,3 +1,5 @@
+import $ from 'jquery';
+
 const GREGORIAN_MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
@@ -141,7 +143,9 @@ export const markLegacyAdminDateInputs = (root = document, locale = resolvedLoca
 
 let persianDatepickerPromise = null;
 
-const existingPersianDatepicker = () => window.jQuery?.fn?.persianDatepicker;
+const temporalJQuery = $;
+
+const existingPersianDatepicker = () => temporalJQuery?.fn?.persianDatepicker;
 
 const loadBundledPersianDatepicker = async () => {
     const existing = existingPersianDatepicker();
@@ -149,6 +153,12 @@ const loadBundledPersianDatepicker = async () => {
     if (persianDatepickerPromise) return persianDatepickerPromise;
 
     persianDatepickerPromise = (async () => {
+        // Persian Datepicker is a jQuery plugin. Bind it to the jQuery instance
+        // imported by this Vite chunk instead of whichever legacy global jQuery
+        // happened to run first/last on the page.
+        window.$ = temporalJQuery;
+        window.jQuery = temporalJQuery;
+
         const persianDateModule = await import('persian-date');
         window.persianDate = window.persianDate || persianDateModule.default || persianDateModule;
         await import('persian-datepicker/dist/js/persian-datepicker.min.js');
@@ -169,7 +179,7 @@ export const enhanceJalaliDateInputs = async (root = document) => {
     if (typeof plugin !== 'function' || !window.jQuery) return false;
 
     inputs.forEach((input) => {
-        const $input = window.jQuery(input);
+        const $input = temporalJQuery(input);
         if ($input.data('temporalDatepickerReady')) return;
 
         $input.persianDatepicker({
