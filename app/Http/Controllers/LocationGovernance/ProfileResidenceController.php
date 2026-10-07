@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Exceptions\ResidenceTransferLimitExceeded;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Models\Location;
@@ -151,13 +152,19 @@ final class ProfileResidenceController extends Controller
                         ],
                     );
                     if ($reanchored === null) {
-                        $residenceService->transferPrimaryResidence(
-                            $user,
-                            $anchor,
-                            $user,
-                            'profile_reference_settlement_anchor',
-                            false,
-                        );
+                        try {
+                            $residenceService->transferPrimaryResidence(
+                                $user,
+                                $anchor,
+                                $user,
+                                'profile_reference_settlement_anchor',
+                                false,
+                            );
+                        } catch (ResidenceTransferLimitExceeded) {
+                            throw ValidationException::withMessages([
+                                'reference_settlement_external_id' => 'در ۱۲ ماه گذشته به سقف مجاز تغییر محل سکونت اصلی رسیده‌اید. برای ثبت آبادی جدید ابتدا باید امکان انتقال مجدد فراهم شود.',
+                            ]);
+                        }
                     }
                 } else {
                     $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, []);
@@ -246,14 +253,20 @@ final class ProfileResidenceController extends Controller
                     ['source' => 'profile_verified_reference_upgrade'],
                 );
                 if ($reanchored === null) {
-                    $residenceService->transferPrimaryResidence(
-                        $user,
-                        $location,
-                        $user,
-                        'profile_location_update',
-                        false,
-                        $structuralClaims,
-                    );
+                    try {
+                        $residenceService->transferPrimaryResidence(
+                            $user,
+                            $location,
+                            $user,
+                            'profile_location_update',
+                            false,
+                            $structuralClaims,
+                        );
+                    } catch (ResidenceTransferLimitExceeded) {
+                        throw ValidationException::withMessages([
+                            'location_id' => 'در ۱۲ ماه گذشته به سقف مجاز تغییر محل سکونت اصلی رسیده‌اید. اگر این تغییر ضروری است، لطفاً با پشتیبانی تماس بگیرید.',
+                        ]);
+                    }
                 }
             } else {
                 $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);
@@ -329,14 +342,20 @@ final class ProfileResidenceController extends Controller
                     'location_proposal_id' => $proposal->id,
                 ], $canonicalStructuralClaims);
             } elseif ((int) $current->location_id !== (int) $anchor->id) {
-                $residenceService->transferPrimaryResidence(
-                    $user,
-                    $anchor,
-                    $user,
-                    'profile_pending_residence_anchor',
-                    false,
-                    $canonicalStructuralClaims,
-                );
+                try {
+                    $residenceService->transferPrimaryResidence(
+                        $user,
+                        $anchor,
+                        $user,
+                        'profile_pending_residence_anchor',
+                        false,
+                        $canonicalStructuralClaims,
+                    );
+                } catch (ResidenceTransferLimitExceeded) {
+                    throw ValidationException::withMessages([
+                        'location_proposal_id' => 'در ۱۲ ماه گذشته به سقف مجاز تغییر محل سکونت اصلی رسیده‌اید. برای ثبت این مسیر جدید ابتدا باید امکان انتقال مجدد فراهم شود.',
+                    ]);
+                }
             } else {
                 $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, $canonicalStructuralClaims);
             }
