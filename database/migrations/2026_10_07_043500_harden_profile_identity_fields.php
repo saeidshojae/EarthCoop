@@ -9,6 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Legacy empty strings represent "not supplied" and would conflict under a unique index.
+        DB::table('users')->where('national_id', '')->update(['national_id' => null]);
+
         $duplicateNationalIds = DB::table('users')
             ->select('national_id')
             ->whereNotNull('national_id')
