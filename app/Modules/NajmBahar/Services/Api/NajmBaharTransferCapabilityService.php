@@ -5,14 +5,15 @@ namespace App\Modules\NajmBahar\Services\Api;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
-use App\Modules\NajmBahar\Models\ActiveBaharReservation;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\ActiveBaharReservationService;
 
 class NajmBaharTransferCapabilityService
 {
     public function __construct(
         private readonly AccountService $accounts,
+        private readonly ActiveBaharReservationService $reservations,
     ) {
     }
 
@@ -64,18 +65,17 @@ class NajmBaharTransferCapabilityService
         $mirror = Account::query()
             ->where('type', 'subaccount')
             ->where('account_number', (string) $sub->sub_account_code)
+            ->where('status', 1)
             ->first();
 
         if (! $mirror instanceof Account) {
             return null;
         }
 
-        $reserved = (int) ActiveBaharReservation::query()
-            ->where('payer_account_id', (int) $mirror->id)
-            ->where('status', ActiveBaharReservation::RESERVED)
-            ->sum('amount');
-
-        $available = max(0, $active - $reserved);
+        $available = min(
+            $active,
+            $this->reservations->availableActive($mirror),
+        );
 
         return [
             'account_id' => (int) $mirror->id,
