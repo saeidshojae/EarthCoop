@@ -197,7 +197,11 @@ final class CanonicalProfileController extends ProfileController
             ]],
             [
                 'code' => (string) $code->code,
-                'expire_at' => $code->expire_at?->toIso8601String() ?? (string) $code->expire_at,
+                'expire_at' => app(TemporalService::class)->dateTime(
+                    $code->expire_at,
+                    app(TemporalContextResolver::class)->forLocale('fa', (string) config('app.timezone', 'Asia/Tehran')),
+                    'short',
+                ),
             ],
             [
                 'deduplication_key' => 'member-invitation-code:'.$code->id,
