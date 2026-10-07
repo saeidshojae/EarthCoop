@@ -51,7 +51,7 @@
             <div class="poll-card__owner">
                 @if($item->user && $item->user->avatar)
                     <div class="poll-card__avatar poll-card__avatar--image">
-                        <img src="{{ asset('/images/users/avatars/' . $item->user->avatar) }}" alt="{{ optional($item->user)->fullName() }}">
+                        <img src="{{ asset('/images/users/avatars/' . $item->user->avatar) }}" alt="{{ optional($item->user)->displayName() }}">
                     </div>
                 @else
                     <div class="poll-card__avatar" style="background: {{ $backgroundColor }}; color: {{ $textColor }};">
@@ -63,9 +63,9 @@
                         $pollSenderProfileUrl = $item->user ? route('profile.member.show', $item->user->id) : null;
                     @endphp
                     @if($pollSenderProfileUrl)
-                        <a href="{{ $pollSenderProfileUrl }}" class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</a>
+                        <a href="{{ $pollSenderProfileUrl }}" class="poll-card__name">{{ optional($item->user)->displayName() ?? 'حساب حذف شده' }}</a>
                     @else
-                        <span class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</span>
+                        <span class="poll-card__name">{{ optional($item->user)->displayName() ?? 'حساب حذف شده' }}</span>
                     @endif
                     <span class="poll-card__role">{{ $isElection ? 'انتخابات' : 'نظرسنجی' }}</span>
                 </div>
