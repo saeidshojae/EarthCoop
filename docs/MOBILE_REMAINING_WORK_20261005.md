@@ -64,3 +64,16 @@ Next mobile action is therefore only packaging the pinned +18 and then one conso
 Android UAT `1.0.0+18` is now built and verified from frozen software source `17f6521c84508b6c7038757a88377135233b66df`. Packaging run `37553750514` succeeded. Artifact `11453868837`; inner APK SHA-256 `62ab9cda4f890be8c8cba2a8cb6bbcff822bca0dca5cf11d9b63c13ed2b03fea`; size 67,952,215 bytes; stable certificate SHA-256 `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`; FCM configured; host publication false.
 
 The remaining payment work is no longer software packaging. It is the controlled deployment/physical-acceptance sequence: deploy the compatible server capability when explicitly approved, then install only +18 for one consolidated device run. A real membership-fee charge remains a separate explicit UAT authorization. Do not repeat historical +17 or earlier candidate checks individually.
+
+
+## Native Bahar external transfer — software complete
+
+The first Native Bahar external transfer flow is software-complete. Frozen product code is `05106f816123ed0fe196b03a8f312cbe8a4067da`; final evidence run `37595959108` is green on workflow-only head `84799fc942fb1f2e81ceaf8bb7b6d8bfdf125c36`.
+
+Final evidence: server 2439 tests / 13938 assertions (47 PHPUnit deprecations, 2 skipped); transfer contracts 21 / 211; mobile formatter 148 files / 0 changed, analyzer clean, 311 Flutter tests passed. See `docs/MOBILE_BAHAR_TRANSFER_CHECKPOINT_20261007.md`.
+
+This implementation covers only immediate **external Active Bahar** transfer from an owned eligible subaccount to an exactly previewed external active subaccount. Dim external transfer, internal redistribution, scheduled transfer and group/legal-entity authority transfer remain separate flows.
+
+Because a physical phone is currently unavailable, do **not** create a new signed APK solely for this transfer feature. Continue phone-free work and later produce one consolidated signed candidate. Signed +18 remains the latest actually packaged candidate, but it predates this transfer implementation and must not be described as transfer-capable.
+
+Still prohibited without separate approval: main merge, production API deployment, FTP/host publication and real monetary transfer.
