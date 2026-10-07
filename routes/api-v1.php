@@ -108,6 +108,8 @@ Route::middleware(['api.v1.context', 'api.v1.envelope'])->group(function () {
             ->name('najm-bahar.accounts.balance');
         Route::get('/najm-bahar/transactions', [NajmBaharTransactionController::class, 'index'])
             ->name('najm-bahar.transactions.index');
+        Route::get('/najm-bahar/internal-transfers/by-idempotency/{key}', [NajmBaharInternalTransferController::class, 'byIdempotency'])
+            ->name('najm-bahar.internal-transfers.by-idempotency');
         Route::post('/najm-bahar/internal-transfers', [NajmBaharInternalTransferController::class, 'store'])
             ->middleware('api.v1.idempotency')
             ->name('najm-bahar.internal-transfers.store');
