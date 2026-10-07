@@ -17,8 +17,8 @@
 
     $isOwner = ((int) ($item->created_by ?? 0)) === (int) auth()->id();
     $initials = $item->user
-        ? mb_substr($item->user->first_name ?? '', 0, 1) . ' ' . mb_substr($item->user->last_name ?? '', 0, 1)
-        : '؟ ؟';
+        ? mb_substr($item->user->displayName(), 0, 1)
+        : '؟';
 
     $selectedOptionId = (int) ($userVotesByPollId[$item->id] ?? 0);
     $isExpired = $item->expires_at && \Carbon\Carbon::parse($item->expires_at)->isPast();
