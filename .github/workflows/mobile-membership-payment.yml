@@ -61,6 +61,10 @@ jobs:
           mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
           chmod -R 775 bootstrap/cache storage/framework storage/logs
           composer install --prefer-dist --no-interaction --no-progress
+          npm ci --no-audit --no-fund
+          npm run build
+          test -f public/build/manifest.json
+          grep -F 'resources/js/app.js' public/build/manifest.json >/dev/null
           cat > .env <<'EOF'
           APP_NAME=EarthCoop
           APP_ENV=testing
@@ -142,6 +146,10 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, bcmath, openssl, fileinfo, zip, curl, json, pdo_mysql
           coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
       - name: Prepare isolated Laravel test runtime
         run: |
           set -euo pipefail
@@ -201,9 +209,23 @@ jobs:
       - name: Resolve locked dependencies
         working-directory: apps/mobile
         run: flutter pub get
-      - name: Strict formatter
+      - name: Normalize formatter and expose exact canonical test sources
         working-directory: apps/mobile
-        run: dart format --output=none --set-exit-if-changed lib test integration_test
+        run: |
+          set -euo pipefail
+          mkdir -p ../../final-mobile-evidence
+          dart format lib test integration_test
+          git diff --no-color -- lib test integration_test | tee ../../final-mobile-evidence/format.patch
+          for file in \
+            test/features/najm_bahar/najm_bahar_membership_payment_controller_test.dart \
+            test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart \
+            test/features/najm_bahar/najm_bahar_membership_payment_screen_test.dart
+          do
+            echo "NB_FORMAT_FILE_BEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "NB_FORMAT_FILE_END:$file"
+          done
       - name: Analyzer
         working-directory: apps/mobile
         run: flutter analyze

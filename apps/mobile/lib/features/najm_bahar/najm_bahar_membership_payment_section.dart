@@ -256,6 +256,7 @@ class _NajmBaharMembershipPaymentSectionState
             const SizedBox(height: 12),
             if (eligible.isNotEmpty)
               DropdownButtonFormField<MembershipSource>(
+                key: ValueKey<String>('membership-account-$selectedBucket'),
                 initialValue: selected,
                 isExpanded: true,
                 decoration: const InputDecoration(

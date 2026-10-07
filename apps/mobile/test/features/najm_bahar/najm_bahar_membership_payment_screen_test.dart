@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_membership_payment_controller.dart';
 import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_membership_payment_section.dart';
+import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_membership_source.dart';
 import 'najm_bahar_repository_test.dart' as f;
 import 'najm_bahar_membership_payment_repository_test.dart' as p;
 import 'najm_bahar_policy_test.dart' as policy;
@@ -87,6 +88,53 @@ void main(){
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(a.requests.where((r)=>r.method=='POST').length,1);
+  });
+
+  testWidgets('active subaccount stays synchronized across bucket changes and confirmation',
+      (tester) async {
+    final a = f.BoundaryAdapter((_) => f.envelope(p.fee()));
+    final c = MembershipPaymentController(f.repository(a));
+    addTearDown(c.dispose);
+    await tester.runAsync(c.prepare);
+    await show(tester, c);
+
+    await tester.tap(find.text('بهار فعال'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final sub = c.terms!.paymentSources
+        .firstWhere((source) => source.kind == 'subaccount');
+    var field = tester.widget<DropdownButtonFormField<MembershipSource>>(
+      find.byKey(const ValueKey<String>('membership-account-active')),
+    );
+    field.onChanged!.call(sub);
+    await tester.pump();
+    expect(c.selectedSource?.accountNumber, 'NB-7-001');
+
+    await tester.tap(find.text('بهار کمرنگ'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    final dimState = tester.state<FormFieldState<MembershipSource>>(
+      find.byKey(const ValueKey<String>('membership-account-dim')),
+    );
+    expect(dimState.value?.accountNumber, 'NB-7');
+    expect(c.selectedSource?.accountNumber, 'NB-7');
+
+    await tester.tap(find.text('بهار فعال'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    field = tester.widget<DropdownButtonFormField<MembershipSource>>(
+      find.byKey(const ValueKey<String>('membership-account-active')),
+    );
+    field.onChanged!.call(sub);
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('membership-review')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.textContaining('NB-7-001'), findsOneWidget);
+    expect(find.textContaining('بهار فعال'), findsWidgets);
+    expect(a.requests.where((r) => r.method == 'POST'), isEmpty);
   });
   testWidgets('old server contract stays read only',(tester)async{
     final a=f.BoundaryAdapter((_)=>f.envelope({...policy.fee(),'has_paid':false}));
