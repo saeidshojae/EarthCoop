@@ -2732,7 +2732,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                    {{ mb_substr($message->user->fullName() ?? $message->user->name, 0, 1) }}
+                    {{ mb_substr($message->user->displayName() ?? $message->user->name, 0, 1) }}
 
 
 
@@ -2832,7 +2832,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                                {{ $message->user->fullName() ?? $message->user->name }}
+                                {{ $message->user->displayName() ?? $message->user->name }}
 
 
 
@@ -3122,7 +3122,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                                توسط <strong>{{ $post->user->fullName() ?? $post->user->name }}</strong>
+                                توسط <strong>{{ $post->user->displayName() ?? $post->user->name }}</strong>
 
 
 
@@ -3492,7 +3492,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                                توسط <strong>{{ $poll->user->fullName() ?? $poll->user->name }}</strong>
+                                توسط <strong>{{ $poll->user->displayName() ?? $poll->user->name }}</strong>
 
 
 
@@ -3852,7 +3852,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                                توسط <strong>{{ $election->user->fullName() ?? $election->user->name }}</strong>
+                                توسط <strong>{{ $election->user->displayName() ?? $election->user->name }}</strong>
 
 
 
