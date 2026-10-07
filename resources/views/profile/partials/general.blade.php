@@ -115,7 +115,7 @@
                 id="birth_date"
                 :value="old('birth_date', $user->birth_date)"
                 class="form-input-enhanced"
-                :disabled="$user->status == 1 && $user->edited == 1"
+                :disabled="$user->hasUsedIdentityEdit()"
             />
             @error('birth_date')
                 <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
