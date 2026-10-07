@@ -304,7 +304,7 @@
                      alt=""
                      class="pm-request-sheet__avatar">
                 <div class="pm-request-sheet__identity">
-                    <h2 class="pm-request-sheet__title" id="{{ $sheetId }}-title">{{ $user->fullName() }}</h2>
+                    <h2 class="pm-request-sheet__title" id="{{ $sheetId }}-title">{{ $user->displayName() }}</h2>
                     <p class="pm-request-sheet__subtitle">درخواست گفتگوی خصوصی</p>
                 </div>
                 <button type="button" class="pm-request-sheet__close" data-close-private-request aria-label="بستن">
