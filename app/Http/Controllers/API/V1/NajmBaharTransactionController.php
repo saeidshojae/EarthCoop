@@ -12,6 +12,8 @@ use App\Modules\NajmBahar\Services\Api\NajmBaharAccountQueryService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharLedgerQueryService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferApplicationService;
 use App\Modules\NajmBahar\Services\Api\NajmBaharTransferCapabilityService;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferDestinationService;
+use App\Modules\NajmBahar\Services\Api\NajmBaharTransferException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +26,7 @@ class NajmBaharTransactionController extends Controller
         private readonly NajmBaharTransferApplicationService $transfers,
         private readonly NajmBaharAccountQueryService $accounts,
         private readonly NajmBaharTransferCapabilityService $transferCapability,
+        private readonly NajmBaharTransferDestinationService $transferDestinations,
     ) {
     }
 
@@ -65,6 +68,34 @@ class NajmBaharTransactionController extends Controller
         }
 
         return ApiResponse::success($this->transferCapability->forUser($user));
+    }
+
+    public function transferDestination(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        $validated = $request->validate([
+            'account_number' => ['required', 'string', 'max:128'],
+        ]);
+
+        try {
+            return ApiResponse::success(
+                $this->transferDestinations->preview($user, (string) $validated['account_number']),
+            );
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (NajmBaharTransferException $exception) {
+            return ApiResponse::error(
+                $exception->errorCode,
+                $exception->getMessage(),
+                $exception->httpStatus,
+                null,
+                false,
+            );
+        }
     }
 
     public function storeTransfer(Request $request): JsonResponse
