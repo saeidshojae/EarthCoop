@@ -221,13 +221,14 @@ class ApiClient {
           httpStatus: response.statusCode,
           retryAfter: retryAfter,
         );
-        if (!_shouldRetry(
-          method: method,
-          attempt: attempt,
-          statusCode: response.statusCode,
-          retryable: failure.retryable,
-          idempotencyKey: request.idempotencyKey,
-        )) {
+        if (!request.allowAutomaticRetry ||
+            !_shouldRetry(
+              method: method,
+              attempt: attempt,
+              statusCode: response.statusCode,
+              retryable: failure.retryable,
+              idempotencyKey: request.idempotencyKey,
+            )) {
           throw failure;
         }
         await _retryDelay(retryAfter ?? _defaultRetryDelay(attempt));
@@ -235,13 +236,14 @@ class ApiClient {
       } on ApiFailure {
         rethrow;
       } on DioException catch (error) {
-        if (!_shouldRetry(
-          method: method,
-          attempt: attempt,
-          statusCode: error.response?.statusCode,
-          retryable: true,
-          idempotencyKey: request.idempotencyKey,
-        )) {
+        if (!request.allowAutomaticRetry ||
+            !_shouldRetry(
+              method: method,
+              attempt: attempt,
+              statusCode: error.response?.statusCode,
+              retryable: true,
+              idempotencyKey: request.idempotencyKey,
+            )) {
           throw ApiFailure(
             code: 'network_error',
             message: 'The request could not be completed.',
@@ -336,13 +338,14 @@ class ApiClient {
           httpStatus: response.statusCode,
           retryAfter: retryAfter,
         );
-        if (!_shouldRetry(
-          method: method,
-          attempt: attempt,
-          statusCode: response.statusCode,
-          retryable: failure.retryable,
-          idempotencyKey: request.idempotencyKey,
-        )) {
+        if (!request.allowAutomaticRetry ||
+            !_shouldRetry(
+              method: method,
+              attempt: attempt,
+              statusCode: response.statusCode,
+              retryable: failure.retryable,
+              idempotencyKey: request.idempotencyKey,
+            )) {
           throw failure;
         }
         await _retryDelay(retryAfter ?? _defaultRetryDelay(attempt));
@@ -350,13 +353,14 @@ class ApiClient {
       } on ApiFailure {
         rethrow;
       } on DioException catch (error) {
-        if (!_shouldRetry(
-          method: method,
-          attempt: attempt,
-          statusCode: error.response?.statusCode,
-          retryable: true,
-          idempotencyKey: request.idempotencyKey,
-        )) {
+        if (!request.allowAutomaticRetry ||
+            !_shouldRetry(
+              method: method,
+              attempt: attempt,
+              statusCode: error.response?.statusCode,
+              retryable: true,
+              idempotencyKey: request.idempotencyKey,
+            )) {
           throw ApiFailure(
             code: 'network_error',
             message: 'The request could not be completed.',
@@ -392,6 +396,7 @@ class ApiClient {
     return _RequestMetadata(
       requestId: requestId,
       idempotencyKey: idempotencyKey,
+      allowAutomaticRetry: context?.allowAutomaticRetry ?? true,
       headers: headers,
     );
   }
@@ -434,11 +439,13 @@ class _RequestMetadata {
   const _RequestMetadata({
     required this.requestId,
     required this.idempotencyKey,
+    required this.allowAutomaticRetry,
     required this.headers,
   });
 
   final String requestId;
   final String? idempotencyKey;
+  final bool allowAutomaticRetry;
   final Map<String, Object?> headers;
 }
 

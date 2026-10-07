@@ -28,6 +28,7 @@ import '../../core/local/app_database.dart';
 import '../../features/auth/login_controller.dart';
 import '../../features/najm_bahar/najm_bahar_controller.dart';
 import '../../features/najm_bahar/najm_bahar_policy_controller.dart';
+import '../../features/najm_bahar/najm_bahar_membership_payment_controller.dart';
 import '../../features/najm_bahar/najm_bahar_repository.dart';
 import '../../features/najm_bahar/najm_bahar_screen.dart';
 import '../../features/groups/group_cache.dart';
@@ -616,29 +617,66 @@ class _NajmBaharRuntimeView extends StatefulWidget {
 }
 
 class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
-  late final NajmBaharController _controller = NajmBaharController(
-      widget.repository,
-      sessionChanges: widget.sessionChanges,
-      onSessionInvalidated: () => _policies.invalidateSession());
-  late final NajmBaharPolicyController _policies = NajmBaharPolicyController(
-      widget.repository,
-      sessionChanges: widget.sessionChanges,
-      onSessionInvalidated: _controller.invalidateSession);
+  late final NajmBaharController _controller;
+  late final NajmBaharPolicyController _policies;
+  late final MembershipPaymentController _payment;
+  bool _invalidating = false;
+
   @override
   void initState() {
     super.initState();
+    _controller = NajmBaharController(
+      widget.repository,
+      sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: _invalidateAll,
+    );
+    _policies = NajmBaharPolicyController(
+      widget.repository,
+      sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: _invalidateAll,
+    );
+    _payment = MembershipPaymentController(
+      widget.repository,
+      sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: _invalidateAll,
+      refreshFinancialViews: () => Future.wait<void>([
+        _controller.refreshAccount(),
+        _controller.refreshHistory(),
+        _policies.refreshActivation(),
+        _policies.refreshMembership(),
+      ]),
+    );
     unawaited(_controller.load());
     unawaited(_policies.load());
+    unawaited(_payment.prepare());
+  }
+
+  void _invalidateAll() {
+    if (_invalidating) {
+      return;
+    }
+    _invalidating = true;
+    try {
+      _controller.invalidateSession();
+      _policies.invalidateSession();
+      _payment.invalidateSession();
+    } finally {
+      _invalidating = false;
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _policies.dispose();
+    _payment.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) =>
-      NajmBaharScreen(controller: _controller, policyController: _policies);
+  Widget build(BuildContext context) => NajmBaharScreen(
+        controller: _controller,
+        policyController: _policies,
+        paymentController: _payment,
+      );
 }

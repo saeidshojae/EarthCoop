@@ -16,6 +16,7 @@ use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\TreasuryService;
 use App\Services\MembershipFeeStatusService;
+use App\Services\MembershipFeePaymentEvidence;
 use App\Services\ReputationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -39,15 +40,15 @@ class NajmBaharMembershipFeeApplicationService
     public function info(User $user): array
     {
         $account = $this->mainAccount($user);
-        $fee = $this->feeAmount();
-        $split = $this->split();
-        $this->assertValidSplit($fee, $split);
+        $terms = $this->terms($user);
+        $fee = $terms['fee_gol'];
+        $split = $terms['split'];
 
         $aggregate = $this->balances->aggregate($account);
 
         return [
             'has_paid' => $this->status->hasPaidCurrentMembershipFee($user),
-            'payment_year' => $this->status->membershipPaymentYear($user),
+            'payment_year' => $terms['payment_year'],
             'fee_gol' => $fee,
             'breakdown' => [
                 TreasuryService::OPERATIONS_SALARY.'_gol' => $split[TreasuryService::OPERATIONS_SALARY],
@@ -57,7 +58,9 @@ class NajmBaharMembershipFeeApplicationService
             'can_pay_from_dim' => (int) ($account->balance_faded ?? 0) >= $fee,
             'can_pay_from_active' => (int) ($aggregate['active'] ?? 0) >= $fee,
             'default_payment_source' => (int) ($account->balance_faded ?? 0) >= $fee ? 'dim' : 'active',
-            'policy_version_id' => $this->policy->versionId(),
+            'policy_version_id' => $terms['policy_version_id'],
+            'payment_contract_version' => 1,
+            'payment_sources' => app(NajmBaharMembershipPaymentSources::class)->forAccount($account, $fee),
             'balance' => [
                 'local' => $this->projectBalance($this->balances->local($account)),
                 'aggregate' => $this->projectBalance($aggregate),
@@ -68,7 +71,7 @@ class NajmBaharMembershipFeeApplicationService
     /**
      * @return array{account:Account,has_paid:bool,payment_year:int,fee_gol:int,payment_source:string,breakdown:array,balance:array}
      */
-    public function pay(User $user, string $paymentSource, ?int $subAccountId = null): array
+    public function pay(User $user, string $paymentSource, ?int $subAccountId = null, ?array $expected = null): array
     {
         $account = $this->mainAccount($user);
         if ($this->status->hasPaidCurrentMembershipFee($user)) {
@@ -78,22 +81,7 @@ class NajmBaharMembershipFeeApplicationService
             );
         }
 
-        $fee = $this->feeAmount();
-        $split = $this->split();
-        $this->assertValidSplit($fee, $split);
-        $paymentYear = $this->status->membershipPaymentYear($user);
-        $policyVersionId = $this->policy->versionId();
-
-        DB::transaction(function () use (
-            $user,
-            $account,
-            $paymentSource,
-            $subAccountId,
-            $fee,
-            $split,
-            $paymentYear,
-            $policyVersionId,
-        ) {
+        $result = DB::transaction(function () use ($user, $account, $paymentSource, $subAccountId, $expected) {
             $lockedAccount = Account::query()
                 ->whereKey((int) $account->id)
                 ->where('user_id', (int) $user->id)
@@ -101,10 +89,47 @@ class NajmBaharMembershipFeeApplicationService
                 ->firstOrFail();
 
             if ($this->status->hasPaidCurrentMembershipFee($user)) {
-                return;
+                throw new NajmBaharMembershipFeeException('already_paid', 'The membership fee has already been paid.');
+            }
+
+            $terms = $this->terms($user);
+            $fee = $terms['fee_gol'];
+            $split = $terms['split'];
+            $paymentYear = $terms['payment_year'];
+            $policyVersionId = $terms['policy_version_id'];
+            if ($expected !== null) {
+                foreach (['payment_year', 'fee_gol', 'policy_version_id'] as $key) {
+                    if (! array_key_exists($key, $expected) || $expected[$key] !== $terms[$key]) {
+                        $this->termsChanged();
+                    }
+                }
+                $breakdown = $expected['breakdown'] ?? [];
+                foreach ($split as $code => $amount) {
+                    if (($breakdown[$code.'_gol'] ?? null) !== $amount) {
+                        $this->termsChanged();
+                    }
+                }
+                if ($paymentSource === 'dim' && $subAccountId !== null) {
+                    throw new NajmBaharMembershipFeeException('payment_source_invalid', 'Dim payment requires the main account.', 422);
+                }
             }
 
             $sourceAccountNumber = (string) $lockedAccount->account_number;
+
+            if ($expected !== null) {
+                $selectedNumber = $sourceAccountNumber;
+                if ($paymentSource === 'active' && $subAccountId !== null) {
+                    $selected = SubAccount::query()->whereKey($subAccountId)->where('account_id', $lockedAccount->id)
+                        ->where('status', 1)->lockForUpdate()->firstOrFail();
+                    $selectedNumber = (string) $selected->sub_account_code;
+                }
+                if (($expected['account_number'] ?? null) !== $selectedNumber) {
+                    throw new NajmBaharMembershipFeeException('membership_fee_source_changed', 'The selected payment account has changed.');
+                }
+            }
+            if ($this->status->membershipPaymentYear($user) !== $paymentYear) {
+                $this->termsChanged();
+            }
 
             if ($paymentSource === 'dim') {
                 if ((int) ($lockedAccount->balance_faded ?? 0) < $fee) {
@@ -132,6 +157,7 @@ class NajmBaharMembershipFeeApplicationService
                     $lockedAccount,
                     $fee,
                     $subAccountId,
+                    $expected !== null,
                 );
             } else {
                 throw new NajmBaharMembershipFeeException(
@@ -150,17 +176,26 @@ class NajmBaharMembershipFeeApplicationService
                 $policyVersionId,
             );
 
+            if (! app(MembershipFeePaymentEvidence::class)->hasCompletePaymentEvidence((int) $user->id, $paymentYear)) {
+                throw new NajmBaharMembershipFeeException('membership_fee_incomplete', 'Membership payment evidence is incomplete.');
+            }
+
             $this->awardParticipation($user, $paymentYear, $paymentSource, $policyVersionId);
+            return $terms + ['payment_account_number' => $sourceAccountNumber];
         });
 
+        $fee = $result['fee_gol'];
+        $split = $result['split'];
+        $paymentYear = $result['payment_year'];
         $account->refresh();
 
         return [
             'account' => $account,
-            'has_paid' => $this->status->hasPaidCurrentMembershipFee($user),
+            'has_paid' => app(MembershipFeePaymentEvidence::class)->hasCompletePaymentEvidence((int) $user->id, $paymentYear),
             'payment_year' => $paymentYear,
             'fee_gol' => $fee,
             'payment_source' => $paymentSource,
+            'payment_account_number' => $result['payment_account_number'],
             'breakdown' => [
                 TreasuryService::OPERATIONS_SALARY.'_gol' => $split[TreasuryService::OPERATIONS_SALARY],
                 TreasuryService::CENTRAL_INSURANCE.'_gol' => $split[TreasuryService::CENTRAL_INSURANCE],
@@ -197,6 +232,26 @@ class NajmBaharMembershipFeeApplicationService
         ];
     }
 
+    private function terms(User $user): array
+    {
+        $policy = $this->policy->current();
+        $parameters = $policy['parameters'] ?? [];
+        $fee = $this->fees->getMembershipFee($policy);
+        $split = [
+            TreasuryService::OPERATIONS_SALARY => max(0, (int) ($parameters['membership_operations_gol'] ?? BaharMoney::toGolFromBahar(6))),
+            TreasuryService::CENTRAL_INSURANCE => max(0, (int) ($parameters['membership_insurance_gol'] ?? BaharMoney::toGolFromBahar(3))),
+            TreasuryService::MONEY_DESTRUCTION => max(0, (int) ($parameters['membership_burn_gol'] ?? BaharMoney::toGolFromBahar(3))),
+        ];
+        $this->assertValidSplit($fee, $split);
+        return ['fee_gol' => $fee, 'split' => $split, 'payment_year' => $this->status->membershipPaymentYear($user),
+            'policy_version_id' => $policy['version_id'] === null ? null : (int) $policy['version_id']];
+    }
+
+    private function termsChanged(): never
+    {
+        throw new NajmBaharMembershipFeeException('membership_fee_terms_changed', 'Membership fee terms changed; review the current terms before paying.');
+    }
+
     private function mainAccount(User $user): Account
     {
         $account = $this->accounts->getMainAccountForUser((int) $user->id);
@@ -217,7 +272,7 @@ class NajmBaharMembershipFeeApplicationService
         }
     }
 
-    private function resolveActiveSource(Account $main, int $fee, ?int $subAccountId): string
+    private function resolveActiveSource(Account $main, int $fee, ?int $subAccountId, bool $strictMain = false): string
     {
         if ($subAccountId !== null) {
             $sub = SubAccount::query()
@@ -244,6 +299,10 @@ class NajmBaharMembershipFeeApplicationService
 
         if ((int) ($main->balance_active ?? 0) >= $fee && $this->reservations->availableActive($main) >= $fee) {
             return (string) $main->account_number;
+        }
+
+        if ($strictMain) {
+            throw new NajmBaharMembershipFeeException('insufficient_available_funds', 'Available Active balance in the selected main account is insufficient.');
         }
 
         $subAccounts = SubAccount::query()
@@ -294,6 +353,13 @@ class NajmBaharMembershipFeeApplicationService
                 'پرداخت حق عضویت سالانه EarthCoop',
                 [
                     'type' => 'membership_fee',
+                    'trusted_canonical_subaccount_transfer' => true,
+                    'membership_fee_total_gol' => array_sum($split),
+                    'expected_breakdown_gol' => [
+                        TreasuryService::OPERATIONS_SALARY.'_gol' => $split[TreasuryService::OPERATIONS_SALARY],
+                        TreasuryService::CENTRAL_INSURANCE.'_gol' => $split[TreasuryService::CENTRAL_INSURANCE],
+                        TreasuryService::MONEY_DESTRUCTION.'_gol' => $split[TreasuryService::MONEY_DESTRUCTION],
+                    ],
                     'user_id' => $userId,
                     'split' => $code,
                     'user_initiated' => true,

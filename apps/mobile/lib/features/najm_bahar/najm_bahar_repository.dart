@@ -1,8 +1,10 @@
 import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
 import '../../core/api/api_envelope.dart';
+import '../../core/api/request_context.dart';
 import 'najm_bahar_dto.dart';
 import 'najm_bahar_policy_dto.dart';
+import 'najm_bahar_membership_payment_dto.dart';
 
 class NajmBaharRepository {
   NajmBaharRepository(
@@ -51,6 +53,29 @@ class NajmBaharRepository {
       NajmBaharActivationEligibility.fromJson);
   Future<NajmBaharMembershipFee> membershipFee() =>
       _policy('/najm-bahar/membership-fee', NajmBaharMembershipFee.fromJson);
+
+  Future<MembershipPaymentReceipt> payMembership(
+      MembershipPaymentIntent intent) async {
+    _guard();
+    try {
+      final response = await _api.post<MembershipPaymentReceipt>(
+        '/najm-bahar/membership-fee/pay',
+        data: intent.toJson(),
+        context: RequestContext(
+          idempotencyKey: intent.key,
+          allowAutomaticRetry: false,
+        ),
+        decodeData: MembershipPaymentReceipt.fromJson,
+      );
+      _guardSession();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
   Future<NajmBaharAccount> account() async {
     _guard();
     try {

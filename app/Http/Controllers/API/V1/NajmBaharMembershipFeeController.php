@@ -43,10 +43,12 @@ class NajmBaharMembershipFeeController extends Controller
         }
 
         $this->rejectUnexpectedFields($request);
+        $this->validateExpected($request);
 
         $validated = $request->validate([
             'payment_source' => ['required', 'in:active,dim'],
             'sub_account_id' => ['nullable', 'integer', 'min:1'],
+            'expected' => ['sometimes', 'required', 'array'],
         ]);
 
         try {
@@ -55,6 +57,7 @@ class NajmBaharMembershipFeeController extends Controller
                     $user,
                     (string) $validated['payment_source'],
                     isset($validated['sub_account_id']) ? (int) $validated['sub_account_id'] : null,
+                    $validated['expected'] ?? null,
                 ),
                 201,
             );
@@ -65,11 +68,46 @@ class NajmBaharMembershipFeeController extends Controller
         }
     }
 
+    private function validateExpected(Request $request): void
+    {
+        if (! array_key_exists('expected', $request->all())) {
+            return;
+        }
+        $expected = $request->input('expected');
+        $keys = ['payment_year', 'fee_gol', 'breakdown', 'policy_version_id', 'account_number'];
+        $valid = is_array($expected) && count($expected) === count($keys)
+            && array_diff($keys, array_keys($expected)) === [];
+        if ($valid) {
+            $valid = is_int($expected['payment_year']) && $expected['payment_year'] > 0
+                && is_int($expected['fee_gol']) && $expected['fee_gol'] > 0
+                && ($expected['policy_version_id'] === null || (is_int($expected['policy_version_id']) && $expected['policy_version_id'] > 0))
+                && is_string($expected['account_number']) && trim($expected['account_number']) !== '';
+            $split = $expected['breakdown'];
+            $splitKeys = ['operations_salary_gol', 'central_insurance_gol', 'money_destruction_gol'];
+            $valid = $valid && is_array($split) && count($split) === 3 && array_diff($splitKeys, array_keys($split)) === [];
+            if ($valid) {
+                $remaining = $expected['fee_gol'];
+                foreach ($splitKeys as $key) {
+                    if (! is_int($split[$key]) || $split[$key] < 0 || $split[$key] > $remaining) {
+                        $valid = false;
+                        break;
+                    }
+                    $remaining -= $split[$key];
+                }
+                $valid = $valid && $remaining === 0;
+            }
+        }
+        if (! $valid) {
+            throw ValidationException::withMessages(['expected' => ['A complete exact integer membership consent snapshot is required.']]);
+        }
+    }
+
     private function rejectUnexpectedFields(Request $request): void
     {
         $unexpected = array_values(array_diff(array_keys($request->all()), [
             'payment_source',
             'sub_account_id',
+            'expected',
         ]));
 
         if ($unexpected !== []) {
