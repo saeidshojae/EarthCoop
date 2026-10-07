@@ -43,10 +43,14 @@ class NajmBaharTransferCapabilityService
             ->values()
             ->all();
 
+        $hasEligibleSource = collect($sources)->contains(
+            fn (array $source) => (bool) ($source['can_transfer_active'] ?? false),
+        );
+
         $disabledReason = null;
         if (! $thresholdMet) {
             $disabledReason = 'threshold_not_met';
-        } elseif ($sources === []) {
+        } elseif (! $hasEligibleSource) {
             $disabledReason = 'no_eligible_source';
         }
 
