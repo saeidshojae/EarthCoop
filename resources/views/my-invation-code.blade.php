@@ -216,7 +216,7 @@
 
                             @if($code->used == 1)
                                 <p class="text-xs leading-6 text-slate-500 mb-1">
-                                    استفاده شده توسط: {{ $code->usedBy ? $code->usedBy->fullName() : 'نامشخص' }}
+                                    استفاده شده توسط: {{ $code->usedBy ? $code->usedBy->displayName() : 'نامشخص' }}
                                 </p>
                             @else
                                 <div class="grid grid-cols-2 gap-2">
@@ -275,7 +275,7 @@
                                                 </button>
                                             </div>
                                         @else
-                                            <span class="text-xs text-slate-500">{{ $code->usedBy ? $code->usedBy->fullName() : 'مصرف شده' }}</span>
+                                            <span class="text-xs text-slate-500">{{ $code->usedBy ? $code->usedBy->displayName() : 'مصرف شده' }}</span>
                                         @endif
                                     </td>
                                 </tr>
