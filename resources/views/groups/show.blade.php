@@ -2017,7 +2017,7 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
 
 
 
-                            {{ $admin->first_name ?? '' }} {{ $admin->last_name ?? '' }}
+                            {{ $admin->displayName() }}
 
 
 
