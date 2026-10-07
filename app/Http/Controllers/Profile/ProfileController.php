@@ -275,7 +275,7 @@ class ProfileController
             $immutableErrors['national_id'] = 'کد ملی پس از ثبت اولیه قابل تغییر نیست.';
         }
         if ($immutableErrors !== []) {
-            return back()->withErrors($immutableErrors)->withInput();
+            throw \Illuminate\Validation\ValidationException::withMessages($immutableErrors);
         }
 
         $identityFields = ['first_name', 'last_name', 'birth_date', 'gender', 'phone', 'country_code'];
@@ -301,7 +301,24 @@ class ProfileController
             }
 
             if ($lockedErrors !== []) {
-                return back()->withErrors($lockedErrors)->withInput();
+                throw \Illuminate\Validation\ValidationException::withMessages($lockedErrors);
+            }
+        }
+
+        if ($request->exists('phone') || $request->exists('country_code')) {
+            $candidateCode = (string) $request->input('country_code', $user->phone_country_code ?: '+98');
+            $candidatePhone = (string) $request->input('phone', $user->phone);
+
+            $phoneCollision = User::query()
+                ->where('phone_country_code', $candidateCode)
+                ->where('phone', $candidatePhone)
+                ->whereKeyNot($user->id)
+                ->exists();
+
+            if ($phoneCollision) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'phone' => 'این شماره تلفن با همین کد کشور قبلاً ثبت شده است.',
+                ]);
             }
         }
 
