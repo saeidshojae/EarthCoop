@@ -374,4 +374,36 @@ class StewardKnowledgeSourceTest extends TestCase
         $this->assertStringContainsString('MAX_BODY_BYTES', $source);
     }
 
+
+    public function test_legacy_public_knowledge_artifacts_are_migrated_to_private_storage(): void
+    {
+        $migration = file_get_contents(database_path('migrations/2026_10_07_000300_move_steward_knowledge_to_private_storage.php'));
+
+        $this->assertStringContainsString("disk('public')->allFiles('steward/knowledge')", $migration);
+        $this->assertStringContainsString("moveBetweenDisks('public', 'local'", $migration);
+        $this->assertStringContainsString('hasUnsafeSourceRows', $migration);
+        $this->assertStringContainsString('hasOversizedContent', $migration);
+    }
+
+    public function test_url_ingestion_logs_never_persist_full_query_or_credentials(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmHodaController.php'));
+
+        $this->assertStringContainsString('$safeSource', $controller);
+        $this->assertStringNotContainsString("'url' => \$validated['source_url']", $controller);
+    }
+
+    public function test_steward_content_cache_observers_ignore_view_count_noise_and_cover_restores(): void
+    {
+        $blogObserver = file_get_contents(app_path('Observers/BlogObserver.php'));
+        $kbObserver = file_get_contents(app_path('Observers/KbArticleObserver.php'));
+        $sourceObserver = file_get_contents(app_path('Observers/StewardKnowledgeFileObserver.php'));
+
+        $this->assertStringContainsString('$blog->wasChanged([', $blogObserver);
+        $this->assertStringNotContainsString("'views_count'", $blogObserver);
+        $this->assertStringContainsString('$article->wasChanged([', $kbObserver);
+        $this->assertStringNotContainsString("'view_count'", $kbObserver);
+        $this->assertStringContainsString('public function restored(StewardKnowledgeFile', $sourceObserver);
+    }
+
 }
