@@ -242,4 +242,136 @@ class StewardKnowledgeSourceTest extends TestCase
         $this->assertStringNotContainsString('use App\\Models\\Blog;', $source);
     }
 
+
+    public function test_retrieval_returns_a_snippet_around_the_actual_match_in_a_long_source(): void
+    {
+        $prefix = str_repeat('مقدمه نامرتبط ', 500);
+        StewardKnowledgeFile::create([
+            'title' => 'سند بلند',
+            'original_filename' => 'long.txt',
+            'file_path' => 'steward/knowledge/long.txt',
+            'file_type' => 'txt',
+            'file_size' => strlen($prefix) + 200,
+            'extracted_content' => $prefix . ' ماده مالکیت خصوصی باید محترم شمرده شود و حق مالک قانونی محفوظ است.',
+            'summary' => 'سند بلند',
+            'search_priority' => 10,
+            'is_active' => true,
+        ]);
+
+        $agent = new class extends StewardAgent {
+            public function exposeKnowledgeContext(string $question): string
+            {
+                return $this->knowledgeContextFor($question);
+            }
+        };
+
+        $context = $agent->exposeKnowledgeContext('مالکیت خصوصی چیست؟');
+
+        $this->assertStringContainsString('مالکیت خصوصی باید محترم شمرده شود', $context);
+        $this->assertLessThan(2500, mb_strlen($context));
+    }
+
+    public function test_retrieval_uses_meaningful_persian_terms_beyond_the_first_five_words(): void
+    {
+        StewardKnowledgeFile::create([
+            'title' => 'سند حقوق',
+            'original_filename' => 'rights.txt',
+            'file_path' => 'steward/knowledge/rights.txt',
+            'file_type' => 'txt',
+            'file_size' => 200,
+            'extracted_content' => 'در ارث‌کوپ مالکیت خصوصی باید محترم شمرده شود.',
+            'summary' => 'حقوق',
+            'search_priority' => 10,
+            'is_active' => true,
+        ]);
+
+        $agent = new class extends StewardAgent {
+            public function exposeKnowledgeContext(string $question): string
+            {
+                return $this->knowledgeContextFor($question);
+            }
+        };
+
+        $context = $agent->exposeKnowledgeContext('لطفاً به من با توضیح روشن بگو مالکیت خصوصی چه جایگاهی دارد؟');
+
+        $this->assertStringContainsString('مالکیت خصوصی', $context);
+    }
+
+    public function test_url_ingestor_rejects_credentials_and_non_web_ports_before_network_access(): void
+    {
+        $ingestor = new StewardKnowledgeUrlIngestor();
+
+        try {
+            $ingestor->ingest('https://user:secret@example.org/page');
+            $this->fail('Credential-bearing URLs must be rejected.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('نام کاربری', $e->getMessage());
+        }
+
+        try {
+            $ingestor->ingest('https://example.org:8443/page');
+            $this->fail('Non-web ports must be rejected.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('پورت', $e->getMessage());
+        }
+    }
+
+    public function test_steward_interaction_log_input_excludes_retrieved_knowledge_payload(): void
+    {
+        $agent = new class extends StewardAgent {
+            public function exposeInteractionLogInput(string $prompt): string
+            {
+                return $this->interactionLogInput($prompt, []);
+            }
+        };
+
+        $prompt = "سوال کاربر\n\n" . StewardAgent::KNOWLEDGE_CONTEXT_START
+            . "\nمحتوای محرمانه سند\n"
+            . StewardAgent::KNOWLEDGE_CONTEXT_END;
+
+        $logged = $agent->exposeInteractionLogInput($prompt);
+
+        $this->assertSame('سوال کاربر', $logged);
+        $this->assertStringNotContainsString('محتوای محرمانه سند', $logged);
+    }
+
+    public function test_knowledge_upload_is_private_and_uses_collision_resistant_names(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmHodaController.php'));
+
+        $this->assertStringContainsString("Str::uuid()", $controller);
+        $this->assertStringContainsString("storeAs('steward/knowledge', \$fileName, 'local')", $controller);
+        $this->assertStringNotContainsString("storeAs('steward/knowledge', \$fileName, 'public')", $controller);
+    }
+
+    public function test_admin_knowledge_views_escape_untrusted_source_titles(): void
+    {
+        $settings = file_get_contents(resource_path('views/admin/najm-hoda/settings.blade.php'));
+        $management = file_get_contents(resource_path('views/admin/najm-hoda/knowledge-files.blade.php'));
+
+        $this->assertStringContainsString('escapeKnowledgeHtml', $settings);
+        $this->assertStringNotContainsString('<span id="file-title-${file.id}">${file.title}</span>', $settings);
+        $this->assertStringNotContainsString("onclick=\"editFileModal({{ \$file->id }}, '{{ \$file->title }}'", $management);
+        $this->assertStringContainsString('data-title="{{ $file->title }}"', $management);
+    }
+
+    public function test_longtext_and_source_metadata_rollbacks_fail_closed_instead_of_truncating_or_null_breaking(): void
+    {
+        $longTextMigration = file_get_contents(database_path('migrations/2026_10_07_000100_expand_steward_knowledge_extracted_content.php'));
+        $sourceMigration = file_get_contents(database_path('migrations/2026_10_07_000200_add_source_metadata_to_steward_knowledge_files.php'));
+
+        $this->assertStringContainsString('LENGTH(extracted_content) > 65535', $longTextMigration);
+        $this->assertStringContainsString('RuntimeException', $longTextMigration);
+        $this->assertStringContainsString("where('source_type', 'url')", $sourceMigration);
+        $this->assertStringContainsString('RuntimeException', $sourceMigration);
+    }
+
+    public function test_url_ingestor_has_streaming_download_limit_not_only_post_download_size_check(): void
+    {
+        $source = file_get_contents(app_path('Services/NajmHoda/Knowledge/StewardKnowledgeUrlIngestor.php'));
+
+        $this->assertStringContainsString("'progress' =>", $source);
+        $this->assertStringContainsString('MAX_BODY_BYTES', $source);
+    }
+
 }
