@@ -181,7 +181,7 @@ class ChatRequestController extends Controller
 
         Notification::send($user, new ChatRequestNotification(
             $chatRequest->id,
-            $currentUser->fullName(),
+            $currentUser->displayName(),
             $input['description']
         ));
 
@@ -240,7 +240,7 @@ class ChatRequestController extends Controller
             Notification::send($originalSender, new ChatRequestAcceptedNotification(
                 (int) $chatRequest->id,
                 (int) $conversation->id,
-                $currentUser->fullName()
+                $currentUser->displayName()
             ));
         }
 
