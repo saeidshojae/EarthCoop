@@ -262,4 +262,32 @@ class ProfileIdentityContractTest extends TestCase
         );
     }
 
+
+    public function test_profile_edit_and_address_routes_are_singular_canonical_definitions(): void
+    {
+        $routes = collect(app('router')->getRoutes()->getRoutes());
+
+        $editRoutes = $routes->filter(fn ($route) =>
+            in_array('GET', $route->methods(), true)
+            && $route->uri() === 'profile/edit'
+        )->values();
+
+        $addressRoutes = $routes->filter(fn ($route) =>
+            in_array('PUT', $route->methods(), true)
+            && $route->uri() === 'profile/update/address'
+        )->values();
+
+        $this->assertCount(1, $editRoutes);
+        $this->assertSame(
+            'App\\Http\\Controllers\\LocationGovernance\\ProfileEditController',
+            $editRoutes->first()->getActionName()
+        );
+
+        $this->assertCount(1, $addressRoutes);
+        $this->assertSame(
+            'App\\Http\\Controllers\\LocationGovernance\\ProfileResidenceController@update',
+            $addressRoutes->first()->getActionName()
+        );
+    }
+
 }
