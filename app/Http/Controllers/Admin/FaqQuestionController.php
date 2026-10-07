@@ -154,7 +154,7 @@ class FaqQuestionController extends Controller
                     [['email' => $question->contact_email, 'locale' => 'fa']],
                     [
                         'title' => (string) $question->title,
-                        'answer' => (string) $question->answer,
+                        'answer' => nl2br(e((string) $question->answer)),
                     ],
                     [
                         'deduplication_key' => 'faq:'.$question->id.':answered',
