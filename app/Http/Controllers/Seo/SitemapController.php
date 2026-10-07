@@ -23,7 +23,7 @@ final class SitemapController extends Controller
             new SitemapEntry($canonicalUrl->to('/blog')),
             new SitemapEntry(
                 $canonicalUrl->to('/chronicle'),
-                Schema::hasTable('chronicle_milestones')
+                $this->optionalTableExists('chronicle_milestones')
                     ? ChronicleMilestone::query()->published()->latest('updated_at')->first()?->updated_at
                     : null,
             ),
@@ -33,7 +33,7 @@ final class SitemapController extends Controller
             $entries[] = new SitemapEntry($canonicalUrl->to($path));
         }
 
-        if (Schema::hasTable('pages')) {
+        if ($this->optionalTableExists('pages')) {
             Page::query()
                 ->where('is_published', true)
                 ->orderBy('slug')
@@ -46,7 +46,7 @@ final class SitemapController extends Controller
                 });
         }
 
-        if (Schema::hasTable('blog_posts')) {
+        if ($this->optionalTableExists('blog_posts')) {
             Post::query()
                 ->published()
                 ->orderBy('slug')
@@ -67,5 +67,14 @@ final class SitemapController extends Controller
         return response()
             ->view('seo.sitemap', ['entries' => $entries])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    private function optionalTableExists(string $table): bool
+    {
+        try {
+            return Schema::hasTable($table);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
