@@ -16,6 +16,7 @@ class EmailDeliveryAdapter
 
     public function __construct(
         private readonly CommunicationTemplateRenderer $renderer,
+        private readonly CommunicationEmailPresenter $presenter,
     ) {
     }
 
@@ -41,9 +42,10 @@ class EmailDeliveryAdapter
 
         $context = (array) ($communication->context_snapshot ?? []);
         $rendered = $this->renderer->render($version, $context);
+        $html = $this->presenter->present($rendered['subject'], $rendered['body']);
         $headers = $this->safeDeliveryHeaders((array) ($context['_delivery_headers'] ?? []));
 
-        Mail::html($rendered['body'], function ($message) use ($recipient, $rendered, $sender, $headers): void {
+        Mail::html($html, function ($message) use ($recipient, $rendered, $sender, $headers): void {
             $message->to($recipient->email)
                 ->subject($rendered['subject'])
                 ->from($sender->email, $sender->display_name);

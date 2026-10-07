@@ -20,13 +20,14 @@ final class CommunicationDeliveryBoundaryTest extends TestCase
     public function test_production_code_cannot_bypass_the_communication_center_with_direct_mail_calls(): void
     {
         $root = dirname(__DIR__, 2);
-        $target = $root.'/app';
+        $targets = [$root.'/app', $root.'/routes'];
         $violations = [];
 
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($target));
-        $phpFiles = new RegexIterator($iterator, '/\.php$/i');
+        foreach ($targets as $target) {
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($target));
+            $phpFiles = new RegexIterator($iterator, '/\.php$/i');
 
-        foreach ($phpFiles as $file) {
+            foreach ($phpFiles as $file) {
             $path = str_replace('\\', '/', $file->getPathname());
             $relative = ltrim(str_replace(str_replace('\\', '/', $root), '', $path), '/');
 
@@ -43,7 +44,8 @@ final class CommunicationDeliveryBoundaryTest extends TestCase
                 continue;
             }
 
-            $violations[] = $relative;
+                $violations[] = $relative;
+            }
         }
 
         $violations = array_values(array_unique($violations));

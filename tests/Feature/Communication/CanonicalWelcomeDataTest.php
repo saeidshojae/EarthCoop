@@ -36,7 +36,11 @@ final class CanonicalWelcomeDataTest extends TestCase
             ->orderByDesc('version')
             ->firstOrFail();
 
-        $this->assertSame(1, (int) $version->version);
+        $this->assertGreaterThanOrEqual(2, (int) $version->version);
+        $this->assertTrue(
+            $template->versions()->where('locale', 'fa')->where('version', 1)->whereNotNull('published_at')->exists(),
+            'Historical welcome v1 must remain available after publishing newer immutable versions.'
+        );
         $this->assertSame($sender->id, $version->communication_sender_identity_id);
         $variableKeys = array_keys($version->variables_schema ?? []);
         sort($variableKeys);

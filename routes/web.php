@@ -985,43 +985,6 @@ Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:5,10')
     ->name('contact.store');
 
-// Route تست ایمیل (فقط برای تست - بعداً حذف کنید)
-Route::get('/admin/test-email', function() {
-    if (!auth()->check() || !auth()->user()->hasRole('super_admin')) {
-        return response()->json(['error' => 'Unauthorized'], 403);
-    }
-    
-    try {
-        $testEmail = request('email', 'test@example.com');
-        \Illuminate\Support\Facades\Mail::to($testEmail)->send(new \App\Mail\InvitationMail('TEST123', now()->addHours(72)));
-        return response()->json([
-            'success' => true,
-            'message' => 'Test email sent successfully (check your inbox or logs)',
-            'mail_config' => [
-                'driver' => config('mail.default'),
-                'host' => config('mail.mailers.smtp.host'),
-                'port' => config('mail.mailers.smtp.port'),
-                'from' => config('mail.from.address'),
-                'from_name' => config('mail.from.name'),
-            ]
-        ]);
-    } catch (\Exception $e) {
-        \Log::error('Test email failed', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'mail_config' => [
-                'driver' => config('mail.default'),
-                'host' => config('mail.mailers.smtp.host'),
-                'from' => config('mail.from.address'),
-            ]
-        ], 500);
-    }
-})->middleware(['auth', 'admin'])->name('admin.test-email');
-
 // Route تست RBAC (فقط برای تست - بعداً حذف کنید)
 Route::get('/test-rbac', function() {
     $user = auth()->user();

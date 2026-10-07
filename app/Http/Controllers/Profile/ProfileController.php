@@ -8,6 +8,7 @@ use App\Services\GroupService;
 use App\Services\ProfileCompletionService;
 use App\Services\Communication\CommunicationDispatcher;
 use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -566,7 +567,11 @@ class ProfileController
             [['email' => (string) $request->invite_email, 'locale' => 'fa']],
             [
                 'code' => (string) $code->code,
-                'expire_at' => $code->expire_at->toISOString(),
+                'expire_at' => app(TemporalService::class)->dateTime(
+                    $code->expire_at,
+                    app(TemporalContextResolver::class)->forLocale('fa', (string) config('app.timezone', 'Asia/Tehran')),
+                    'short',
+                ),
             ],
             [
                 'locale' => 'fa',
