@@ -9,15 +9,17 @@ return new class extends Migration
 
     public function up(): void
     {
-        $baseUrl = rtrim((string) config('app.url'), '/');
+        // Keep application links host-agnostic in immutable content. The delivery
+        // presenter resolves root-relative href/src values against the current
+        // APP_URL so domain changes do not require republishing template content.
         $urls = [
-            'home' => $baseUrl.'/home',
-            'profile' => $baseUrl.'/profile',
-            'groups' => $baseUrl.'/groups',
-            'participation' => $baseUrl.'/history',
-            'governance' => $baseUrl.'/location-governance/me',
-            'preferences' => $baseUrl.'/profile/communication-preferences',
-            'register' => $baseUrl.'/register',
+            'home' => '/home',
+            'profile' => '/profile',
+            'groups' => '/groups',
+            'participation' => '/history',
+            'governance' => '/location-governance/me',
+            'preferences' => '/profile/communication-preferences',
+            'register' => '/register',
         ];
 
         $this->publish(
@@ -177,9 +179,26 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('communication_template_versions')
+        // Published versions are audit history. Remove only versions that have
+        // never been referenced by a logical communication or recipient.
+        $versionIds = DB::table('communication_template_versions')
             ->where('body', 'like', '%'.self::MARKER.'%')
-            ->delete();
+            ->pluck('id');
+
+        foreach ($versionIds as $versionId) {
+            $usedByCommunication = DB::table('communications')
+                ->where('communication_template_version_id', $versionId)
+                ->exists();
+            $usedByRecipient = DB::table('communication_recipients')
+                ->where('communication_template_version_id', $versionId)
+                ->exists();
+
+            if (! $usedByCommunication && ! $usedByRecipient) {
+                DB::table('communication_template_versions')
+                    ->where('id', $versionId)
+                    ->delete();
+            }
+        }
     }
 
     private function publish(string $key, string $subject, string $body): void
