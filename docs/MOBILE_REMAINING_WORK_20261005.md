@@ -50,3 +50,11 @@ Signed +16 packaging source 546bbfd921b699d8887842dc141c993538842a8f passed at h
 
 ## Phone-free follow-up: wallet bootstrap classification resolved in source
 247-test full GREEN at37352586458 proves separate identity/network guards and recoverable retained-data retry. Exact source and negative-control evidence are in MOBILE_WALLET_RECOVERY_CHECKPOINT_20261005.md. The former wallet bootstrap Minor is resolved in code; all other deferred items remain. +16 APK has NOT been rebuilt and does not contain this source follow-up. Next-flow contract audit/proposal: MOBILE_NAJM_BAHAR_NEXT_FLOW_AUDIT_20261005.fa.md (activation eligibility and membership-fee observation; financial mutations not implemented). Bundle the fix into the next feature candidate rather than building another APK only for this correction.
+
+## Membership payment Task 6 — software complete, +18 packaging pending
+
+Frozen payment-capable software source is `17f6521c84508b6c7038757a88377135233b66df`. Final run `37551833441` is green: server architecture gate plus full PHPUnit **2426 tests / 13820 assertions** (47 PHPUnit deprecations, 2 skipped); mobile formatter **142 files / 0 changed**, analyzer no issues, complete Flutter suite **285 tests passed**. Both Dim and Active payment, explicit owned subaccount selection, exact server consent snapshot, no automatic financial retry, same-intent ambiguity recovery, anniversary/frozen-period evidence and session/logout boundaries are included.
+
+The +18 signed workflow is prepared and pinned to that exact software SHA. It enforces required Firebase configuration, stable UAT signing, release/nondebuggable/package/Internet checks and certificate SHA-256 continuity against `eda5c77121b0bbf1c08b82fb61e59f55a7ea61a2fe0fbbb23537d5bc134c8543`. The workflow has **not** been dispatched from the current connector, so no +18 APK/hash/build.json is claimed yet.
+
+Next mobile action is therefore only packaging the pinned +18 and then one consolidated physical acceptance run. Do not rebuild from a different software SHA merely for inspection. No main merge, FTP/host publication, real-money charge or push-driver activation has been performed.
