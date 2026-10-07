@@ -97,6 +97,7 @@ class NajmBaharRepository {
       rethrow;
     }
   }
+
   Future<NajmBaharMembershipFee> membershipFee() =>
       _policy('/najm-bahar/membership-fee', NajmBaharMembershipFee.fromJson);
 
