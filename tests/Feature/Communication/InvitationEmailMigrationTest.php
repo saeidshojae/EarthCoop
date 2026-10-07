@@ -8,6 +8,8 @@ use App\Models\Invitation;
 use App\Models\InvitationCode;
 use App\Models\User;
 use App\Services\Invitation\InvitationManagementService;
+use App\Temporal\Context\TemporalContextResolver;
+use App\Temporal\Contracts\TemporalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -39,7 +41,12 @@ final class InvitationEmailMigrationTest extends TestCase
 
         $this->assertSame('required', $communication->classification->value);
         $this->assertSame((string) $code->code, (string) data_get($communication->context_snapshot, 'code'));
-        $this->assertSame((string) $code->expire_at->toISOString(), (string) data_get($communication->context_snapshot, 'expire_at'));
+        $expectedExpiry = app(TemporalService::class)->dateTime(
+            $code->expire_at,
+            app(TemporalContextResolver::class)->forLocale('fa', (string) config('app.timezone', 'Asia/Tehran')),
+            'short',
+        );
+        $this->assertSame($expectedExpiry, (string) data_get($communication->context_snapshot, 'expire_at'));
         $this->assertDatabaseHas('communication_recipients', [
             'communication_id' => $communication->id,
             'user_id' => null,
