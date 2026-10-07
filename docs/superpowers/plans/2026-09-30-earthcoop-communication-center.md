@@ -1,5 +1,8 @@
 # EarthCoop Communication Center Implementation Plan
 
+> **Execution status — 2026-10-07:** This plan has been implemented and closed for Communication Center v1. The granular unchecked boxes below are retained as the original execution recipe/history and are **not** a live completion tracker. The authoritative as-built status is `docs/operations/COMMUNICATION_CENTER_CLOSURE_STATUS.md`. Time/Temporal integration was subsequently completed and merged into `main`.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a production-grade, programmable Communication Center for EarthCoop that supports event-driven, scheduled, and delayed-conditional email; template/version management; sender identities; user preferences; queued reliable delivery; campaigns; audit; registration welcome; and weekly role-aware reports while preserving current working email flows during migration.

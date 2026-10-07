@@ -1,5 +1,10 @@
 # Communication Center — Production Operations Runbook
 
+> **Current status — 2026-10-07:** Communication Center v1 is closed for active Production outbound email, and its Time/Temporal integration has been completed and merged. See `docs/operations/COMMUNICATION_CENTER_CLOSURE_STATUS.md` for the authoritative as-built closure/handoff.
+>
+> **Inbound email provider:** the Mailgun-compatible webhook exists in code, but Production does not currently configure Mailgun/`MAILGUN_SECRET`; inbound-provider email processing remains intentionally dormant.
+
+
 This runbook is the operational contract for EarthCoop outbound email after the Communication Center migration.
 
 ## 1. Canonical delivery boundary
@@ -146,3 +151,5 @@ Before release:
 - SPF/DKIM/DMARC are valid for the active sender domain.
 
 After release, perform controlled smoke checks for verification, password reset, support reply and an ordinary operational/admin message, and confirm their canonical communication/recipient/attempt records.
+
+Closure evidence from 2026-10-06 includes successful Production delivery for scheduled mail, password reset, Contact reply, registration verification, Ticket creation and Ticket reply. Final Ticket-created and Ticket-reply records were visible in Delivery History with sent status. The closure migration `2026_10_06_162000_seed_communication_closure_templates` was applied and `support.ticket_internal_alert` / `najm_bahar.project_assigned` were observed in Production.

@@ -1,5 +1,7 @@
 # Communication Center Design — Self Review
 
+> **Historical document:** This review predates implementation completion. Use `docs/operations/COMMUNICATION_CENTER_CLOSURE_STATUS.md` for the authoritative as-built state; Time/Temporal integration is now merged into `main`.
+
 **Spec reviewed:** `docs/superpowers/specs/2026-09-30-earthcoop-communication-center-design.md`
 
 ## Result
