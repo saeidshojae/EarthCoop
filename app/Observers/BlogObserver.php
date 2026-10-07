@@ -20,13 +20,27 @@ class BlogObserver
      */
     public function updated(BlogPost $blog): void
     {
-        $this->invalidateCache();
+        if ($blog->wasChanged([
+            'title', 'excerpt', 'content', 'status', 'published_at', 'category_id',
+        ])) {
+            $this->invalidateCache();
+        }
     }
 
     /**
      * Handle the Blog "deleted" event.
      */
     public function deleted(BlogPost $blog): void
+    {
+        $this->invalidateCache();
+    }
+
+    public function restored(BlogPost $blog): void
+    {
+        $this->invalidateCache();
+    }
+
+    public function forceDeleted(BlogPost $blog): void
     {
         $this->invalidateCache();
     }
