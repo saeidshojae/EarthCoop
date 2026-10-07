@@ -223,7 +223,7 @@
                                     </button>
                                 </div>
                             @elseif($code->completed_at && $code->usedBy)
-                                <p class="text-xs leading-6 text-slate-500 mb-0">دعوت تکمیل‌شده توسط: {{ $code->usedBy->fullName() }}</p>
+                                <p class="text-xs leading-6 text-slate-500 mb-0">دعوت تکمیل‌شده توسط: {{ $code->usedBy->displayName() }}</p>
                             @endif
                         </article>
                     @endforeach
