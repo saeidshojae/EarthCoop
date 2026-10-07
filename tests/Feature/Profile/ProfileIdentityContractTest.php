@@ -146,4 +146,21 @@ class ProfileIdentityContractTest extends TestCase
         $this->assertStringContainsString("config('phone-countries'", $step1);
         $this->assertStringNotContainsString("'in:+98,+1,+44,+49'", $controller);
     }
+
+    public function test_same_local_phone_number_can_exist_under_different_country_codes(): void
+    {
+        User::factory()->create([
+            'phone_country_code' => '+98',
+            'phone' => '9123456789',
+        ]);
+
+        $other = User::factory()->create([
+            'phone_country_code' => '+90',
+            'phone' => '9123456789',
+        ]);
+
+        $this->assertSame('+90', $other->phone_country_code);
+        $this->assertSame('9123456789', $other->phone);
+    }
+
 }
