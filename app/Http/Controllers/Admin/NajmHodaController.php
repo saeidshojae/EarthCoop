@@ -2367,9 +2367,14 @@ class NajmHodaController extends Controller
                 ],
             ], 201);
         } catch (\Throwable $e) {
+            $urlParts = parse_url((string) $validated['source_url']);
+            $safeSource = is_array($urlParts)
+                ? (($urlParts['scheme'] ?? 'https') . '://' . ($urlParts['host'] ?? 'unknown') . ($urlParts['path'] ?? ''))
+                : 'invalid-url';
+
             \Log::warning('Knowledge URL ingestion failed', [
                 'user_id' => auth()->id(),
-                'url' => $validated['source_url'],
+                'source' => mb_substr($safeSource, 0, 500),
                 'exception' => get_class($e),
                 'error' => $e->getMessage(),
             ]);
