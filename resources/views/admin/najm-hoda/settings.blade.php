@@ -1072,6 +1072,15 @@ function escapeKnowledgeHtml(value) {
         .replaceAll("'", '&#039;');
 }
 
+function safeKnowledgeHttpUrl(value) {
+    try {
+        const url = new URL(String(value || ''));
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+    } catch (error) {
+        return null;
+    }
+}
+
 // بارگذاری لیست منابع دانش
 async function loadKnowledgeFiles() {
     try {
@@ -1106,7 +1115,7 @@ async function loadKnowledgeFiles() {
                                         <td style="padding: 8px;">
                                             <i class="fas ${file.icon}" style="color: #6366f1; margin-left: 4px;"></i>
                                             <span id="file-title-${Number(file.id)}">${escapeKnowledgeHtml(file.title)}</span>
-                                            ${file.source_url ? `<br><a href="${escapeKnowledgeHtml(file.source_url)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#0369a1;">${escapeKnowledgeHtml(file.source_url)}</a>` : ''}
+                                            ${safeKnowledgeHttpUrl(file.source_url) ? `<br><a href="${escapeKnowledgeHtml(safeKnowledgeHttpUrl(file.source_url))}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#0369a1;">${escapeKnowledgeHtml(file.source_url)}</a>` : ''}
                                         </td>
                                         <td style="padding: 8px; text-align: center;">
                                             <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
