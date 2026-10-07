@@ -161,8 +161,7 @@ void main() {
     await expectLater(
       f.repository(adapter).activateParticipation(intent()),
       throwsA(
-        isA<ApiFailure>()
-            .having((e) => e.code, 'code', 'malformed_response'),
+        isA<ApiFailure>().having((e) => e.code, 'code', 'malformed_response'),
       ),
     );
     expect(adapter.requests, hasLength(1));
@@ -193,7 +192,8 @@ void main() {
       ),
     );
     await expectLater(
-      f.repository(adapter, current: () => false)
+      f
+          .repository(adapter, current: () => false)
           .activateParticipation(intent()),
       throwsA(
         isA<ApiFailure>().having((e) => e.code, 'code', 'session_changed'),
