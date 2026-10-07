@@ -6,6 +6,7 @@ import 'najm_bahar_dto.dart';
 import 'najm_bahar_policy_dto.dart';
 import 'najm_bahar_membership_payment_dto.dart';
 import 'najm_bahar_transfer_dto.dart';
+import 'najm_bahar_activation_dto.dart';
 
 class NajmBaharRepository {
   NajmBaharRepository(
@@ -52,6 +53,50 @@ class NajmBaharRepository {
   Future<NajmBaharActivationEligibility> activationEligibility() => _policy(
       '/najm-bahar/activation/eligibility',
       NajmBaharActivationEligibility.fromJson);
+
+  Future<NajmBaharActivationEligibilityV1> activationEligibilityV1() => _policy(
+      '/najm-bahar/activation/eligibility',
+      NajmBaharActivationEligibilityV1.fromJson);
+
+  Future<NajmBaharActivationReceipt> activateParticipation(
+      NajmBaharActivationIntent intent) async {
+    _guard();
+    try {
+      final response = await _api.post<NajmBaharActivationReceipt>(
+        '/najm-bahar/activation',
+        data: intent.toJson(),
+        context: RequestContext(
+          idempotencyKey: intent.key,
+          allowAutomaticRetry: false,
+        ),
+        decodeData: NajmBaharActivationReceipt.fromJson,
+      );
+      _guardSession();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
+
+  Future<NajmBaharActivationReceipt> reconcileActivation(
+      NajmBaharActivationIntent intent) async {
+    _guard();
+    try {
+      final encodedKey = Uri.encodeComponent(intent.key);
+      final response = await _api.get<NajmBaharActivationReceipt>(
+        '/najm-bahar/activation/by-idempotency/$encodedKey',
+        decodeData: NajmBaharActivationReceipt.fromJson,
+      );
+      _guard();
+      if (!response.data.matches(intent)) throw malformedResponse();
+      return response.data;
+    } catch (_) {
+      _guardSession();
+      rethrow;
+    }
+  }
   Future<NajmBaharMembershipFee> membershipFee() =>
       _policy('/najm-bahar/membership-fee', NajmBaharMembershipFee.fromJson);
 
