@@ -4475,7 +4475,7 @@
 
 
 
-                        <td>{{ $user->phone }}</td>
+                        <td>{{ $user->formattedPhone() }}</td>
 
 
 
