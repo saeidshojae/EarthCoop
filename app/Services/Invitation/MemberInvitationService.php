@@ -7,12 +7,16 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Communication\CommunicationDispatcher;
 use Carbon\Carbon;
+use App\Temporal\Contracts\TemporalService;
+use App\Temporal\Context\TemporalContextResolver;
 use Illuminate\Support\Str;
 
 final class MemberInvitationService
 {
     public function __construct(
         private readonly CommunicationDispatcher $communications,
+        private readonly TemporalService $temporal,
+        private readonly TemporalContextResolver $temporalContexts,
     ) {}
 
     /** @return array{code:InvitationCode,communication_id:int} */
@@ -35,7 +39,11 @@ final class MemberInvitationService
             ]],
             [
                 'code' => (string) $code->code,
-                'expire_at' => $code->expire_at->toISOString(),
+                'expire_at' => $this->temporal->dateTime(
+                    $code->expire_at,
+                    $this->temporalContexts->forLocale('fa', (string) config('app.timezone', 'Asia/Tehran')),
+                    'short',
+                ),
             ],
             [
                 'locale' => 'fa',
