@@ -62,9 +62,6 @@ jobs:
           chmod -R 775 bootstrap/cache storage/framework storage/logs
           composer install --prefer-dist --no-interaction --no-progress
           npm ci --no-audit --no-fund
-          npm run build
-          test -f public/build/manifest.json
-          grep -F 'resources/js/app.js' public/build/manifest.json >/dev/null
           cat > .env <<'EOF'
           APP_NAME=EarthCoop
           APP_ENV=testing
@@ -178,13 +175,18 @@ jobs:
           EOF
           php artisan key:generate --force
           php artisan migrate:fresh --force
+          npm run build
+          test -f public/build/manifest.json
+          grep -F 'resources/js/app.js' public/build/manifest.json >/dev/null
       - name: Financial mutation architecture gate
         run: |
           set -o pipefail
           vendor/bin/phpunit -c phpunit.xml.dist tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php 2>&1 | tee final-evidence/server-architecture.log
       - name: Full server suite
         run: |
-          set -o pipefail
+          set -euo pipefail
+          test -f public/build/manifest.json
+          grep -F 'resources/js/app.js' public/build/manifest.json >/dev/null
           vendor/bin/phpunit -c phpunit.xml.dist 2>&1 | tee final-evidence/server-full.log
       - name: Retain server final evidence
         if: always()
@@ -209,23 +211,9 @@ jobs:
       - name: Resolve locked dependencies
         working-directory: apps/mobile
         run: flutter pub get
-      - name: Normalize formatter and expose exact canonical test sources
+      - name: Strict formatter
         working-directory: apps/mobile
-        run: |
-          set -euo pipefail
-          mkdir -p ../../final-mobile-evidence
-          dart format lib test integration_test
-          git diff --no-color -- lib test integration_test | tee ../../final-mobile-evidence/format.patch
-          for file in \
-            test/features/najm_bahar/najm_bahar_membership_payment_controller_test.dart \
-            test/features/najm_bahar/najm_bahar_membership_payment_repository_test.dart \
-            test/features/najm_bahar/najm_bahar_membership_payment_screen_test.dart
-          do
-            echo "NB_FORMAT_FILE_BEGIN:$file"
-            base64 -w0 "$file"
-            echo
-            echo "NB_FORMAT_FILE_END:$file"
-          done
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
       - name: Analyzer
         working-directory: apps/mobile
         run: flutter analyze
