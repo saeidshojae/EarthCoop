@@ -78,8 +78,7 @@ class NajmBaharRepository {
   }
 
   Future<NajmBaharTransferCapability> transferCapability() => _policy(
-      '/najm-bahar/transfers/capability',
-      NajmBaharTransferCapability.fromJson);
+      '/najm-bahar/transfers/capability', NajmBaharTransferCapability.fromJson);
 
   Future<NajmBaharTransferDestination> transferDestination(
       String accountNumber) async {
