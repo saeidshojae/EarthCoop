@@ -28,6 +28,11 @@ return new class extends Migration
             $table->unique('national_id', 'users_national_id_unique');
         });
 
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropUnique('users_phone_unique');
+            $table->unique(['phone_country_code', 'phone'], 'users_phone_country_number_unique');
+        });
+
         DB::table('users')
             ->where('edited', 1)
             ->whereNull('identity_edit_used_at')
@@ -36,7 +41,23 @@ return new class extends Migration
 
     public function down(): void
     {
+        $duplicateLocalPhones = DB::table('users')
+            ->select('phone')
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->groupBy('phone')
+            ->havingRaw('COUNT(*) > 1')
+            ->exists();
+
+        if ($duplicateLocalPhones) {
+            throw new \RuntimeException(
+                'Cannot restore globally unique local phone numbers while duplicates exist across country codes.'
+            );
+        }
+
         Schema::table('users', function (Blueprint $table) {
+            $table->dropUnique('users_phone_country_number_unique');
+            $table->unique('phone', 'users_phone_unique');
             $table->dropUnique('users_national_id_unique');
             $table->dropColumn(['nickname', 'phone_country_code', 'identity_edit_used_at']);
         });
