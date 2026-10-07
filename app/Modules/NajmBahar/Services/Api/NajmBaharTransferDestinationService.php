@@ -26,6 +26,7 @@ class NajmBaharTransferDestinationService
         $mirror = Account::query()
             ->where('type', 'subaccount')
             ->where('account_number', $number)
+            ->where('status', 1)
             ->first();
 
         if (! $mirror instanceof Account) {
@@ -101,6 +102,7 @@ class NajmBaharTransferDestinationService
             ->whereKey((int) $decoded['account_id'])
             ->where('type', 'subaccount')
             ->where('account_number', $number)
+            ->where('status', 1)
             ->first();
 
         if (! $sub instanceof SubAccount || ! $mirror instanceof Account) {
