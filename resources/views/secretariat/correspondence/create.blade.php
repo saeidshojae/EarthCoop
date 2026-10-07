@@ -96,7 +96,7 @@
             <select name="internal_recipient_user_id" class="w-full rounded-xl border-gray-300 dark:bg-gray-800 dark:border-gray-700">
                 <option value="">انتخاب عضو</option>
                 @foreach($members as $member)
-                    @php $memberName = trim((string) $member->first_name . ' ' . (string) $member->last_name); @endphp
+                    @php $memberName = $member->displayName(); @endphp
                     <option value="{{ $member->id }}" @selected((string) old('internal_recipient_user_id') === (string) $member->id)>
                         {{ $memberName ?: $member->email ?: ('#' . $member->id) }}
                     </option>
