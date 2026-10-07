@@ -1,0 +1,52 @@
+name: Native Bahar activation final mobile
+
+on:
+  push:
+    branches:
+      - agent/mobile-bahar-activation-20261007
+    paths:
+      - '.github/workflows/mobile-bahar-activation-final-mobile.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-bahar-activation-final-mobile
+  cancel-in-progress: true
+
+jobs:
+  final-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 82b1097aa621fef9b16e9cf4e03f6443e0c8b224
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve locked dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Strict formatter
+        working-directory: apps/mobile
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
+      - name: Analyzer
+        working-directory: apps/mobile
+        run: flutter analyze
+      - name: Complete Flutter suite
+        working-directory: apps/mobile
+        run: |
+          set -o pipefail
+          mkdir -p ../../activation-final-mobile-evidence
+          flutter test --reporter expanded 2>&1 | tee ../../activation-final-mobile-evidence/flutter-full.log
+      - name: Retain mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activation-final-mobile-82b1097aa621fef9b16e9cf4e03f6443e0c8b224
+          path: activation-final-mobile-evidence/
+          if-no-files-found: warn
+          retention-days: 30
