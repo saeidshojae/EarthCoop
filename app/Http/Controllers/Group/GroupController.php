@@ -248,8 +248,8 @@ class GroupController extends Controller
         $membership->update(['session_write_allowed' => ! (bool) $membership->session_write_allowed]);
 
         return back()->with('success', $membership->session_write_allowed
-            ? "مجوز مشارکت در نشست بسته برای {$user->fullName()} فعال شد."
-            : "مجوز مشارکت در نشست بسته برای {$user->fullName()} لغو شد.");
+            ? "مجوز مشارکت در نشست بسته برای {$user->displayName()} فعال شد."
+            : "مجوز مشارکت در نشست بسته برای {$user->displayName()} لغو شد.");
     }
 
     public function update(Request $request, Group $group)
@@ -366,7 +366,7 @@ class GroupController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => "نقش کاربر {$user->fullName()} از {$oldRole} به {$newRole} تغییر پیدا کرد.",
+            'message' => "نقش کاربر {$user->displayName()} از {$oldRole} به {$newRole} تغییر پیدا کرد.",
             'new_role' => $groupUser->role,
             'new_role_label' => $newRole,
             'expires_at' => $groupUser->role_override_expires_at?->toIso8601String()
@@ -409,7 +409,7 @@ class GroupController extends Controller
             ->map(function ($user) {
                 return [
                     'id' => $user->id,
-                    'name' => $user->fullName(),
+                    'name' => $user->displayName(),
                     'email' => $user->email,
                     'role' => (int) $user->pivot->role,
                     'role_label' => match ((int) $user->pivot->role) {
@@ -514,7 +514,7 @@ class GroupController extends Controller
             ->get()
             ->map(function ($user) {
                 return [
-                    'name' => $user->fullName(),
+                    'name' => $user->displayName(),
                     'message_count' => $user->messages_count ?? 0,
                 ];
             });
