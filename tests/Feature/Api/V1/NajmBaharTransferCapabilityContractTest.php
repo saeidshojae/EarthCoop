@@ -104,6 +104,36 @@ class NajmBaharTransferCapabilityContractTest extends TestCase
     }
 
 
+    public function test_capability_reports_no_eligible_source_when_all_active_sources_are_unspendable(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $main = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member');
+
+        $empty = $this->subAccount($main, '030', 0, 0, 1);
+        app(AccountService::class)->ensureSubAccountAccount($empty);
+
+        $fullyReserved = $this->subAccount($main, '033', 600, 0, 1);
+        $reservedMirror = app(AccountService::class)->ensureSubAccountAccount($fullyReserved);
+        app(ActiveBaharReservationService::class)->reserve(
+            $reservedMirror->account_number,
+            600,
+            'transfer-capability-fully-reserved',
+            'test',
+            33,
+        );
+
+        $this->openTransfers();
+
+        $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/transfers/capability')
+            ->assertOk()
+            ->assertJsonPath('data.external_transfer_enabled', false)
+            ->assertJsonPath('data.disabled_reason', 'no_eligible_source')
+            ->assertJsonCount(2, 'data.sources')
+            ->assertJsonPath('data.sources.0.can_transfer_active', false)
+            ->assertJsonPath('data.sources.1.can_transfer_active', false);
+    }
+
     public function test_capability_uses_canonical_mirror_availability_and_hides_inactive_mirrors(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
