@@ -31,6 +31,11 @@ class StewardKnowledgeFileObserver
         $this->invalidateCache();
     }
 
+    public function restored(StewardKnowledgeFile $stewardKnowledgeFile): void
+    {
+        $this->invalidateCache();
+    }
+
     /**
      * Handle the StewardKnowledgeFile "forceDeleted" event.
      */

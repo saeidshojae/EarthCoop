@@ -20,7 +20,11 @@ class KbArticleObserver
      */
     public function updated(KbArticle $article): void
     {
-        $this->invalidateCache();
+        if ($article->wasChanged([
+            'title', 'excerpt', 'content', 'status', 'published_at', 'category_id',
+        ])) {
+            $this->invalidateCache();
+        }
     }
 
     /**

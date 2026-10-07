@@ -32,7 +32,7 @@ use App\Models\Group;
 use App\Observers\GroupObserver;
 use App\Models\KbArticle;
 use App\Observers\KbArticleObserver;
-use App\Models\Blog;
+use App\Modules\Blog\Models\Post as BlogPost;
 use App\Observers\BlogObserver;
 use App\Models\FaqQuestion;
 use App\Observers\FaqQuestionObserver;
@@ -98,7 +98,7 @@ class AppServiceProvider extends ServiceProvider
         NajmTransaction::observe(NajmBaharTransactionObserver::class);
         Group::observe(GroupObserver::class);
         KbArticle::observe(KbArticleObserver::class);
-        Blog::observe(BlogObserver::class);
+        BlogPost::observe(BlogObserver::class);
         FaqQuestion::observe(FaqQuestionObserver::class);
         StewardKnowledgeFile::observe(StewardKnowledgeFileObserver::class);
     }

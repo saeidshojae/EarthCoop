@@ -582,6 +582,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             // Steward Knowledge Files - داخل manage-settings
             Route::get('/steward/knowledge-files', [AdminNajmHodaController::class, 'manageKnowledgeFiles'])->name('steward.knowledge-files-page');
             Route::post('/steward/upload-knowledge', [AdminNajmHodaController::class, 'uploadKnowledgeFile'])->name('steward.upload-knowledge');
+            Route::post('/steward/knowledge-url', [AdminNajmHodaController::class, 'addKnowledgeUrl'])->name('steward.add-knowledge-url');
             Route::get('/steward/knowledge-files-api', [AdminNajmHodaController::class, 'getKnowledgeFiles'])->name('steward.knowledge-files-api');
             Route::put('/steward/knowledge-files/{id}', [AdminNajmHodaController::class, 'updateKnowledgeFile'])->name('steward.update-knowledge');
             Route::delete('/steward/knowledge-files/{id}', [AdminNajmHodaController::class, 'deleteKnowledgeFile'])->name('steward.delete-knowledge');

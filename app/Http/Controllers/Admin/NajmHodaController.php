@@ -32,6 +32,7 @@ use App\Temporal\Context\TemporalContextResolver;
 use App\Temporal\Contracts\TemporalService;
 use App\Services\NajmHoda\Runtime\NajmHodaPhaseSixSignoffService;
 use App\Services\NajmHoda\Runtime\NajmHodaShadowLiveRolloutService;
+use App\Services\NajmHoda\Knowledge\StewardKnowledgeUrlIngestor;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -45,6 +46,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
@@ -2213,7 +2215,16 @@ class NajmHodaController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('admin.najm-hoda.knowledge-files', compact('files'));
+        $sourceStats = StewardKnowledgeFile::query()
+            ->selectRaw(
+                "COUNT(*) as total,
+                SUM(CASE WHEN source_type = 'url' THEN 1 ELSE 0 END) as urls,
+                SUM(CASE WHEN file_type = 'pdf' THEN 1 ELSE 0 END) as pdfs,
+                SUM(CASE WHEN file_type IN ('doc', 'docx') THEN 1 ELSE 0 END) as word_files"
+            )
+            ->first();
+
+        return view('admin.najm-hoda.knowledge-files', compact('files', 'sourceStats'));
     }
 
     /**
@@ -2221,6 +2232,8 @@ class NajmHodaController extends Controller
      */
     public function uploadKnowledgeFile(Request $request)
     {
+        $filePath = null;
+
         // بررسی authentication
         if (!auth()->check()) {
             return response()->json([
@@ -2248,11 +2261,11 @@ class NajmHodaController extends Controller
             $extension = strtolower($file->getClientOriginalExtension());
             $fileSize = $file->getSize();
             
-            // ایجاد نام فایل منحصر به فرد
-            $fileName = time() . '_' . str_replace(' ', '_', preg_replace('/[^\w.-]/u', '', basename($originalName)));
-            
-            // ذخیره فایل در storage
-            $filePath = $file->storeAs('steward/knowledge', $fileName, 'public');
+            // نام داخلی تصادفی/برخوردناپذیر؛ نام اصلی فقط به‌عنوان metadata نگه داشته می‌شود.
+            $fileName = (string) Str::uuid() . '.' . $extension;
+
+            // منابع دانش داخلی روی دیسک خصوصی ذخیره می‌شوند و زیر public/storage قابل دسترس نیستند.
+            $filePath = $file->storeAs('steward/knowledge', $fileName, 'local');
             
             if (!$filePath) {
                 return response()->json([
@@ -2266,16 +2279,19 @@ class NajmHodaController extends Controller
             if (empty($extractedContent)) {
                 $extractedContent = "فایل: {$originalName}";
             }
+            $extractedContent = $this->limitKnowledgeContent($extractedContent);
             
             // ذخیره در دیتابیس
             $knowledgeFile = StewardKnowledgeFile::create([
                 'title' => trim($validated['title']),
+                'source_type' => 'file',
+                'source_url' => null,
                 'original_filename' => $originalName,
                 'file_path' => $filePath,
                 'file_type' => $extension,
                 'file_size' => $fileSize,
                 'extracted_content' => $extractedContent,
-                'summary' => substr($extractedContent, 0, 200),
+                'summary' => mb_substr($extractedContent, 0, 200),
                 'search_priority' => $validated['search_priority'] ?? 5,
                 'uploaded_by' => auth()->id(),
                 'is_active' => true,
@@ -2300,18 +2316,89 @@ class NajmHodaController extends Controller
                 'message' => '⚠️ ' . $errors
             ], 422);
             
-        } catch (\Exception $e) {
-            // Log error for debugging
+        } catch (\Throwable $e) {
+            if ($filePath && Storage::disk('local')->exists($filePath)) {
+                Storage::disk('local')->delete($filePath);
+            }
+
             \Log::error('Knowledge file upload error: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),
                 'file' => $request->file('knowledge_file') ? $request->file('knowledge_file')->getClientOriginalName() : 'unknown',
-                'trace' => $e->getTraceAsString()
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => '❌ خطا در آپلود فایل: ' . $e->getMessage()
+                'message' => '❌ پردازش یا ذخیره فایل دانش ناموفق بود. جزئیات در گزارش سرور ثبت شد.'
             ], 500);
+        }
+    }
+
+    /**
+     * افزودن منبع دانش از یک لینک عمومی وب.
+     */
+    public function addKnowledgeUrl(Request $request, StewardKnowledgeUrlIngestor $ingestor)
+    {
+        $validated = $request->validate([
+            'source_url' => 'required|url|max:2048',
+            'title' => 'nullable|string|max:255',
+            'search_priority' => 'nullable|integer|min:1|max:10',
+        ], [
+            'source_url.required' => 'لطفاً لینک منبع را وارد کنید',
+            'source_url.url' => 'لینک منبع معتبر نیست',
+        ]);
+
+        try {
+            $ingested = $ingestor->ingest($validated['source_url']);
+            $title = trim((string) ($validated['title'] ?? ''));
+            if ($title === '') {
+                $title = (string) $ingested['title'];
+            }
+
+            $knowledgeFile = StewardKnowledgeFile::create([
+                'title' => mb_substr($title, 0, 255),
+                'source_type' => 'url',
+                'source_url' => (string) $ingested['url'],
+                'original_filename' => null,
+                'file_path' => null,
+                'file_type' => 'url',
+                'file_size' => strlen((string) $ingested['content']),
+                'extracted_content' => (string) $ingested['content'],
+                'summary' => mb_substr((string) $ingested['content'], 0, 200),
+                'search_priority' => $validated['search_priority'] ?? 5,
+                'uploaded_by' => auth()->id(),
+                'is_active' => true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '✅ لینک دانش با موفقیت ثبت و متن آن استخراج شد',
+                'file' => [
+                    'id' => $knowledgeFile->id,
+                    'title' => $knowledgeFile->title,
+                    'source_type' => $knowledgeFile->source_type,
+                    'source_url' => $knowledgeFile->source_url,
+                    'search_priority' => $knowledgeFile->search_priority,
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+            $urlParts = parse_url((string) $validated['source_url']);
+            $safeSource = is_array($urlParts)
+                ? (($urlParts['scheme'] ?? 'https') . '://' . ($urlParts['host'] ?? 'unknown') . ($urlParts['path'] ?? ''))
+                : 'invalid-url';
+
+            \Log::warning('Knowledge URL ingestion failed', [
+                'user_id' => auth()->id(),
+                'source' => mb_substr($safeSource, 0, 500),
+                'exception' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '❌ افزودن لینک دانش ناموفق بود: ' . $e->getMessage(),
+            ], 422);
         }
     }
 
@@ -2338,6 +2425,8 @@ class NajmHodaController extends Controller
                 return [
                     'id' => $file->id,
                     'title' => $file->title,
+                    'source_type' => $file->source_type ?? 'file',
+                    'source_url' => $file->source_url,
                     'file_type' => $file->file_type,
                     'file_size' => $file->formatted_file_size,
                     'search_priority' => $file->search_priority,
@@ -2373,7 +2462,7 @@ class NajmHodaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'فایل با موفقیت ویرایش شد',
+                'message' => 'منبع با موفقیت ویرایش شد',
                 'file' => [
                     'id' => $file->id,
                     'title' => $file->title,
@@ -2396,9 +2485,13 @@ class NajmHodaController extends Controller
         try {
             $file = StewardKnowledgeFile::findOrFail($id);
             
-            // حذف فایل از storage
-            if (Storage::disk('public')->exists($file->file_path)) {
-                Storage::disk('public')->delete($file->file_path);
+            // حذف منبع خصوصی؛ fallback دیسک public فقط برای فایل‌های legacy قبل از migration.
+            if ($file->file_path) {
+                if (Storage::disk('local')->exists($file->file_path)) {
+                    Storage::disk('local')->delete($file->file_path);
+                } elseif (Storage::disk('public')->exists($file->file_path)) {
+                    Storage::disk('public')->delete($file->file_path);
+                }
             }
             
             // حذف از دیتابیس
@@ -2406,7 +2499,7 @@ class NajmHodaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'فایل با موفقیت حذف شد'
+                'message' => 'منبع با موفقیت حذف شد'
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -2454,7 +2547,7 @@ class NajmHodaController extends Controller
                             $content = "📄 فایل PDF: {$filename}\n\n";
                             $content .= "این فایل PDF شامل تصاویر یا محتوای غیرقابل استخراج است.";
                         }
-                    } catch (\Exception $e) {
+                    } catch (\Throwable $e) {
                         \Log::warning('PDF parsing failed', [
                             'filename' => $filename,
                             'error' => $e->getMessage()
@@ -2469,12 +2562,37 @@ class NajmHodaController extends Controller
                 }
                 
             } elseif ($extension === 'docx' || $extension === 'doc') {
-                // Word: فعلاً فقط نام فایل (کتابخانه phpoffice/phpword نصب نیست)
-                $content = "📝 فایل Word: {$filename}\n\n";
-                $content .= "این یک فایل Word است. ";
-                $content .= "برای استخراج خودکار محتوای Word، نیاز به نصب کتابخانه phpoffice/phpword است.";
+                if (class_exists('\PhpOffice\PhpWord\IOFactory')) {
+                    try {
+                        $document = \PhpOffice\PhpWord\IOFactory::load($file->getRealPath());
+                        $parts = [];
+
+                        foreach ($document->getSections() as $section) {
+                            foreach ($section->getElements() as $element) {
+                                $text = $this->extractPhpWordElementText($element);
+                                if ($text !== '') {
+                                    $parts[] = $text;
+                                }
+                            }
+                        }
+
+                        $wordText = trim(implode("\n", $parts));
+                        $content = $wordText !== ''
+                            ? "📝 فایل Word: {$filename}\n\nمحتوای استخراج‌شده:\n\n{$wordText}"
+                            : "📝 فایل Word: {$filename}\n\nمتن قابل استخراجی در فایل پیدا نشد.";
+                    } catch (\Throwable $e) {
+                        \Log::warning('Word parsing failed', [
+                            'filename' => $filename,
+                            'error' => $e->getMessage(),
+                        ]);
+
+                        $content = "📝 فایل Word: {$filename}\n\nخطا در استخراج محتوا. نام فایل برای جستجو استفاده می‌شود.";
+                    }
+                } else {
+                    $content = "📝 فایل Word: {$filename}\n\nکتابخانه PHPWord در دسترس نیست.";
+                }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('File content extraction error', [
                 'filename' => $filename,
                 'extension' => $extension,
@@ -2486,5 +2604,48 @@ class NajmHodaController extends Controller
         }
 
         return $content;
+    }
+
+    private function limitKnowledgeContent(string $content): string
+    {
+        $maxChars = 1_000_000;
+        if (mb_strlen($content) <= $maxChars) {
+            return $content;
+        }
+
+        return mb_substr($content, 0, $maxChars)
+            . "\n\n[محتوای استخراج‌شده به سقف ایمن یک‌میلیون نویسه محدود شد.]";
+    }
+
+    private function extractPhpWordElementText($element): string
+    {
+        $parts = [];
+
+        if (is_object($element) && method_exists($element, 'getText')) {
+            $text = $element->getText();
+            if (is_string($text) && trim($text) !== '') {
+                $parts[] = trim($text);
+            }
+        }
+
+        foreach (['getElements', 'getRows', 'getCells'] as $method) {
+            if (!is_object($element) || !method_exists($element, $method)) {
+                continue;
+            }
+
+            $children = $element->{$method}();
+            if (!is_iterable($children)) {
+                continue;
+            }
+
+            foreach ($children as $child) {
+                $text = $this->extractPhpWordElementText($child);
+                if ($text !== '') {
+                    $parts[] = $text;
+                }
+            }
+        }
+
+        return trim(implode("\n", array_unique($parts)));
     }
 }
