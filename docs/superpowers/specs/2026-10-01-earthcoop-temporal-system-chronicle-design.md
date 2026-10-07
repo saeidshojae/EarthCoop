@@ -1,6 +1,6 @@
 # EarthCoop Temporal System & Chronicle — Design Spec v1.1
 
-> **Implementation status — 2026-10-07:** The canonical Temporal System foundation and its Communication Center integration are merged into `main` through PR #219 (merge commit `8b12a8e0554436a3c4c1b973748bd1c8168b36ea`). The Chronicle product remains intentionally unimplemented: there is currently no `/chronicle` route/page, milestone model, or Chronicle admin UI. Temporal and Chronicle remain separate bounded contexts.
+> **Implementation status — 2026-10-07:** The canonical Temporal System foundation and Communication Center integration are merged into `main`. The Chronicle bounded context was also already partially implemented before this reconciliation: `/chronicle`, the constitutional epoch, EarthCoop-year calculation, FA/EN/AR copy and Chronicle-specific tests exist outside Temporal core. The Chronicle completion adds canonical milestone persistence, admin management, public milestone rendering, navigation and sitemap discovery. Temporal and Chronicle remain separate bounded contexts with one-way Chronicle → Temporal dependency.
 
 ## Goal
 Establish one canonical time architecture for EarthCoop and a separate Chronicle product for EarthCoop history.
@@ -105,7 +105,7 @@ After migration, first-party application/view code must not directly use `Jalali
 ## Chronicle bounded context
 Chronicle is separate from Temporal System and depends on it one-way.
 
-**Current state (2026-10-07): planned only.** The constitutional epoch/year semantics below are approved design, but the product surface has not been built yet. There is no public Chronicle page, no `/chronicle` route, no milestone persistence/admin workflow, and no Chronicle-specific runtime domain in `app/Temporal`.
+**Current state (2026-10-07): implemented product surface.** The public `/chronicle` page, constitutional epoch and EarthCoop-year calculator already existed. The completion layer adds `chronicle_milestones` with canonical `occurred_on` dates, multilingual title/description content, publish/order controls, soft deletion and admin management. Published milestones are rendered on `/chronicle`, linked from public navigation and included in the sitemap. No Chronicle runtime logic is placed in `app/Temporal`.
 
 ### Epoch
 - 1401/01/01 Solar Hijri
@@ -141,3 +141,5 @@ Temporal migration is complete when all user-facing date presentation/input pass
 **Status against this DoD (2026-10-07):** the architectural core, direct legacy-calendar removal, communication integration, and final validation gates are green; repository-wide presentation/input normalization is not yet formally closed because residual direct formatting/raw date-input surfaces still exist. Therefore the Temporal architecture is production-integrated, while the final "every user-facing surface" cleanup remains an explicit follow-up.
 
 Chronicle is complete when `/chronicle` correctly shows today and EarthCoop Year, epoch semantics are locked, milestones use canonical dates, admin management exists, localization is ready, and Chronicle has no effect on operational business date logic.
+
+**Status against this Chronicle DoD (2026-10-07):** implemented. EarthCoop Year remains derived and is not persisted in the milestone table; only published milestones are exposed publicly; admin milestone dates enter through the shared Temporal date input/parser path; Chronicle is discoverable in navigation and sitemap; and operational business modules do not depend on Chronicle.
