@@ -22,8 +22,9 @@ class FaqQuestionObserver
      */
     public function updated(FaqQuestion $question): void
     {
-        // Invalidate if publishing status changed or answer changed
-        if ($question->isDirty(['is_published', 'answer'])) {
+        if ($question->wasChanged([
+            'is_published', 'answer', 'question', 'title', 'category',
+        ])) {
             $this->invalidateCache();
         }
     }
