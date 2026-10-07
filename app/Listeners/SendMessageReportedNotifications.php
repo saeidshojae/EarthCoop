@@ -30,7 +30,7 @@ class SendMessageReportedNotifications
         }
 
         $messagePreview = mb_substr($report->message->message ?? 'پیام حذف شده', 0, 100);
-        $reporterName = $reporter->fullName();
+        $reporterName = $reporter->displayName();
         
         $title = 'گزارش پیام جدید در گروه ' . ($group->name ?? '');
         $message = "یک پیام در گروه {$group->name} توسط {$reporterName} گزارش شده است.\n";
