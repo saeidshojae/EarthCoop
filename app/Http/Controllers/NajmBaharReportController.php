@@ -54,7 +54,7 @@ class NajmBaharReportController extends Controller
 
         $routePrefix = 'najm-bahar.reports';
         $routeParams = [];
-        $reportOwnerName = trim($user->first_name . ' ' . $user->last_name);
+        $reportOwnerName = $user->displayName();
         $accountNumberDisplay = $account?->account_number;
 
         return view('najm-bahar.reports.index', compact('transactions', 'summary', 'dateFrom', 'dateTo', 'type', 'search', 'account', 'routePrefix', 'routeParams', 'reportOwnerName', 'accountNumberDisplay'));
@@ -136,7 +136,7 @@ class NajmBaharReportController extends Controller
 
         $routePrefix = 'groups.najm-bahar.leader-reports';
         $routeParams = ['group' => $group->id, 'leader' => $leader->id];
-        $leaderName = trim($leader->first_name . ' ' . $leader->last_name) ?: 'کاربر ' . $leader->id;
+        $leaderName = $leader->displayName() ?: 'کاربر ' . $leader->id;
         $roleLabel = $this->resolveLeaderRoleLabel($window);
         $reportOwnerName = 'حساب شخصی ' . $leaderName . ' (' . $roleLabel . ')';
         $accountNumberDisplay = $account?->account_number ?? $accountNumber;
