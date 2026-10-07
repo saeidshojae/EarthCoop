@@ -63,6 +63,7 @@ final class CanonicalProfileMembershipController extends Controller
 
         $birthDate = $request->input('birth_date');
         $canonicalBirthDate = null;
+        $originalBirthDate = (string) $user->getRawOriginal('birth_date');
 
         if ($birthDate !== null) {
             $context = app(TemporalContextResolver::class)->forUser($user);
@@ -96,6 +97,14 @@ final class CanonicalProfileMembershipController extends Controller
                 ]);
             }
 
+            if ($user->hasUsedIdentityEdit()
+                && $canonicalBirthDate !== null
+                && $canonicalBirthDate->toCanonical() !== substr($originalBirthDate, 0, 10)) {
+                throw ValidationException::withMessages([
+                    'birth_date' => 'تاریخ تولد قبلاً یک‌بار ویرایش شده و دیگر قابل تغییر نیست.',
+                ]);
+            }
+
             // Registration cutover owns the canonical birth-date value even while
             // Stage C groups are dark. Remove it from the mature profile request so
             // the legacy age-group detach/materialize block can never run here.
@@ -112,11 +121,18 @@ final class CanonicalProfileMembershipController extends Controller
             return $response;
         }
 
-        DB::transaction(function () use ($user, $birthDate, $canonicalBirthDate, $reconciler): void {
+        DB::transaction(function () use ($user, $birthDate, $canonicalBirthDate, $originalBirthDate, $reconciler): void {
             if ($birthDate !== null && $canonicalBirthDate !== null) {
-                $user->forceFill([
-                    'birth_date' => $canonicalBirthDate->toCanonical(),
-                ])->save();
+                $newBirthDate = $canonicalBirthDate->toCanonical();
+                $birthDateChanged = $newBirthDate !== substr($originalBirthDate, 0, 10);
+
+                $changes = ['birth_date' => $newBirthDate];
+                if ($birthDateChanged && ! $user->hasUsedIdentityEdit()) {
+                    $changes['identity_edit_used_at'] = now();
+                    $changes['edited'] = 1;
+                }
+
+                $user->forceFill($changes)->save();
             }
 
             // Gender is saved by the mature controller above; age is saved here.
