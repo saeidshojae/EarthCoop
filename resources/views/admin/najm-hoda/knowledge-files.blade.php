@@ -162,7 +162,7 @@
 
                                     <br>
 
-                                    @if($file->source_type === 'url' && $file->source_url)
+                                    @if($file->source_type === 'url' && $file->source_url && \Illuminate\Support\Str::startsWith($file->source_url, ['http://', 'https://']))
                                         <small style="font-size: 11px;">
                                             <a href="{{ $file->source_url }}" target="_blank" rel="noopener noreferrer" style="color:#0369a1;">
                                                 {{ $file->source_url }}
