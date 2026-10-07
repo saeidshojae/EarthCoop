@@ -37,7 +37,7 @@ final class ProjectAssignmentNotificationService
 
         foreach ($users as $recipient) {
             try {
-                $recipientName = trim($recipient->fullName()) ?: (string) $recipient->email;
+                $recipientName = trim($recipient->displayName()) ?: (string) $recipient->email;
                 $this->communications->dispatch(
                     'najm_bahar.project_assigned',
                     ['type' => 'najm_bahar.project_assignment', 'id' => (string) $project->id],
