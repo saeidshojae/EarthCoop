@@ -34,6 +34,7 @@ class NajmBaharActivationContractTest extends TestCase
             ->assertJsonPath('data.remaining_convertible_points', 350)
             ->assertJsonPath('data.conversion_ratio_points_per_gol', 100)
             ->assertJsonPath('data.max_convertible_points', 300)
+            ->assertJsonPath('data.max_activation_points', 300)
             ->assertJsonPath('data.max_activation_gol', 3)
             ->assertJsonPath('data.dim_available_gol', 10)
             ->assertJsonPath('data.active_gol', 5)
@@ -46,6 +47,7 @@ class NajmBaharActivationContractTest extends TestCase
             'data.remaining_convertible_points',
             'data.conversion_ratio_points_per_gol',
             'data.max_convertible_points',
+            'data.max_activation_points',
             'data.max_activation_gol',
             'data.dim_available_gol',
             'data.active_gol',
@@ -155,6 +157,7 @@ class NajmBaharActivationContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.remaining_convertible_points', 50)
             ->assertJsonPath('data.max_convertible_points', 0)
+            ->assertJsonPath('data.max_activation_points', 0)
             ->assertJsonPath('data.max_activation_gol', 0);
     }
 
@@ -485,6 +488,7 @@ class NajmBaharActivationContractTest extends TestCase
             'remaining_convertible_points' => $eligibility['remaining_convertible_points'],
             'conversion_ratio_points_per_gol' => $eligibility['conversion_ratio_points_per_gol'],
             'max_convertible_points' => $eligibility['max_convertible_points'],
+            'max_activation_points' => $eligibility['max_activation_points'],
             'max_activation_gol' => $eligibility['max_activation_gol'],
             'dim_available_gol' => $eligibility['dim_available_gol'],
             'policy_version_id' => $eligibility['policy_version_id'],
