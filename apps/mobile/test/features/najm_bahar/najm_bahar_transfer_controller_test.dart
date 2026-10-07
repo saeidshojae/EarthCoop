@@ -138,7 +138,8 @@ void main() {
     expect(controller.state, NajmBaharTransferState.confirmed);
   });
 
-  test('GET-only reconciliation resolves matching ambiguous transfer', () async {
+  test('GET-only reconciliation resolves matching ambiguous transfer',
+      () async {
     var postFails = true;
     final adapter = f.BoundaryAdapter((request) {
       if (request.method == 'POST' && postFails) {
@@ -258,8 +259,7 @@ void main() {
         }
         return successFor(request);
       },
-      statusFor: (request) =>
-          request.method == 'POST' && reject ? 409 : 200,
+      statusFor: (request) => request.method == 'POST' && reject ? 409 : 200,
     );
     final controller = NajmBaharTransferController(f.repository(adapter));
     addTearDown(controller.dispose);
