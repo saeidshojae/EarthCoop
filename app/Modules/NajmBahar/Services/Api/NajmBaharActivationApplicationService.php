@@ -337,6 +337,47 @@ class NajmBaharActivationApplicationService
         });
     }
 
+    /**
+     * @return array{
+     *   requested_points:int,
+     *   consumed_points:int,
+     *   activated_gol:int,
+     *   transaction:Transaction,
+     *   account:Account
+     * }
+     */
+    public function reconcile(User $user, string $requestKey): array
+    {
+        $requestKey = trim($requestKey);
+        if ($requestKey === '') {
+            throw (new ModelNotFoundException())->setModel(UserPointConversion::class);
+        }
+
+        $identity = UserPointConversion::query()
+            ->where('user_id', (int) $user->id)
+            ->where('request_key', $requestKey)
+            ->where('status', 'applied')
+            ->first();
+
+        if (! $identity instanceof UserPointConversion) {
+            throw (new ModelNotFoundException())->setModel(UserPointConversion::class);
+        }
+
+        $transaction = $this->transactionForConversionKey((string) $identity->conversion_key);
+        $account = $this->accounts->getMainAccountForUser((int) $user->id);
+        if (! $account instanceof Account) {
+            throw (new ModelNotFoundException())->setModel(Account::class);
+        }
+
+        return [
+            'requested_points' => (int) $identity->requested_points,
+            'consumed_points' => (int) $identity->consumed_points,
+            'activated_gol' => (int) $identity->amount_gol,
+            'transaction' => $transaction,
+            'account' => $account,
+        ];
+    }
+
     private function assertPolicySnapshot(array $policy, array $expected): void
     {
         $current = [
