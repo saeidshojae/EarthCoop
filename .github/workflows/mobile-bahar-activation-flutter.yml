@@ -6,6 +6,9 @@ on:
     paths:
       - 'apps/mobile/lib/features/najm_bahar/najm_bahar_activation_dto.dart'
       - 'apps/mobile/lib/features/najm_bahar/najm_bahar_activation_controller.dart'
+      - 'apps/mobile/lib/features/najm_bahar/najm_bahar_activation_section.dart'
+      - 'apps/mobile/lib/features/najm_bahar/najm_bahar_screen.dart'
+      - 'apps/mobile/lib/app/runtime/production_runtime.dart'
       - 'apps/mobile/lib/features/najm_bahar/najm_bahar_repository.dart'
       - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_dto_test.dart'
       - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_controller_test.dart'
@@ -42,7 +45,7 @@ jobs:
         working-directory: apps/mobile
       - name: Flutter format gate
         run: |
-          dart format lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
+          dart format lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_activation_section.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
           git diff -- lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
           git diff --exit-code -- lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
         working-directory: apps/mobile
