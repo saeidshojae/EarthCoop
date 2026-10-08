@@ -55,7 +55,6 @@ const loadNajmBaharRuntime = () => {
 };
 
 const loadNajmBaharAdminRuntime = () => {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
     if (!['/admin/najm-bahar/dashboard', '/admin/najm-bahar/settings'].includes(path)) return;
     importFeature(() => import("./najm-bahar-admin-settings.js"), "Najm Bahar admin settings");
 };
@@ -67,8 +66,7 @@ const loadProjectFormMobileRuntime = () => { const path = window.location.pathna
 const loadTemporalInputRuntime = () => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-datetime-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
-    const hasLegacyNajmBaharAnalyticsFilters = path === '/admin/najm-bahar/analytics';
-    if (hasTemporalInputs || hasLegacyNajmBaharAnalyticsFilters) importFeature(() => import("./temporal-input.js"), "temporal input");
+    if (hasTemporalInputs) importFeature(() => import("./temporal-input.js"), "temporal input");
 };
 const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadPrivateMessagingRuntime(); loadMyParticipationRuntime(); loadSwiperRuntime(); loadMemberInvitationRuntime(); loadProjectFormMobileRuntime(); loadTemporalInputRuntime(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
