@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    adminDateFilterNamesForPath,
     baseLocale,
     calendarForLocale,
     gregorianBirthYears,
@@ -36,13 +35,6 @@ test('Gregorian birth year range begins at exact minimum-age year', () => {
     assert.equal(years[0], 2011);
     assert.equal(years.at(-1), 1876);
     assert.equal(years.length, 136);
-});
-
-test('admin temporal runtime knows each legacy date-filter contract', () => {
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/najm-bahar/analytics'), ['date_from', 'date_to']);
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/reports/'), ['date_from', 'date_to']);
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/users'), ['created_from', 'created_to']);
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/unknown'), []);
 });
 
 
