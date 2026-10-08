@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Models\UserPointConversion;
+use App\Modules\NajmBahar\Models\Transaction;
 
 class NajmBaharActivationController extends Controller
 {
@@ -78,11 +79,39 @@ class NajmBaharActivationController extends Controller
         if (! is_array($data)
             || ($body['status'] ?? null) !== 'success'
             || ($data['source'] ?? null) !== 'participation'
-            || (int) ($data['requested_points'] ?? 0) !== (int) $conversion->requested_points
-            || (int) ($data['consumed_points'] ?? 0) !== (int) $conversion->consumed_points
-            || (int) ($data['activated_gol'] ?? 0) !== (int) $conversion->amount_gol
+            || ! is_int($data['requested_points'] ?? null)
+            || ! is_int($data['consumed_points'] ?? null)
+            || ! is_int($data['activated_gol'] ?? null)
+            || $data['requested_points'] !== (int) $conversion->requested_points
+            || $data['consumed_points'] !== (int) $conversion->consumed_points
+            || $data['activated_gol'] !== (int) $conversion->amount_gol
             || ! is_array($data['transaction'] ?? null)
-            || empty($data['transaction']['id'])) {
+            || ! is_int($data['transaction']['id'] ?? null)
+            || $data['transaction']['id'] <= 0) {
+            return $this->notFound();
+        }
+
+        $transaction = Transaction::query()
+            ->whereKey($data['transaction']['id'])
+            ->where('status', 'completed')
+            ->where('amount', (int) $conversion->amount_gol)
+            ->where('idempotency_key', (string) $conversion->conversion_key)
+            ->where('metadata->type', 'reputation_conversion')
+            ->where('metadata->user_id', (int) $user->id)
+            ->where('metadata->user_point_conversion_id', (int) $conversion->id)
+            ->first();
+
+        if ($transaction === null) {
+            return $this->notFound();
+        }
+
+        try {
+            $projection = $this->ledger->transactionFor($user, $transaction);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        }
+
+        if ($data['transaction'] !== (new NajmBaharTransactionResource($projection))->resolve($request)) {
             return $this->notFound();
         }
 
