@@ -48,6 +48,9 @@ jobs:
       - name: Activation repository transport contract
         run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_repository_test.dart
         working-directory: apps/mobile
+      - name: Complete Flutter test suite
+        run: flutter test --timeout 40s --reporter expanded
+        working-directory: apps/mobile
       - name: Flutter static analysis
         run: flutter analyze
         working-directory: apps/mobile
