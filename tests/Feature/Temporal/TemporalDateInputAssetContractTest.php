@@ -169,6 +169,7 @@ class TemporalDateInputAssetContractTest extends TestCase
             $app
         );
         $this->assertStringContainsString("profile-assets/js/jquery.min.js", $profile);
+        $this->assertStringNotContainsString("profile-assets/css/persian-datepicker.min.css", $profile);
         $this->assertStringContainsString('temporal-input.js', $app);
     }
 
