@@ -48,3 +48,11 @@ test('clauses have mobile spacing and a responsive width', () => {
     assert.match(css, /\.ec-legal-clause-body/);
     assert.match(css, /@media\s*\(max-width:\s*768px\)/);
 });
+
+
+test('legal Blade template references the real Str class and splits headings correctly', () => {
+    const template = read('resources/views/partials/legal/structured-document.blade.php');
+    assert.match(template, /\\Illuminate\\Support\\Str::markdown/);
+    assert.doesNotMatch(template, /IlluminateSupportStr/);
+    assert.ok(template.includes(String.raw`/(?=^##\s+)/mu`));
+});
