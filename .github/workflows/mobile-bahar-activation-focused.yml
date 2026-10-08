@@ -116,5 +116,8 @@ jobs:
           wait "$p1" || { cat /tmp/bahar-crosswriter-activate.log; exit 1; }
           wait "$p2" || { cat /tmp/bahar-crosswriter-reverse.log; exit 1; }
           php tests/Support/NajmBaharActivationCrossWriterProbe.php verify
+      - name: Reputation and participation regression suite
+        run: |
+          vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/ReputationServiceTest.php tests/Feature/Reputation tests/Feature/NajmBahar/InviteParticipationRewardTest.php tests/Feature/NajmBahar/MembershipParticipationEligibilityTest.php
       - name: Financial mutation boundary
         run: vendor/bin/phpunit -c phpunit.xml.dist tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php
