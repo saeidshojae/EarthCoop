@@ -4,6 +4,13 @@
 <div class="container-fluid px-4 py-6" dir="rtl">
 <h1 class="text-2xl font-bold mb-3">مدیریت نسخه‌های اسناد حقوقی</h1>
 <p class="mb-4">متن مواد را در ویرایشگرهای موجود مدیریت کنید. انتشار در این بخش، یک نسخه ثابت از مواد همان لحظه ثبت می‌کند.</p>
+<div class="border rounded p-4 mb-4">
+<h2 class="font-bold mb-2">ورود بازبینی‌شده متون اولیه به پنل</h2>
+<p class="mb-2">ورود هر سند ابتدا پیش‌نمایش دارد و هیچ رکورد موجود را تغییر نمی‌دهد.</p>
+<a class="btn btn-outline-primary m-1" href="{{ route('admin.legal-versions.import-preview', 'membership') }}">اساسنامه عضویت</a>
+<a class="btn btn-outline-primary m-1" href="{{ route('admin.legal-versions.import-preview', 'terms') }}">شرایط استفاده</a>
+<a class="btn btn-outline-primary m-1" href="{{ route('admin.legal-versions.import-preview', 'najm-bahar') }}">توافقنامه نجم‌بهار</a>
+</div>
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 <form method="POST" action="{{ route('admin.legal-versions.draft') }}" class="border rounded p-4 mb-5">
