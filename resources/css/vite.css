@@ -4,3 +4,52 @@
 @import "./my-participation-mobile.css";
 @import "select2/dist/css/select2.min.css";
 @import "persian-datepicker/dist/css/persian-datepicker.min.css";
+
+
+/* EarthCoop Temporal picker */
+.temporal-picker-control {
+    position: relative;
+    width: 100%;
+}
+
+.temporal-picker-control > input {
+    width: 100%;
+}
+
+.temporal-picker-control > input[data-calendar="jalali"] {
+    padding-left: 3rem;
+}
+
+.temporal-picker-trigger {
+    position: absolute;
+    left: .5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: .65rem;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.temporal-picker-trigger:hover,
+.temporal-picker-trigger:focus-visible {
+    color: #059669;
+    background: rgba(16, 185, 129, .1);
+    outline: none;
+}
+
+.temporal-picker-trigger[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.datepicker-container {
+    z-index: 100000 !important;
+}
