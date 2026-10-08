@@ -793,6 +793,8 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
     Route::delete('categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy'])->name('categories.destroy');
     // Versioned legal publications; managed only within the existing protected admin group.
     Route::get('legal-versions', [\App\Http\Controllers\Admin\LegalVersionController::class, 'index'])->name('legal-versions.index');
+    Route::get('legal-versions/import/{slug}', [\App\Http\Controllers\Admin\LegalVersionController::class, 'importPreview'])->name('legal-versions.import-preview');
+    Route::post('legal-versions/import/{slug}', [\App\Http\Controllers\Admin\LegalVersionController::class, 'import'])->name('legal-versions.import');
     Route::post('legal-versions', [\App\Http\Controllers\Admin\LegalVersionController::class, 'createDraft'])->name('legal-versions.draft');
     Route::get('legal-versions/{version}', [\App\Http\Controllers\Admin\LegalVersionController::class, 'preview'])->name('legal-versions.preview');
     Route::post('legal-versions/{version}/publish', [\App\Http\Controllers\Admin\LegalVersionController::class, 'publish'])->name('legal-versions.publish');
