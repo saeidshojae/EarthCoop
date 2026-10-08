@@ -3439,7 +3439,7 @@
             </nav>
         </section>
 
-        <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up">
+        <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up" @if(!empty($legalPublished)) hidden @endif>
 
 
 
