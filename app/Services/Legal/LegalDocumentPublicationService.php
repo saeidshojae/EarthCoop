@@ -23,11 +23,16 @@ class LegalDocumentPublicationService
                 throw ValidationException::withMessages(['content' => 'متن قرارداد نمی‌تواند خالی باشد.']);
             }
 
+            // Retire via model events so immutable snapshot protections remain enforced.
             LegalDocumentVersion::query()
                 ->where('legal_document_id', $document->id)
                 ->where('language', $locked->language)
                 ->where('status', 'published')
-                ->update(['status' => 'retired']);
+                ->get()
+                ->each(function (LegalDocumentVersion $previous): void {
+                    $previous->status = 'retired';
+                    $previous->save();
+                });
 
             $locked->forceFill([
                 'content_snapshot' => $snapshot,
