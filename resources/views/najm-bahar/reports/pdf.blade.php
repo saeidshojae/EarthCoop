@@ -1148,7 +1148,7 @@
 
 
 
-        $reportOwnerName = $reportOwnerName ?? (isset($user) ? $user->displayName() : '');
+        $reportOwnerName = $reportOwnerName ?? (isset($user) ? trim($user->fullName()) : '');
 
 
 
