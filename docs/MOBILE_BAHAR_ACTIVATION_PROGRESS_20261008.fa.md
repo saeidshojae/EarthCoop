@@ -114,3 +114,11 @@ Focused green evidence now confirmed: run 37824363224 on b963b9dbec7e9be26327f5f
 Task 3 development: test added in 59c33efadc98c47391e51ce8ec51a06756772169, route in cdf007ff5451cec693d1950da015f338d8fcb676, and controller GET-only implementation in 90a850cf4d820eb8d49745916576b2d915259939. New endpoint GET /api/v1/najm-bahar/activation/by-idempotency/{key} filters the idempotency receipt by authenticated user, exact POST route scope, completed state, HTTP 201, and matching applied user point conversion. It returns no result for unknown or incomplete records; no financial POST is made.
 
 Status: implementation candidate only. GitHub Actions run 37827311119 was pending at the most recent inspection. Do not call Task 3 green before observing that run, reviewing its logs, and adding negative coverage for foreign user/route, malformed evidence and unsuccessful receipts. No main merge, Production deployment, signed +19 APK or live activation.
+
+## Task 3 security hardening — 2026-10-08
+
+New negative contract test commit `f92d72cdbc2bc6d8e5d8774cc492f267814f9853`: reject a string-valued monetary receipt amount and a forged, nonexistent transaction ID. It is an added test, not yet validated by an all-green run.
+
+Controller hardening commit `28b65f1965b6e5f4fc41ddb4762ce421055e3633`: receipt integers are now type-checked strictly; actual completed Najm transaction must match conversion id, amount, idempotency key, participation metadata and owner. The owned ledger projection is compared to the stored receipt instead of trusting a client-facing transaction id alone. GET remains read-only. Caveat: PHP/MySQL JSON attribute matching and full projection equality need real MySQL PHPUnit evidence.
+
+At last poll, run `37828424933` for the new RED test source was in progress; no completed run on the controller hardening commit had been observed. Tasks 3 and 7 are not yet green; additional negative tests for cross-user, route scope, incomplete and foreign records remain required. Do not publish/merge financial code from this checkpoint.
