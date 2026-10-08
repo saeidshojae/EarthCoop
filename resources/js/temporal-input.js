@@ -132,6 +132,7 @@ export const jalaliPickerOptions = (input) => {
         initialValue: Boolean(input.value),
         autoClose: true,
         observer: true,
+        viewMode: input.name === 'birth_date' && !input.value ? 'year' : 'day',
         calendar: { persian: { locale: 'fa' } },
     };
 
@@ -152,13 +153,13 @@ const bindPickerTrigger = (input, picker) => {
 
     trigger.addEventListener('click', () => {
         if (input.disabled) return;
-        input.focus();
 
         if (picker && typeof picker.show === 'function') {
             picker.show();
             return;
         }
 
+        input.focus();
         temporalJQuery(input).trigger('click');
     });
 
