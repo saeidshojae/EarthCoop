@@ -66,7 +66,7 @@ test('Jalali date picker options are date-only by default', () => {
     const options = jalaliPickerOptions(input);
 
     assert.equal(options.format, 'YYYY/MM/DD');
-    assert.equal(options.initialValue, true);
+    assert.equal(options.initialValue, false);
     assert.equal(options.initialValueType, 'persian');
     assert.equal(options.autoClose, true);
     assert.equal(options.observer, true);
@@ -88,6 +88,19 @@ test('Jalali datetime picker enables 24-hour time selection', () => {
     assert.equal(options.initialValueType, 'persian');
     assert.equal(options.timePicker.enabled, true);
     assert.equal(options.timePicker.meridiem.enabled, false);
+});
+
+test('prefilled birth date does not allow the plugin to reset it on initialization', () => {
+    const input = {
+        name: 'birth_date',
+        value: '۱۳۸۰/۰۱/۱۲',
+        matches: () => false,
+    };
+
+    const options = jalaliPickerOptions(input);
+    assert.equal(options.initialValue, false);
+    assert.equal(options.initialValueType, 'persian');
+    assert.equal(options.viewMode, 'day');
 });
 
 test('empty birth-date picker opens in year mode for fast navigation', () => {
