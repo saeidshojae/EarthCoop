@@ -127,11 +127,12 @@ class TemporalDateInputAssetContractTest extends TestCase
 
     public function test_vite_owns_temporal_datepicker_assets_and_runtime(): void
     {
-        $css = file_get_contents(resource_path('css/vite.css'));
+        $pickerCss = file_get_contents(resource_path('css/temporal-picker.css'));
         $app = file_get_contents(resource_path('js/app.js'));
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString('persian-datepicker/dist/css/persian-datepicker.min.css', $css);
+        $this->assertStringContainsString("import '../css/temporal-picker.css';", $runtime);
+        $this->assertStringContainsString('persian-datepicker/dist/css/persian-datepicker.min.css', $pickerCss);
         $this->assertStringContainsString('temporal-input.js', $app);
         $this->assertStringContainsString('data-temporal-date-input', $app);
         $this->assertStringContainsString('data-temporal-datetime-input', $app);
@@ -148,7 +149,7 @@ class TemporalDateInputAssetContractTest extends TestCase
     {
         $view = file_get_contents(resource_path('views/auth/register_step1.blade.php'));
 
-        $this->assertStringContainsString("@vite(['resources/css/vite.css', 'resources/js/app.js'])", $view);
+        $this->assertStringContainsString("@vite(['resources/js/app.js'])", $view);
         $this->assertStringContainsString('<x-temporal.date-input', $view);
         $this->assertStringContainsString('name="birth_date"', $view);
         $this->assertStringNotContainsString('name="birth_date[]"', $view);
