@@ -96,3 +96,9 @@ Native Participation Activation remains part of the planned bundled Android +19,
 - Commit c7d49b427dee208f35df76818fa950577419dd85 added a focused PHP and financial architecture GitHub Actions workflow on the isolated activation branch. Immediately after this commit, the Actions run query showed zero runs, so no green result is claimed.
 - Open: verify replay before stale eligibility rejection, transactional consistency, targeted test results, Flutter tasks, safe main reconciliation, final suite, signed +19 APK.
 - No main merge or production release.
+
+## 2026-10-08 evening — first actual focused CI run inspected
+
+Workflow `Native Bahar activation focused contracts`, run `37779521099`, source `c7d49b427dee208f35df76818fa950577419dd85`: **FAILED**. Laravel setup/migrations/assets were successful. Activation API test step ended at **10 tests / 127 assertions / 1 error**; financial mutation architecture step was skipped because the prior test step failed. The log identifies a test-fixture issue at `NajmBaharActivationContractTest.php:343/458`: duplicate unique `najm_bahar_monetary_policy_versions.version=1` on the second pass of the combined points/Dim stale snapshot test.
+
+Correction committed in `b963b9dbec7e9be26327f5ff9b394af0b559a513`: the two variants use distinct policy versions, and the test factory accepts a version parameter. The immediate GitHub Actions query still showed only the previous failed run. **Do not claim that the correction has passed CI** before fetching the next run's result. The financial concurrency and same-key replay contract still need green evidence and review. No production financial mutation, main merge or APK rebuild.
