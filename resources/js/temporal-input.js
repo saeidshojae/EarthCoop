@@ -154,6 +154,39 @@ export const jalaliPickerOptions = (input) => {
     return options;
 };
 
+// Only the stored birth-date field needs its calendar navigated to its initial date.
+// Other shared date/datetime inputs retain the existing picker behavior.
+export const storedBirthDateParts = (input) => {
+    if (input?.name !== 'birth_date' || input.matches('[data-temporal-datetime-input]')) return null;
+    const normalized = String(input.value || '').replace(/[۰-۹٠-٩]/g, (digit) => {
+        const code = digit.charCodeAt(0);
+        return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
+    });
+    const match = /^(\\d{4})\\/(\\d{2})\\/(\\d{2})$/.exec(normalized);
+    if (!match) return null;
+    const [, year, month, day] = match.map(Number);
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
+    return [year, month, day];
+};
+
+const navigateBirthPickerToStoredDate = (input, picker) => {
+    const parts = storedBirthDateParts(input);
+    const PersianDate = window.persianDate;
+    if (!parts || typeof picker?.setDate !== 'function' || typeof PersianDate !== 'function') return;
+    try {
+        const date = new PersianDate(parts).toDate();
+        const timestamp = date?.getTime?.();
+        if (!Number.isFinite(timestamp)) return;
+        const current = input.value;
+        picker.setDate(timestamp);
+        // setDate updates the selected view, but may also write the visible input.
+        // Preserve the server-provided birth date until the user selects a new day.
+        if (input.value !== current) input.value = current;
+    } catch (error) {
+        console.warn('EarthCoop birth-date calendar navigation skipped:', error);
+    }
+};
+
 const bindPickerTrigger = (input, picker) => {
     const field = input.closest('[data-temporal-picker-field]');
     const trigger = field?.querySelector('[data-temporal-picker-trigger]');
@@ -163,6 +196,10 @@ const bindPickerTrigger = (input, picker) => {
         if (input.disabled) return;
 
         if (picker && typeof picker.show === 'function') {
+            if (input.dataset.temporalBirthPickerPositioned !== 'true') {
+                navigateBirthPickerToStoredDate(input, picker);
+                input.dataset.temporalBirthPickerPositioned = 'true';
+            }
             picker.show();
             return;
         }
