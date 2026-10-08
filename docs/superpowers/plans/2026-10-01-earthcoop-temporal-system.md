@@ -104,7 +104,8 @@ Run Temporal unit/feature suites, auth/registration, elections, communication, N
 ### Completed and merged
 
 - Temporal core contracts, context resolver, Gregorian/Jalali adapters, digit normalization and `TemporalManager`.
-- Shared Blade presentation components and bundled/localized date input path.
+- Shared Blade presentation components and bundled/localized date/date-time input path.
+- **Picker-first Persian UX (2026-10-08):** for `fa`, every first-party editable date/date-time surface uses the shared Temporal component with the bundled Jalali calendar picker as the primary interaction and localized manual typing only as a fallback. Registration birth date, profile/admin identity dates, reports/filters, Najm Bahar, Secretariat, Elections, Blog/KB, Chronicle and Stock/Auction share this runtime. Empty birth-date pickers open in year-selection mode for practical age navigation. Per-view/CDN Persian datepicker implementations and raw browser date controls are architecture-guarded against reintroduction.
 - Canonical LocalDate handling for birth date and age policy.
 - Temporal migrations across registration, elections, major group/social surfaces, Najm Bahar, Stock/Auction, admin/report surfaces and Communication Center.
 - Repository architecture ratchet preventing direct first-party legacy Jalali APIs outside the canonical Jalali adapter; current known direct legacy-calendar debt baseline is empty.

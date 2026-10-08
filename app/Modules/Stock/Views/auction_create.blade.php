@@ -10,7 +10,6 @@
 @section('title', 'ایجاد حراج جدید برای ' . $stockName . ' - ' . config('app.name', 'EarthCoop'))
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset("vendor/persian-datepicker/persian-datepicker.min.css") }}">
     <style>
         .auction-shell {
             border-radius: 1.75rem;
@@ -52,10 +51,6 @@
         .dark .auction-form-input:focus {
             border-color: rgba(45, 212, 191, 0.9);
             box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.22);
-        }
-
-        .jalali-datetime {
-            cursor: pointer;
         }
     </style>
 @endpush
@@ -107,72 +102,28 @@
 
                     <div class="grid gap-6 md:grid-cols-2">
                         <div class="space-y-2">
-                            <label for="shares_count" class="block text-sm font-semibold text-slate-600 dark:text-slate-300">تعداد سهام قابل عرضه</label>
-                            <input
-                                id="shares_count"
-                                type="number"
-                                min="1"
-                                name="shares_count"
-                                value="{{ old('shares_count') }}"
-                                class="auction-form-input @error('shares_count') border-red-400 @enderror"
+                            <label for="start_time" class="block text-sm font-semibold text-slate-600 dark:text-slate-300">زمان شروع حراج</label>
+                            <x-temporal.date-time-input
+                                name="start_time"
+                                id="start_time"
+                                :value="old('start_time')"
+                                class="auction-form-input @error('start_time') border-red-400 @enderror"
                                 required
-                                placeholder="مثلاً ۵۰۰ سهم">
-                            @error('shares_count')
-                                <p class="text-xs font-medium text-red-500 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="base_price" class="block text-sm font-semibold text-slate-600 dark:text-slate-300">قیمت پایه هر سهم (ریال)</label>
-                            <input
-                                id="base_price"
-                                type="number"
-                                min="0"
-                                name="base_price"
-                                value="{{ old('base_price', isset($stock->base_share_price) ? $stock->base_share_price * 10 : null) }}"
-                                class="auction-form-input @error('base_price') border-red-400 @enderror"
-                                required
-                                placeholder="مثلاً ۱۲۰٬۰۰۰ ریال">
-                            @error('base_price')
-                                <p class="text-xs font-medium text-red-500 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <div class="grid gap-6 md:grid-cols-2">
-                        <div class="space-y-2">
-                            <label for="start_time_visible" class="block text-sm font-semibold text-slate-600 dark:text-slate-300">زمان شروع حراج</label>
-                            <div class="relative">
-                                <input
-                                    id="start_time_visible"
-                                    type="text"
-                                    name="start_time_visible"
-                                    value="{{ old('start_time_visible', $startVisible) }}"
-                                    class="auction-form-input jalali-datetime @error('start_time') border-red-400 @enderror"
-                                    placeholder="مثلاً 1404/09/18 14:30"
-                                    autocomplete="off"
-                                >
-                                <input type="hidden" name="start_time" value="{{ old('start_time', $startIso) }}">
-                            </div>
+                            />
                             @error('start_time')
                                 <p class="text-xs font-medium text-red-500 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <div class="space-y-2">
-                            <label for="end_time_visible" class="block text-sm font-semibold text-slate-600 dark:text-slate-300">زمان پایان حراج</label>
-                            <div class="relative">
-                                <input
-                                    id="end_time_visible"
-                                    type="text"
-                                    name="end_time_visible"
-                                    value="{{ old('end_time_visible', $endVisible) }}"
-                                    class="auction-form-input jalali-datetime @error('end_time') border-red-400 @enderror"
-                                    placeholder="مثلاً 1404/09/20 18:00"
-                                    autocomplete="off"
-                                >
-                                <input type="hidden" name="end_time" value="{{ old('end_time', $endIso) }}">
-                            </div>
+                            <label for="end_time" class="block text-sm font-semibold text-slate-600 dark:text-slate-300">زمان پایان حراج</label>
+                            <x-temporal.date-time-input
+                                name="end_time"
+                                id="end_time"
+                                :value="old('end_time')"
+                                class="auction-form-input @error('end_time') border-red-400 @enderror"
+                                required
+                            />
                             @error('end_time')
                                 <p class="text-xs font-medium text-red-500 mt-1">{{ $message }}</p>
                             @enderror
@@ -218,61 +169,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-    <script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
-    <script src="{{ asset("vendor/persian-datepicker/persian-datepicker.min.js") }}"></script>
-    <script>
-        (function () {
-            document.addEventListener('DOMContentLoaded', function () {
-                if (typeof window.jQuery === 'undefined' || typeof $.fn.persianDatepicker === 'undefined') {
-                    console.warn('Persian datepicker could not be initialised because dependencies are missing.');
-                    return;
-                }
-
-                $('.jalali-datetime').each(function () {
-                    const $input = $(this);
-                    const altField = $input.data('alt');
-                    const $hidden = $('input[name="' + altField + '"]');
-
-                    if (!$hidden.length) {
-                        return;
-                    }
-
-                    $input.persianDatepicker({
-                        format: 'YYYY/MM/DD HH:mm',
-                        initialValue: !!$input.val(),
-                        timePicker: {
-                            enabled: true,
-                            meridiem: { enabled: false }
-                        },
-                        calendar: { persian: { locale: 'fa' } },
-                        autoClose: true,
-                        onSelect: function () {
-                            const state = $input.data('datepicker')?.getState?.();
-                            const selected = state?.selected?.[0];
-
-                            if (!selected) {
-                                return;
-                            }
-
-                            try {
-                                const pd = new persianDate(selected.moment);
-                                const date = pd.toDate();
-                                const iso = date.getFullYear() + '-' +
-                                    String(date.getMonth() + 1).padStart(2, '0') + '-' +
-                                    String(date.getDate()).padStart(2, '0') + 'T' +
-                                    String(date.getHours()).padStart(2, '0') + ':' +
-                                    String(date.getMinutes()).padStart(2, '0');
-
-                                $hidden.val(iso);
-                            } catch (error) {
-                                console.error('Failed to convert Jalali date', error);
-                            }
-                        }
-                    });
-                });
-            });
-        })();
-    </script>
-@endpush

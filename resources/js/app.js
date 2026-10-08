@@ -10,10 +10,10 @@ import installSelect2 from "select2";
 const profileEditUsesLegacyJQuery = window.location.pathname.replace(/\/+$/, '') === '/profile/edit';
 const appJQuery = profileEditUsesLegacyJQuery ? $ : (window.jQuery || $);
 
-// The profile editor still loads a legacy jQuery bundle before Vite. Temporal
-// datepicker is a Vite-owned dynamic import and must share the same jQuery
-// instance on that page, otherwise the plugin attaches to a different $.fn and
-// the visible birth-date input silently falls back to manual entry.
+// The profile editor still loads a legacy jQuery bundle for mature profile widgets.
+// Keep Select2 on the Vite-owned jQuery instance on that page. The Temporal picker
+// owns and binds its own imported jQuery inside temporal-input.js and must not depend
+// on whichever legacy global jQuery happens to be active.
 window.$ = appJQuery;
 window.jQuery = appJQuery;
 installSelect2(window, appJQuery);
@@ -65,10 +65,8 @@ const loadSwiperRuntime = () => { if (document.querySelector('swiper-container')
 const loadMemberInvitationRuntime = () => { if (document.querySelector('.invite-page-shell')) importFeature(() => import("./member-invitation-share.js"), "member invitation sharing"); };
 const loadProjectFormMobileRuntime = () => { const path = window.location.pathname.replace(/\/+$/, '') || '/'; if (path === '/najm-bahar/projects/create' || /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path)) importFeature(() => import("./project-form-mobile.js"), "project form mobile UX"); };
 const loadTemporalInputRuntime = () => {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
-    const hasLegacyNajmBaharAnalyticsFilters = path === '/admin/najm-bahar/analytics';
-    if (hasTemporalInputs || hasLegacyNajmBaharAnalyticsFilters) importFeature(() => import("./temporal-input.js"), "temporal input");
+    const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-datetime-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
+    if (hasTemporalInputs) importFeature(() => import("./temporal-input.js"), "temporal input");
 };
 const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadPrivateMessagingRuntime(); loadMyParticipationRuntime(); loadSwiperRuntime(); loadMemberInvitationRuntime(); loadProjectFormMobileRuntime(); loadTemporalInputRuntime(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();

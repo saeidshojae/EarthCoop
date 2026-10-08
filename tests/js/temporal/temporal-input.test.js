@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    adminDateFilterNamesForPath,
     baseLocale,
     calendarForLocale,
     gregorianBirthYears,
+    jalaliPickerOptions,
     localeFromCookie,
 } from '../../../resources/js/temporal-input.js';
 
@@ -37,9 +37,47 @@ test('Gregorian birth year range begins at exact minimum-age year', () => {
     assert.equal(years.length, 136);
 });
 
-test('admin temporal runtime knows each legacy date-filter contract', () => {
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/najm-bahar/analytics'), ['date_from', 'date_to']);
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/reports/'), ['date_from', 'date_to']);
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/users'), ['created_from', 'created_to']);
-    assert.deepEqual(adminDateFilterNamesForPath('/admin/unknown'), []);
+
+test('Jalali date picker options are date-only by default', () => {
+    const input = {
+        name: 'event_date',
+        value: '۱۴۰۵/۰۷/۰۹',
+        matches: (selector) => selector === '[data-temporal-datetime-input]' ? false : false,
+    };
+
+    const options = jalaliPickerOptions(input);
+
+    assert.equal(options.format, 'YYYY/MM/DD');
+    assert.equal(options.initialValue, true);
+    assert.equal(options.autoClose, true);
+    assert.equal(options.observer, true);
+    assert.equal(options.viewMode, 'day');
+    assert.equal(options.timePicker, undefined);
+});
+
+test('Jalali datetime picker enables 24-hour time selection', () => {
+    const input = {
+        name: 'start_time',
+        value: '',
+        matches: (selector) => selector === '[data-temporal-datetime-input]',
+    };
+
+    const options = jalaliPickerOptions(input);
+
+    assert.equal(options.format, 'YYYY/MM/DD HH:mm');
+    assert.equal(options.initialValue, false);
+    assert.equal(options.timePicker.enabled, true);
+    assert.equal(options.timePicker.meridiem.enabled, false);
+});
+
+test('empty birth-date picker opens in year mode for fast navigation', () => {
+    const input = {
+        name: 'birth_date',
+        value: '',
+        matches: () => false,
+    };
+
+    const options = jalaliPickerOptions(input);
+
+    assert.equal(options.viewMode, 'year');
 });

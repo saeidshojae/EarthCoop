@@ -26,6 +26,9 @@ class GroupActionQueuePanelTest extends TestCase
         $this->assertStringContainsString("data_get(\$item->meta, 'evidence')", $source);
         $this->assertStringContainsString('management_history', $source);
         $this->assertStringContainsString('groups.najm-hoda.action-items', $source);
+        $this->assertStringContainsString('data-temporal-datetime-input', $source);
+        $this->assertStringContainsString('data-calendar="${item.due_input_type === \'text\' ? \'jalali\' : \'gregorian\'}"', $source);
+        $this->assertStringContainsString('data-temporal-picker-trigger', $source);
     }
 
     public function test_regular_member_cannot_open_group_najm_hoda_panel(): void
