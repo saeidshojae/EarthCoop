@@ -428,6 +428,48 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(15, (int) $account->fresh()->balance);
     }
 
+    public function test_activation_reconciliation_is_read_only_and_scoped_to_successful_owned_intent(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 5, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 350);
+
+        $url = '/api/v1/najm-bahar/activation/by-idempotency/native-reconcile-success-0001';
+        $this->bearer($token, $deviceId)->getJson($url)
+            ->assertNotFound()->assertJsonPath('error.code', 'not_found');
+
+        $expected = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')->assertOk()->json('data');
+        $payload = [
+            'source' => 'participation',
+            'points' => 200,
+            'expected' => [
+                'activation_contract_version' => $expected['activation_contract_version'],
+                'policy_version_id' => $expected['policy_version_id'],
+                'policy_version' => $expected['policy_version'],
+                'conversion_ratio_points_per_gol' => $expected['conversion_ratio_points_per_gol'],
+                'remaining_convertible_points' => $expected['remaining_convertible_points'],
+                'dim_available_gol' => $expected['dim_available_gol'],
+                'max_activation_gol' => $expected['max_activation_gol'],
+            ],
+        ];
+        $stored = $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-reconcile-success-0001')
+            ->postJson('/api/v1/najm-bahar/activation', $payload)->assertCreated();
+
+        $before = DB::table('user_point_consumptions')->where('user_id', $user->id)->sum('points_consumed');
+        $this->bearer($token, $deviceId)->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.transaction.id', $stored->json('data.transaction.id'))
+            ->assertJsonPath('data.activated_gol', 2)
+            ->assertJsonPath('data.consumed_points', 200);
+
+        $this->assertSame((int) $before, (int) DB::table('user_point_consumptions')->where('user_id', $user->id)->sum('points_consumed'));
+        $this->assertSame(7, (int) $account->fresh()->balance_active);
+        $this->assertSame(8, (int) $account->fresh()->balance_faded);
+    }
+
     private function accountFor(User $user, int $active, int $dim): Account
     {
         $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
