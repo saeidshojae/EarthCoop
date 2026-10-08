@@ -32,7 +32,21 @@ class LegalVersionController extends Controller
     public function import(Request $request, string $slug, \App\Services\Legal\LegalMarkdownImportService $imports)
     {
         $request->validate(['confirm_import' => 'required|accepted']);
-        $rootId = $imports->importToNewRoot($slug);
+        $rootId = \Illuminate\Support\Facades\DB::transaction(function () use ($slug, $imports): int {
+            if (LegalDocument::where('slug', $slug)->exists()) {
+                throw ValidationException::withMessages(['document' => 'این سند قبلاً برای نسخه‌بندی ثبت شده است.']);
+            }
+            $rootId = $imports->importToNewRoot($slug);
+            $preview = $imports->preview($slug);
+            LegalDocument::create([
+                'slug' => $slug,
+                'title' => $preview['title'],
+                'source_type' => $preview['source_type'],
+                'source_root_id' => $rootId,
+                'is_staged_import' => true,
+            ]);
+            return $rootId;
+        });
         return redirect()->route('admin.legal-versions.index')
             ->with('success', 'متن به‌صورت والد و فرزندان مستقل وارد شد (ریشه شماره ' . $rootId . '). اکنون آن را بازبینی و نسخه‌گذاری کنید.');
     }
