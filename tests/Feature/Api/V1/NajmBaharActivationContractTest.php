@@ -17,6 +17,37 @@ class NajmBaharActivationContractTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_financial_idempotency_schema_has_database_unique_indexes(): void
+    {
+        // The protection must reside in MySQL, not only application-side checks.
+        $conversionIndexes = DB::select('SHOW INDEX FROM user_point_conversions');
+        $conversionGroups = collect($conversionIndexes)->groupBy('Key_name');
+        $this->assertTrue($conversionGroups->has('user_point_conversions_user_request_unique'));
+        $conversionColumns = $conversionGroups
+            ->get('user_point_conversions_user_request_unique')
+            ->sortBy('Seq_in_index')
+            ->pluck('Column_name')
+            ->all();
+        $this->assertSame(['user_id', 'request_key'], $conversionColumns);
+        $this->assertTrue($conversionGroups
+            ->contains(fn ($rows) => $rows->count() === 1
+                && $rows->first()->Column_name === 'conversion_key'
+                && (int) $rows->first()->Non_unique === 0));
+
+        $transportIndexes = collect(DB::select('SHOW INDEX FROM api_v1_idempotency_keys'))
+            ->groupBy('Key_name');
+        $this->assertTrue($transportIndexes->has('api_v1_idem_actor_scope_key_unique'));
+        $this->assertSame(
+            ['actor_key', 'scope', 'idempotency_key'],
+            $transportIndexes->get('api_v1_idem_actor_scope_key_unique')
+                ->sortBy('Seq_in_index')
+                ->pluck('Column_name')
+                ->all(),
+        );
+        $this->assertTrue($transportIndexes->get('api_v1_idem_actor_scope_key_unique')
+            ->every(fn ($row) => (int) $row->Non_unique === 0));
+    }
+
     public function test_eligibility_is_server_derived_from_participation_policy_points_and_dim_balance(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
