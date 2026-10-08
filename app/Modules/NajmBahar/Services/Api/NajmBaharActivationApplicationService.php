@@ -69,7 +69,7 @@ class NajmBaharActivationApplicationService
      *   account:Account
      * }
      */
-    public function activate(User $user, int $requestedPoints, string $requestKey): array
+    public function activate(User $user, int $requestedPoints, string $requestKey, ?array $expected = null): array
     {
         if ($requestedPoints <= 0) {
             throw new NajmBaharActivationException(
@@ -93,6 +93,14 @@ class NajmBaharActivationApplicationService
         }
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
+        if ($expected !== null && $requestedPoints % $ratio !== 0) {
+            throw new NajmBaharActivationException(
+                'activation_not_eligible',
+                'Native activation points must be an exact multiple of the conversion ratio.',
+                409,
+            );
+        }
+
         $convertiblePoints = intdiv($requestedPoints, $ratio) * $ratio;
         $amountGol = intdiv($convertiblePoints, $ratio);
 
@@ -119,7 +127,41 @@ class NajmBaharActivationApplicationService
             $policyVersion,
             $requestKey,
             $conversionKey,
+            $expected,
         ) {
+            if ($expected !== null) {
+                // Fail closed before creating any financial or point-consumption identity.
+                // Eligibility is reevaluated within the transaction for the same user.
+                $fresh = $this->eligibility($user);
+                $snapshotFields = [
+                    'activation_contract_version',
+                    'policy_version_id',
+                    'policy_version',
+                    'conversion_ratio_points_per_gol',
+                    'remaining_convertible_points',
+                    'dim_available_gol',
+                    'max_activation_gol',
+                ];
+                foreach ($snapshotFields as $field) {
+                    if (! array_key_exists($field, $expected)
+                        || $expected[$field] !== $fresh[$field]) {
+                        throw new NajmBaharActivationException(
+                            'activation_terms_changed',
+                            'Activation terms changed after review; refresh eligibility.',
+                            409,
+                        );
+                    }
+                }
+
+                if ($requestedPoints > $fresh['max_activation_points']) {
+                    throw new NajmBaharActivationException(
+                        'activation_not_eligible',
+                        'Requested points exceed current activation eligibility.',
+                        409,
+                    );
+                }
+            }
+
             $identity = UserPointConversion::firstOrCreate(
                 [
                     'user_id' => (int) $user->id,
