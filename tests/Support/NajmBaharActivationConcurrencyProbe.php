@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Models\NotificationSetting;
 use App\Models\UserPointTransaction;
 use App\Models\UserPointConversion;
 use App\Modules\NajmBahar\Models\Account;
@@ -33,6 +34,8 @@ if ($mode === 'setup') {
         unlink($path);
     }
     $user = User::factory()->create(['is_system' => false, 'status' => 'active']);
+    // Isolate point conversion from lazy notification-settings creation races.
+    NotificationSetting::firstOrCreate(['user_id' => $user->id], NotificationSetting::getDefaults());
     $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Activation race user');
     $account->balance_active = 5;
     $account->balance_faded = 10;
