@@ -1,4 +1,6 @@
-import $ from 'jquery';
+// Match the jQuery instance resolved by persian-datepicker@0.5.11.
+// Its locked dependency is jquery@2.2.0, separate from the application's jquery@3.7.1.
+import $ from 'persian-datepicker/node_modules/jquery/dist/jquery.js';
 
 const GREGORIAN_MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
