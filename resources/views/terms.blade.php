@@ -3412,6 +3412,18 @@
                 if (! $legalPublished['membership'] || ! $legalPublished['terms']) {
                     $legalPublished = [];
                 }
+                if ($legalPublished && auth()->check()) {
+                    $acceptedIds = \Illuminate\Support\Facades\DB::table('legal_document_acceptances')
+                        ->where('user_id', auth()->id())
+                        ->whereIn('legal_document_version_id', [
+                            $legalPublished['membership']->id,
+                            $legalPublished['terms']->id,
+                        ])->where('context', 'membership')
+                        ->distinct()->pluck('legal_document_version_id')->all();
+                    if (count($acceptedIds) !== 2) {
+                        $termsAcceptedAt = null; // Show explicit re-consent form; do not change the old timestamp.
+                    }
+                }
             }
         @endphp
         {{-- The publication text is shown before any previously stored admin-configured clauses. --}}
