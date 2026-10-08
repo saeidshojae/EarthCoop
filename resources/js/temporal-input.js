@@ -97,50 +97,6 @@ export const enhanceLegacyBirthDate = (root = document, locale = resolvedLocale(
     return true;
 };
 
-const LEGACY_ADMIN_DATE_FILTERS = new Map([
-    ['/admin/najm-bahar/analytics', ['date_from', 'date_to']],
-    ['/admin/reports', ['date_from', 'date_to']],
-    ['/admin/users', ['created_from', 'created_to']],
-]);
-
-export const adminDateFilterNamesForPath = (path = '') => LEGACY_ADMIN_DATE_FILTERS.get(
-    String(path || '').replace(/\/+$/, '') || '/',
-) || [];
-
-export const markLegacyAdminDateInputs = (root = document, locale = resolvedLocale()) => {
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-    const names = adminDateFilterNamesForPath(path);
-    if (names.length === 0) return false;
-
-    const selector = names.map((name) => `input[name="${name}"]`).join(', ');
-    const inputs = [...root.querySelectorAll(selector)];
-    if (inputs.length === 0) return false;
-
-    const calendar = calendarForLocale(locale);
-    inputs.forEach((input) => {
-        const rawValue = input.getAttribute('value') || input.value || '';
-        input.classList.remove('jalali-date');
-        input.dataset.temporalDateInput = '';
-        input.dataset.calendar = calendar;
-        input.autocomplete = 'off';
-
-        if (calendar === 'jalali') {
-            input.type = 'text';
-            input.inputMode = 'numeric';
-            input.placeholder = '۱۴۰۵/۰۷/۰۹';
-        } else {
-            input.type = 'date';
-            input.removeAttribute('inputmode');
-            input.removeAttribute('placeholder');
-            input.dir = 'ltr';
-        }
-
-        input.value = rawValue;
-    });
-
-    return true;
-};
-
 let persianDatepickerPromise = null;
 
 const temporalJQuery = $;
@@ -238,8 +194,6 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 export const enhanceTemporalInputs = async (root = document) => {
     const locale = resolvedLocale();
     enhanceLegacyBirthDate(root, locale);
-    markLegacyAdminDateInputs(root, locale);
-
     if (calendarForLocale(locale) === 'jalali') {
         await enhanceJalaliDateInputs(root);
     }
