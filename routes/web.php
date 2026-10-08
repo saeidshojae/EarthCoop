@@ -791,6 +791,12 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
     Route::post('categories', [\App\Http\Controllers\Admin\CategoryController::class, 'store'])->name('categories.store');
     Route::put('categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'update'])->name('categories.update');
     Route::delete('categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy'])->name('categories.destroy');
+    // Versioned legal publications; managed only within the existing protected admin group.
+    Route::get('legal-versions', [\App\Http\Controllers\Admin\LegalVersionController::class, 'index'])->name('legal-versions.index');
+    Route::post('legal-versions', [\App\Http\Controllers\Admin\LegalVersionController::class, 'createDraft'])->name('legal-versions.draft');
+    Route::get('legal-versions/{version}', [\App\Http\Controllers\Admin\LegalVersionController::class, 'preview'])->name('legal-versions.preview');
+    Route::post('legal-versions/{version}/publish', [\App\Http\Controllers\Admin\LegalVersionController::class, 'publish'])->name('legal-versions.publish');
+
     //اساسنامه
     Route::get('rule', [RuleController::class, 'index'])->name('rule.index');
     Route::get('rule/create', [RuleController::class, 'create'])->name('rule.create');
