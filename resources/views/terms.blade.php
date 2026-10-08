@@ -3397,6 +3397,34 @@
 
 
 
+        {{-- Proposed legal texts: visibly separate from the existing database-managed acceptance contract. --}}
+        <section class="accordion-wrapper p-6 md:p-8 space-y-6 fade-up" id="proposed-legal-texts" aria-labelledby="proposed-legal-heading">
+            <div class="space-y-2">
+                <h2 id="proposed-legal-heading" class="text-2xl font-bold text-gentle-black">متون پیشنهادی عضویت و استفاده</h2>
+                <p class="text-slate-700">نسخه ۱.۰ — پیش‌نویس آماده تصویب. تا زمان تکمیل مشخصات طرف قرارداد و تصویب رسمی، این بخش جایگزین متن لازم‌الاجرای جاری و سوابق پذیرش کاربران نیست.</p>
+            </div>
+            <div class="space-y-3">
+                <details class="accordion-item" open>
+                    <summary class="accordion-header-btn text-right font-bold">اساسنامه بین‌المللی عضویت EarthCoop</summary>
+                    <div class="p-5 md:p-7 prose prose-lg max-w-none text-right" dir="rtl">
+                        {!! \Illuminate\Support\Str::markdown(file_get_contents(resource_path('legal/earthcoop-membership-statute.fa.md')), ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
+                    </div>
+                </details>
+                <details class="accordion-item">
+                    <summary class="accordion-header-btn text-right font-bold">شرایط استفاده از خدمات EarthCoop</summary>
+                    <div class="p-5 md:p-7 prose prose-lg max-w-none text-right" dir="rtl">
+                        {!! \Illuminate\Support\Str::markdown(file_get_contents(resource_path('legal/earthcoop-terms-of-use.fa.md')), ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
+                    </div>
+                </details>
+            </div>
+            <nav class="flex flex-wrap gap-3" aria-label="اسناد بنیادین مرتبط">
+                @foreach(config('docs-links.foundational', []) as $document)
+                    <a class="text-earth-green underline hover:text-dark-green" href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
+                @endforeach
+                <a class="text-earth-green underline hover:text-dark-green" href="{{ config('docs-links.foundational_index.href') }}" target="_blank" rel="noopener noreferrer">فهرست و متن کامل اسناد بنیادین</a>
+            </nav>
+        </section>
+
         <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up">
 
 
