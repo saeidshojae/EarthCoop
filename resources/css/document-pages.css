@@ -165,3 +165,39 @@
         padding-inline: 10px !important;
     }
 }
+
+
+/* Readable legal clauses in the registration and financial agreements. */
+.ec-legal-document { width:100%; min-width:0; }
+.ec-legal-document-intro { border-radius:1rem; padding:1.15rem 1.35rem; background:rgba(241,245,249,.75); line-height:2.05; margin-bottom:1.2rem; overflow-wrap:anywhere; }
+.ec-legal-document-intro h1 { font-size:1.32rem; line-height:1.5; font-weight:800; margin-bottom:.65rem; }
+.ec-legal-clauses { display:grid; gap:1rem; }
+.ec-legal-volume { border:1px solid #cbd5e1; border-radius:1rem; padding:1rem; background:#fff; min-width:0; }
+.ec-legal-volume-title { display:flex; gap:1rem; justify-content:space-between; align-items:center; cursor:pointer; list-style:none; font-size:1.15rem; font-weight:800; padding:.5rem; }
+.ec-legal-volume-title::-webkit-details-marker,.ec-legal-clause-heading::-webkit-details-marker { display:none; }
+.ec-legal-volume[open] > .ec-legal-volume-title { margin-bottom:1.1rem; color:#047857; }
+.ec-legal-clause { border:1px solid rgba(148,163,184,.50); border-radius:.9rem; background:#fff; overflow:hidden; min-width:0; }
+.ec-legal-clause[open] { border-color:rgba(16,185,129,.48); box-shadow:0 6px 22px rgba(15,23,42,.05); }
+.ec-legal-clause-heading { list-style:none; cursor:pointer; display:flex; align-items:center; gap:.8rem; padding:1rem 1.15rem; background:rgba(248,250,252,.9); font-weight:750; text-align:right; line-height:1.7; }
+.ec-legal-clause[open] > .ec-legal-clause-heading { background:rgba(16,185,129,.09); }
+.ec-legal-clause-number { font-size:.78rem; font-weight:800; padding:.3rem .5rem; background:rgba(16,185,129,.13); border-radius:.45rem; flex:none; font-variant-numeric:tabular-nums; }
+.ec-legal-clause-name { flex:1; min-width:0; }
+.ec-legal-chevron { color:#64748b; font-size:.8rem; transition:transform .2s ease; }
+.ec-legal-clause[open] .ec-legal-chevron { transform:rotate(180deg); }
+.ec-legal-clause-body { padding:1.25rem 1.5rem; line-height:2.1; font-size:1rem; overflow-wrap:anywhere; word-break:normal; }
+.ec-legal-clause-body p { margin-bottom:1rem; }
+.ec-legal-clause-body p:last-child { margin-bottom:0; }
+.ec-legal-clause-body ul,.ec-legal-clause-body ol { padding-inline-start:1.55rem; margin-block:.65rem 1rem; }
+.ec-legal-clause-body li { margin-bottom:.65rem; }
+.ec-legal-references { display:flex; gap:.7rem; flex-wrap:wrap; padding:1.2rem; border:1px solid #cbd5e1; border-radius:1rem; }
+.ec-legal-references h3 { width:100%; }
+.ec-legal-references a { color:#047857; text-decoration:underline; text-underline-offset:3px; }
+@media(max-width:768px){
+ .ec-legal-volume { padding:.6rem; border-radius:.85rem; }
+ .ec-legal-volume-title { padding:.75rem .5rem; font-size:1.05rem; }
+ .ec-legal-document-intro { padding:.9rem; font-size:.95rem; }
+ .ec-legal-clauses { gap:.75rem; }
+ .ec-legal-clause-heading { padding:.9rem .75rem; gap:.55rem; font-size:.97rem; }
+ .ec-legal-clause-body { padding:1rem .9rem; line-height:2.05; font-size:.95rem; }
+ .ec-legal-references { padding:.85rem; }
+}
