@@ -148,6 +148,7 @@ class TemporalDateInputAssetContractTest extends TestCase
     {
         $view = file_get_contents(resource_path('views/auth/register_step1.blade.php'));
 
+        $this->assertStringContainsString("@vite(['resources/css/vite.css', 'resources/js/app.js'])", $view);
         $this->assertStringContainsString('<x-temporal.date-input', $view);
         $this->assertStringContainsString('name="birth_date"', $view);
         $this->assertStringNotContainsString('name="birth_date[]"', $view);
