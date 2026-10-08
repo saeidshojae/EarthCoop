@@ -70,7 +70,8 @@ void main() {
     expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
   });
 
-  test('ambiguous POST reconciles using GET without repeating mutation', () async {
+  test('ambiguous POST reconciles using GET without repeating mutation',
+      () async {
     final adapter = f.BoundaryAdapter((r) {
       if (r.method == 'POST') {
         throw DioException(
@@ -149,5 +150,4 @@ void main() {
     expect(controller.failure?.code, 'session_changed');
     expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
   });
-
 }
