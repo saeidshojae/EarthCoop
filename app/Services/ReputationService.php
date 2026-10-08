@@ -15,6 +15,9 @@ class ReputationService
     {
         try {
             return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source, $dimension, $convertible, $eventKey) {
+                // Share the same per-user serialization lock with Bahar activation.
+                // Lock before any point-ledger reads or mutations.
+                User::query()->whereKey((int) $user->id)->lockForUpdate()->firstOrFail();
                 if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
                     return null;
                 }
