@@ -41,6 +41,20 @@ class LegalDocumentPublicationService
         });
     }
 
+    public function publishFromAdminSource(
+        LegalDocumentVersion $version,
+        int $publisherId,
+        LegalDocumentSourceSnapshotService $snapshots
+    ): LegalDocumentVersion {
+        $document = $version->document()->firstOrFail();
+        if ($document->source_root_id === null) {
+            throw ValidationException::withMessages(['document' => 'ریشه سند مدیریت‌شده مشخص نیست.']);
+        }
+
+        $snapshot = $snapshots->capture($document->source_type, (int) $document->source_root_id);
+        return $this->publish($version, $snapshot, $publisherId);
+    }
+
     public function current(string $slug, string $language = 'fa'): ?LegalDocumentVersion
     {
         return LegalDocumentVersion::query()
