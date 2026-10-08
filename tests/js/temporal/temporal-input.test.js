@@ -40,6 +40,7 @@ test('Gregorian birth year range begins at exact minimum-age year', () => {
 
 test('Jalali date picker options are date-only by default', () => {
     const input = {
+        name: 'event_date',
         value: '۱۴۰۵/۰۷/۰۹',
         matches: (selector) => selector === '[data-temporal-datetime-input]' ? false : false,
     };
@@ -50,11 +51,13 @@ test('Jalali date picker options are date-only by default', () => {
     assert.equal(options.initialValue, true);
     assert.equal(options.autoClose, true);
     assert.equal(options.observer, true);
+    assert.equal(options.viewMode, 'day');
     assert.equal(options.timePicker, undefined);
 });
 
 test('Jalali datetime picker enables 24-hour time selection', () => {
     const input = {
+        name: 'start_time',
         value: '',
         matches: (selector) => selector === '[data-temporal-datetime-input]',
     };
@@ -65,4 +68,16 @@ test('Jalali datetime picker enables 24-hour time selection', () => {
     assert.equal(options.initialValue, false);
     assert.equal(options.timePicker.enabled, true);
     assert.equal(options.timePicker.meridiem.enabled, false);
+});
+
+test('empty birth-date picker opens in year mode for fast navigation', () => {
+    const input = {
+        name: 'birth_date',
+        value: '',
+        matches: () => false,
+    };
+
+    const options = jalaliPickerOptions(input);
+
+    assert.equal(options.viewMode, 'year');
 });
