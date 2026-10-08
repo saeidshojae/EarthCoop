@@ -97,6 +97,7 @@ if ($mode === 'worker') {
         $write("result-{$index}.json", [
             'status' => 'error',
             'type' => get_class($exception),
+            'message' => mb_substr($exception->getMessage(), 0, 500),
             'code' => method_exists($exception, 'getErrorCode') ? $exception->getErrorCode() : (string) $exception->getCode(),
         ]);
     }
@@ -117,7 +118,10 @@ if ($mode === 'verify') {
     $conversions = UserPointConversion::query()->where('user_id', $fixture['user_id'])->get();
     $consumed = (int) DB::table('user_point_consumptions')->where('user_id', $fixture['user_id'])->sum('points_consumed');
     echo json_encode(['workers' => $results, 'conversions' => $conversions->count(), 'consumed_points' => $consumed, 'active' => (int) $account->balance_active, 'dim' => (int) $account->balance_faded], JSON_THROW_ON_ERROR).PHP_EOL;
-    if (count($successes) !== 1 || (int) $successes[0]['gol'] !== 2 ||
+    $errors = array_values(array_filter($results, fn ($r) => $r['status'] === 'error'));
+    $controlledErrors = count($errors) === 1 &&
+        $errors[0]['type'] === App\\Modules\\NajmBahar\\Services\\Api\\NajmBaharActivationException::class;
+    if (! $controlledErrors || count($successes) !== 1 || (int) $successes[0]['gol'] !== 2 ||
         $conversions->where('status', 'applied')->count() !== 1 ||
         $consumed !== 200 || (int) $account->balance_active !== 7 ||
         (int) $account->balance_faded !== 8 || (int) $account->balance !== 15) {
