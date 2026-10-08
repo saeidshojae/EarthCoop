@@ -37,5 +37,8 @@ jobs:
         run: flutter analyze
         working-directory: apps/mobile
       - name: Flutter format gate
-        run: dart format --output=none --set-exit-if-changed lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
+        run: |
+          dart format lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
+          git diff -- lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
+          git diff --exit-code -- lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_activation_controller.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
         working-directory: apps/mobile
