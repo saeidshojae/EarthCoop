@@ -34,6 +34,30 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringNotContainsString('https://', $html);
     }
 
+    public function test_false_disabled_prop_keeps_jalali_picker_trigger_visible(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="birth_date" :disabled="false" />',
+        );
+
+        $this->assertStringContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringNotContainsString(' disabled', $html);
+    }
+
+    public function test_true_disabled_prop_disables_input_and_hides_picker_trigger(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="birth_date" :disabled="true" />',
+        );
+
+        $this->assertStringContainsString(' disabled', $html);
+        $this->assertStringNotContainsString('data-temporal-picker-trigger', $html);
+    }
+
     public function test_persian_date_input_preserves_already_localized_filter_value(): void
     {
         app()->setLocale('fa');
@@ -131,11 +155,11 @@ class TemporalDateInputAssetContractTest extends TestCase
         $app = file_get_contents(resource_path('js/app.js'));
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString("await import('../css/temporal-picker.css');", $runtime);
+        $viteCss = file_get_contents(resource_path('css/vite.css'));
         $this->assertStringContainsString('persian-datepicker/dist/css/persian-datepicker.min.css', $pickerCss);
-        $this->assertStringContainsString('temporal-input.js', $app);
-        $this->assertStringContainsString('data-temporal-date-input', $app);
-        $this->assertStringContainsString('data-temporal-datetime-input', $app);
+        $this->assertStringContainsString('@import "./temporal-picker.css";', $viteCss);
+        $this->assertStringContainsString('import "./temporal-input.js";', $app);
+        $this->assertStringNotContainsString('const loadTemporalInputRuntime', $app);
         $this->assertStringContainsString("import('persian-date')", $runtime);
         $this->assertStringContainsString("import('persian-datepicker/dist/js/persian-datepicker.min.js')", $runtime);
         $this->assertStringContainsString('data-temporal-picker-trigger', $runtime);

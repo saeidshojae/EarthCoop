@@ -4,6 +4,7 @@ import "./location-selector.js";
 import "./location-geolocation.js";
 import "./registration-location-ux.js";
 import "./registration-settlement-bridge.js";
+import "./temporal-input.js";
 import $ from "jquery";
 import installSelect2 from "select2";
 
@@ -64,11 +65,7 @@ const loadMyParticipationRuntime = () => { if (document.querySelector('#tab-post
 const loadSwiperRuntime = () => { if (document.querySelector('swiper-container')) importFeature(async () => { const { register } = await import("swiper/element/bundle"); register(); }, "Swiper"); };
 const loadMemberInvitationRuntime = () => { if (document.querySelector('.invite-page-shell')) importFeature(() => import("./member-invitation-share.js"), "member invitation sharing"); };
 const loadProjectFormMobileRuntime = () => { const path = window.location.pathname.replace(/\/+$/, '') || '/'; if (path === '/najm-bahar/projects/create' || /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path)) importFeature(() => import("./project-form-mobile.js"), "project form mobile UX"); };
-const loadTemporalInputRuntime = () => {
-    const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-datetime-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
-    if (hasTemporalInputs) importFeature(() => import("./temporal-input.js"), "temporal input");
-};
-const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadPrivateMessagingRuntime(); loadMyParticipationRuntime(); loadSwiperRuntime(); loadMemberInvitationRuntime(); loadProjectFormMobileRuntime(); loadTemporalInputRuntime(); };
+const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadPrivateMessagingRuntime(); loadMyParticipationRuntime(); loadSwiperRuntime(); loadMemberInvitationRuntime(); loadProjectFormMobileRuntime(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
 
 const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
