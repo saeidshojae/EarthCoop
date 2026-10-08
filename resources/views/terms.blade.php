@@ -3403,6 +3403,9 @@
                 $publisher = app(\App\Services\Legal\LegalDocumentPublicationService::class);
                 $legalPublished['membership'] = $publisher->current('membership');
                 $legalPublished['terms'] = $publisher->current('terms');
+                if (! $legalPublished['membership'] || ! $legalPublished['terms']) {
+                    $legalPublished = [];
+                }
             }
         @endphp
         {{-- The publication text is shown before any previously stored admin-configured clauses. --}}
