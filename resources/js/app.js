@@ -55,6 +55,7 @@ const loadNajmBaharRuntime = () => {
 };
 
 const loadNajmBaharAdminRuntime = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
     if (!['/admin/najm-bahar/dashboard', '/admin/najm-bahar/settings'].includes(path)) return;
     importFeature(() => import("./najm-bahar-admin-settings.js"), "Najm Bahar admin settings");
 };
@@ -64,7 +65,6 @@ const loadSwiperRuntime = () => { if (document.querySelector('swiper-container')
 const loadMemberInvitationRuntime = () => { if (document.querySelector('.invite-page-shell')) importFeature(() => import("./member-invitation-share.js"), "member invitation sharing"); };
 const loadProjectFormMobileRuntime = () => { const path = window.location.pathname.replace(/\/+$/, '') || '/'; if (path === '/najm-bahar/projects/create' || /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path)) importFeature(() => import("./project-form-mobile.js"), "project form mobile UX"); };
 const loadTemporalInputRuntime = () => {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-datetime-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
     if (hasTemporalInputs) importFeature(() => import("./temporal-input.js"), "temporal input");
 };
