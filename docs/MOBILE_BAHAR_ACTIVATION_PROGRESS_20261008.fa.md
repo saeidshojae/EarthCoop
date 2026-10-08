@@ -79,3 +79,11 @@ Physical Android acceptance, production API release, FTP/host publication, iOS/H
 Latest source-only step: tests for points/Dim changes after review were added in `0982bae03b7d98225fb9e9c043e7a79d05d9fd35`. They assert 409 `activation_terms_changed` and no new point-conversion/consumption and no money transfer, but **they have not been run**. No Android +19 artifact is claimed.
 
 Next checkpoint is still focused PHP validation and real concurrency review before marking Task 2 complete. Avoid calendar ETA without measured/verified CI and device access.
+
+## Continuation — 2026-10-08: strict validation ordering corrected
+
+Review found a real ordering defect: the native multiple-of-ratio check was executed using a policy read **before** the consent snapshot comparison. If ratio changed after review, this could incorrectly emit `activation_not_eligible` instead of the intended `activation_terms_changed`. Fixed in commit `aec2b82dbc8212e5ab6bceb849807d551892dac1`: snapshot comparison now precedes multiple-of-ratio validation inside the transaction.
+
+**Evidence limit:** no Actions runs reported on this branch, so neither the new stale-policy/points/Dim tests nor legacy tests can be called passing. The policy-read and transactional consistency/concurrency questions remain open; do not close Task 2 on code inspection alone. Prioritize a test execution runner/authorized CI dispatch and review the updated service, then proceed to the remaining activation tasks.
+
+Next signed UAT candidate remains **+19 only after activation Tasks 1–7 are validated**, bundled with already completed native transfer. The plan does **not** provide a calendar ETA.
