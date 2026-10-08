@@ -503,6 +503,46 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(15, (int) $account->fresh()->balance);
     }
 
+    public function test_reversal_after_successful_activation_must_not_overconsume_earned_points(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $this->accountFor($user, active: 5, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 300);
+
+        $eligible = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()->json('data');
+        $expected = array_intersect_key($eligible, array_flip([
+            'activation_contract_version', 'policy_version_id', 'policy_version',
+            'conversion_ratio_points_per_gol', 'remaining_convertible_points',
+            'dim_available_gol', 'max_activation_gol',
+        ]));
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'crosswriter-first-activation-0001')
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation',
+                'points' => 200,
+                'expected' => $expected,
+            ])->assertCreated();
+
+        // A 200-point reversal after 200 points have been consumed from 300
+        // must not silently create a negative participation entitlement.
+        app(\\App\\Services\\ReputationService::class)->addPoints(
+            $user, -200, 'crosswriter_reverse_after_activation', [], null,
+            'activation_contract', 'participation', true,
+            'crosswriter-reversal-after-activation-0001'
+        );
+
+        $consumed = (int) DB::table('user_point_consumptions')
+            ->where('user_id', $user->id)->sum('points_consumed');
+        $reversed = abs((int) DB::table('user_point_transactions')
+            ->where('user_id', $user->id)->where('delta', '<', 0)
+            ->where('convertible', true)->where('dimension', 'participation')
+            ->sum('delta'));
+        $this->assertLessThanOrEqual(300, $consumed + $reversed);
+    }
+
     public function test_activation_reconciliation_is_read_only_and_scoped_to_successful_owned_intent(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
