@@ -52,6 +52,14 @@ class NajmBaharActivationController extends Controller
         $validated = $request->validate([
             'source' => ['required', 'in:participation'],
             'points' => ['required', 'integer', 'min:1'],
+            'expected' => ['sometimes', 'required', 'array:activation_contract_version,policy_version_id,policy_version,conversion_ratio_points_per_gol,remaining_convertible_points,dim_available_gol,max_activation_gol'],
+            'expected.activation_contract_version' => ['required_with:expected', 'integer', 'in:1'],
+            'expected.policy_version_id' => ['present_with:expected', 'nullable', 'integer', 'min:1'],
+            'expected.policy_version' => ['present_with:expected', 'nullable', 'integer', 'min:1'],
+            'expected.conversion_ratio_points_per_gol' => ['required_with:expected', 'integer', 'min:1'],
+            'expected.remaining_convertible_points' => ['required_with:expected', 'integer', 'min:0'],
+            'expected.dim_available_gol' => ['required_with:expected', 'integer', 'min:0'],
+            'expected.max_activation_gol' => ['required_with:expected', 'integer', 'min:0'],
         ]);
 
         try {
@@ -59,6 +67,7 @@ class NajmBaharActivationController extends Controller
                 $user,
                 (int) $validated['points'],
                 trim((string) $request->header('Idempotency-Key')),
+                $validated['expected'] ?? null,
             );
 
             $transaction = $this->ledger->transactionFor($user, $result['transaction']);
@@ -80,7 +89,7 @@ class NajmBaharActivationController extends Controller
 
     private function rejectUnexpectedFields(Request $request): void
     {
-        $unexpected = array_values(array_diff(array_keys($request->all()), ['source', 'points']));
+        $unexpected = array_values(array_diff(array_keys($request->all()), ['source', 'points', 'expected']));
         if ($unexpected !== []) {
             throw ValidationException::withMessages([
                 'request' => ['Unsupported activation fields: '.implode(', ', $unexpected)],
