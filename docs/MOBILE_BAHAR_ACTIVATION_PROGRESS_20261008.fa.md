@@ -128,3 +128,7 @@ At last poll, run `37828424933` for the new RED test source was in progress; no 
 Run 37828462659 on commit 28b65f1965b6e5f4fc41ddb4762ce421055e3633 completed successfully: activation contract 12 tests / 154 assertions and financial boundary 1 test / 1 assertion (each reported one PHPUnit deprecation). It verifies strict receipt value checks and ledger match at this source SHA, but not the newly added negative test.
 
 Commit 0cd857839c013444f44b41dc160d78ac4aa803ed added a new API contract asserting foreign authenticated users cannot recover another user's activation and changing the stored idempotency scope to the transfer route must prevent recovery. This needs its own CI green before Task 3 can be closed. Financial concurrency audit and Flutter Tasks 4–6 remain open. No +19 signed artifact or main/production deployment.
+
+## 2026-10-08 — Verified security and isolation GREEN
+
+GitHub Actions run 37830043063, source 0cd857839c013444f44b41dc160d78ac4aa803ed, completed SUCCESS. Activation API tests: 13 tests / 162 assertions; financial mutation architecture: 1 test / 1 assertion; both reported one PHPUnit deprecation. Thus the tested actor/route isolation and tampered receipt checks are green. This is focused evidence only, not whole-system/Flutter validation. Task 3's basic GET-only success/negative security coverage now has a passing checkpoint; concurrency review, potential malformed receipt variants, Tasks 4–7, and eventual main reconciliation remain open. No Android +19 signed APK, Production deployment or main merge.
