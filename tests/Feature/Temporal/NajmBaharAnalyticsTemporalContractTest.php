@@ -32,17 +32,15 @@ class NajmBaharAnalyticsTemporalContractTest extends TestCase
         $this->assertStringNotContainsString("toLocaleDateString('fa-IR'", $view);
     }
 
-    public function test_legacy_analytics_view_is_scoped_into_official_temporal_runtime(): void
+    public function test_analytics_filters_use_shared_temporal_date_components_without_path_shims(): void
     {
-        $app = file_get_contents(resource_path('js/app.js'));
+        $view = file_get_contents(resource_path('views/admin/najm-bahar/analytics.blade.php'));
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString("path === '/admin/najm-bahar/analytics'", $app);
-        $this->assertStringContainsString('markLegacyAdminDateInputs', $runtime);
-        $this->assertStringContainsString('adminDateFilterNamesForPath', $runtime);
-        $this->assertStringContainsString("'/admin/najm-bahar/analytics'", $runtime);
-        $this->assertStringContainsString("['date_from', 'date_to']", $runtime);
-        $this->assertStringContainsString('input.dataset.calendar = calendar', $runtime);
+        $this->assertStringContainsString('<x-temporal.date-input name="date_from"', $view);
+        $this->assertStringContainsString('<x-temporal.date-input name="date_to"', $view);
+        $this->assertStringNotContainsString('markLegacyAdminDateInputs', $runtime);
+        $this->assertStringNotContainsString('adminDateFilterNamesForPath', $runtime);
     }
 
 }
