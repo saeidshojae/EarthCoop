@@ -146,4 +146,14 @@ class UserDisplayNameContractTest extends TestCase
         $this->assertStringContainsString('fullName()', $adminHeader);
     }
 
+    public function test_formal_financial_pdf_owner_uses_legal_identity_while_member_screen_uses_display_name(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/NajmBaharReportController.php'));
+        $pdf = file_get_contents(resource_path('views/najm-bahar/reports/pdf.blade.php'));
+
+        $this->assertStringContainsString('$reportOwnerName = trim($user->first_name . \' \' . $user->last_name);', $controller);
+        $this->assertStringContainsString('$reportOwnerName = $reportOwnerName ?? (isset($user) ? trim($user->fullName()) : \'\');', $pdf);
+        $this->assertStringContainsString('$reportOwnerName = $user->displayName();', $controller);
+    }
+
 }
