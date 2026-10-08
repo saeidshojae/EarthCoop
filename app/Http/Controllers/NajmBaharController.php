@@ -38,10 +38,14 @@ class NajmBaharController extends Controller
         $hasAcceptedAgreement = $this->accountService->hasMainAccount($user->id)
             || ! is_null($user->najm_bahar_agreement_accepted_at);
 
-        $agreements = NajmBaharAgreement::whereNull('parent_id')
-            ->with('descendants')
-            ->orderBy('order')
-            ->get();
+        $agreementsQuery = NajmBaharAgreement::whereNull('parent_id')
+            ->with('descendants');
+        if (\Illuminate\Support\Facades\Schema::hasTable('legal_documents')) {
+            $stagedRootIds = \App\Models\LegalDocument::where('source_type', 'najm_bahar_agreements')
+                ->where('is_staged_import', true)->pluck('source_root_id')->all();
+            $agreementsQuery->whereNotIn('id', $stagedRootIds);
+        }
+        $agreements = $agreementsQuery->orderBy('order')->get();
         $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);
 
         return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement'));
