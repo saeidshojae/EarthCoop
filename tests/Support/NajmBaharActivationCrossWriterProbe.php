@@ -33,7 +33,7 @@ if ($mode === 'setup') {
     $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Cross-writer race test');
     $account->update(['balance_active' => 5, 'balance_faded' => 10, 'committed_dim' => 0, 'balance' => 15]);
     MonetaryPolicyVersion::create([
-        'version' => 1, 'status' => 'active',
+        'version' => 2, 'status' => 'active',
         'parameters' => ['reputation_conversion_enabled' => true, 'reputation_to_gol_ratio' => 100],
         'reason' => 'cross-writer race probe', 'effective_from' => now()->subMinute(), 'approved_at' => now(),
     ]);
