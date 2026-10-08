@@ -28,9 +28,9 @@ class LegalDocumentDraftService
         }
 
         // Capture first. A failed lookup must never create an empty document.
-        $snapshot = $this->snapshots->capture($sourceType, $rootId);
+        $this->snapshots->capture($sourceType, $rootId);
 
-        return DB::transaction(function () use ($slug, $title, $sourceType, $rootId, $versionLabel, $language, $snapshot) {
+        return DB::transaction(function () use ($slug, $title, $sourceType, $rootId, $versionLabel, $language) {
             $document = LegalDocument::query()->firstOrCreate(
                 ['slug' => $slug],
                 ['title' => $title, 'source_type' => $sourceType, 'source_root_id' => $rootId]
