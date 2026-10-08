@@ -41,6 +41,6 @@ class LegalDocumentVersion extends Model
 
     public function document()
     {
-        return $this->belongsTo(LegalDocument::class);
+        return $this->belongsTo(LegalDocument::class, 'legal_document_id');
     }
 }
