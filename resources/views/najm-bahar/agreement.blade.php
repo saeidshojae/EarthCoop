@@ -2764,6 +2764,26 @@
 
 
 
+        {{-- Proposed legal text is intentionally not treated as an already accepted agreement. --}}
+        <section class="agreement-card space-y-6 fade-in-section" id="proposed-najm-bahar-agreement" aria-labelledby="proposed-najm-title">
+            <h2 id="proposed-najm-title" class="text-2xl font-bold">متن پیشنهادی توافقنامه مالی و پولی نجم‌بهار</h2>
+            <p class="agreement-note">نسخه ۱.۰ — پیش‌نویس آماده تصویب. متن زیر تا تصویب رسمی و ثبت نسخه قرارداد، جایگزین توافقنامه جاری ثبت‌شده در سامانه نیست.</p>
+            <details class="agreement-section" open>
+                <summary class="agreement-section-title agreement-accordion-button">مطالعه کامل توافقنامه پیشنهادی</summary>
+                <div class="agreement-content prose prose-lg max-w-none p-5 md:p-7" dir="rtl">
+                    {!! \Illuminate\Support\Str::markdown(file_get_contents(resource_path('legal/najm-bahar-agreement.fa.md')), ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
+                </div>
+            </details>
+            <nav class="flex flex-wrap gap-3" aria-label="قوانین اقتصادی مرتبط">
+                @foreach(config('docs-links.foundational', []) as $document)
+                    @if(in_array($document['code'], ['FC', 'CO', 'EX', 'ECON'], true))
+                        <a class="text-earth-green underline" href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
+                    @endif
+                @endforeach
+                <a class="text-earth-green underline" href="{{ config('docs-links.references.0.href') }}" target="_blank" rel="noopener noreferrer">سند مرجع اقتصاد و معماری نجم‌بهار</a>
+            </nav>
+        </section>
+
         <section class="agreement-card space-y-6 fade-in-section">
 
 
