@@ -207,6 +207,7 @@ class TemporalArchitectureBoundaryTest extends TestCase
             'unpkg.com/persian-datepicker',
             'vendor/persian-datepicker',
             'profile-assets/css/persian-datepicker',
+            '/>format(',
         ];
         $offenders = [];
 
