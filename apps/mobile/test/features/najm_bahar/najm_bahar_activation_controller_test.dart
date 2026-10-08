@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earthcoop_mobile/features/najm_bahar/najm_bahar_activation_controller.dart';
@@ -93,4 +95,59 @@ void main() {
     expect(controller.state, NajmBaharActivationState.confirmed);
     expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
   });
+  test('23-hour expiry blocks replay of an unknown financial intent', () async {
+    var elapsed = Duration.zero;
+    final adapter = f.BoundaryAdapter((request) {
+      if (request.method == 'POST') {
+        throw DioException(
+          requestOptions: request,
+          type: DioExceptionType.receiveTimeout,
+        );
+      }
+      return f.envelope(terms());
+    });
+    final controller = NajmBaharActivationController(
+      f.repository(adapter),
+      elapsedSinceStart: () => elapsed,
+      keyFactory: () => 'activation-expiry-key',
+    );
+    addTearDown(controller.dispose);
+    await controller.prepare();
+    controller.beginReview(200);
+    await controller.confirm();
+    expect(controller.state, NajmBaharActivationState.outcomeUnknown);
+    elapsed = const Duration(hours: 23);
+    await controller.retrySameIntent();
+    expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
+    expect(controller.failure?.code, 'activation_intent_expired');
+  });
+
+  test('session change prevents stale financial result being published',
+      () async {
+    var current = true;
+    final sessionChanges = ChangeNotifier();
+    final pending = Completer<Map<String, Object?>>();
+    final adapter = f.BoundaryAdapter((request) {
+      if (request.method == 'POST') return pending.future;
+      return f.envelope(terms());
+    });
+    final controller = NajmBaharActivationController(
+      f.repository(adapter, current: () => current),
+      sessionChanges: sessionChanges,
+      keyFactory: () => 'activation-session-key',
+    );
+    addTearDown(controller.dispose);
+    addTearDown(sessionChanges.dispose);
+    await controller.prepare();
+    controller.beginReview(200);
+    final sending = controller.confirm();
+    current = false;
+    sessionChanges.notifyListeners();
+    pending.complete(f.envelope(receipt()));
+    await sending;
+    expect(controller.receipt, isNull);
+    expect(controller.failure?.code, 'session_changed');
+    expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
+  });
+
 }
