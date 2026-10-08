@@ -106,3 +106,11 @@ Correction committed in `b963b9dbec7e9be26327f5ff9b394af0b559a513`: the two vari
 ## Verified focused GREEN — 2026-10-08
 
 GitHub Actions run **37824363224** on source **b963b9dbec7e9be26327f5ff9b394af0b559a513** completed SUCCESS. Logs: activation contract **10 tests / 134 assertions**, financial mutation architecture **1 test / 1 assertion**; each reported one PHPUnit deprecation. PHP dependencies, MySQL migrations and Vite preparation also succeeded. This verifies the focused API/architecture gate at that source SHA, not entire mobile/server suite, concurrency safety, or any later commit. Next work: Task 3 GET-only, actor/route-scoped activation reconciliation with a complete successful receipt and no mutation. Task 2 concurrency audit is a separate open gate.
+
+## 2026-10-08 — Task 3 GET-only reconciliation candidate
+
+Focused green evidence now confirmed: run 37824363224 on b963b9dbec7e9be26327f5ff9b394af0b559a513 completed successfully, with activation 10 tests / 134 assertions and financial architecture 1 test / 1 assertion. This does not cover subsequent commits.
+
+Task 3 development: test added in 59c33efadc98c47391e51ce8ec51a06756772169, route in cdf007ff5451cec693d1950da015f338d8fcb676, and controller GET-only implementation in 90a850cf4d820eb8d49745916576b2d915259939. New endpoint GET /api/v1/najm-bahar/activation/by-idempotency/{key} filters the idempotency receipt by authenticated user, exact POST route scope, completed state, HTTP 201, and matching applied user point conversion. It returns no result for unknown or incomplete records; no financial POST is made.
+
+Status: implementation candidate only. GitHub Actions run 37827311119 was pending at the most recent inspection. Do not call Task 3 green before observing that run, reviewing its logs, and adding negative coverage for foreign user/route, malformed evidence and unsuccessful receipts. No main merge, Production deployment, signed +19 APK or live activation.
