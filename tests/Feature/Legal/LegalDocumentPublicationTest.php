@@ -87,4 +87,24 @@ class LegalDocumentPublicationTest extends TestCase
         $this->expectException(ValidationException::class);
         app(LegalDocumentPublicationService::class)->publish($version, ' ', $publisher->id);
     }
+
+    public function test_published_snapshot_cannot_be_edited_through_model(): void
+    {
+        $publisher = User::factory()->create();
+        $document = LegalDocument::create([
+            'slug' => 'locked-terms',
+            'title' => 'شرایط',
+            'source_type' => 'terms',
+        ]);
+        $version = LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.0',
+            'language' => 'fa',
+            'status' => 'draft',
+        ]);
+        app(LegalDocumentPublicationService::class)->publish($version, 'متن ثابت', $publisher->id);
+
+        $this->expectException(\LogicException::class);
+        $version->fresh()->update(['content_snapshot' => 'متن تغییر داده شده']);
+    }
 }
