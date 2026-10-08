@@ -21,6 +21,7 @@ final class DateInput extends Component
         public readonly DateTimeInterface|LocalDate|string|null $value = null,
         public readonly ?string $id = null,
         public readonly bool $required = false,
+        public readonly bool $disabled = false,
     ) {
         $this->context = $this->contexts->defaultContext();
     }
