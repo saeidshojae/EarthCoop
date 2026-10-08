@@ -52,3 +52,14 @@ Resume with targeted Task 1 validation, not reimplementation. Read `docs/MOBILE_
 - Under the currently inspected controller, `expected` is still an unsupported field, so the tests should currently fail with validation instead of the desired domain errors. **This is a predicted RED, not a claimed executed RED.**
 - Do not implement financial POST mutation on top of this unverified baseline. First run the targeted `NajmBaharActivationContractTest` suite on commit `4ddff57405347b0a1757c88a6390880b5cb35b18`; inspect the precise failure signatures. Then implement strict binding inside the financial transaction, preserving legacy no-expected calls and ensuring stale snapshot does not consume ledger entries.
 - Scope of this continuation: tests and documentation only for Task 2; no financial behavior changes and no release build.
+
+## Follow-up — 2026-10-08: Task 2 implementation candidate (not GREEN)
+
+- Controller typed Native `expected` validation and legacy-field compatibility: `573906163268ffb29fe12b06a7204d517436e783`.
+- Service strict ratio/review-snapshot validation: `1269c0298dead0643a86a27b451ab57cfa2b8c56`.
+- When `expected` is omitted, legacy floor-to-ratio behavior is kept; Native requests with `expected` reject non-multiples and compare the frozen terms before point conversion identity creation.
+- This is an **unverified implementation candidate**, not a financial production-ready change.
+- **Open concurrency audit:** current application service reads policy and calculates ratio before the DB transaction; the new snapshot check runs in the transaction but does not yet guarantee a policy-row lock or a single locked snapshot of all point-consumption and account balances. Verify and harden the atomic validation/consumption order before claiming strict concurrency-safe behavior.
+- **Open validation:** no CI workflow runs were found for the isolated branch in the latest query; PHPUnit RED/GREEN is unexecuted, and no passing test evidence exists for these commits.
+- Next mandatory actions: run focused activation contracts and finance architecture check at exact candidate SHA; review wrong-error cases and Laravel validation grammar; add parallel/stale policy/points/Dim tests; fix results and only then proceed to reconciliation Task 3.
+- No Android build, main merge, release deployment or real monetary activation.
