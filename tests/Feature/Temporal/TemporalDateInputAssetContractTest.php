@@ -131,7 +131,7 @@ class TemporalDateInputAssetContractTest extends TestCase
         $app = file_get_contents(resource_path('js/app.js'));
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString("import '../css/temporal-picker.css';", $runtime);
+        $this->assertStringContainsString("await import('../css/temporal-picker.css');", $runtime);
         $this->assertStringContainsString('persian-datepicker/dist/css/persian-datepicker.min.css', $pickerCss);
         $this->assertStringContainsString('temporal-input.js', $app);
         $this->assertStringContainsString('data-temporal-date-input', $app);
