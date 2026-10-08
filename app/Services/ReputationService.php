@@ -22,6 +22,16 @@ class ReputationService
                     return null;
                 }
 
+                if ($delta < 0 && $convertible && $dimension === 'participation') {
+                    // A reversal cannot silently overdraw participation credit
+                    // that was already activated into money.
+                    $available = (int) app(ParticipationPointSummaryService::class)
+                        ->forUser((int) $user->id)['remaining_convertible_points'];
+                    if (-$delta > $available) {
+                        throw new \\DomainException('Convertible participation reversal exceeds unconsumed credit.');
+                    }
+                }
+
                 $point = UserPoint::firstOrCreate(['user_id' => $user->id], ['points' => 0]);
                 $newBalance = $point->points + $delta;
                 $point->points = $newBalance;
