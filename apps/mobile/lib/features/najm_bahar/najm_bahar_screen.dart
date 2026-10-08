@@ -9,6 +9,8 @@ import 'najm_bahar_membership_payment_controller.dart';
 import 'najm_bahar_membership_payment_section.dart';
 import 'najm_bahar_transfer_controller.dart';
 import 'najm_bahar_transfer_section.dart';
+import 'najm_bahar_activation_controller.dart';
+import 'najm_bahar_activation_section.dart';
 
 class NajmBaharScreen extends StatefulWidget {
   const NajmBaharScreen({
@@ -17,11 +19,13 @@ class NajmBaharScreen extends StatefulWidget {
     this.policyController,
     this.paymentController,
     this.transferController,
+    this.activationController,
   });
   final NajmBaharController controller;
   final NajmBaharPolicyController? policyController;
   final MembershipPaymentController? paymentController;
   final NajmBaharTransferController? transferController;
+  final NajmBaharActivationController? activationController;
   @override
   State<NajmBaharScreen> createState() => _NajmBaharScreenState();
 }
@@ -144,6 +148,11 @@ class _NajmBaharScreenState extends State<NajmBaharScreen> {
                           const SizedBox(height: 16),
                           NajmBaharMembershipPaymentSection(
                               controller: widget.paymentController!),
+                        ],
+                        if (widget.activationController != null) ...[
+                          const SizedBox(height: 16),
+                          NajmBaharActivationSection(
+                              controller: widget.activationController!),
                         ],
                         if (widget.transferController != null) ...[
                           const SizedBox(height: 16),
