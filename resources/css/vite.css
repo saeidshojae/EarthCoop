@@ -9,7 +9,18 @@
 /* EarthCoop Temporal picker */
 .temporal-picker-control {
     position: relative;
+    display: inline-block;
     width: 100%;
+    min-width: 0;
+}
+
+.form-inline .temporal-picker-control {
+    width: auto;
+    vertical-align: middle;
+}
+
+.form-inline .temporal-picker-control > input {
+    width: auto;
 }
 
 .temporal-picker-control > input {
