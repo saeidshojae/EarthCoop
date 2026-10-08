@@ -10,10 +10,10 @@ import installSelect2 from "select2";
 const profileEditUsesLegacyJQuery = window.location.pathname.replace(/\/+$/, '') === '/profile/edit';
 const appJQuery = profileEditUsesLegacyJQuery ? $ : (window.jQuery || $);
 
-// The profile editor still loads a legacy jQuery bundle before Vite. Temporal
-// datepicker is a Vite-owned dynamic import and must share the same jQuery
-// instance on that page, otherwise the plugin attaches to a different $.fn and
-// the visible birth-date input silently falls back to manual entry.
+// The profile editor still loads a legacy jQuery bundle for mature profile widgets.
+// Keep Select2 on the Vite-owned jQuery instance on that page. The Temporal picker
+// owns and binds its own imported jQuery inside temporal-input.js and must not depend
+// on whichever legacy global jQuery happens to be active.
 window.$ = appJQuery;
 window.jQuery = appJQuery;
 installSelect2(window, appJQuery);
