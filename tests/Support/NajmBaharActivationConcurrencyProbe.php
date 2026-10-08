@@ -120,7 +120,7 @@ if ($mode === 'verify') {
     echo json_encode(['workers' => $results, 'conversions' => $conversions->count(), 'consumed_points' => $consumed, 'active' => (int) $account->balance_active, 'dim' => (int) $account->balance_faded], JSON_THROW_ON_ERROR).PHP_EOL;
     $errors = array_values(array_filter($results, fn ($r) => $r['status'] === 'error'));
     $controlledErrors = count($errors) === 1 &&
-        $errors[0]['type'] === App\\Modules\\NajmBahar\\Services\\Api\\NajmBaharActivationException::class;
+        $errors[0]['type'] === App\Modules\NajmBahar\Services\Api\NajmBaharActivationException::class;
     if (! $controlledErrors || count($successes) !== 1 || (int) $successes[0]['gol'] !== 2 ||
         $conversions->where('status', 'applied')->count() !== 1 ||
         $consumed !== 200 || (int) $account->balance_active !== 7 ||
