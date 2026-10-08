@@ -1,4 +1,3 @@
-import '../css/temporal-picker.css';
 import $ from 'jquery';
 
 const GREGORIAN_MONTHS = [
@@ -116,6 +115,7 @@ const loadBundledPersianDatepicker = async () => {
         window.$ = temporalJQuery;
         window.jQuery = temporalJQuery;
 
+        await import('../css/temporal-picker.css');
         const persianDateModule = await import('persian-date');
         window.persianDate = window.persianDate || persianDateModule.default || persianDateModule;
         await import('persian-datepicker/dist/js/persian-datepicker.min.js');
