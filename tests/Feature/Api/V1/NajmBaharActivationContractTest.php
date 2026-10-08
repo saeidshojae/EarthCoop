@@ -470,6 +470,47 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(8, (int) $account->fresh()->balance_faded);
     }
 
+    public function test_activation_reconciliation_rejects_tampered_receipt_and_missing_ledger(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $this->accountFor($user, active: 5, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 350);
+        $key = 'native-reconcile-tamper-0001';
+        $expected = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')->assertOk()->json('data');
+        $this->bearer($token, $deviceId)->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation', 'points' => 200,
+                'expected' => array_intersect_key($expected, array_flip([
+                    'activation_contract_version', 'policy_version_id', 'policy_version',
+                    'conversion_ratio_points_per_gol', 'remaining_convertible_points',
+                    'dim_available_gol', 'max_activation_gol',
+                ])),
+            ])->assertCreated();
+
+        $row = DB::table('api_v1_idempotency_keys')
+            ->where('actor_key', 'user:'.$user->id)
+            ->where('scope', 'api.v1.najm-bahar.activation.store')
+            ->where('idempotency_key', $key)->first();
+        $this->assertNotNull($row);
+        $original = (string) $row->response_body;
+        $body = json_decode($original, true);
+        $body['data']['activated_gol'] = '2';
+        DB::table('api_v1_idempotency_keys')->where('id', $row->id)
+            ->update(['response_body' => json_encode($body)]);
+        $url = '/api/v1/najm-bahar/activation/by-idempotency/'.$key;
+        $this->bearer($token, $deviceId)->getJson($url)
+            ->assertNotFound()->assertJsonPath('error.code', 'not_found');
+
+        $body = json_decode($original, true);
+        $body['data']['transaction']['id'] = 999999999;
+        DB::table('api_v1_idempotency_keys')->where('id', $row->id)
+            ->update(['response_body' => json_encode($body)]);
+        $this->bearer($token, $deviceId)->getJson($url)
+            ->assertNotFound()->assertJsonPath('error.code', 'not_found');
+    }
+
     private function accountFor(User $user, int $active, int $dim): Account
     {
         $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
