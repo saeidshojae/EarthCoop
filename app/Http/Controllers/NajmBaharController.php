@@ -56,6 +56,18 @@ class NajmBaharController extends Controller
             'agreement_accepted.accepted' => 'لطفاً توافقنامه نجم بهار را بپذیرید'
         ]);
 
+        $financialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
+            ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
+            : null;
+        if ($financialVersion) {
+            $request->validate(['legal_version_id' => 'required|integer']);
+            app(\App\Services\Legal\LegalAcceptanceService::class)
+                ->validatePublishedVersion('najm-bahar', (int) $request->input('legal_version_id'));
+            if ((int) $request->input('legal_version_id') !== $financialVersion->id) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['legal_version_id' => 'نسخه توافقنامه تغییر کرده است؛ صفحه را دوباره مطالعه کنید.']);
+            }
+        }
+
         $user = auth()->user();
         abort_if($user->isSystemIdentity(), 403, 'System identities cannot use Najm Bahar.');
 
@@ -70,7 +82,7 @@ class NajmBaharController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($user) {
+            DB::transaction(function () use ($user, $financialVersion) {
                 $userAccount = $this->accountService->createMainAccountForUser(
                     $user->id,
                     'حساب نجم بهار ' . $user->fullName()
@@ -78,6 +90,10 @@ class NajmBaharController extends Controller
 
                 $this->ensureInitialFunding($user, $userAccount);
 
+                if ($financialVersion) {
+                    app(\App\Services\Legal\LegalAcceptanceService::class)
+                        ->record($user->id, $financialVersion, 'najm_bahar');
+                }
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
                 ]);
