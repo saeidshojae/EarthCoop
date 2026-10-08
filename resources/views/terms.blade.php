@@ -2989,7 +2989,13 @@
 
 
 
-    $terms = \App\Models\Term::with('childs')->whereNull('parent_id')->orderBy('id', 'asc')->get();
+    $termsQuery = \App\Models\Term::with('childs')->whereNull('parent_id');
+    if (\Illuminate\Support\Facades\Schema::hasTable('legal_documents')) {
+        $stagedRootIds = \App\Models\LegalDocument::where('source_type', 'terms')
+            ->where('is_staged_import', true)->pluck('source_root_id')->all();
+        $termsQuery->whereNotIn('id', $stagedRootIds);
+    }
+    $terms = $termsQuery->orderBy('id', 'asc')->get();
 
 
 
