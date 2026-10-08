@@ -546,6 +546,30 @@ class NajmBaharActivationContractTest extends TestCase
             ->where('convertible', true)->where('dimension', 'participation')
             ->sum('delta'));
         $this->assertLessThanOrEqual(300, $consumed + $reversed);
+        $this->assertSame(0, $reversed);
+
+        // The remaining 100 points may still be revoked. Repeating the same
+        // business event must not revoke them twice.
+        $service = app(\App\Services\ReputationService::class);
+        $first = $service->addPoints(
+            $user, -100, 'crosswriter_partial_reversal', [], null,
+            'activation_contract', 'participation', true,
+            'crosswriter-partial-reversal-0001'
+        );
+        $this->assertNotNull($first);
+        $second = $service->addPoints(
+            $user, -100, 'crosswriter_partial_reversal', [], null,
+            'activation_contract', 'participation', true,
+            'crosswriter-partial-reversal-0001'
+        );
+        $this->assertNull($second);
+
+        $reversedAfter = abs((int) DB::table('user_point_transactions')
+            ->where('user_id', $user->id)->where('delta', '<', 0)
+            ->where('convertible', true)->where('dimension', 'participation')
+            ->sum('delta'));
+        $this->assertSame(100, $reversedAfter);
+        $this->assertSame(300, $consumed + $reversedAfter);
     }
 
     public function test_activation_reconciliation_is_read_only_and_scoped_to_successful_owned_intent(): void
