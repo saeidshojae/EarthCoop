@@ -8,6 +8,7 @@ import {
     jalaliPickerOptions,
     localeFromCookie,
     resolvedLocale,
+    storedBirthDateParts,
 } from '../../../resources/js/temporal-input.js';
 
 test('base locale normalizes regional variants', () => {
@@ -101,6 +102,25 @@ test('prefilled birth date does not allow the plugin to reset it on initializati
     assert.equal(options.initialValue, false);
     assert.equal(options.initialValueType, 'persian');
     assert.equal(options.viewMode, 'day');
+});
+
+test('stored birth date parses Persian, Arabic and ASCII digits without changing the input', () => {
+    for (const date of ['۱۳۸۰/۰۱/۱۲', '١٣٨٠/٠١/١٢', '1380/01/12']) {
+        const input = { name: 'birth_date', value: date, matches: () => false };
+        assert.deepEqual(storedBirthDateParts(input), [1380, 1, 12]);
+        assert.equal(input.value, date);
+    }
+});
+
+test('birth-date navigation excludes other dates, datetimes and malformed input', () => {
+    const input = (name, value, isDateTime = false) => ({
+        name, value, matches: () => isDateTime,
+    });
+    assert.equal(storedBirthDateParts(input('event_date', '۱۳۸۰/۰۱/۱۲')), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '۱۳۸۰/۰۱/۱۲ ۱۲:۳۰', true)), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '')), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '۱۳۸۰/۱۳/۱۲')), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '۱۳۸۰/۰۷/۳۱')), null);
 });
 
 test('empty birth-date picker opens in year mode for fast navigation', () => {
