@@ -1,3 +1,5 @@
+> **STATUS NOTE — 2026-10-08:** This file is a historical running receipt. For the current authoritative mobile state and next development checkpoint, read `docs/MOBILE_DEVELOPMENT_STATUS_20261008.fa.md` first. In particular: signed Android +18 is verified; membership-payment software is complete; Native Bahar external transfer is software-complete but is not contained in +18; Native Participation Activation is designed but not yet implemented. Do not restart completed transfer tasks from older sections below.
+
 # Native mobile remaining work — 2026-10-05
 
 ## Latest checkpoint: signed Android +17
