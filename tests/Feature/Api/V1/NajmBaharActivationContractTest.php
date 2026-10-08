@@ -28,6 +28,9 @@ class NajmBaharActivationContractTest extends TestCase
             ->getJson('/api/v1/najm-bahar/activation/eligibility')
             ->assertOk()
             ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.activation_contract_version', 1)
+            ->assertJsonPath('data.policy_version_id', 1)
+            ->assertJsonPath('data.max_activation_points', 300)
             ->assertJsonPath('data.enabled', true)
             ->assertJsonPath('data.source', 'participation')
             ->assertJsonPath('data.remaining_convertible_points', 350)
@@ -52,6 +55,8 @@ class NajmBaharActivationContractTest extends TestCase
             $this->assertIsInt($response->json($path), $path.' must be an integer.');
         }
 
+        $this->assertSame(0, DB::table('user_point_conversions')->count());
+        $this->assertSame(0, DB::table('user_point_consumptions')->count());
         $this->assertSame(15, (int) $account->fresh()->balance);
     }
 
