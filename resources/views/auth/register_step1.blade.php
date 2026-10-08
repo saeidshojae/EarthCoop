@@ -22,7 +22,7 @@
 
     <!-- Vite CSS & JS -->
 
-    @vite(['resources/js/app.js'])
+    @vite(['resources/css/vite.css', 'resources/js/app.js'])
 
     
 
