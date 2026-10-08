@@ -87,3 +87,12 @@ Review found a real ordering defect: the native multiple-of-ratio check was exec
 **Evidence limit:** no Actions runs reported on this branch, so neither the new stale-policy/points/Dim tests nor legacy tests can be called passing. The policy-read and transactional consistency/concurrency questions remain open; do not close Task 2 on code inspection alone. Prioritize a test execution runner/authorized CI dispatch and review the updated service, then proceed to the remaining activation tasks.
 
 Next signed UAT candidate remains **+19 only after activation Tasks 1–7 are validated**, bundled with already completed native transfer. The plan does **not** provide a calendar ETA.
+
+## 2026-10-08 continuation — +19 test gate
+
+Native Participation Activation remains part of the planned bundled Android +19, along with previously completed native transfer. No signed +19 APK exists yet.
+
+- Commit a73d19397c9ef3accf2c5c98a2b18bbd3d765411 added test coverage for exact native activation and same-key replay after balances change. This test is written, not executed.
+- Commit c7d49b427dee208f35df76818fa950577419dd85 added a focused PHP and financial architecture GitHub Actions workflow on the isolated activation branch. Immediately after this commit, the Actions run query showed zero runs, so no green result is claimed.
+- Open: verify replay before stale eligibility rejection, transactional consistency, targeted test results, Flutter tasks, safe main reconciliation, final suite, signed +19 APK.
+- No main merge or production release.
