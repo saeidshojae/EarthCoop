@@ -82,8 +82,38 @@ class ResolveCommunicationRunAudience implements ShouldQueue
             return;
         }
 
+        $templateKey = $rule->template->key;
+        if (in_array($templateKey, [
+            'reports.member.weekly',
+            'reports.manager.weekly',
+            'reports.inspector.weekly',
+        ], true)) {
+            foreach ($recipients as $recipient) {
+                $context = $this->weeklyContext($templateKey, 'specific.user', $recipient, $run);
+                if ($context === null) {
+                    continue;
+                }
+
+                $communication = app(CommunicationDispatcher::class)->dispatch(
+                    $templateKey,
+                    ['type' => 'scheduled_rule', 'id' => (string) $rule->id],
+                    [$recipient],
+                    $context,
+                    [
+                        'priority' => (int) $rule->priority,
+                        'delivery_class' => 'bulk',
+                        'deduplication_key' => 'run:'.$run->id.':user:'.$recipient->id.':'.$templateKey,
+                    ],
+                );
+
+                $this->attachAndCount($run, $communication, 1);
+            }
+
+            return;
+        }
+
         $communication = app(CommunicationDispatcher::class)->dispatch(
-            $rule->template->key,
+            $templateKey,
             ['type' => 'scheduled_rule', 'id' => (string) $rule->id],
             $recipients,
             [],
