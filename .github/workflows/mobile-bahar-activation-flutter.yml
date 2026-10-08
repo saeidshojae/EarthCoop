@@ -13,6 +13,7 @@ on:
       - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_dto_test.dart'
       - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_controller_test.dart'
       - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_screen_test.dart'
+      - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_repository_test.dart'
       - '.github/workflows/mobile-bahar-activation-flutter.yml'
 
 permissions:
@@ -43,6 +44,9 @@ jobs:
         working-directory: apps/mobile
       - name: Activation native screen contract
         run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_screen_test.dart
+        working-directory: apps/mobile
+      - name: Activation repository transport contract
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_repository_test.dart
         working-directory: apps/mobile
       - name: Flutter static analysis
         run: flutter analyze
