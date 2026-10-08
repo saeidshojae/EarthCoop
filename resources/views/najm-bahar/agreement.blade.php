@@ -2764,11 +2764,20 @@
 
 
 
+        @php
+            $legalFinancialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
+                ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
+                : null;
+        @endphp
         {{-- Proposed legal text is intentionally not treated as an already accepted agreement. --}}
         <section class="agreement-card space-y-6 fade-in-section" id="published-najm-bahar-agreement">
             <h2 class="text-2xl font-bold">توافقنامه مالی و پولی نجم‌بهار</h2>
             <p class="agreement-note">متن انتشار اولیه ـ مواد به‌صورت مستقل و قابل مطالعه نمایش داده می‌شوند. پذیرش مالی مستقل از ثبت‌نام EarthCoop است.</p>
-            @include('partials.legal.structured-document', ['sourcePath' => 'legal/najm-bahar-agreement.fa.md'])
+            @if($legalFinancialVersion)
+                @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalFinancialVersion->content_snapshot, true)])
+            @else
+                @include('partials.legal.structured-document', ['sourcePath' => 'legal/najm-bahar-agreement.fa.md'])
+            @endif
             <nav class="ec-legal-references" aria-label="اسناد اقتصادی مرتبط">
                 @foreach(config('docs-links.foundational', []) as $document)
                     @if(in_array($document['code'], ['FC', 'CO', 'EX', 'ECON'], true))
@@ -3451,7 +3460,10 @@
 
 
 
-                    <input type="hidden" name="agreement_accepted" value="1">
+                    <input type="checkbox" name="agreement_accepted" value="1" required aria-label="تأیید مطالعه و پذیرش توافقنامه نجم‌بهار">
+                    @if($legalFinancialVersion)
+                        <input type="hidden" name="legal_version_id" value="{{ $legalFinancialVersion->id }}">
+                    @endif
 
 
 
