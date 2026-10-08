@@ -24,6 +24,19 @@ class LegalVersionController extends Controller
         ]);
     }
 
+    public function importPreview(string $slug, \App\Services\Legal\LegalMarkdownImportService $imports)
+    {
+        return view('admin.legal-versions.import-preview', ['data' => $imports->preview($slug)]);
+    }
+
+    public function import(Request $request, string $slug, \App\Services\Legal\LegalMarkdownImportService $imports)
+    {
+        $request->validate(['confirm_import' => 'required|accepted']);
+        $rootId = $imports->importToNewRoot($slug);
+        return redirect()->route('admin.legal-versions.index')
+            ->with('success', 'متن به‌صورت والد و فرزندان مستقل وارد شد (ریشه شماره ' . $rootId . '). اکنون آن را بازبینی و نسخه‌گذاری کنید.');
+    }
+
     public function createDraft(Request $request, LegalDocumentDraftService $drafts)
     {
         $data = $request->validate([
