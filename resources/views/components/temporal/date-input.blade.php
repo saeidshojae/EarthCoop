@@ -15,9 +15,10 @@
             aria-haspopup="dialog"
         @endif
         @if($required) required @endif
+        @if($disabled) disabled @endif
         {{ $attributes }}
     />
-    @if($calendar() === 'jalali' && ! $attributes->has('disabled'))
+    @if($calendar() === 'jalali' && ! $disabled)
         <button
             type="button"
             class="temporal-picker-trigger"
