@@ -122,3 +122,9 @@ New negative contract test commit `f92d72cdbc2bc6d8e5d8774cc492f267814f9853`: re
 Controller hardening commit `28b65f1965b6e5f4fc41ddb4762ce421055e3633`: receipt integers are now type-checked strictly; actual completed Najm transaction must match conversion id, amount, idempotency key, participation metadata and owner. The owned ledger projection is compared to the stored receipt instead of trusting a client-facing transaction id alone. GET remains read-only. Caveat: PHP/MySQL JSON attribute matching and full projection equality need real MySQL PHPUnit evidence.
 
 At last poll, run `37828424933` for the new RED test source was in progress; no completed run on the controller hardening commit had been observed. Tasks 3 and 7 are not yet green; additional negative tests for cross-user, route scope, incomplete and foreign records remain required. Do not publish/merge financial code from this checkpoint.
+
+## 2026-10-08 — Security CI and isolation regressions
+
+Run 37828462659 on commit 28b65f1965b6e5f4fc41ddb4762ce421055e3633 completed successfully: activation contract 12 tests / 154 assertions and financial boundary 1 test / 1 assertion (each reported one PHPUnit deprecation). It verifies strict receipt value checks and ledger match at this source SHA, but not the newly added negative test.
+
+Commit 0cd857839c013444f44b41dc160d78ac4aa803ed added a new API contract asserting foreign authenticated users cannot recover another user's activation and changing the stored idempotency scope to the transfer route must prevent recovery. This needs its own CI green before Task 3 can be closed. Financial concurrency audit and Flutter Tasks 4–6 remain open. No +19 signed artifact or main/production deployment.
