@@ -481,16 +481,6 @@ class _GroupsRuntimeViewState extends State<_GroupsRuntimeView> {
   void initState() {
     super.initState();
     _controller.addListener(_refresh);
-    _activation = NajmBaharActivationController(
-      widget.repository,
-      sessionChanges: widget.sessionChanges,
-      onSessionInvalidated: _invalidateAll,
-      refreshFinancialViews: () => Future.wait<void>([
-        _controller.refreshAccount(),
-        _controller.refreshHistory(),
-        _policies.refreshActivation(),
-      ]),
-    );
     unawaited(_controller.load());
   }
 
@@ -671,6 +661,16 @@ class _NajmBaharRuntimeViewState extends State<_NajmBaharRuntimeView> {
     );
     unawaited(_controller.load());
     unawaited(_policies.load());
+    _activation = NajmBaharActivationController(
+      widget.repository,
+      sessionChanges: widget.sessionChanges,
+      onSessionInvalidated: _invalidateAll,
+      refreshFinancialViews: () => Future.wait<void>([
+        _controller.refreshAccount(),
+        _controller.refreshHistory(),
+        _policies.refreshActivation(),
+      ]),
+    );
     unawaited(_payment.prepare());
     unawaited(_transfer.prepare());
     unawaited(_activation.prepare());
