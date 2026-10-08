@@ -160,3 +160,9 @@ CI run 37832801310 failed only on Dart format; its diagnostics printed the exact
 ## Verified Flutter targeted GREEN — 2026-10-08
 
 CI run 37833939486 on commit 4b52734c75ebc537c984a4b3be12f473a64a838b finished SUCCESS: activation DTO 2 tests passed, activation native controller 5 tests passed, Flutter analyzer `No issues found`, formatter 4 files / 0 changes. This closes the *focused implementation test and format* gate for controller/DTO, not overall Tasks 4–7 or financial concurrency. Repository transport boundary tests, native screen integration, final Android test/build and deployment reconciliation are still outstanding. No +19 APK or main/production deployment.
+
+## 2026-10-08 — Task 6 native RTL UI integration candidate
+
+Created Persian RTL `NajmBaharActivationSection` on `71223eab7be19ec602abfac8547bf76264bf0115`: eligibility and exact point multiples, read-only preview, explicit review/confirm, submitting, successful receipt/tracking, definite failure refresh, and unknown result with GET reconciliation plus clearly distinguished same-intent retry. Wired into `NajmBaharScreen` in `5c194e8d80de04c15196476375c1b06e0d6ba49a` and production mobile runtime in `52b1f2d75f9b74f04b3a14c34cccb6d93440151a`; controller loads, refreshes balance/history/policy after success, and invalidates on session changes. Scoped Flutter workflow extended in `5ceca20b398083796a9c226725fc11a8962bccb5`.
+
+Status: **UI source candidate, not verified GREEN**. The last observed passing run 37833939486 predates these UI/runtime commits. Need targeted widget tests covering explicit confirmation, small-screen/RTL, disabled eligibility and unknown outcome; canonical Dart format, analyzer, repository tests and full Flutter gate. Task 2 transactional concurrency review and safe main reconciliation remain mandatory. No +19 APK/production changes.
