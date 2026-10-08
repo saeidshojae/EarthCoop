@@ -77,8 +77,7 @@ class _NajmBaharActivationSectionState
                   'نتیجه درخواست هنوز قطعی نیست. درخواست مالی تازه‌ای ثبت نکنید.',
                   key: Key('activation-unknown-message'),
                 ),
-                if (c.failure != null)
-                  Text('کد وضعیت: ${c.failure!.code}'),
+                if (c.failure != null) Text('کد وضعیت: ${c.failure!.code}'),
                 OutlinedButton(
                   key: const Key('activation-reconcile'),
                   onPressed: () => unawaited(c.reconcile()),
@@ -96,7 +95,8 @@ class _NajmBaharActivationSectionState
               ] else if (state == NajmBaharActivationState.confirmed &&
                   c.receipt != null) ...[
                 const SizedBox(height: 12),
-                Text('فعال‌سازی ${formatGol(c.receipt!.activatedGol)} انجام شد.'),
+                Text(
+                    'فعال‌سازی ${formatGol(c.receipt!.activatedGol)} انجام شد.'),
                 SelectableText(
                   'شماره پیگیری: ${c.receipt!.transaction.trackingNumber}',
                   textDirection: TextDirection.ltr,
@@ -128,7 +128,8 @@ class _NajmBaharActivationSectionState
                   onPressed: c.cancelReview,
                   child: const Text('بازگشت'),
                 ),
-              ] else if (state == NajmBaharActivationState.definiteRejected) ...[
+              ] else if (state ==
+                  NajmBaharActivationState.definiteRejected) ...[
                 const SizedBox(height: 12),
                 const Text('درخواست انجام نشد. شرایط تازه را دریافت کنید.'),
                 if (c.failure != null) Text('کد وضعیت: ${c.failure!.code}'),
@@ -152,7 +153,8 @@ class _NajmBaharActivationSectionState
                   'بهار کمرنگ قابل فعال‌سازی: ${formatGol(terms.maxActivationGol)}',
                 ),
                 if (terms.maxActivationPoints == 0)
-                  const Text('در حال حاضر امکان فعال‌سازی از امتیاز وجود ندارد.')
+                  const Text(
+                      'در حال حاضر امکان فعال‌سازی از امتیاز وجود ندارد.')
                 else ...[
                   TextField(
                     key: const Key('activation-points-input'),
