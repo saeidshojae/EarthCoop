@@ -3397,31 +3397,26 @@
 
 
 
-        {{-- Proposed legal texts: visibly separate from the existing database-managed acceptance contract. --}}
-        <section class="accordion-wrapper p-6 md:p-8 space-y-6 fade-up" id="proposed-legal-texts" aria-labelledby="proposed-legal-heading">
-            <div class="space-y-2">
-                <h2 id="proposed-legal-heading" class="text-2xl font-bold text-gentle-black">متون پیشنهادی عضویت و استفاده</h2>
-                <p class="text-slate-700">نسخه ۱.۰ — پیش‌نویس آماده تصویب. تا زمان تکمیل مشخصات طرف قرارداد و تصویب رسمی، این بخش جایگزین متن لازم‌الاجرای جاری و سوابق پذیرش کاربران نیست.</p>
-            </div>
-            <div class="space-y-3">
-                <details class="accordion-item" open>
-                    <summary class="accordion-header-btn text-right font-bold">اساسنامه بین‌المللی عضویت EarthCoop</summary>
-                    <div class="p-5 md:p-7 prose prose-lg max-w-none text-right" dir="rtl">
-                        {!! \Illuminate\Support\Str::markdown(file_get_contents(resource_path('legal/earthcoop-membership-statute.fa.md')), ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
-                    </div>
-                </details>
-                <details class="accordion-item">
-                    <summary class="accordion-header-btn text-right font-bold">شرایط استفاده از خدمات EarthCoop</summary>
-                    <div class="p-5 md:p-7 prose prose-lg max-w-none text-right" dir="rtl">
-                        {!! \Illuminate\Support\Str::markdown(file_get_contents(resource_path('legal/earthcoop-terms-of-use.fa.md')), ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
-                    </div>
-                </details>
-            </div>
-            <nav class="flex flex-wrap gap-3" aria-label="اسناد بنیادین مرتبط">
+        {{-- The publication text is shown before any previously stored admin-configured clauses. --}}
+        <section class="accordion-wrapper p-6 md:p-8 space-y-6 fade-up" id="published-legal-texts">
+            <header class="space-y-3">
+                <h2 class="text-2xl font-bold text-gentle-black">اساسنامه عضویت و شرایط استفاده</h2>
+                <p class="text-slate-700">متن‌های انتشار اولیه ـ هر ماده را جداگانه باز کنید و بخوانید. توافقنامه نجم‌بهار مستقل است.</p>
+            </header>
+            <details class="ec-legal-volume" open>
+                <summary class="ec-legal-volume-title">اساسنامه بین‌المللی عضویت EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-membership-statute.fa.md'])
+            </details>
+            <details class="ec-legal-volume">
+                <summary class="ec-legal-volume-title">شرایط استفاده از خدمات EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-terms-of-use.fa.md'])
+            </details>
+            <nav class="ec-legal-references" aria-label="متن کامل اسناد بنیادین">
+                <h3 class="font-bold">اسناد بنیادین و مرجع</h3>
                 @foreach(config('docs-links.foundational', []) as $document)
-                    <a class="text-earth-green underline hover:text-dark-green" href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
+                    <a href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
                 @endforeach
-                <a class="text-earth-green underline hover:text-dark-green" href="{{ config('docs-links.foundational_index.href') }}" target="_blank" rel="noopener noreferrer">فهرست و متن کامل اسناد بنیادین</a>
+                <a href="{{ config('docs-links.foundational_index.href') }}" target="_blank" rel="noopener noreferrer">فهرست اسناد بنیادین</a>
             </nav>
         </section>
 
