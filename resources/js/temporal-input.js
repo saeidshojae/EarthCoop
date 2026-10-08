@@ -171,21 +171,27 @@ export const storedBirthDateParts = (input) => {
     return [year, month, day];
 };
 
-const navigateBirthPickerToStoredDate = (input, picker) => {
+// Only adjust the visible calendar page; never call setDate/onSelect.
+export const navigateBirthPickerView = (input, picker, PersianDate = window.persianDate) => {
     const parts = storedBirthDateParts(input);
-    const PersianDate = window.persianDate;
-    if (!parts || typeof picker?.setDate !== 'function' || typeof PersianDate !== 'function') return;
+    const state = picker?.model?.state;
+    const view = picker?.model?.view;
+    if (!parts || typeof PersianDate !== 'function'
+        || typeof state?.setViewDateTime !== 'function'
+        || typeof view?.render !== 'function') return false;
+
     try {
-        const date = new PersianDate(parts).toDate();
-        const timestamp = date?.getTime?.();
-        if (!Number.isFinite(timestamp)) return;
-        const current = input.value;
-        picker.setDate(timestamp);
-        // setDate updates the selected view, but may also write the visible input.
-        // Preserve the server-provided birth date until the user selects a new day.
-        if (input.value !== current) input.value = current;
+        const timestamp = new PersianDate(parts).toDate().getTime();
+        if (!Number.isFinite(timestamp)) return false;
+        const originalValue = input.value;
+        state.setViewDateTime('unix', timestamp);
+        view.render();
+        // No date-selection callback or input assignment is invoked here.
+        if (input.value !== originalValue) input.value = originalValue;
+        return true;
     } catch (error) {
         console.warn('EarthCoop birth-date calendar navigation skipped:', error);
+        return false;
     }
 };
 
@@ -199,7 +205,7 @@ const bindPickerTrigger = (input, picker) => {
 
         if (picker && typeof picker.show === 'function') {
             if (input.dataset.temporalBirthPickerPositioned !== 'true') {
-                navigateBirthPickerToStoredDate(input, picker);
+                navigateBirthPickerView(input, picker);
                 input.dataset.temporalBirthPickerPositioned = 'true';
             }
             picker.show();
