@@ -164,7 +164,9 @@ export const storedBirthDateParts = (input) => {
     });
     const match = /^([0-9]{4})\/([0-9]{2})\/([0-9]{2})$/.exec(normalized);
     if (!match) return null;
-    const [, year, month, day] = match.map(Number);
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
     if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
     return [year, month, day];
 };
