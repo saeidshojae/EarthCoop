@@ -1,3 +1,4 @@
+import '../css/temporal-picker.css';
 import $ from 'jquery';
 
 const GREGORIAN_MONTHS = [
