@@ -37,25 +37,33 @@ void main() {
     await showActivation(tester, controller);
 
     expect(
-      tester.widget<Directionality>(
-        find.descendant(
-          of: find.byType(NajmBaharActivationSection),
-          matching: find.byType(Directionality),
-        ).first,
-      ).textDirection,
+      tester
+          .widget<Directionality>(
+            find
+                .descendant(
+                  of: find.byType(NajmBaharActivationSection),
+                  matching: find.byType(Directionality),
+                )
+                .first,
+          )
+          .textDirection,
       TextDirection.rtl,
     );
-    await tester.enterText(find.byKey(const Key('activation-points-input')), '250');
+    await tester.enterText(
+        find.byKey(const Key('activation-points-input')), '250');
     await tester.pump();
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('activation-review')))
+      tester
+          .widget<FilledButton>(find.byKey(const Key('activation-review')))
           .onPressed,
       isNull,
     );
-    await tester.enterText(find.byKey(const Key('activation-points-input')), '200');
+    await tester.enterText(
+        find.byKey(const Key('activation-points-input')), '200');
     await tester.pump();
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('activation-review')))
+      tester
+          .widget<FilledButton>(find.byKey(const Key('activation-review')))
           .onPressed,
       isNotNull,
     );
@@ -75,7 +83,8 @@ void main() {
     addTearDown(controller.dispose);
     await tester.runAsync(controller.prepare);
     await showActivation(tester, controller);
-    await tester.enterText(find.byKey(const Key('activation-points-input')), '200');
+    await tester.enterText(
+        find.byKey(const Key('activation-points-input')), '200');
     await tester.pump();
     await tester.tap(find.byKey(const Key('activation-review')));
     await tester.pump();
