@@ -23,8 +23,10 @@ class NajmBaharActivationTerms {
   NajmBaharActivationTerms.fromJson(Object? raw) {
     final d = _object(raw);
     contractVersion = _int(d, 'activation_contract_version', minimum: 1);
-    if (contractVersion != 1 || d['source'] != 'participation' ||
-        d['enabled'] is! bool || d['enabled'] != true ||
+    if (contractVersion != 1 ||
+        d['source'] != 'participation' ||
+        d['enabled'] is! bool ||
+        d['enabled'] != true ||
         d['policy_source'] is! String) {
       throw const FormatException('Unsupported activation contract');
     }
@@ -57,20 +59,25 @@ class NajmBaharActivationTerms {
     }
   }
 
-  late final int contractVersion, remainingPoints, pointsPerGol,
-      maxConvertiblePoints, maxActivationPoints, maxActivationGol,
-      dimAvailableGol, activeGol;
+  late final int contractVersion,
+      remainingPoints,
+      pointsPerGol,
+      maxConvertiblePoints,
+      maxActivationPoints,
+      maxActivationGol,
+      dimAvailableGol,
+      activeGol;
   late final int? policyVersionId, policyVersion;
 
   Map<String, Object?> expectedJson() => {
-    'activation_contract_version': contractVersion,
-    'policy_version_id': policyVersionId,
-    'policy_version': policyVersion,
-    'conversion_ratio_points_per_gol': pointsPerGol,
-    'remaining_convertible_points': remainingPoints,
-    'dim_available_gol': dimAvailableGol,
-    'max_activation_gol': maxActivationGol,
-  };
+        'activation_contract_version': contractVersion,
+        'policy_version_id': policyVersionId,
+        'policy_version': policyVersion,
+        'conversion_ratio_points_per_gol': pointsPerGol,
+        'remaining_convertible_points': remainingPoints,
+        'dim_available_gol': dimAvailableGol,
+        'max_activation_gol': maxActivationGol,
+      };
 }
 
 class NajmBaharActivationIntent {
@@ -79,7 +86,8 @@ class NajmBaharActivationIntent {
     required this.points,
     required this.key,
   }) {
-    if (points <= 0 || points % terms.pointsPerGol != 0 ||
+    if (points <= 0 ||
+        points % terms.pointsPerGol != 0 ||
         points > terms.maxActivationPoints) {
       throw ArgumentError.value(points, 'points');
     }
@@ -93,10 +101,10 @@ class NajmBaharActivationIntent {
   int get amountGol => points ~/ terms.pointsPerGol;
 
   Map<String, Object?> toJson() => {
-    'source': 'participation',
-    'points': points,
-    'expected': terms.expectedJson(),
-  };
+        'source': 'participation',
+        'points': points,
+        'expected': terms.expectedJson(),
+      };
 }
 
 class NajmBaharActivationReceipt {
