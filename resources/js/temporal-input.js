@@ -169,7 +169,7 @@ const loadBundledPersianDatepicker = async () => {
     return persianDatepickerPromise;
 };
 
-const jalaliPickerOptions = (input) => {
+export const jalaliPickerOptions = (input) => {
     const isDateTime = input.matches('[data-temporal-datetime-input]');
     const options = {
         format: isDateTime ? 'YYYY/MM/DD HH:mm' : 'YYYY/MM/DD',
