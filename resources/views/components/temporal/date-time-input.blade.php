@@ -1,4 +1,4 @@
-<div class="temporal-picker-control" data-temporal-picker-field>
+<span class="temporal-picker-control" data-temporal-picker-field>
     <input
         type="{{ $inputType() }}"
         id="{{ $resolvedId() }}"
@@ -31,7 +31,7 @@
             <i class="fas fa-calendar-alt" aria-hidden="true"></i>
         </button>
     @endif
-</div>
+</span>
 @if($calendar() === 'jalali')
     <small id="{{ $resolvedId() }}-format-hint" class="text-muted" data-temporal-datetime-hint>
         تاریخ و ساعت را از تقویم انتخاب کنید؛ ورود دستی نیز با قالب سال/ماه/روز ساعت:دقیقه ممکن است.
