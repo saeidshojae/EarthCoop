@@ -125,7 +125,8 @@ if ($mode === 'verify') {
         $conversions->where('status', 'applied')->count() !== 1 ||
         $consumed !== 200 || (int) $account->balance_active !== 7 ||
         (int) $account->balance_faded !== 8 || (int) $account->balance !== 15) {
-        throw new RuntimeException('Parallel activation invariant violated');
+        fwrite(STDERR, 'Parallel activation invariant violated'.PHP_EOL);
+        exit(41);
     }
     exit(0);
 }
