@@ -66,7 +66,7 @@ const loadMemberInvitationRuntime = () => { if (document.querySelector('.invite-
 const loadProjectFormMobileRuntime = () => { const path = window.location.pathname.replace(/\/+$/, '') || '/'; if (path === '/najm-bahar/projects/create' || /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path)) importFeature(() => import("./project-form-mobile.js"), "project form mobile UX"); };
 const loadTemporalInputRuntime = () => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
+    const hasTemporalInputs = Boolean(document.querySelector('[data-temporal-date-input], [data-temporal-datetime-input], [data-temporal-date], [data-temporal-datetime], select[name="birth_date[]"]'));
     const hasLegacyNajmBaharAnalyticsFilters = path === '/admin/najm-bahar/analytics';
     if (hasTemporalInputs || hasLegacyNajmBaharAnalyticsFilters) importFeature(() => import("./temporal-input.js"), "temporal input");
 };
