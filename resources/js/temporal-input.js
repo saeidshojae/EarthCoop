@@ -135,7 +135,8 @@ export const jalaliPickerOptions = (input) => {
     const isDateTime = input.matches('[data-temporal-datetime-input]');
     const options = {
         format: isDateTime ? 'YYYY/MM/DD HH:mm' : 'YYYY/MM/DD',
-        initialValue: Boolean(input.value),
+        // Never let plugin initialization replace a server-rendered date with today.
+        initialValue: false,
         initialValueType: 'persian',
         autoClose: true,
         observer: true,
@@ -189,7 +190,11 @@ export const enhanceJalaliDateInputs = async (root = document) => {
             return;
         }
 
+        const originalValue = input.value;
         const picker = $input.persianDatepicker(jalaliPickerOptions(input));
+        // The installed legacy picker can still write to the field on init.
+        // Restore the original DOM value; actual user selection remains enabled.
+        if (input.value !== originalValue) input.value = originalValue;
         $input.data('temporalDatepickerReady', true);
         $input.data('temporalDatepickerInstance', picker);
         input.dataset.temporalPickerReady = 'true';
