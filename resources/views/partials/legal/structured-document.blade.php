@@ -1,9 +1,9 @@
 {{-- Long legal texts are split at second-level Markdown headings into accessible, independent clauses. --}}
 @php
     $source = file_get_contents(resource_path($sourcePath));
-    $parts = preg_split('/(?=^##\\s+)/mu', $source, -1, PREG_SPLIT_NO_EMPTY);
+    $parts = preg_split('/(?=^##\s+)/mu', $source, -1, PREG_SPLIT_NO_EMPTY);
     $intro = array_shift($parts);
-    $renderMarkdown = static fn (string $value) => IlluminateSupportStr::markdown($value, ['html_input' => 'strip', 'allow_unsafe_links' => false]);
+    $renderMarkdown = static fn (string $value) => \Illuminate\Support\Str::markdown($value, ['html_input' => 'strip', 'allow_unsafe_links' => false]);
 @endphp
 <div class="ec-legal-document" dir="rtl">
     <div class="ec-legal-document-intro prose max-w-none">{!! $renderMarkdown($intro) !!}</div>
@@ -11,7 +11,7 @@
         @foreach($parts as $index => $part)
             @php
                 $lines = explode("\n", $part, 2);
-                $heading = trim(preg_replace('/^##\\s+/u', '', $lines[0]));
+                $heading = trim(preg_replace('/^##\s+/u', '', $lines[0]));
                 $body = $lines[1] ?? '';
             @endphp
             <details class="ec-legal-clause" @if($index === 0) open @endif>
