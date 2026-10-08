@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use App\Models\UserPointConversion;
 
 class NajmBaharActivationController extends Controller
 {
@@ -38,6 +40,53 @@ class NajmBaharActivationController extends Controller
         } catch (ModelNotFoundException) {
             return $this->notFound();
         }
+    }
+
+    public function byIdempotency(Request $request, string $key): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return ApiResponse::error('unauthenticated', 'Authentication required.', 401);
+        }
+
+        if (! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $key)) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => ['Invalid idempotency key.'],
+            ]);
+        }
+
+        $record = DB::table('api_v1_idempotency_keys')
+            ->where('actor_key', 'user:'.$user->getAuthIdentifier())
+            ->where('scope', 'api.v1.najm-bahar.activation.store')
+            ->where('idempotency_key', $key)
+            ->where('state', 'completed')
+            ->where('response_status', 201)
+            ->first();
+
+        $conversion = UserPointConversion::query()
+            ->where('user_id', (int) $user->id)
+            ->where('request_key', $key)
+            ->where('status', 'applied')
+            ->first();
+
+        if ($record === null || $conversion === null) {
+            return $this->notFound();
+        }
+
+        $body = json_decode((string) $record->response_body, true);
+        $data = is_array($body) ? ($body['data'] ?? null) : null;
+        if (! is_array($data)
+            || ($body['status'] ?? null) !== 'success'
+            || ($data['source'] ?? null) !== 'participation'
+            || (int) ($data['requested_points'] ?? 0) !== (int) $conversion->requested_points
+            || (int) ($data['consumed_points'] ?? 0) !== (int) $conversion->consumed_points
+            || (int) ($data['activated_gol'] ?? 0) !== (int) $conversion->amount_gol
+            || ! is_array($data['transaction'] ?? null)
+            || empty($data['transaction']['id'])) {
+            return $this->notFound();
+        }
+
+        return ApiResponse::success($data);
     }
 
     public function store(Request $request): JsonResponse
