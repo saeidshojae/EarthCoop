@@ -169,9 +169,49 @@ const loadBundledPersianDatepicker = async () => {
     return persianDatepickerPromise;
 };
 
+const jalaliPickerOptions = (input) => {
+    const isDateTime = input.matches('[data-temporal-datetime-input]');
+    const options = {
+        format: isDateTime ? 'YYYY/MM/DD HH:mm' : 'YYYY/MM/DD',
+        initialValue: Boolean(input.value),
+        autoClose: true,
+        observer: true,
+        calendar: { persian: { locale: 'fa' } },
+    };
+
+    if (isDateTime) {
+        options.timePicker = {
+            enabled: true,
+            meridiem: { enabled: false },
+        };
+    }
+
+    return options;
+};
+
+const bindPickerTrigger = (input, picker) => {
+    const field = input.closest('[data-temporal-picker-field]');
+    const trigger = field?.querySelector('[data-temporal-picker-trigger]');
+    if (!trigger || trigger.dataset.temporalPickerTriggerReady === 'true') return;
+
+    trigger.addEventListener('click', () => {
+        if (input.disabled) return;
+        input.focus();
+
+        if (picker && typeof picker.show === 'function') {
+            picker.show();
+            return;
+        }
+
+        temporalJQuery(input).trigger('click');
+    });
+
+    trigger.dataset.temporalPickerTriggerReady = 'true';
+};
+
 export const enhanceJalaliDateInputs = async (root = document) => {
     const inputs = [...root.querySelectorAll(
-        '[data-temporal-date-input][data-calendar="jalali"], [data-temporal-date][data-calendar="jalali"]',
+        '[data-temporal-date-input][data-calendar="jalali"], [data-temporal-datetime-input][data-calendar="jalali"]',
     )];
     if (inputs.length === 0) return false;
 
@@ -180,15 +220,16 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 
     inputs.forEach((input) => {
         const $input = temporalJQuery(input);
-        if ($input.data('temporalDatepickerReady')) return;
+        if ($input.data('temporalDatepickerReady')) {
+            bindPickerTrigger(input, $input.data('temporalDatepickerInstance'));
+            return;
+        }
 
-        $input.persianDatepicker({
-            format: 'YYYY/MM/DD',
-            initialValue: Boolean(input.value),
-            autoClose: true,
-            calendar: { persian: { locale: 'fa' } },
-        });
+        const picker = $input.persianDatepicker(jalaliPickerOptions(input));
         $input.data('temporalDatepickerReady', true);
+        $input.data('temporalDatepickerInstance', picker);
+        input.dataset.temporalPickerReady = 'true';
+        bindPickerTrigger(input, picker);
     });
 
     return true;
@@ -205,15 +246,41 @@ export const enhanceTemporalInputs = async (root = document) => {
 };
 
 if (typeof document !== 'undefined') {
-    const run = () => {
-        void enhanceTemporalInputs(document).catch((error) => {
+    const run = (root = document) => {
+        void enhanceTemporalInputs(root).catch((error) => {
             console.warn('EarthCoop temporal input enhancement failed; manual date entry remains available.', error);
         });
     };
 
+    const observeDynamicTemporalInputs = () => {
+        if (typeof MutationObserver === 'undefined' || !document.body) return;
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (!(node instanceof Element)) continue;
+
+                    if (
+                        node.matches?.('[data-temporal-date-input], [data-temporal-datetime-input]')
+                        || node.querySelector?.('[data-temporal-date-input], [data-temporal-datetime-input]')
+                    ) {
+                        run(node.matches?.('[data-temporal-date-input], [data-temporal-datetime-input]') ? node.parentElement || node : node);
+                    }
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    const boot = () => {
+        run(document);
+        observeDynamicTemporalInputs();
+    };
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', run, { once: true });
+        document.addEventListener('DOMContentLoaded', boot, { once: true });
     } else {
-        run();
+        boot();
     }
 }
