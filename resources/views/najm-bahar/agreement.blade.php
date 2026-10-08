@@ -2788,7 +2788,7 @@
             </nav>
         </section>
 
-        <section class="agreement-card space-y-6 fade-in-section">
+        <section class="agreement-card space-y-6 fade-in-section" @if($legalFinancialVersion) hidden @endif>
 
 
 
