@@ -511,6 +511,40 @@ class NajmBaharActivationContractTest extends TestCase
             ->assertNotFound()->assertJsonPath('error.code', 'not_found');
     }
 
+    public function test_activation_reconciliation_rejects_foreign_user_and_wrong_route_scope(): void
+    {
+        [$owner, $ownerToken, $ownerDevice] = $this->nativeSession();
+        $this->accountFor($owner, active: 0, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($owner, 300);
+        $key = 'native-reconcile-scope-0001';
+        $expected = $this->bearer($ownerToken, $ownerDevice)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')->assertOk()->json('data');
+
+        $this->bearer($ownerToken, $ownerDevice)->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/najm-bahar/activation', [
+                'source' => 'participation',
+                'points' => 200,
+                'expected' => array_intersect_key($expected, array_flip([
+                    'activation_contract_version', 'policy_version_id', 'policy_version',
+                    'conversion_ratio_points_per_gol', 'remaining_convertible_points',
+                    'dim_available_gol', 'max_activation_gol',
+                ])),
+            ])->assertCreated();
+
+        $url = '/api/v1/najm-bahar/activation/by-idempotency/'.$key;
+        [$other, $otherToken, $otherDevice] = $this->nativeSession();
+        $this->bearer($otherToken, $otherDevice)->getJson($url)
+            ->assertNotFound()->assertJsonPath('error.code', 'not_found');
+
+        DB::table('api_v1_idempotency_keys')
+            ->where('actor_key', 'user:'.$owner->id)
+            ->where('idempotency_key', $key)
+            ->update(['scope' => 'api.v1.najm-bahar.transfers.store']);
+        $this->bearer($ownerToken, $ownerDevice)->getJson($url)
+            ->assertNotFound()->assertJsonPath('error.code', 'not_found');
+    }
+
     private function accountFor(User $user, int $active, int $dim): Account
     {
         $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
