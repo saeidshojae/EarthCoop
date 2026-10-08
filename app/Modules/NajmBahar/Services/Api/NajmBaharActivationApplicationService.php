@@ -121,6 +121,10 @@ class NajmBaharActivationApplicationService
             $conversionKey,
             $expected,
         ) {
+            // Serialize all activation intents for the same user before reading
+            // eligibility. A locking read also avoids a pre-lock MVCC snapshot.
+            User::query()->whereKey((int) $user->id)->lockForUpdate()->firstOrFail();
+
             if ($expected !== null) {
                 // Fail closed before creating any financial or point-consumption identity.
                 // Eligibility is reevaluated within the transaction for the same user.
