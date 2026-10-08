@@ -7,6 +7,7 @@ import {
     gregorianBirthYears,
     jalaliPickerOptions,
     localeFromCookie,
+    resolvedLocale,
 } from '../../../resources/js/temporal-input.js';
 
 test('base locale normalizes regional variants', () => {
@@ -27,6 +28,23 @@ test('server locale cookie can override stale hard-coded html lang', () => {
     assert.equal(localeFromCookie('foo=bar; earthcoop_locale=en; theme=dark'), 'en');
     assert.equal(localeFromCookie('earthcoop_locale=fa-IR'), 'fa-IR');
     assert.equal(localeFromCookie('foo=bar'), '');
+});
+
+test('encrypted Laravel locale cookie falls back to valid HTML language', () => {
+    const priorDocument = globalThis.document;
+    globalThis.document = {
+        cookie: 'earthcoop_locale=eyJpdiI6ImVuY3J5cHRlZCIsInZhbHVlIjoiLi4uIn0%3D',
+        documentElement: { lang: 'fa' },
+    };
+    try {
+        assert.equal(resolvedLocale(), 'fa');
+        assert.equal(calendarForLocale(resolvedLocale()), 'jalali');
+        globalThis.document.cookie = 'earthcoop_locale=en';
+        assert.equal(resolvedLocale(), 'en');
+    } finally {
+        if (priorDocument === undefined) delete globalThis.document;
+        else globalThis.document = priorDocument;
+    }
 });
 
 test('Gregorian birth year range begins at exact minimum-age year', () => {
