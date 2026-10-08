@@ -136,6 +136,7 @@ export const jalaliPickerOptions = (input) => {
     const options = {
         format: isDateTime ? 'YYYY/MM/DD HH:mm' : 'YYYY/MM/DD',
         initialValue: Boolean(input.value),
+        initialValueType: 'persian',
         autoClose: true,
         observer: true,
         viewMode: input.name === 'birth_date' && !input.value ? 'year' : 'day',
