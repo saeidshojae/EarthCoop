@@ -18,8 +18,7 @@ void main() {
     final terms = await f.repository(adapter).activationTerms();
     expect(terms.maxActivationPoints, 300);
     expect(adapter.requests.map((r) => r.method), ['GET']);
-    expect(adapter.requests.single.path,
-        '/najm-bahar/activation/eligibility');
+    expect(adapter.requests.single.path, '/najm-bahar/activation/eligibility');
   });
 
   test('activation POST carries exact terms, key and does not retry', () async {
@@ -59,8 +58,7 @@ void main() {
     expect(adapter.requests.length, 1);
   });
 
-  test('reconciliation uses GET only and rejects mismatched receipt',
-      () async {
+  test('reconciliation uses GET only and rejects mismatched receipt', () async {
     final value = intent();
     final adapter = f.BoundaryAdapter((_) => f.envelope(fixture.receipt()));
     final result = await f.repository(adapter).reconcileActivation(value);
@@ -81,10 +79,11 @@ void main() {
       return f.envelope(fixture.receipt());
     });
     await expectLater(
-      f.repository(adapter, current: () => current)
+      f
+          .repository(adapter, current: () => current)
           .activateParticipation(intent()),
-      throwsA(isA<ApiFailure>()
-          .having((e) => e.code, 'code', 'session_changed')),
+      throwsA(
+          isA<ApiFailure>().having((e) => e.code, 'code', 'session_changed')),
     );
     expect(adapter.requests.length, 1);
   });
