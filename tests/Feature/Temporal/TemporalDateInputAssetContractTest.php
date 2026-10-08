@@ -219,7 +219,7 @@ class TemporalDateInputAssetContractTest extends TestCase
     {
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString("import $ from 'persian-datepicker/node_modules/jquery';", $runtime);
+        $this->assertStringContainsString("import $ from 'persian-datepicker/node_modules/jquery/dist/jquery.js';", $runtime);
         $this->assertStringContainsString('const temporalJQuery = $;', $runtime);
         $lock = json_decode(file_get_contents(base_path('package-lock.json')), true, 512, JSON_THROW_ON_ERROR);
         $this->assertSame('2.2.0', $lock['packages']['node_modules/persian-datepicker/node_modules/jquery']['version']);
