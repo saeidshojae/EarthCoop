@@ -337,10 +337,10 @@ class NajmBaharActivationContractTest extends TestCase
 
     public function test_native_activation_rejects_changed_points_and_dim_snapshots_without_mutation(): void
     {
-        foreach (['points', 'dim'] as $changed) {
+        foreach (['points', 'dim'] as $index => $changed) {
             [$user, $token, $deviceId] = $this->nativeSession();
             $account = $this->accountFor($user, active: 0, dim: 10);
-            $this->enableParticipationConversion(ratio: 100);
+            $this->enableParticipationConversion(ratio: 100, version: $index + 1);
             $this->awardConvertibleParticipationPoints($user, 350);
 
             $expected = $this->bearer($token, $deviceId)
@@ -453,10 +453,10 @@ class NajmBaharActivationContractTest extends TestCase
         ]);
     }
 
-    private function enableParticipationConversion(int $ratio, bool $enabled = true): MonetaryPolicyVersion
+    private function enableParticipationConversion(int $ratio, bool $enabled = true, int $version = 1): MonetaryPolicyVersion
     {
         return MonetaryPolicyVersion::create([
-            'version' => 1,
+            'version' => $version,
             'status' => 'active',
             'parameters' => [
                 'reputation_conversion_enabled' => $enabled,
