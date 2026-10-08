@@ -162,7 +162,7 @@ export const storedBirthDateParts = (input) => {
         const code = digit.charCodeAt(0);
         return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
     });
-    const match = new RegExp('^([0-9]{4})/([0-9]{2})/([0-9]{2})
+    const match = /^([0-9]{4})\/([0-9]{2})\/([0-9]{2})$/.exec(normalized);
     if (!match) return null;
     const [, year, month, day] = match.map(Number);
     if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
