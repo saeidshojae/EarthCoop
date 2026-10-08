@@ -27,14 +27,7 @@ class Step1Controller extends Controller
     public function show()
     {
         if (auth()->user()->national_id == null) {
-            $context = $this->temporalContexts->defaultContext();
-            $birthYearMax = $this->temporal->year(
-                new DateTimeImmutable('now', new DateTimeZone('UTC')),
-                $context,
-            ) - 15;
-            $birthYearMin = $birthYearMax - 135;
-
-            return view('auth.register_step1', compact('birthYearMax', 'birthYearMin'));
+            return view('auth.register_step1');
         }
 
         $checkUserHave = UserExperience::where('user_id', auth()->user()->id)->first();
