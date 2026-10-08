@@ -528,11 +528,16 @@ class NajmBaharActivationContractTest extends TestCase
 
         // A 200-point reversal after 200 points have been consumed from 300
         // must not silently create a negative participation entitlement.
-        app(\App\Services\ReputationService::class)->addPoints(
-            $user, -200, 'crosswriter_reverse_after_activation', [], null,
-            'activation_contract', 'participation', true,
-            'crosswriter-reversal-after-activation-0001'
-        );
+        try {
+            app(\App\Services\ReputationService::class)->addPoints(
+                $user, -200, 'crosswriter_reverse_after_activation', [], null,
+                'activation_contract', 'participation', true,
+                'crosswriter-reversal-after-activation-0001'
+            );
+            $this->fail('An excessive convertible reversal must be rejected.');
+        } catch (\DomainException $exception) {
+            $this->assertStringContainsString('unconsumed credit', $exception->getMessage());
+        }
 
         $consumed = (int) DB::table('user_point_consumptions')
             ->where('user_id', $user->id)->sum('points_consumed');
