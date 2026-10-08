@@ -335,6 +335,50 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(10, (int) $account->fresh()->balance_faded);
     }
 
+    public function test_native_activation_rejects_changed_points_and_dim_snapshots_without_mutation(): void
+    {
+        foreach (['points', 'dim'] as $changed) {
+            [$user, $token, $deviceId] = $this->nativeSession();
+            $account = $this->accountFor($user, active: 0, dim: 10);
+            $this->enableParticipationConversion(ratio: 100);
+            $this->awardConvertibleParticipationPoints($user, 350);
+
+            $expected = $this->bearer($token, $deviceId)
+                ->getJson('/api/v1/najm-bahar/activation/eligibility')
+                ->assertOk()->json('data');
+
+            if ($changed === 'points') {
+                $this->awardConvertibleParticipationPoints($user, 100);
+            } else {
+                $account->balance_faded = 9;
+                $account->balance = 9;
+                $account->save();
+            }
+
+            $this->bearer($token, $deviceId)
+                ->withHeader('Idempotency-Key', 'native-stale-'.$changed.'-0001')
+                ->postJson('/api/v1/najm-bahar/activation', [
+                    'source' => 'participation',
+                    'points' => 200,
+                    'expected' => [
+                        'activation_contract_version' => $expected['activation_contract_version'],
+                        'policy_version_id' => $expected['policy_version_id'],
+                        'policy_version' => $expected['policy_version'],
+                        'conversion_ratio_points_per_gol' => $expected['conversion_ratio_points_per_gol'],
+                        'remaining_convertible_points' => $expected['remaining_convertible_points'],
+                        'dim_available_gol' => $expected['dim_available_gol'],
+                        'max_activation_gol' => $expected['max_activation_gol'],
+                    ],
+                ])->assertStatus(409)
+                ->assertJsonPath('error.code', 'activation_terms_changed');
+
+            $this->assertSame(0, DB::table('user_point_conversions')->where('user_id', $user->id)->count());
+            $this->assertSame(0, DB::table('user_point_consumptions')->where('user_id', $user->id)->count());
+            $this->assertSame(0, (int) $account->fresh()->balance_active);
+            $this->assertSame($changed === 'dim' ? 9 : 10, (int) $account->fresh()->balance_faded);
+        }
+    }
+
     private function accountFor(User $user, int $active, int $dim): Account
     {
         $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
