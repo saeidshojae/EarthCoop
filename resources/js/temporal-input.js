@@ -162,7 +162,133 @@ export const storedBirthDateParts = (input) => {
         const code = digit.charCodeAt(0);
         return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
     });
-    const match = /^(\\d{4})\\/(\\d{2})\\/(\\d{2})$/.exec(normalized);
+    const match = new RegExp('^([0-9]{4})/([0-9]{2})/([0-9]{2})
+    if (!match) return null;
+    const [, year, month, day] = match.map(Number);
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
+    return [year, month, day];
+};
+
+const navigateBirthPickerToStoredDate = (input, picker) => {
+    const parts = storedBirthDateParts(input);
+    const PersianDate = window.persianDate;
+    if (!parts || typeof picker?.setDate !== 'function' || typeof PersianDate !== 'function') return;
+    try {
+        const date = new PersianDate(parts).toDate();
+        const timestamp = date?.getTime?.();
+        if (!Number.isFinite(timestamp)) return;
+        const current = input.value;
+        picker.setDate(timestamp);
+        // setDate updates the selected view, but may also write the visible input.
+        // Preserve the server-provided birth date until the user selects a new day.
+        if (input.value !== current) input.value = current;
+    } catch (error) {
+        console.warn('EarthCoop birth-date calendar navigation skipped:', error);
+    }
+};
+
+const bindPickerTrigger = (input, picker) => {
+    const field = input.closest('[data-temporal-picker-field]');
+    const trigger = field?.querySelector('[data-temporal-picker-trigger]');
+    if (!trigger || trigger.dataset.temporalPickerTriggerReady === 'true') return;
+
+    trigger.addEventListener('click', () => {
+        if (input.disabled) return;
+
+        if (picker && typeof picker.show === 'function') {
+            if (input.dataset.temporalBirthPickerPositioned !== 'true') {
+                navigateBirthPickerToStoredDate(input, picker);
+                input.dataset.temporalBirthPickerPositioned = 'true';
+            }
+            picker.show();
+            return;
+        }
+
+        input.focus();
+        temporalJQuery(input).trigger('click');
+    });
+
+    trigger.dataset.temporalPickerTriggerReady = 'true';
+};
+
+export const enhanceJalaliDateInputs = async (root = document) => {
+    const inputs = [...root.querySelectorAll(
+        '[data-temporal-date-input][data-calendar="jalali"], [data-temporal-datetime-input][data-calendar="jalali"]',
+    )];
+    if (inputs.length === 0) return false;
+
+    const plugin = await loadBundledPersianDatepicker();
+    if (typeof plugin !== 'function' || !window.jQuery) return false;
+
+    inputs.forEach((input) => {
+        const $input = temporalJQuery(input);
+        if ($input.data('temporalDatepickerReady')) {
+            bindPickerTrigger(input, $input.data('temporalDatepickerInstance'));
+            return;
+        }
+
+        const originalValue = input.value;
+        const picker = $input.persianDatepicker(jalaliPickerOptions(input));
+        // The installed legacy picker can still write to the field on init.
+        // Restore the original DOM value; actual user selection remains enabled.
+        if (input.value !== originalValue) input.value = originalValue;
+        $input.data('temporalDatepickerReady', true);
+        $input.data('temporalDatepickerInstance', picker);
+        input.dataset.temporalPickerReady = 'true';
+        bindPickerTrigger(input, picker);
+    });
+
+    return true;
+};
+
+export const enhanceTemporalInputs = async (root = document) => {
+    const locale = resolvedLocale();
+    enhanceLegacyBirthDate(root, locale);
+    if (calendarForLocale(locale) === 'jalali') {
+        await enhanceJalaliDateInputs(root);
+    }
+};
+
+if (typeof document !== 'undefined') {
+    const run = (root = document) => {
+        void enhanceTemporalInputs(root).catch((error) => {
+            console.warn('EarthCoop temporal input enhancement failed; manual date entry remains available.', error);
+        });
+    };
+
+    const observeDynamicTemporalInputs = () => {
+        if (typeof MutationObserver === 'undefined' || !document.body) return;
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (!(node instanceof Element)) continue;
+
+                    if (
+                        node.matches?.('[data-temporal-date-input], [data-temporal-datetime-input]')
+                        || node.querySelector?.('[data-temporal-date-input], [data-temporal-datetime-input]')
+                    ) {
+                        run(node.matches?.('[data-temporal-date-input], [data-temporal-datetime-input]') ? node.parentElement || node : node);
+                    }
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    const boot = () => {
+        run(document);
+        observeDynamicTemporalInputs();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot, { once: true });
+    } else {
+        boot();
+    }
+}
+).exec(normalized);
     if (!match) return null;
     const [, year, month, day] = match.map(Number);
     if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
