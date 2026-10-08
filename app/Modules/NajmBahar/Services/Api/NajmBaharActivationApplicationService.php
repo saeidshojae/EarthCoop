@@ -93,14 +93,6 @@ class NajmBaharActivationApplicationService
         }
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
-        if ($expected !== null && $requestedPoints % $ratio !== 0) {
-            throw new NajmBaharActivationException(
-                'activation_not_eligible',
-                'Native activation points must be an exact multiple of the conversion ratio.',
-                409,
-            );
-        }
-
         $convertiblePoints = intdiv($requestedPoints, $ratio) * $ratio;
         $amountGol = intdiv($convertiblePoints, $ratio);
 
@@ -151,6 +143,14 @@ class NajmBaharActivationApplicationService
                             409,
                         );
                     }
+                }
+
+                if ($requestedPoints % $ratio !== 0) {
+                    throw new NajmBaharActivationException(
+                        'activation_not_eligible',
+                        'Native activation points must be an exact multiple of the conversion ratio.',
+                        409,
+                    );
                 }
 
                 if ($requestedPoints > $fresh['max_activation_points']) {
