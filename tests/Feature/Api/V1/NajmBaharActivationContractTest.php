@@ -528,7 +528,7 @@ class NajmBaharActivationContractTest extends TestCase
 
         // A 200-point reversal after 200 points have been consumed from 300
         // must not silently create a negative participation entitlement.
-        app(\\App\\Services\\ReputationService::class)->addPoints(
+        app(\App\Services\ReputationService::class)->addPoints(
             $user, -200, 'crosswriter_reverse_after_activation', [], null,
             'activation_contract', 'participation', true,
             'crosswriter-reversal-after-activation-0001'
