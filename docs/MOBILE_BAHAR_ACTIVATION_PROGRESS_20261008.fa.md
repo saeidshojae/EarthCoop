@@ -132,3 +132,11 @@ Commit 0cd857839c013444f44b41dc160d78ac4aa803ed added a new API contract asserti
 ## 2026-10-08 — Verified security and isolation GREEN
 
 GitHub Actions run 37830043063, source 0cd857839c013444f44b41dc160d78ac4aa803ed, completed SUCCESS. Activation API tests: 13 tests / 162 assertions; financial mutation architecture: 1 test / 1 assertion; both reported one PHPUnit deprecation. Thus the tested actor/route isolation and tampered receipt checks are green. This is focused evidence only, not whole-system/Flutter validation. Task 3's basic GET-only success/negative security coverage now has a passing checkpoint; concurrency review, potential malformed receipt variants, Tasks 4–7, and eventual main reconciliation remain open. No Android +19 signed APK, Production deployment or main merge.
+
+## 2026-10-08 — Task 4 Flutter wire candidate
+
+Implemented native activation DTO in `apps/mobile/lib/features/najm_bahar/najm_bahar_activation_dto.dart` (commit `63d0bbad0b0c4104576deac8c271fe9eefff060f`) with strict versioned eligibility, integer and policy consistency checks, frozen exact `expected` snapshot, positive whole-ratio points and immutable idempotency key, and strict receipt matching.
+
+Updated `NajmBaharRepository` (commit `acfa42d2f5f744c97d4f8eb4558c48f67ea1c8ab`) to add `activationTerms()`, `activateParticipation()` with `allowAutomaticRetry: false`, and GET-only `reconcileActivation()` with session guards. Added DTO negative tests in `f6ab8b3570dec274fb5f748cefcbc5b02ea9fdd2`. Added isolated Flutter focused test/analyzer/format CI workflow in `c044ad6637faaf7a5f29217cc47daa495acb124e`.
+
+**Status: candidate / NOT GREEN**. No Flutter test/analyzer/format result was available at last query. Repository HTTP transport tests and full wire DTO receipt tests remain to be added; implementation must be reviewed against server serialized activation transaction projection, including success/reconcile consistency. Do not declare Task 4 complete on source existence. Tasks 5–7 remain. Existing +18 binary is unchanged; +19 not packaged.
