@@ -8,6 +8,7 @@ on:
       - agent/elections-systemic-rebuild
       - agent/pre-main-ui-polish
       - agent/mobile-integration-20261005
+      - agent/mobile-bahar-activation-20261008
   pull_request:
     branches:
       - main
