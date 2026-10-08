@@ -459,6 +459,50 @@ class NajmBaharActivationContractTest extends TestCase
         $this->assertSame(15, (int) $account->fresh()->balance);
     }
 
+    public function test_distinct_native_keys_cannot_reuse_the_same_reviewed_points_snapshot(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 5, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 300);
+
+        $eligibility = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()->json('data');
+        $expected = array_intersect_key($eligibility, array_flip([
+            'activation_contract_version',
+            'policy_version_id',
+            'policy_version',
+            'conversion_ratio_points_per_gol',
+            'remaining_convertible_points',
+            'dim_available_gol',
+            'max_activation_gol',
+        ]));
+        $payload = [
+            'source' => 'participation',
+            'points' => 200,
+            'expected' => $expected,
+        ];
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-cross-key-first-0001')
+            ->postJson('/api/v1/najm-bahar/activation', $payload)
+            ->assertCreated()->assertJsonPath('data.activated_gol', 2);
+
+        $this->bearer($token, $deviceId)
+            ->withHeader('Idempotency-Key', 'native-cross-key-second-0001')
+            ->postJson('/api/v1/najm-bahar/activation', $payload)
+            ->assertStatus(409)->assertJsonPath('error.code', 'activation_terms_changed');
+
+        $this->assertSame(1, DB::table('user_point_conversions')
+            ->where('user_id', $user->id)->count());
+        $this->assertSame(200, (int) DB::table('user_point_consumptions')
+            ->where('user_id', $user->id)->sum('points_consumed'));
+        $this->assertSame(7, (int) $account->fresh()->balance_active);
+        $this->assertSame(8, (int) $account->fresh()->balance_faded);
+        $this->assertSame(15, (int) $account->fresh()->balance);
+    }
+
     public function test_activation_reconciliation_is_read_only_and_scoped_to_successful_owned_intent(): void
     {
         [$user, $token, $deviceId] = $this->nativeSession();
