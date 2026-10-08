@@ -154,6 +154,47 @@ export const jalaliPickerOptions = (input) => {
     return options;
 };
 
+// Only the stored birth-date field needs its calendar navigated to its initial date.
+// Other shared date/datetime inputs retain the existing picker behavior.
+export const storedBirthDateParts = (input) => {
+    if (input?.name !== 'birth_date' || input.matches('[data-temporal-datetime-input]')) return null;
+    const normalized = String(input.value || '').replace(/[۰-۹٠-٩]/g, (digit) => {
+        const code = digit.charCodeAt(0);
+        return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
+    });
+    const match = /^([0-9]{4})\/([0-9]{2})\/([0-9]{2})$/.exec(normalized);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
+    return [year, month, day];
+};
+
+// Only adjust the visible calendar page; never call setDate/onSelect.
+export const navigateBirthPickerView = (input, picker, PersianDate = window.persianDate) => {
+    const parts = storedBirthDateParts(input);
+    const state = picker?.model?.state;
+    const view = picker?.model?.view;
+    if (!parts || typeof PersianDate !== 'function'
+        || typeof state?.setViewDateTime !== 'function'
+        || typeof view?.render !== 'function') return false;
+
+    try {
+        const timestamp = new PersianDate(parts).toDate().getTime();
+        if (!Number.isFinite(timestamp)) return false;
+        const originalValue = input.value;
+        state.setViewDateTime('unix', timestamp);
+        view.render();
+        // No date-selection callback or input assignment is invoked here.
+        if (input.value !== originalValue) input.value = originalValue;
+        return true;
+    } catch (error) {
+        console.warn('EarthCoop birth-date calendar navigation skipped:', error);
+        return false;
+    }
+};
+
 const bindPickerTrigger = (input, picker) => {
     const field = input.closest('[data-temporal-picker-field]');
     const trigger = field?.querySelector('[data-temporal-picker-trigger]');
@@ -163,6 +204,10 @@ const bindPickerTrigger = (input, picker) => {
         if (input.disabled) return;
 
         if (picker && typeof picker.show === 'function') {
+            if (input.dataset.temporalBirthPickerPositioned !== 'true') {
+                navigateBirthPickerView(input, picker);
+                input.dataset.temporalBirthPickerPositioned = 'true';
+            }
             picker.show();
             return;
         }

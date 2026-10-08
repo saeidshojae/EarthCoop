@@ -8,6 +8,8 @@ import {
     jalaliPickerOptions,
     localeFromCookie,
     resolvedLocale,
+    storedBirthDateParts,
+    navigateBirthPickerView,
 } from '../../../resources/js/temporal-input.js';
 
 test('base locale normalizes regional variants', () => {
@@ -101,6 +103,49 @@ test('prefilled birth date does not allow the plugin to reset it on initializati
     assert.equal(options.initialValue, false);
     assert.equal(options.initialValueType, 'persian');
     assert.equal(options.viewMode, 'day');
+});
+
+test('stored birth date parses Persian, Arabic and ASCII digits without changing the input', () => {
+    for (const date of ['۱۳۸۰/۰۱/۱۲', '١٣٨٠/٠١/١٢', '1380/01/12']) {
+        const input = { name: 'birth_date', value: date, matches: () => false };
+        assert.deepEqual(storedBirthDateParts(input), [1380, 1, 12]);
+        assert.equal(input.value, date);
+    }
+});
+
+test('birth-date navigation excludes other dates, datetimes and malformed input', () => {
+    const input = (name, value, isDateTime = false) => ({
+        name, value, matches: () => isDateTime,
+    });
+    assert.equal(storedBirthDateParts(input('event_date', '۱۳۸۰/۰۱/۱۲')), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '۱۳۸۰/۰۱/۱۲ ۱۲:۳۰', true)), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '')), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '۱۳۸۰/۱۳/۱۲')), null);
+    assert.equal(storedBirthDateParts(input('birth_date', '۱۳۸۰/۰۷/۳۱')), null);
+});
+
+test('birth navigation only changes calendar view and never selects a date', () => {
+    const operations = [];
+    const input = { name: 'birth_date', value: '۱۳۸۰/۰۱/۱۲', matches: () => false };
+    const picker = { model: {
+        state: { setViewDateTime: (kind, value) => operations.push(['view', kind, value]) },
+        view: { render: () => operations.push(['render']) },
+    }, setDate: () => { throw new Error('setDate must not be invoked'); } };
+    class FakePersianDate {
+        toDate() { return new Date('2001-04-01T12:00:00Z'); }
+    }
+    assert.equal(navigateBirthPickerView(input, picker, FakePersianDate), true);
+    assert.deepEqual(operations.map(item => item[0]), ['view', 'render']);
+    assert.equal(operations[0][1], 'unix');
+    assert.equal(input.value, '۱۳۸۰/۰۱/۱۲');
+});
+
+test('unsupported picker does not change birth date or other input views', () => {
+    const input = { name: 'birth_date', value: '۱۳۸۰/۰۱/۱۲', matches: () => false };
+    assert.equal(navigateBirthPickerView(input, {}, class FakeDate {}), false);
+    assert.equal(input.value, '۱۳۸۰/۰۱/۱۲');
+    const other = { name: 'event_date', value: '۱۳۸۰/۰۱/۱۲', matches: () => false };
+    assert.equal(navigateBirthPickerView(other, {}, class FakeDate {}), false);
 });
 
 test('empty birth-date picker opens in year mode for fast navigation', () => {
