@@ -58,6 +58,8 @@
 
 
 
+    <div class="mb-4"><a class="inline-flex items-center gap-2 rounded-lg border border-emerald-500 px-4 py-2 text-emerald-700" href="{{ route('admin.legal-versions.index') }}"><i class="fas fa-history"></i> مدیریت نسخه‌ها و انتشار رسمی اسناد</a></div>
+
     <!-- هدر صفحه -->
 
 
