@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('title');
             $table->string('source_type', 32); // terms or najm_bahar_agreements
             $table->unsignedBigInteger('source_root_id')->nullable();
+            $table->boolean('is_staged_import')->default(false);
             $table->timestamps();
         });
 
