@@ -38,16 +38,6 @@
 
     
 
-    <!-- Persian Datepicker -->
-
-    <script src="{{ asset("vendor/jquery/jquery.min.js") }}"></script>
-
-    <script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
-
-    <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
-
-    <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
-
     
 
     <style>
@@ -449,76 +439,24 @@
                 
 
                 <!-- Birth Date -->
-
                 <div>
-
-                    <label class="block text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-2 sm:mb-3">
-
+                    <label for="birth_date" class="block text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-2 sm:mb-3">
                         تاریخ تولد: <span class="text-red-500">*</span>
-
                     </label>
-
-                    <div class="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-
-                        <select name="birth_date[]" required class="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-ocean-blue transition @error('birth_date') border-red-500 bg-red-50 @else border-gray-300 @enderror">
-
-                            <option value="">روز</option>
-
-                            @for ($i = 1; $i <= 31; $i++)
-
-                                <option value="{{ $i }}" {{ old('birth_date.0') == $i ? 'selected' : '' }}>{{ $i }}</option>
-
-                            @endfor
-
-                        </select>
-
-                        
-
-                        <select name="birth_date[]" required class="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-ocean-blue transition @error('birth_date') border-red-500 bg-red-50 @else border-gray-300 @enderror">
-
-                            <option value="">ماه</option>
-
-                            @php $months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']; @endphp
-
-                            @foreach($months as $index => $month)
-
-                                <option value="{{ $index + 1 }}" {{ old('birth_date.1') == ($index + 1) ? 'selected' : '' }}>{{ $month }}</option>
-
-                            @endforeach
-
-                        </select>
-
-                        
-
-                        <select name="birth_date[]" required class="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-ocean-blue transition @error('birth_date') border-red-500 bg-red-50 @else border-gray-300 @enderror">
-
-                            <option value="">سال</option>
-
-                            @for ($i = $birthYearMax; $i >= $birthYearMin; $i--)
-
-                                <option value="{{ $i }}" {{ old('birth_date.2') == $i ? 'selected' : '' }}>{{ $i }}</option>
-
-                            @endfor
-
-                        </select>
-
-                    </div>
-
+                    <x-temporal.date-input
+                        name="birth_date"
+                        id="birth_date"
+                        :value="old('birth_date')"
+                        class="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-ocean-blue transition @error('birth_date') border-red-500 bg-red-50 @else border-gray-300 @enderror"
+                        required
+                    />
                     @error('birth_date')
-
                         <div class="mt-2 flex items-center text-red-600 text-sm">
-
                             <i class="fas fa-exclamation-triangle ml-2"></i>
-
                             <span>{{ $message }}</span>
-
                         </div>
-
                     @enderror
-
                 </div>
-
-                
 
                 <!-- Gender -->
 
