@@ -63,3 +63,19 @@ Resume with targeted Task 1 validation, not reimplementation. Read `docs/MOBILE_
 - **Open validation:** no CI workflow runs were found for the isolated branch in the latest query; PHPUnit RED/GREEN is unexecuted, and no passing test evidence exists for these commits.
 - Next mandatory actions: run focused activation contracts and finance architecture check at exact candidate SHA; review wrong-error cases and Laravel validation grammar; add parallel/stale policy/points/Dim tests; fix results and only then proceed to reconciliation Task 3.
 - No Android build, main merge, release deployment or real monetary activation.
+
+## +19 scope and readiness — 2026-10-08
+
+The authoritative `docs/MOBILE_DEVELOPMENT_STATUS_20261008.fa.md` identifies +18 as the latest verified signed UAT, with membership payment; native external transfer is software-complete and **not** in +18. The activation implementation plan defines seven tasks, and explicitly says to **bundle** the next signed candidate instead of building a disposable APK while phone access is unavailable.
+
+**No calendar delivery date for +19 is specified in those documents.** The operational +19 readiness criterion is a consolidated Android signed UAT candidate containing already-complete external transfer plus completed Native Participation Activation, after:
+1. Activation Tasks 1–7 pass focused server/Flutter and final full validation;
+2. financial architecture / same-user-ownership / concurrency audit passes;
+3. safe reconciliation with up-to-date `main` (branch divergence unresolved);
+4. signed Android candidate `1.0.0+19` is built and verified against the stable certificate, app/package, binary hash and expected capability inclusion.
+
+Physical Android acceptance, production API release, FTP/host publication, iOS/HMS gates and main integration are independent gates; signed UAT does not mean those were performed.
+
+Latest source-only step: tests for points/Dim changes after review were added in `0982bae03b7d98225fb9e9c043e7a79d05d9fd35`. They assert 409 `activation_terms_changed` and no new point-conversion/consumption and no money transfer, but **they have not been run**. No Android +19 artifact is claimed.
+
+Next checkpoint is still focused PHP validation and real concurrency review before marking Task 2 complete. Avoid calendar ETA without measured/verified CI and device access.
