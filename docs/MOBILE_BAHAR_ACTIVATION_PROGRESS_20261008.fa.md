@@ -156,3 +156,7 @@ Added deterministic native controller behavioral tests for preview (GET only), c
 ## Flutter formatting and controller guards — 2026-10-08
 
 CI run 37832801310 failed only on Dart format; its diagnostics printed the exact canonical diff for two files. Applied those formatting edits verbatim in commits `1c5bcea11898868deca81bf060d339d26193ee99` (activation DTO) and `300a7e561aa6cbc44333a71f75214af1f0178a76` (repository). The DTO blob now matches the CI-generated formatted blob. New controller tests in `4b52734c75ebc537c984a4b3be12f473a64a838b` cover 23-hour unknown-outcome retry expiry and discarding stale in-flight financial response after session invalidation. At the latest query a newly queued/re-running formatter CI was not yet complete, and the new guard tests had not been confirmed green. Keep Task 4/5 open pending explicit successful run at a source SHA including these changes. No Flutter UI wiring, Android +19 APK, main merge or Production release.
+
+## Verified Flutter targeted GREEN — 2026-10-08
+
+CI run 37833939486 on commit 4b52734c75ebc537c984a4b3be12f473a64a838b finished SUCCESS: activation DTO 2 tests passed, activation native controller 5 tests passed, Flutter analyzer `No issues found`, formatter 4 files / 0 changes. This closes the *focused implementation test and format* gate for controller/DTO, not overall Tasks 4–7 or financial concurrency. Repository transport boundary tests, native screen integration, final Android test/build and deployment reconciliation are still outstanding. No +19 APK or main/production deployment.
