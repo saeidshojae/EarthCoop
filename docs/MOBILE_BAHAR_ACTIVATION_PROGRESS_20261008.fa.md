@@ -42,3 +42,13 @@ Not started. Respect the approved task order:
 ## Continuation rule
 
 Resume with targeted Task 1 validation, not reimplementation. Read `docs/MOBILE_DEVELOPMENT_STATUS_20261008.fa.md` and this file first; then inspect exact latest branch and main state. Do not infer successful tests from source changes.
+
+## Follow-up — 2026-10-08: Task 2 test-first checkpoint
+
+- GitHub Actions query for the isolated branch returned **zero workflow runs** at inspection time. Consequently Task 1 is **not GREEN**; its contract assertions and implementation are only source-reviewed, not runtime-validated.
+- Task 2 RED contracts have been added in commit `4ddff57405347b0a1757c88a6390880b5cb35b18`.
+- RED case A: a strict Native `expected` request using 250 points with ratio 100 must reject partial-multiple input without creating point consumption or moving money.
+- RED case B: policy ratio changed after GET review must return `activation_terms_changed` without creating conversion or moving money.
+- Under the currently inspected controller, `expected` is still an unsupported field, so the tests should currently fail with validation instead of the desired domain errors. **This is a predicted RED, not a claimed executed RED.**
+- Do not implement financial POST mutation on top of this unverified baseline. First run the targeted `NajmBaharActivationContractTest` suite on commit `4ddff57405347b0a1757c88a6390880b5cb35b18`; inspect the precise failure signatures. Then implement strict binding inside the financial transaction, preserving legacy no-expected calls and ensuring stale snapshot does not consume ledger entries.
+- Scope of this continuation: tests and documentation only for Task 2; no financial behavior changes and no release build.
