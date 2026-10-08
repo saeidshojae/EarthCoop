@@ -379,6 +379,55 @@ class NajmBaharActivationContractTest extends TestCase
         }
     }
 
+    public function test_native_exact_activation_success_replay_is_single_effect(): void
+    {
+        [$user, $token, $deviceId] = $this->nativeSession();
+        $account = $this->accountFor($user, active: 5, dim: 10);
+        $this->enableParticipationConversion(ratio: 100);
+        $this->awardConvertibleParticipationPoints($user, 350);
+
+        $eligibility = $this->bearer($token, $deviceId)
+            ->getJson('/api/v1/najm-bahar/activation/eligibility')
+            ->assertOk()->json('data');
+        $payload = [
+            'source' => 'participation',
+            'points' => 200,
+            'expected' => [
+                'activation_contract_version' => $eligibility['activation_contract_version'],
+                'policy_version_id' => $eligibility['policy_version_id'],
+                'policy_version' => $eligibility['policy_version'],
+                'conversion_ratio_points_per_gol' => $eligibility['conversion_ratio_points_per_gol'],
+                'remaining_convertible_points' => $eligibility['remaining_convertible_points'],
+                'dim_available_gol' => $eligibility['dim_available_gol'],
+                'max_activation_gol' => $eligibility['max_activation_gol'],
+            ],
+        ];
+        $headers = ['Idempotency-Key' => 'native-activation-exact-replay-0001'];
+
+        $first = $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/activation', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.requested_points', 200)
+            ->assertJsonPath('data.consumed_points', 200)
+            ->assertJsonPath('data.activated_gol', 2)
+            ->assertJsonPath('data.balance.local.active_gol', 7)
+            ->assertJsonPath('data.balance.local.dim_available_gol', 8);
+
+        $second = $this->bearer($token, $deviceId)
+            ->withHeaders($headers)
+            ->postJson('/api/v1/najm-bahar/activation', $payload)
+            ->assertCreated()
+            ->assertHeader('Idempotency-Replayed', 'true')
+            ->assertJsonPath('data.transaction.id', $first->json('data.transaction.id'));
+
+        $this->assertSame(1, DB::table('user_point_conversions')->where('user_id', $user->id)->count());
+        $this->assertSame(200, (int) DB::table('user_point_consumptions')->where('user_id', $user->id)->sum('points_consumed'));
+        $this->assertSame(7, (int) $account->fresh()->balance_active);
+        $this->assertSame(8, (int) $account->fresh()->balance_faded);
+        $this->assertSame(15, (int) $account->fresh()->balance);
+    }
+
     private function accountFor(User $user, int $active, int $dim): Account
     {
         $account = app(AccountService::class)->createMainAccountForUser((int) $user->id, 'Member '.$user->id);
