@@ -28,7 +28,7 @@ class ReputationService
                     $available = (int) app(ParticipationPointSummaryService::class)
                         ->forUser((int) $user->id)['remaining_convertible_points'];
                     if (-$delta > $available) {
-                        throw new \\DomainException('Convertible participation reversal exceeds unconsumed credit.');
+                        throw new \DomainException('Convertible participation reversal exceeds unconsumed credit.');
                     }
                 }
 
