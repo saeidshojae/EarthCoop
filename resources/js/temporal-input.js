@@ -33,7 +33,10 @@ export const localeFromCookie = (cookieString = '') => {
 export const resolvedLocale = () => {
     if (typeof document === 'undefined') return 'fa';
 
-    return localeFromCookie(document.cookie)
+    const cookieLocale = localeFromCookie(document.cookie);
+    // Laravel may encrypt this cookie: only trust an actual locale code.
+    const validLocale = /^(fa|en|ar)(?:[-_][a-z0-9]+)*$/i.test(cookieLocale);
+    return (validLocale ? cookieLocale : '')
         || document.documentElement.lang
         || 'fa';
 };
