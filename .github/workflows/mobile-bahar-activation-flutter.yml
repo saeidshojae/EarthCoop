@@ -1,0 +1,40 @@
+name: Native Bahar activation Flutter wire
+
+on:
+  push:
+    branches: [agent/mobile-bahar-activation-20261008]
+    paths:
+      - 'apps/mobile/lib/features/najm_bahar/najm_bahar_activation_dto.dart'
+      - 'apps/mobile/lib/features/najm_bahar/najm_bahar_repository.dart'
+      - 'apps/mobile/test/features/najm_bahar/najm_bahar_activation_dto_test.dart'
+      - '.github/workflows/mobile-bahar-activation-flutter.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-bahar-activation-flutter
+  cancel-in-progress: true
+
+jobs:
+  activation-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/mobile
+      - name: Activation DTO contract
+        run: flutter test --timeout 20s --reporter expanded test/features/najm_bahar/najm_bahar_activation_dto_test.dart
+        working-directory: apps/mobile
+      - name: Flutter static analysis
+        run: flutter analyze
+        working-directory: apps/mobile
+      - name: Flutter format gate
+        run: dart format --output=none --set-exit-if-changed lib/features/najm_bahar/najm_bahar_activation_dto.dart lib/features/najm_bahar/najm_bahar_repository.dart test/features/najm_bahar/najm_bahar_activation_dto_test.dart
+        working-directory: apps/mobile
