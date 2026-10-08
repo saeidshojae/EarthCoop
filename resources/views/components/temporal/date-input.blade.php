@@ -17,7 +17,7 @@
         @if($required) required @endif
         {{ $attributes }}
     />
-    @if($calendar() === 'jalali' && ! $attributes->has('disabled'))
+    @if($calendar() === 'jalali' && ! ($attributes->has('disabled') && $attributes->get('disabled') !== false))
         <button
             type="button"
             class="temporal-picker-trigger"

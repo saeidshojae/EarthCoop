@@ -34,6 +34,45 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringNotContainsString('https://', $html);
     }
 
+    public function test_persian_date_input_shows_picker_when_disabled_binding_is_false(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="birth_date" :disabled="false" />',
+        );
+
+        $this->assertStringContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringNotContainsString(' disabled', $html);
+    }
+
+    public function test_persian_date_input_hides_picker_when_disabled_binding_is_true(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="birth_date" :disabled="true" />',
+        );
+
+        $this->assertStringNotContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringContainsString('disabled', $html);
+    }
+
+    public function test_persian_datetime_input_respects_boolean_disabled_binding_for_picker(): void
+    {
+        app()->setLocale('fa');
+
+        $enabled = Blade::render(
+            '<x-temporal.date-time-input name="starts_at" :disabled="false" />',
+        );
+        $disabled = Blade::render(
+            '<x-temporal.date-time-input name="starts_at" :disabled="true" />',
+        );
+
+        $this->assertStringContainsString('data-temporal-picker-trigger', $enabled);
+        $this->assertStringNotContainsString('data-temporal-picker-trigger', $disabled);
+    }
+
     public function test_persian_date_input_preserves_already_localized_filter_value(): void
     {
         app()->setLocale('fa');
