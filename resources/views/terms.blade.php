@@ -3418,7 +3418,7 @@
                         ->whereIn('legal_document_version_id', [
                             $legalPublished['membership']->id,
                             $legalPublished['terms']->id,
-                        ])->where('context', 'membership')
+                        ])->whereIn('context', ['membership', 'registration'])
                         ->distinct()->pluck('legal_document_version_id')->all();
                     if (count($acceptedIds) !== 2) {
                         $termsAcceptedAt = null; // Show explicit re-consent form; do not change the old timestamp.
