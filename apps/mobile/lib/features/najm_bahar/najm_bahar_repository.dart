@@ -79,8 +79,7 @@ class NajmBaharRepository {
   }
 
   Future<NajmBaharActivationTerms> activationTerms() => _policy(
-      '/najm-bahar/activation/eligibility',
-      NajmBaharActivationTerms.fromJson);
+      '/najm-bahar/activation/eligibility', NajmBaharActivationTerms.fromJson);
 
   Future<NajmBaharActivationReceipt> activateParticipation(
       NajmBaharActivationIntent intent) async {
