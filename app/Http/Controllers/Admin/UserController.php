@@ -294,8 +294,16 @@ class UserController extends Controller
             })
             ->get());
 
+        // Pending official groups have no persisted Group ID; count them separately
+        // rather than turning presentation shells into navigable group records.
+        $pendingGroupCount = (bool) config('location-governance.groups_enabled', false)
+            ? app(\App\Services\Groups\PendingLocationGroupRequestService::class)
+                ->readOpenForUser($user)->count()
+            : 0;
+
         $userStats = [
-            'groups_count' => $user->groups->count(),
+            'groups_count' => $user->groups->count() + $pendingGroupCount,
+            'pending_groups_count' => $pendingGroupCount,
             'blog_posts_count' => \App\Models\Blog::where('user_id', $user->id)->count(),
             'website_posts_count' => \App\Modules\Blog\Models\Post::where('user_id', $user->id)->count(),
             'blog_comments_count' => \App\Models\Comment::where('user_id', $user->id)->count(),
