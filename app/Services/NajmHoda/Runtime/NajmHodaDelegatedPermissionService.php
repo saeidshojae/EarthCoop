@@ -252,7 +252,7 @@ class NajmHodaDelegatedPermissionService
                     return false;
                 }
 
-                return $user->groups()->where('groups.id', (int) $id)->wherePivot('status', 1)->where(function ($query) { $query->whereNull('group_user.expired')->orWhere('group_user.expired', 0)->orWhere('group_user.expired', '>', now()); })->exists();
+                return $user->groups()->where('groups.id', (int) $id)->wherePivot('status', 1)->where(function ($query) { $query->whereNull('group_user.expired')->orWhere('group_user.expired', 0)->orWhere('group_user.expired', '>', now()); })->when((bool) config('location-governance.groups_enabled', false), function ($query) { $query->where(function ($groups) { $groups->whereNotNull('groups.governance_area_id')->orWhere('groups.location_level', 10); }); })->exists();
             }
         } catch (\Throwable) {
             return false;
