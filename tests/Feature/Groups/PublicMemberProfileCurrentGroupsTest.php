@@ -94,4 +94,32 @@ final class PublicMemberProfileCurrentGroupsTest extends TestCase
         $this->assertSame($beforePivots, \App\Models\GroupUser::query()->count());
         $this->assertTrue($data['generalGroups']->first()->pending_location);
     }
+
+    public function test_hidden_groups_privacy_suppresses_canonical_and_pending_data_from_public_view(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+        $viewer = User::factory()->create();
+        $member = User::factory()->create(['show_groups' => false]);
+        $legacy = Group::query()->create([
+            'name' => 'Hidden group',
+            'group_type' => '0',
+            'location_level' => 10,
+            'is_open' => 1,
+        ]);
+        $member->groups()->attach($legacy->id, ['role' => 1, 'status' => 1]);
+        \App\Models\LocationScopedGroupRequest::query()->create([
+            'requester_user_id' => $member->id,
+            'scope_kind' => 'official_system',
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+            'status' => 'pending_location',
+            'metadata' => ['type_key' => 'neighborhood'],
+        ]);
+
+        $this->actingAs($viewer);
+        $data = app(ProfileController::class)->showProfileMember($member)->getData();
+        foreach (['generalGroups', 'specialityGroups', 'experienceGroups', 'ageGroups', 'genderGroups'] as $dimension) {
+            $this->assertCount(0, $data[$dimension]);
+        }
+    }
 }
