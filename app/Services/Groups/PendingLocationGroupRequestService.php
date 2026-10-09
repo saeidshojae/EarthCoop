@@ -309,6 +309,12 @@ final class PendingLocationGroupRequestService
         $this->syncCurrentPendingResidence($user);
         $this->syncCurrentStructuralClaims($user);
 
+        return $this->readOpenForUser($user);
+    }
+
+    /** Read-only snapshot for viewing another member's pending groups. */
+    public function readOpenForUser(User $user): Collection
+    {
         return LocationScopedGroupRequest::query()
             ->where('requester_user_id', $user->id)->where('scope_kind', self::SCOPE)
             ->whereIn('status', ['pending_location', 'ready_to_materialize'])
