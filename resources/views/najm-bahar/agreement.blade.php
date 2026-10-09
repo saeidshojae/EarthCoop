@@ -3417,7 +3417,7 @@
 
 
 
-            @if($hasAcceptedAgreement)
+            @if($hasAcceptedAgreement && $hasAcceptedCurrentVersion)
 
                 <div class="agreement-alert inline-flex flex-col items-center gap-3" style="border-color: rgba(16, 185, 129, 0.35); color: #065f46; background: rgba(16, 185, 129, 0.12);">
                     <div class="flex items-center justify-center gap-2 font-bold">
@@ -3430,6 +3430,14 @@
                     </a>
                 </div>
 
+            @elseif($hasAcceptedAgreement && !$hasAcceptedCurrentVersion)
+                <form action="{{ route('najm-bahar.agreement.process') }}" method="POST" class="inline-flex flex-col items-center gap-3">
+                    @csrf
+                    <p class="agreement-note">نسخه جدیدی از توافقنامه منتشر شده است. برای ثبت پذیرش آن، متن بالا را مطالعه کنید. حساب و موجودی فعلی شما تغییر نمی‌کند.</p>
+                    <label><input type="checkbox" name="agreement_accepted" value="1" required> نسخه جاری توافقنامه را مطالعه کرده‌ام و می‌پذیرم.</label>
+                    <input type="hidden" name="legal_version_id" value="{{ $legalFinancialVersion->id }}">
+                    <button type="submit" class="agreement-button">ثبت پذیرش نسخه جدید</button>
+                </form>
             @elseif($isProfileComplete)
 
 
