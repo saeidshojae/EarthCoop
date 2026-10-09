@@ -36,10 +36,7 @@
 <span>{{ $version->status }}</span>
 <a href="{{ route('admin.legal-versions.preview', $version) }}" class="btn btn-outline-primary">پیش‌نمایش</a>
 @if($version->status === 'draft')
-<form method="POST" action="{{ route('admin.legal-versions.publish', $version) }}" onsubmit="return confirm('نسخه منتشرشده تغییرناپذیر است. تأیید می‌کنید؟')">
-@csrf <label><input type="checkbox" name="confirm_publish" value="1" required> تأیید انتشار غیرقابل بازگشت</label>
-<button type="submit" class="btn btn-success">انتشار رسمی</button>
-</form>
+<span class="text-sm">انتشار فقط پس از مشاهده و تأیید پیش‌نمایش امکان‌پذیر است.</span>
 @endif
 </div>
 @endforeach
