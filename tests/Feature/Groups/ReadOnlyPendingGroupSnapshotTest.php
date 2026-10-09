@@ -41,4 +41,42 @@ final class ReadOnlyPendingGroupSnapshotTest extends TestCase
         $this->assertSame(['pending_location', 'ready_to_materialize'], $requests->pluck('status')->all());
         $this->assertSame($before, $after, 'Viewing another profile must never mutate pending requests.');
     }
+    public function test_nine_pending_base_group_requests_are_preserved_without_mutation(): void
+    {
+        $user = User::factory()->create();
+
+        foreach ([
+            'public' => 1,
+            'profession' => 3,
+            'specialty' => 3,
+            'age' => 1,
+            'gender' => 1,
+        ] as $dimension => $count) {
+            for ($i = 1; $i <= $count; $i++) {
+                LocationScopedGroupRequest::query()->create([
+                    'requester_user_id' => $user->id,
+                    'scope_kind' => 'official_system',
+                    'dimension_key' => $dimension,
+                    'dimension_value_key' => $dimension.'-'.$i,
+                    'status' => 'pending_location',
+                    'metadata' => ['type_key' => 'neighborhood', 'is_pending_base' => true],
+                ]);
+            }
+        }
+
+        $service = app(PendingLocationGroupRequestService::class);
+        $before = LocationScopedGroupRequest::query()->count();
+        $pending = $service->readOpenForUser($user);
+
+        $this->assertCount(9, $pending);
+        $this->assertSame([
+            'age' => 1,
+            'gender' => 1,
+            'profession' => 3,
+            'public' => 1,
+            'specialty' => 3,
+        ], $pending->countBy('dimension_key')->sortKeys()->all());
+        $this->assertSame($before, LocationScopedGroupRequest::query()->count());
+    }
+
 }
