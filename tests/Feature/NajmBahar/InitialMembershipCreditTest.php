@@ -4,6 +4,10 @@ namespace Tests\Feature\NajmBahar;
 
 use App\Helpers\BaharMoney;
 use App\Models\User;
+use App\Models\LegalDocument;
+use App\Models\LegalDocumentVersion;
+use App\Services\Legal\LegalDocumentPublicationService;
+use Illuminate\Support\Facades\DB;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\Transaction;
@@ -82,6 +86,53 @@ class InitialMembershipCreditTest extends TestCase
         $this->assertSame(1, LedgerEntry::where('account_id', $account->id)
             ->where('meta->monetary_event', 'money_created')
             ->count());
+    }
+
+    public function test_existing_account_can_accept_new_financial_version_without_second_issuance(): void
+    {
+        $this->allowEligibleMembership();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
+            'agreement_accepted' => '1',
+        ])->assertRedirect(route('najm-bahar.dashboard'));
+
+        $account = Account::where('user_id', $user->id)->where('type', 'user')->firstOrFail();
+        $balanceBefore = (int) $account->balance;
+        $issuancesBefore = Transaction::where('to_account_id', $account->id)
+            ->where('metadata->type', 'initial_funding')->count();
+
+        $document = LegalDocument::create([
+            'slug' => 'najm-bahar',
+            'title' => 'توافقنامه نجم‌بهار',
+            'source_type' => 'najm_bahar_agreements',
+        ]);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.0',
+                'language' => 'fa',
+                'status' => 'draft',
+            ]),
+            'متن نسخه جدید',
+            $user->id
+        );
+
+        $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
+            'agreement_accepted' => '1',
+            'legal_version_id' => $version->id,
+        ])->assertRedirect(route('najm-bahar.dashboard'));
+
+        $this->assertDatabaseHas('legal_document_acceptances', [
+            'user_id' => $user->id,
+            'legal_document_version_id' => $version->id,
+            'context' => 'najm_bahar',
+        ]);
+        $this->assertSame($balanceBefore, (int) $account->fresh()->balance);
+        $this->assertSame($issuancesBefore, Transaction::where('to_account_id', $account->id)
+            ->where('metadata->type', 'initial_funding')->count());
+        $this->assertSame(1, DB::table('legal_document_acceptances')
+            ->where('user_id', $user->id)->where('context', 'najm_bahar')->count());
     }
 
     private function allowEligibleMembership(): void
