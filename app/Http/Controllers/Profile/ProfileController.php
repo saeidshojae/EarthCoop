@@ -645,21 +645,7 @@ class ProfileController
         $najmHodaEmail = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');
         if ($user->isSystemIdentity() && $user->email === $najmHodaEmail) return redirect()->route('najm-hoda.profile');
         $chatRequests = ChatRequest::where('receiver_id', auth()->id())->where('status', 'pending')->with('sender')->latest()->get();
-        // Stage C: exclude historical legacy spatial memberships and inactive pivots.
-        // Preserve user-managed groups, whose identities are not governance-area based.
-        $currentGroups = $user->groups()
-            ->wherePivot('status', 1)
-            ->where(function ($query) {
-                $query->whereNull('group_user.expired')
-                    ->orWhere('group_user.expired', '>', now());
-            })
-            ->when((bool) config('location-governance.groups_enabled', false), function ($query) {
-                $query->where(function ($groups) {
-                    $groups->whereNotNull('groups.governance_area_id')
-                        ->orWhere('groups.location_level', 10);
-                });
-            })
-            ->get();
+        $currentGroups = app(\App\Services\Groups\CurrentGroupAccessService::class)->groupsFor($user);
         // Canonical dimensions are identified by dimension_key; legacy presentation
         // fields (specialty_id / experience_id) are not authoritative in Stage C.
         $generalGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'public' || ($group->dimension_key === null && (int) $group->group_type === 0))->values();
