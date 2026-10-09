@@ -252,7 +252,7 @@ class NajmHodaDelegatedPermissionService
                     return false;
                 }
 
-                return $user->groups()->where('groups.id', (int) $id)->exists();
+                return $user->groups()->where('groups.id', (int) $id)->wherePivot('status', 1)->where(function ($query) { $query->whereNull('group_user.expired')->orWhere('group_user.expired', 0)->orWhere('group_user.expired', '>', now()); })->exists();
             }
         } catch (\Throwable) {
             return false;
