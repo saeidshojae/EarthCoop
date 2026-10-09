@@ -62,4 +62,36 @@ final class PublicMemberProfileCurrentGroupsTest extends TestCase
         $view = app(ProfileController::class)->showProfileMember($member);
         $this->assertNotContains($oldGroup->id, $view->getData()['generalGroups']->pluck('id')->all());
     }
+
+    public function test_public_profile_displays_nine_pending_groups_without_materializing_membership(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+        $viewer = User::factory()->create();
+        $member = User::factory()->create();
+        foreach (['public' => 1, 'profession' => 3, 'specialty' => 3, 'age' => 1, 'gender' => 1] as $dimension => $count) {
+            for ($i = 1; $i <= $count; $i++) {
+                \App\Models\LocationScopedGroupRequest::query()->create([
+                    'requester_user_id' => $member->id,
+                    'scope_kind' => 'official_system',
+                    'dimension_key' => $dimension,
+                    'dimension_value_key' => $dimension.'-'.$i,
+                    'status' => 'pending_location',
+                    'metadata' => ['type_key' => 'neighborhood', 'is_pending_base' => true],
+                ]);
+            }
+        }
+
+        $beforePivots = \App\Models\GroupUser::query()->count();
+        $this->actingAs($viewer);
+        $view = app(ProfileController::class)->showProfileMember($member);
+        $data = $view->getData();
+
+        $this->assertSame(1, $data['generalGroups']->count());
+        $this->assertSame(3, $data['specialityGroups']->count());
+        $this->assertSame(3, $data['experienceGroups']->count());
+        $this->assertSame(1, $data['ageGroups']->count());
+        $this->assertSame(1, $data['genderGroups']->count());
+        $this->assertSame($beforePivots, \App\Models\GroupUser::query()->count());
+        $this->assertTrue($data['generalGroups']->first()->pending_location);
+    }
 }
