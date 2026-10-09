@@ -13,6 +13,8 @@
         ? collect()
         : \App\Models\GroupUser::query()
             ->whereIn('group_id', $groups->pluck('id'))
+            ->where('status', 1)
+            ->where(function ($query) { $query->whereNull('expired')->orWhere('expired', 0)->orWhere('expired', '>', now()); })
             ->selectRaw('group_id, COUNT(*) as aggregate')
             ->groupBy('group_id')
             ->pluck('aggregate', 'group_id');

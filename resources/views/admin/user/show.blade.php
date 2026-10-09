@@ -1168,7 +1168,10 @@
 
                     <div class="user-stat-value">{{ $userStats['groups_count'] }}</div>
 
-                    <div class="user-stat-label">گروه‌ها</div>
+                    <div class="user-stat-label">گروه‌ها</div>
+                    @if(($userStats['pending_groups_count'] ?? 0) > 0)
+                        <small>شامل {{ $userStats['pending_groups_count'] }} گروه در انتظار تأیید مکان</small>
+                    @endif
 
                 </div>
 
@@ -1220,7 +1223,7 @@
 
                 <i class="fas fa-users ml-2"></i>
 
-                گروه‌های عضو
+                گروه‌های عضو (تأییدشده و جاری)
 
             </h3>
 

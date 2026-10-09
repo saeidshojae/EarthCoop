@@ -252,7 +252,7 @@ class NajmHodaDelegatedPermissionService
                     return false;
                 }
 
-                return $user->groups()->where('groups.id', (int) $id)->exists();
+                return app(\App\Services\Groups\CurrentGroupAccessService::class)->contains($user, (int) $id);
             }
         } catch (\Throwable) {
             return false;

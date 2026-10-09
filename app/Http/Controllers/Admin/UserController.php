@@ -276,12 +276,18 @@ class UserController extends Controller
             'address.alley',
             'occupationalFields',
             'experienceFields',
-            'groups',
             'roles.permissions'
         ]);
 
+        $groupSnapshot = app(\App\Services\Groups\CurrentGroupPresentationService::class)->forUser($user);
+        // Only materialized groups are navigable on the admin details page.
+        $user->setRelation('groups', $groupSnapshot['materialized']);
+        $pendingGroupCount = $groupSnapshot['pending']->count();
+        $displayedGroupCount = $groupSnapshot['all']->count();
+
         $userStats = [
-            'groups_count' => $user->groups->count(),
+            'groups_count' => $displayedGroupCount,
+            'pending_groups_count' => $pendingGroupCount,
             'blog_posts_count' => \App\Models\Blog::where('user_id', $user->id)->count(),
             'website_posts_count' => \App\Modules\Blog\Models\Post::where('user_id', $user->id)->count(),
             'blog_comments_count' => \App\Models\Comment::where('user_id', $user->id)->count(),
