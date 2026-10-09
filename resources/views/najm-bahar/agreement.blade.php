@@ -2764,11 +2764,20 @@
 
 
 
+        @php
+            $legalFinancialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
+                ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
+                : null;
+        @endphp
         {{-- Proposed legal text is intentionally not treated as an already accepted agreement. --}}
         <section class="agreement-card space-y-6 fade-in-section" id="published-najm-bahar-agreement">
-            <h2 class="text-2xl font-bold">توافقنامه مالی و پولی نجم‌بهار</h2>
-            <p class="agreement-note">متن انتشار اولیه ـ مواد به‌صورت مستقل و قابل مطالعه نمایش داده می‌شوند. پذیرش مالی مستقل از ثبت‌نام EarthCoop است.</p>
-            @include('partials.legal.structured-document', ['sourcePath' => 'legal/najm-bahar-agreement.fa.md'])
+            <h2 class="text-2xl font-bold">توافقنامه عضویت و بهره‌مندی از خدمات نجم‌بهار</h2>
+            <p class="agreement-note">این سند اصول عضویت و خدمات اقتصادی نجم‌بهار را توضیح می‌دهد. پذیرش آن مستقل از ثبت‌نام EarthCoop است.</p>
+            @if($legalFinancialVersion)
+                @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalFinancialVersion->content_snapshot, true)])
+            @else
+                @include('partials.legal.structured-document', ['sourcePath' => 'legal/najm-bahar-agreement.fa.md'])
+            @endif
             <nav class="ec-legal-references" aria-label="اسناد اقتصادی مرتبط">
                 @foreach(config('docs-links.foundational', []) as $document)
                     @if(in_array($document['code'], ['FC', 'CO', 'EX', 'ECON'], true))
@@ -2779,7 +2788,7 @@
             </nav>
         </section>
 
-        <section class="agreement-card space-y-6 fade-in-section">
+        <section class="agreement-card space-y-6 fade-in-section" @if($legalFinancialVersion) hidden @endif>
 
 
 
@@ -3408,7 +3417,7 @@
 
 
 
-            @if($hasAcceptedAgreement)
+            @if($hasAcceptedAgreement && $hasAcceptedCurrentVersion)
 
                 <div class="agreement-alert inline-flex flex-col items-center gap-3" style="border-color: rgba(16, 185, 129, 0.35); color: #065f46; background: rgba(16, 185, 129, 0.12);">
                     <div class="flex items-center justify-center gap-2 font-bold">
@@ -3421,6 +3430,14 @@
                     </a>
                 </div>
 
+            @elseif($hasAcceptedAgreement && !$hasAcceptedCurrentVersion)
+                <form action="{{ route('najm-bahar.agreement.process') }}" method="POST" class="inline-flex flex-col items-center gap-3">
+                    @csrf
+                    <p class="agreement-note">نسخه جدیدی از توافقنامه منتشر شده است. برای ثبت پذیرش آن، متن بالا را مطالعه کنید. حساب و موجودی فعلی شما تغییر نمی‌کند.</p>
+                    <label><input type="checkbox" name="agreement_accepted" value="1" required> نسخه جاری توافقنامه را مطالعه کرده‌ام و می‌پذیرم.</label>
+                    <input type="hidden" name="legal_version_id" value="{{ $legalFinancialVersion->id }}">
+                    <button type="submit" class="agreement-button">ثبت پذیرش نسخه جدید</button>
+                </form>
             @elseif($isProfileComplete)
 
 
@@ -3451,7 +3468,10 @@
 
 
 
-                    <input type="hidden" name="agreement_accepted" value="1">
+                    <input type="checkbox" name="agreement_accepted" value="1" required aria-label="تأیید مطالعه و پذیرش توافقنامه نجم‌بهار">
+                    @if($legalFinancialVersion)
+                        <input type="hidden" name="legal_version_id" value="{{ $legalFinancialVersion->id }}">
+                    @endif
 
 
 

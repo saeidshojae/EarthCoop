@@ -38,13 +38,23 @@ class NajmBaharController extends Controller
         $hasAcceptedAgreement = $this->accountService->hasMainAccount($user->id)
             || ! is_null($user->najm_bahar_agreement_accepted_at);
 
-        $agreements = NajmBaharAgreement::whereNull('parent_id')
-            ->with('descendants')
-            ->orderBy('order')
-            ->get();
+        $agreementsQuery = NajmBaharAgreement::whereNull('parent_id')
+            ->with('descendants');
+        if (\Illuminate\Support\Facades\Schema::hasTable('legal_documents')) {
+            $stagedRootIds = \App\Models\LegalDocument::where('source_type', 'najm_bahar_agreements')
+                ->where('is_staged_import', true)->pluck('source_root_id')->all();
+            $agreementsQuery->whereNotIn('id', $stagedRootIds);
+        }
+        $agreements = $agreementsQuery->orderBy('order')->get();
+        $financialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
+            ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
+            : null;
+        $hasAcceptedCurrentVersion = ! $financialVersion || \Illuminate\Support\Facades\DB::table('legal_document_acceptances')
+            ->where('user_id', $user->id)->where('legal_document_version_id', $financialVersion->id)
+            ->where('context', 'najm_bahar')->exists();
         $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);
 
-        return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement'));
+        return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement', 'hasAcceptedCurrentVersion'));
     }
 
     public function processAgreement(Request $request)
@@ -56,12 +66,28 @@ class NajmBaharController extends Controller
             'agreement_accepted.accepted' => 'لطفاً توافقنامه نجم بهار را بپذیرید'
         ]);
 
+        $financialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
+            ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
+            : null;
+        if ($financialVersion) {
+            $request->validate(['legal_version_id' => 'required|integer']);
+            app(\App\Services\Legal\LegalAcceptanceService::class)
+                ->validatePublishedVersion('najm-bahar', (int) $request->input('legal_version_id'));
+            if ((int) $request->input('legal_version_id') !== $financialVersion->id) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['legal_version_id' => 'نسخه توافقنامه تغییر کرده است؛ صفحه را دوباره مطالعه کنید.']);
+            }
+        }
+
         $user = auth()->user();
         abort_if($user->isSystemIdentity(), 403, 'System identities cannot use Najm Bahar.');
 
         if ($this->accountService->hasMainAccount($user->id)) {
+            if ($financialVersion) {
+                app(\App\Services\Legal\LegalAcceptanceService::class)
+                    ->record($user->id, $financialVersion, 'najm_bahar');
+            }
             return redirect()->route('najm-bahar.dashboard')
-                ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
+                ->with('success', 'پذیرش نسخه جاری توافقنامه ثبت شد.');
         }
 
         if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {
@@ -70,7 +96,7 @@ class NajmBaharController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($user) {
+            DB::transaction(function () use ($user, $financialVersion) {
                 $userAccount = $this->accountService->createMainAccountForUser(
                     $user->id,
                     'حساب نجم بهار ' . $user->fullName()
@@ -78,6 +104,10 @@ class NajmBaharController extends Controller
 
                 $this->ensureInitialFunding($user, $userAccount);
 
+                if ($financialVersion) {
+                    app(\App\Services\Legal\LegalAcceptanceService::class)
+                        ->record($user->id, $financialVersion, 'najm_bahar');
+                }
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
                 ]);
