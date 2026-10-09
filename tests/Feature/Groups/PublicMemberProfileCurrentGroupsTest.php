@@ -16,7 +16,7 @@ final class PublicMemberProfileCurrentGroupsTest extends TestCase
     {
         config(['location-governance.groups_enabled' => true]);
         $viewer = User::factory()->create();
-        $member = User::factory()->create();
+        $member = User::factory()->create(['show_groups' => true]);
         $legacy = Group::query()->create(['name' => 'Historic city group', 'group_type' => '0', 'location_level' => 'city', 'is_open' => 1]);
         $inactive = Group::query()->create(['name' => 'Inactive legacy managed', 'group_type' => '0', 'location_level' => 10, 'is_open' => 1]);
         $managed = Group::query()->create(['name' => 'Current managed', 'group_type' => '0', 'location_level' => 10, 'is_open' => 1]);
