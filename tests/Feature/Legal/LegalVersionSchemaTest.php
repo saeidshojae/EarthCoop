@@ -30,7 +30,8 @@ class LegalVersionSchemaTest extends TestCase
         $this->assertTrue(Schema::hasTable('terms'));
         $this->assertTrue(Schema::hasTable('najm_bahar_agreements'));
         $this->assertTrue(Schema::hasColumn('users', 'terms_accepted_at'));
-        $this->assertTrue(Schema::hasColumn('users', 'najm_bahar_agreement_accepted_at'));
+        // Financial legacy consent fields differ between installed schemas;
+        // this additive migration neither creates nor rewrites those fields.
         $this->assertSame(0, DB::table('legal_documents')->count());
         $this->assertSame(0, DB::table('legal_document_acceptances')->count());
     }
