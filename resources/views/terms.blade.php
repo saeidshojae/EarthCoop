@@ -2989,7 +2989,13 @@
 
 
 
-    $terms = \App\Models\Term::with('childs')->whereNull('parent_id')->orderBy('id', 'asc')->get();
+    $termsQuery = \App\Models\Term::with('childs')->whereNull('parent_id');
+    if (\Illuminate\Support\Facades\Schema::hasTable('legal_documents')) {
+        $stagedRootIds = \App\Models\LegalDocument::where('source_type', 'terms')
+            ->where('is_staged_import', true)->pluck('source_root_id')->all();
+        $termsQuery->whereNotIn('id', $stagedRootIds);
+    }
+    $terms = $termsQuery->orderBy('id', 'asc')->get();
 
 
 
@@ -3397,6 +3403,29 @@
 
 
 
+        @php
+            $legalPublished = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')) {
+                $publisher = app(\App\Services\Legal\LegalDocumentPublicationService::class);
+                $legalPublished['membership'] = $publisher->current('membership');
+                $legalPublished['terms'] = $publisher->current('terms');
+                if (! $legalPublished['membership'] || ! $legalPublished['terms']) {
+                    $legalPublished = [];
+                }
+                if ($legalPublished && auth()->check()) {
+                    $acceptedIds = \Illuminate\Support\Facades\DB::table('legal_document_acceptances')
+                        ->where('user_id', auth()->id())
+                        ->whereIn('legal_document_version_id', [
+                            $legalPublished['membership']->id,
+                            $legalPublished['terms']->id,
+                        ])->whereIn('context', ['membership', 'registration'])
+                        ->distinct()->pluck('legal_document_version_id')->all();
+                    if (count($acceptedIds) !== 2) {
+                        $termsAcceptedAt = null; // Show explicit re-consent form; do not change the old timestamp.
+                    }
+                }
+            }
+        @endphp
         {{-- The publication text is shown before any previously stored admin-configured clauses. --}}
         <section class="accordion-wrapper p-6 md:p-8 space-y-6 fade-up" id="published-legal-texts">
             <header class="space-y-3">
@@ -3405,11 +3434,19 @@
             </header>
             <details class="ec-legal-volume" open>
                 <summary class="ec-legal-volume-title">اساسنامه بین‌المللی عضویت EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
-                @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-membership-statute.fa.md'])
+                @if($legalPublished['membership'] ?? null)
+                    @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalPublished['membership']->content_snapshot, true)])
+                @else
+                    @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-membership-statute.fa.md'])
+                @endif
             </details>
             <details class="ec-legal-volume">
                 <summary class="ec-legal-volume-title">شرایط استفاده از خدمات EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
-                @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-terms-of-use.fa.md'])
+                @if($legalPublished['terms'] ?? null)
+                    @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalPublished['terms']->content_snapshot, true)])
+                @else
+                    @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-terms-of-use.fa.md'])
+                @endif
             </details>
             <nav class="ec-legal-references" aria-label="متن کامل اسناد بنیادین">
                 <h3 class="font-bold">اسناد بنیادین و مرجع</h3>
@@ -3420,7 +3457,7 @@
             </nav>
         </section>
 
-        <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up">
+        <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up" @if(!empty($legalPublished)) hidden @endif>
 
 
 
@@ -4333,6 +4370,11 @@
 
 
                         @csrf
+                        @if(($legalPublished['membership'] ?? null) && ($legalPublished['terms'] ?? null))
+                            <input type="hidden" name="membership_version_id" value="{{ $legalPublished['membership']->id }}">
+                            <input type="hidden" name="terms_version_id" value="{{ $legalPublished['terms']->id }}">
+                        @endif
+                        
 
 
 
@@ -4777,6 +4819,11 @@
 
                         <form action="{{ route('register.accept') }}" method="POST" id="guestTermsForm" class="guest-registration-grid">
                             @csrf
+                        @if(($legalPublished['membership'] ?? null) && ($legalPublished['terms'] ?? null))
+                            <input type="hidden" name="membership_version_id" value="{{ $legalPublished['membership']->id }}">
+                            <input type="hidden" name="terms_version_id" value="{{ $legalPublished['terms']->id }}">
+                        @endif
+                        
                             @if($setting && $setting->invation_status == 1)
                                 <label class="guest-full-row block text-right font-semibold text-slate-700" for="guestInviteCode">کد دعوت</label>
                                 <input type="text" id="guestInviteCode" name="invite_code" value="{{ old('invite_code', request('code')) }}" required class="guest-full-row w-full rounded-xl border border-slate-300 px-4 py-3 text-center focus:border-earth-green focus:ring-2 focus:ring-earth-green" placeholder="کد دعوت خود را وارد کنید">

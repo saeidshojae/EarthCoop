@@ -91,6 +91,8 @@ class StartController extends Controller
             'terms.accepted' => 'لطفاً قوانین و مقررات را بپذیرید'
         ]);
         
+        $consentVersions = app(\App\Services\Legal\LegalMembershipConsentService::class)->validateForm($request);
+
         if ($invitationRequired) {
             $inputs = $request->validate([
                 'invite_code' => 'required|string|exists:invitation_codes,code'
@@ -113,6 +115,7 @@ class StartController extends Controller
             'fingerprint_id' => $request->fingerprint_id,
             'registration_terms_accepted' => true,
             'registration_terms_accepted_at' => now()->toIso8601String(),
+            'registration_legal_version_ids' => $consentVersions,
         ]);
         return redirect()->route('register.form');
     }
@@ -173,7 +176,16 @@ class StartController extends Controller
             'password' => 'required|min:6|confirmed',
         ]);
 
-        $user = DB::transaction(function () use ($request, $invitationRequired, $invitationCode) {
+        $legalVersions = (array) $request->session()->get('registration_legal_version_ids', []);
+        $currentLegalPair = app(\App\Services\Legal\LegalMembershipConsentService::class)->publishedPair();
+        if ($currentLegalPair && ($legalVersions['membership'] ?? null) !== $currentLegalPair['membership']->id) {
+            return redirect()->route('terms')->withErrors(['terms' => 'نسخه اساسنامه تغییر کرده است؛ لطفاً دوباره مطالعه کنید.']);
+        }
+        if ($currentLegalPair && ($legalVersions['terms'] ?? null) !== $currentLegalPair['terms']->id) {
+            return redirect()->route('terms')->withErrors(['terms' => 'نسخه شرایط استفاده تغییر کرده است؛ لطفاً دوباره مطالعه کنید.']);
+        }
+
+        $user = DB::transaction(function () use ($request, $invitationRequired, $invitationCode, $legalVersions) {
             $invitation = null;
 
             if ($invitationRequired) {
@@ -198,6 +210,9 @@ class StartController extends Controller
                 'fingerprint_id' => session('fingerprint_id'),
                 'terms_accepted_at' => now(),
             ]);
+
+            app(\App\Services\Legal\LegalMembershipConsentService::class)
+                ->recordForUser($newUser->id, $legalVersions, 'registration');
 
             if ($invitation) {
                 $invitation->forceFill([
@@ -226,6 +241,7 @@ class StartController extends Controller
         $request->session()->forget([
             'registration_terms_accepted',
             'registration_terms_accepted_at',
+            'registration_legal_version_ids',
             'registration_invitation_code',
         ]);
         return redirect()->route('email.verify.form', ['email' => $request->email]);
