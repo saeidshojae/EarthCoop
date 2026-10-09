@@ -270,7 +270,7 @@ class NajmHodaDelegatedPermissionService
                 if ($membership->governance_area_id === null) {
                     return false;
                 }
-                $resolution = app(\\App\\Services\\Membership\\MembershipEngine::class)->resolve($user, false);
+                $resolution = app(\App\Services\Membership\MembershipEngine::class)->resolve($user, false);
                 return $resolution->materializableIntents->contains(
                     fn ($intent): bool => (int) $intent->governanceAreaId === (int) $membership->governance_area_id
                         && (string) $intent->dimensionKey === (string) $membership->dimension_key
