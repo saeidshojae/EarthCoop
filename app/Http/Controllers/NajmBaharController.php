@@ -46,9 +46,15 @@ class NajmBaharController extends Controller
             $agreementsQuery->whereNotIn('id', $stagedRootIds);
         }
         $agreements = $agreementsQuery->orderBy('order')->get();
+        $financialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
+            ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
+            : null;
+        $hasAcceptedCurrentVersion = ! $financialVersion || \Illuminate\Support\Facades\DB::table('legal_document_acceptances')
+            ->where('user_id', $user->id)->where('legal_document_version_id', $financialVersion->id)
+            ->where('context', 'najm_bahar')->exists();
         $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);
 
-        return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement'));
+        return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement', 'hasAcceptedCurrentVersion'));
     }
 
     public function processAgreement(Request $request)
@@ -76,8 +82,12 @@ class NajmBaharController extends Controller
         abort_if($user->isSystemIdentity(), 403, 'System identities cannot use Najm Bahar.');
 
         if ($this->accountService->hasMainAccount($user->id)) {
+            if ($financialVersion) {
+                app(\App\Services\Legal\LegalAcceptanceService::class)
+                    ->record($user->id, $financialVersion, 'najm_bahar');
+            }
             return redirect()->route('najm-bahar.dashboard')
-                ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
+                ->with('success', 'پذیرش نسخه جاری توافقنامه ثبت شد.');
         }
 
         if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {
