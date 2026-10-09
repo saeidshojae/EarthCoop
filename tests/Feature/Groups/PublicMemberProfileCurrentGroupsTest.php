@@ -33,4 +33,33 @@ final class PublicMemberProfileCurrentGroupsTest extends TestCase
         $this->assertNotContains($legacy->id, $visible);
         $this->assertNotContains($inactive->id, $visible);
     }
+
+    public function test_public_profile_does_not_expose_stale_active_canonical_membership(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+        ['user' => $member] = \Tests\Support\LocationGovernance\MembershipFixture::canonicalUser();
+        $viewer = User::factory()->create();
+        $priorArea = \App\Models\GovernanceArea::query()->create([
+            'key' => 'prior-profile-area',
+            'country_code' => 'IR',
+            'governance_type' => 'city',
+            'area_kind' => 'official',
+            'canonical_name' => 'Previous city',
+            'rank' => 10,
+            'status' => 'active',
+        ]);
+        $oldGroup = Group::query()->create([
+            'name' => 'Prior canonical public',
+            'group_type' => '0',
+            'governance_area_id' => $priorArea->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+            'is_open' => 1,
+        ]);
+        $member->groups()->attach($oldGroup->id, ['role' => 0, 'status' => 1]);
+
+        $this->actingAs($viewer);
+        $view = app(ProfileController::class)->showProfileMember($member);
+        $this->assertNotContains($oldGroup->id, $view->getData()['generalGroups']->pluck('id')->all());
+    }
 }
