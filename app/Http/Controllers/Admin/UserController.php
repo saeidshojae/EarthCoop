@@ -279,20 +279,7 @@ class UserController extends Controller
             'roles.permissions'
         ]);
 
-        // Keep admin's current-membership list separate from historical pivot records.
-        $user->setRelation('groups', $user->groups()
-            ->wherePivot('status', 1)
-            ->where(function ($query) {
-                $query->whereNull('group_user.expired')
-                    ->orWhere('group_user.expired', '>', now());
-            })
-            ->when((bool) config('location-governance.groups_enabled', false), function ($query) {
-                $query->where(function ($groups) {
-                    $groups->whereNotNull('groups.governance_area_id')
-                        ->orWhere('groups.location_level', 10);
-                });
-            })
-            ->get());
+        $user->setRelation('groups', app(\App\Services\Groups\CurrentGroupAccessService::class)->groupsFor($user));
 
         // Pending official groups have no persisted Group ID; count them separately
         // rather than turning presentation shells into navigable group records.
