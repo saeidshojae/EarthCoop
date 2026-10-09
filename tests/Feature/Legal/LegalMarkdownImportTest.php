@@ -59,5 +59,6 @@ class LegalMarkdownImportTest extends TestCase
         $rows = NajmBaharAgreement::where('parent_id', $rootId)->orderBy('order')->get();
         $this->assertCount(count($source['children']), $rows);
         $this->assertSame(1, $rows->first()->order);
+        $this->assertStringNotContainsString('یادداشت انتشار', implode("\n", $rows->pluck('content')->all()));
     }
 }
