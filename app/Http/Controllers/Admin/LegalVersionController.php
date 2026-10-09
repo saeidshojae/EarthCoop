@@ -82,6 +82,7 @@ class LegalVersionController extends Controller
         return view('admin.legal-versions.preview', [
             'version' => $version,
             'snapshot' => json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR),
+            'previewSha256' => hash('sha256', $snapshot),
         ]);
     }
 
@@ -91,8 +92,19 @@ class LegalVersionController extends Controller
         LegalDocumentPublicationService $publications,
         LegalDocumentSourceSnapshotService $snapshots
     ) {
-        $request->validate(['confirm_publish' => 'required|accepted']);
-        $publications->publishFromAdminSource($version, (int) $request->user()->id, $snapshots);
+        $data = $request->validate([
+            'confirm_publish' => 'required|accepted',
+            'preview_sha256' => 'required|regex:/^[a-f0-9]{64}$/',
+        ]);
+        if ($version->status !== 'draft') {
+            throw ValidationException::withMessages(['version' => 'فقط پیش‌نویس قابل انتشار است.']);
+        }
+        $document = $version->document()->firstOrFail();
+        $snapshot = $snapshots->capture($document->source_type, (int) $document->source_root_id);
+        if (! hash_equals($data['preview_sha256'], hash('sha256', $snapshot))) {
+            throw ValidationException::withMessages(['content' => 'متن سند پس از پیش‌نمایش تغییر کرده است؛ لطفاً نسخه جدید را بازبینی کنید.']);
+        }
+        $publications->publish($version, $snapshot, (int) $request->user()->id);
 
         return redirect()->route('admin.legal-versions.index')
             ->with('success', 'نسخه منتشر شد و تصویر ثابت متن ثبت گردید.');
