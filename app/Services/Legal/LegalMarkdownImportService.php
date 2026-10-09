@@ -12,7 +12,7 @@ class LegalMarkdownImportService
     private const FILES = [
         'membership' => ['legal/earthcoop-membership-statute.fa.md', 'terms'],
         'terms' => ['legal/earthcoop-terms-of-use.fa.md', 'terms'],
-        'najm-bahar' => ['legal/najm-bahar-agreement.fa.md', 'najm_bahar_agreements'],
+        'najm-bahar' => ['legal/drafts/najm-bahar-agreement.fa.md', 'najm_bahar_agreements'],
     ];
 
     public function preview(string $slug): array
