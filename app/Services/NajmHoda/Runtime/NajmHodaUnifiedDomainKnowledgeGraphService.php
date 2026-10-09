@@ -151,7 +151,7 @@ class NajmHodaUnifiedDomainKnowledgeGraphService
 
         if (str_starts_with($requestedScope, 'group:')) {
             $groupId = (int) substr($requestedScope, 6);
-            $member = $groupId > 0 && $actor->groups()->where('groups.id', $groupId)->wherePivot('status', 1)->where(function ($query) { $query->whereNull('group_user.expired')->orWhere('group_user.expired', 0)->orWhere('group_user.expired', '>', now()); })->when((bool) config('location-governance.groups_enabled', false), function ($query) { $query->where(function ($groups) { $groups->whereNotNull('groups.governance_area_id')->orWhere('groups.location_level', 10); }); })->exists();
+            $member = $groupId > 0 && app(\App\Services\Groups\CurrentGroupAccessService::class)->contains($actor, $groupId);
             if ($member) {
                 return ['scope' => "group:{$groupId}", 'reduced' => false];
             }
@@ -224,7 +224,7 @@ class NajmHodaUnifiedDomainKnowledgeGraphService
             return [];
         }
 
-        return $actor->groups()->wherePivot('status', 1)->where(function ($query) { $query->whereNull('group_user.expired')->orWhere('group_user.expired', 0)->orWhere('group_user.expired', '>', now()); })->when((bool) config('location-governance.groups_enabled', false), function ($query) { $query->where(function ($groups) { $groups->whereNotNull('groups.governance_area_id')->orWhere('groups.location_level', 10); }); })->latest('groups.id')->limit($limit)->get(['groups.id', 'groups.name', 'groups.group_type'])->map(
+        return app(\App\Services\Groups\CurrentGroupAccessService::class)->groupsFor($actor)->sortByDesc('id')->take($limit)->map(
             static fn (Group $group): array => [
                 'id' => (int) $group->id,
                 'name' => (string) ($group->name ?? ''),
@@ -261,7 +261,7 @@ class NajmHodaUnifiedDomainKnowledgeGraphService
             $groupId = (int) substr($scope, 6);
             $query->where('owner_type', Group::class)->where('owner_id', $groupId);
         } else {
-            $groupIds = $actor->groups()->wherePivot('status', 1)->where(function ($query) { $query->whereNull('group_user.expired')->orWhere('group_user.expired', 0)->orWhere('group_user.expired', '>', now()); })->when((bool) config('location-governance.groups_enabled', false), function ($query) { $query->where(function ($groups) { $groups->whereNotNull('groups.governance_area_id')->orWhere('groups.location_level', 10); }); })->pluck('groups.id')->all();
+            $groupIds = app(\App\Services\Groups\CurrentGroupAccessService::class)->idsFor($actor);
             $query->where(function ($q) use ($actor, $groupIds): void {
                 $q->where(function ($s) use ($actor): void {
                     $s->where('owner_type', User::class)->where('owner_id', $actor->id);
