@@ -26,12 +26,24 @@ class LegalVersionController extends Controller
 
     public function importPreview(string $slug, \App\Services\Legal\LegalMarkdownImportService $imports)
     {
-        return view('admin.legal-versions.import-preview', ['data' => $imports->preview($slug)]);
+        $data = $imports->preview($slug);
+        return view('admin.legal-versions.import-preview', [
+            'data' => $data,
+            'previewSha256' => hash('sha256', json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)),
+        ]);
     }
 
     public function import(Request $request, string $slug, \App\Services\Legal\LegalMarkdownImportService $imports)
     {
-        $request->validate(['confirm_import' => 'required|accepted']);
+        $validated = $request->validate([
+            'confirm_import' => 'required|accepted',
+            'preview_sha256' => 'required|regex:/^[a-f0-9]{64}$/',
+        ]);
+        $data = $imports->preview($slug);
+        $actualSha256 = hash('sha256', json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        if (! hash_equals($actualSha256, $validated['preview_sha256'])) {
+            throw ValidationException::withMessages(['document' => 'متن فایل از زمان پیش‌نمایش تغییر کرده است؛ لطفاً دوباره بازبینی کنید.']);
+        }
         $rootId = \Illuminate\Support\Facades\DB::transaction(function () use ($slug, $imports): int {
             if (LegalDocument::where('slug', $slug)->exists()) {
                 throw ValidationException::withMessages(['document' => 'این سند قبلاً برای نسخه‌بندی ثبت شده است.']);
