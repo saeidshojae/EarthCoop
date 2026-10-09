@@ -64,7 +64,7 @@ class SessionParticipationController extends Controller
             app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(new GroupFeedUpdated((int) $group->id, 'session_participation_requested', [
                 'request_id' => (int) $participationRequest->id,
                 'requester_id' => (int) $requester->id,
-                'requester_name' => trim(($requester->first_name ?? '') . ' ' . ($requester->last_name ?? '')) ?: 'یکی از اعضا',
+                'requester_name' => $requester->displayName() ?: 'یکی از اعضا',
                 'message' => $participationRequest->message,
                 'pending_count' => GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count(),
             ], (int) $requester->id));
@@ -84,7 +84,7 @@ class SessionParticipationController extends Controller
 
         $members = GroupUser::query()
             ->where('group_id', $group->id)->where('status', 1)
-            ->whereNotIn('role', [2, 3])->with('user:id,first_name,last_name,email,avatar')
+            ->whereNotIn('role', [2, 3])->with('user:id,first_name,last_name,nickname,email,avatar')
             ->get()->map(fn (GroupUser $membership) => [
                 'id' => (int) $membership->user_id,
                 'name' => trim(($membership->user?->first_name ?? '') . ' ' . ($membership->user?->last_name ?? '')) ?: 'عضو گروه',

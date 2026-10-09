@@ -1198,7 +1198,7 @@
 
                         <tr>
 
-                            <td>{{ $election->user->fullName() }}</td>
+                            <td>{{ $election->user->displayName() }}</td>
 
                             <td>{{ $election->position == 0 ? 'بازرس' : 'مدیر' }}</td>
 

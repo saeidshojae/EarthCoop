@@ -45,7 +45,7 @@ class AdminMessage extends Notification
         return [
             'message' => $this->message,
             'type' => 'admin_message',
-            'from' => auth()->user()->fullName(),
+            'from' => auth()->user()->displayName(),
         ];
     }
 }

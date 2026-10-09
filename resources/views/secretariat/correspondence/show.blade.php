@@ -108,7 +108,7 @@
                         @php
                             $targetName = $dispatch->targetParty?->display_name;
                             if (!$targetName && $dispatch->targetUser) {
-                                $targetName = trim((string) $dispatch->targetUser->first_name . ' ' . (string) $dispatch->targetUser->last_name) ?: $dispatch->targetUser->email;
+                                $targetName = $dispatch->targetUser->displayName() ?: $dispatch->targetUser->email;
                             }
                         @endphp
                         <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
@@ -158,7 +158,7 @@
                                 <select name="target_user_id" class="rounded-xl border-gray-300 dark:bg-gray-800 dark:border-gray-700">
                                     <option value="">مقصد داخلی — انتخاب کاربر</option>
                                     @foreach($dispatchUsers as $member)
-                                        @php $name = trim((string) $member->first_name . ' ' . (string) $member->last_name); @endphp
+                                        @php $name = $member->displayName(); @endphp
                                         <option value="{{ $member->id }}">{{ $name ?: $member->email ?: ('#' . $member->id) }}</option>
                                     @endforeach
                                 </select>

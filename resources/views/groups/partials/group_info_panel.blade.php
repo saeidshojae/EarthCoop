@@ -256,7 +256,7 @@
                         @foreach ($userMemberList as $member)
                             @php
                                 $person = $member->user;
-                                $full = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) ?: '—';
+                                $full = $person?->displayName() ?: '—';
                                 $email = $person->email ?? '';
                                 $initial = Str::upper(Str::substr($email ?: $full, 0, 1));
                                 $finalRole = app(\App\Services\Groups\GroupMembershipRoleResolver::class)
@@ -297,7 +297,7 @@
                         @foreach ($admins as $admin)
                             @php
                                 $adminRole = match((int)$admin->pivot->role) { 2 => 'بازرس', 3 => 'مدیر', default => 'عضو' };
-                                $adminName = trim(($admin->first_name ?? '') . ' ' . ($admin->last_name ?? '')) ?: ($admin->email ?? '—');
+                                $adminName = $admin->displayName() ?: ($admin->email ?? '—');
                                 $adminEmail = $admin->email ?? '';
                                 $onlineState = method_exists($admin, 'isOnline') ? (bool)$admin->isOnline() : false;
                             @endphp

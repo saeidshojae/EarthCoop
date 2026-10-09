@@ -1,8 +1,8 @@
 @php
   $isMine = $item->user_id == auth()->id();
   $sender = $item->user;
-  $initials = $sender ? Str::upper(Str::substr($sender->first_name ?? '', 0, 1) . Str::substr($sender->last_name ?? '', 0, 1)) : '؟';
-  $senderName = $sender ? trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? '')) : 'حساب حذف شده';
+  $senderName = $sender ? $sender->displayName() : 'حساب حذف شده';
+  $initials = $sender ? Str::upper(Str::substr($senderName, 0, 1)) : '؟';
 @endphp
 
 <div class="comment-item {{ $isMine ? 'you' : 'other' }}"

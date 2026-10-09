@@ -173,7 +173,7 @@
                             <span class="absolute -right-1.5 top-1.5 w-3 h-3 rounded-full bg-emerald-500"></span>
                             <div class="text-sm font-medium">{{ $event->event_type }}</div>
                             <div class="text-xs text-gray-500 mt-1">
-                                {{ trim((string) optional($event->actor)->first_name . ' ' . (string) optional($event->actor)->last_name) ?: optional($event->actor)->email ?: 'سیستم' }}
+                                {{ $event->actor?->displayName() ?: optional($event->actor)->email ?: 'سیستم' }}
                             </div>
                             <div class="text-xs text-gray-400 mt-1">{{ optional($event->event_at)->format('Y-m-d H:i:s') }}</div>
                         </div>

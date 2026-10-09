@@ -17,7 +17,7 @@ class SendGroupInvitationNotifications
         $invitedUser = $event->invitedUser;
         $inviter = $event->inviter;
 
-        $inviterName = $inviter ? $inviter->fullName() : 'سیستم';
+        $inviterName = $inviter ? $inviter->displayName() : 'سیستم';
         
         $title = 'دعوت به گروه ' . ($group->name ?? '');
         $preview = "{$inviterName} شما را به گروه {$group->name} دعوت کرده است.";

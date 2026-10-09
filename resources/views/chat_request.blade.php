@@ -21,7 +21,7 @@
                                 @endif
                                 <div class="manager-inbox__layout">
                                     <div class="manager-inbox__sender">
-                                        <h6 class="mb-1">{{ $request->sender->fullName() }}</h6>
+                                        <h6 class="mb-1">{{ $request->sender->displayName() }}</h6>
                                         <small class="text-muted"><x-temporal.date-time :value="$request->created_at" style="short" /></small>
                                     </div>
                                     <div class="manager-inbox__message">

@@ -279,7 +279,7 @@ class NajmBaharTransferController extends Controller
         $targetSubAccount->loadMissing('account');
         $transactionType = $validated['transaction_type'];
         $moneyState = $this->resolveMoneyState($sourceSubAccount, $amount);
-        $actorName = trim(($request->user()->first_name ?? '') . ' ' . ($request->user()->last_name ?? ''));
+        $actorName = $request->user()->displayName();
 
         try {
             if ($transactionType === 'scheduled') {
@@ -462,7 +462,7 @@ class NajmBaharTransferController extends Controller
             $user = User::find($account->user_id);
             if ($user) {
                 $ownerType = 'user';
-                $ownerName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                $ownerName = $user->displayName();
             }
         } elseif ($account?->type === 'system') {
             $ownerType = 'system';

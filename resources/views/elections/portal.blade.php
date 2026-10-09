@@ -108,7 +108,7 @@
                         <select name="subject_user_id" class="form-select" required>
                             <option value="">انتخاب کنید…</option>
                             @foreach($members as $member)
-                                @php $name = trim(($member->first_name ?? '').' '.($member->last_name ?? '')) ?: ('عضو #'.$member->id); @endphp
+                                @php $name = $member->displayName() ?: ('عضو #'.$member->id); @endphp
                                 <option value="{{ $member->id }}" @selected((int)$selectedSubjectId === (int)$member->id)>{{ $name }}</option>
                             @endforeach
                         </select>

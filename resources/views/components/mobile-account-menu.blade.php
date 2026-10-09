@@ -10,7 +10,7 @@
             :aria-expanded="accountOpen">
         @if($mobileAccountUser?->avatar)
             <img src="{{ asset('images/users/avatars/' . $mobileAccountUser->avatar) }}"
-                 alt="{{ $mobileAccountUser->fullName() }}"
+                 alt="{{ $mobileAccountUser->displayName() }}"
                  class="h-full w-full object-cover">
         @else
             <span class="flex h-full w-full items-center justify-center bg-earth-green text-white">
@@ -29,7 +29,7 @@
          class="mobile-account-dropdown w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white py-2 text-right shadow-2xl"
          role="menu">
         <div class="border-b border-gray-100 px-4 py-3">
-            <div class="truncate text-sm font-bold text-gentle-black">{{ $mobileAccountUser?->fullName() }}</div>
+            <div class="truncate text-sm font-bold text-gentle-black">{{ $mobileAccountUser?->displayName() }}</div>
             <div class="mt-0.5 truncate text-xs text-gray-500">{{ $mobileAccountUser?->email }}</div>
         </div>
 

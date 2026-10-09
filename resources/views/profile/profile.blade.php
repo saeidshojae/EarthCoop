@@ -4697,7 +4697,7 @@
 
 
 
-                                <h6 class="font-semibold text-gentle-black">{{ $request->sender->fullName() }}</h6>
+                                <h6 class="font-semibold text-gentle-black">{{ $request->sender->displayName() }}</h6>
 
 
 
@@ -5537,19 +5537,7 @@
 
 
 
-                <span class="info-value">{{ Auth::user()->fullName() }}</span>
-
-
-
-
-
-
-
-
-
-                @if(Auth::user()->nickname)
-                    <small class="text-gray-500">نام مستعار: {{ Auth::user()->nickname }}</small>
-                @endif
+                <span class="info-value">{{ Auth::user()->displayName() }}</span>
 
 
 

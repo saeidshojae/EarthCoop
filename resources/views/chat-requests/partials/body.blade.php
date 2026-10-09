@@ -363,7 +363,7 @@
                              class="pm-request-avatar">
                         <div class="pm-request-identity">
                             @if($person)
-                                <a class="pm-request-name" href="{{ route('profile.member.show', $person->id) }}">{{ $person->fullName() }}</a>
+                                <a class="pm-request-name" href="{{ route('profile.member.show', $person->id) }}">{{ $person->displayName() }}</a>
                             @else
                                 <span class="pm-request-name">عضو EarthCoop</span>
                             @endif
@@ -421,7 +421,7 @@
                    class="pm-hub-conversation {{ $unreadCount > 0 ? 'is-unread' : '' }}">
                     <img src="{{ $otherUser && $otherUser->avatar ? asset('images/users/' . $otherUser->avatar) : asset('images/default-avatar.png') }}" alt="">
                     <span class="pm-hub-conversation-main">
-                        <span class="pm-hub-conversation-name">{{ $otherUser?->fullName() ?? 'گفتگوی خصوصی' }}</span>
+                        <span class="pm-hub-conversation-name">{{ $otherUser?->displayName() ?? 'گفتگوی خصوصی' }}</span>
                         <span class="pm-hub-conversation-preview">
                             {{ $lastMessage ? \Illuminate\Support\Str::limit($lastMessage->message, 88) : 'هنوز پیامی ردوبدل نشده است.' }}
                         </span>

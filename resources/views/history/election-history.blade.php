@@ -43,7 +43,7 @@
                             <ul class="mb-2 mt-1">
                                 @forelse($managerVotes as $vote)
                                     <li>
-                                        {{ trim(($vote->candidateUser->first_name ?? '').' '.($vote->candidateUser->last_name ?? '')) ?: ('عضو #'.$vote->candidate_user_id) }}
+                                        {{ $vote->candidateUser?->displayName() ?: ('عضو #'.$vote->candidate_user_id) }}
                                         <span class="text-muted small">— افشا: {{ $vote->vote_visibility?->value ?? $vote->vote_visibility ?? 'confidential' }}</span>
                                     </li>
                                 @empty
@@ -54,7 +54,7 @@
                             <ul class="mb-0 mt-1">
                                 @forelse($inspectorVotes as $vote)
                                     <li>
-                                        {{ trim(($vote->candidateUser->first_name ?? '').' '.($vote->candidateUser->last_name ?? '')) ?: ('عضو #'.$vote->candidate_user_id) }}
+                                        {{ $vote->candidateUser?->displayName() ?: ('عضو #'.$vote->candidate_user_id) }}
                                         <span class="text-muted small">— افشا: {{ $vote->vote_visibility?->value ?? $vote->vote_visibility ?? 'confidential' }}</span>
                                     </li>
                                 @empty

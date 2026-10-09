@@ -1080,7 +1080,7 @@ class NajmHodaGroupAssistantService
                     return [
                         'decision' => 'executed',
                         'reason' => 'private_chat_request_sent',
-                        'group_reply' => "درخواست چت خصوصی به {$target->fullName()} ارسال شد.",
+                        'group_reply' => "درخواست چت خصوصی به {$target->displayName()} ارسال شد.",
                         'context' => [
                             'mode' => 'request',
                             'target_user_id' => $target->id,
@@ -1099,7 +1099,7 @@ class NajmHodaGroupAssistantService
                 return [
                     'decision' => 'executed',
                     'reason' => 'private_message_sent',
-                    'group_reply' => "پیام خصوصی به {$target->fullName()} ارسال شد.",
+                    'group_reply' => "پیام خصوصی به {$target->displayName()} ارسال شد.",
                     'context' => [
                         'mode' => 'direct',
                         'target_user_id' => $target->id,
@@ -1149,8 +1149,8 @@ class NajmHodaGroupAssistantService
 
         $target = null;
         $normalizedText = mb_strtolower($text);
-        foreach ($members->sortByDesc(fn ($u) => mb_strlen(trim($u->fullName()))) as $member) {
-            $name = trim($member->fullName());
+        foreach ($members->sortByDesc(fn ($u) => mb_strlen(trim($u->displayName()))) as $member) {
+            $name = trim($member->displayName());
             if ($name === '') {
                 continue;
             }
@@ -1206,8 +1206,8 @@ class NajmHodaGroupAssistantService
 
         if (!$privateGroup) {
             $privateGroup = Group::create([
-                'name' => 'گفتگوی خصوصی ' . trim($target->fullName()),
-                'description' => 'Private chat between Najm Hoda and ' . trim($target->fullName()),
+                'name' => 'گفتگوی خصوصی ' . trim($target->displayName()),
+                'description' => 'Private chat between Najm Hoda and ' . trim($target->displayName()),
                 'group_type' => 'private',
                 'location_level' => '10',
                 'is_open' => 0,
@@ -2068,7 +2068,7 @@ class NajmHodaGroupAssistantService
                 'assigned_user_id' => $assignee?->id,
                 'title' => trim((string) $item['title']),
                 'details' => isset($item['details']) ? trim((string) $item['details']) : null,
-                'assignee_name' => $assignee?->fullName() ?: (isset($item['assignee_name']) ? trim((string) $item['assignee_name']) : null),
+                'assignee_name' => $assignee?->displayName() ?: (isset($item['assignee_name']) ? trim((string) $item['assignee_name']) : null),
                 'due_at' => $due,
                 'due_text' => isset($item['due_at']) ? trim((string) $item['due_at']) : null,
                 'priority' => $priority,

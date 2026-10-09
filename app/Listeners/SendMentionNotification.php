@@ -24,7 +24,7 @@ class SendMentionNotification
             return;
         }
 
-        $title = $mentioner->fullName() . ' شما را در گروه ' . ($group->name ?? '') . ' mention کرد';
+        $title = $mentioner->displayName() . ' شما را در گروه ' . ($group->name ?? '') . ' mention کرد';
         $preview = trim((string) ($message->message ?? ''));
         if ($preview === '') {
             $preview = 'یک پیام جدید';

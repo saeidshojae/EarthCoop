@@ -9118,7 +9118,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-              <span>نویسنده: <a href="{{ route('profile.member.show', $blog->user->id) }}">{{ $blog->user->fullName() }}</a></span>
+              <span>نویسنده: <a href="{{ route('profile.member.show', $blog->user->id) }}">{{ $blog->user->displayName() }}</a></span>
 
 
 

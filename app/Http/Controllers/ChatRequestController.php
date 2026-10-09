@@ -82,7 +82,7 @@ class ChatRequestController extends Controller
                 },
             ])
             ->with([
-                'users:id,first_name,last_name,avatar',
+                'users:id,first_name,last_name,nickname,avatar',
                 'messages' => function ($query) {
                     $query->latest('id')->limit(1);
                 },
@@ -181,7 +181,7 @@ class ChatRequestController extends Controller
 
         Notification::send($user, new ChatRequestNotification(
             $chatRequest->id,
-            $currentUser->fullName(),
+            $currentUser->displayName(),
             $input['description']
         ));
 
@@ -240,7 +240,7 @@ class ChatRequestController extends Controller
             Notification::send($originalSender, new ChatRequestAcceptedNotification(
                 (int) $chatRequest->id,
                 (int) $conversation->id,
-                $currentUser->fullName()
+                $currentUser->displayName()
             ));
         }
 

@@ -437,7 +437,7 @@
 
 
 
-                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبان: {{ $chat->agent->fullName() }}</p>
+                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبان: {{ $chat->agent->displayName() }}</p>
 
 
 
@@ -1067,7 +1067,7 @@
 
 
 
-                                    {{ $message->user->fullName() }}
+                                    {{ $message->user->displayName() }}
 
 
 
@@ -4057,7 +4057,7 @@
 
 
 
-                                    name: userData.name || (userData.first_name && userData.last_name ? userData.first_name + ' ' + userData.last_name : 'کاربر')
+                                    name: userData.name || userData.nickname || (userData.first_name && userData.last_name ? userData.first_name + ' ' + userData.last_name : 'کاربر')
 
 
 
@@ -4467,7 +4467,7 @@
 
 
 
-                                    name: message.user.name || (message.user.first_name + ' ' + message.user.last_name)
+                                    name: message.user.name || message.user.nickname || (message.user.first_name + ' ' + message.user.last_name)
 
 
 

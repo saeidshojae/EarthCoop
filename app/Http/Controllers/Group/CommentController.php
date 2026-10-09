@@ -94,11 +94,11 @@ class CommentController extends Controller
                 'id' => $comment->id,
                 'message' => $comment->message,
                 'created_at' => $comment->created_at->format('H:i'),
-                'sender' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'sender' => auth()->user()->displayName(),
                 'parent' => $comment->parent ? [
                     'id' => $comment->parent->id,
                     'message' => $comment->parent->message,
-                    'user_name' => $comment->parent->user->first_name . ' ' . $comment->parent->user->last_name
+                    'user_name' => $comment->parent->user->displayName()
                 ] : null,
             ]
         ]);

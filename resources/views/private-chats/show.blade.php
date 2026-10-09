@@ -630,7 +630,7 @@
                      alt=""
                      class="pm-chat-avatar">
                 <div class="pm-chat-person-text">
-                    <span class="pm-chat-name">{{ $otherUser?->fullName() ?? 'گفتگوی خصوصی' }}</span>
+                    <span class="pm-chat-name">{{ $otherUser?->displayName() ?? 'گفتگوی خصوصی' }}</span>
                     <span class="pm-chat-context">گفتگوی خصوصی</span>
                 </div>
             </div>
@@ -656,7 +656,7 @@
                         $reactionSummary = $message->reactions->groupBy('reaction_type')->map(function($group) {
                             return [
                                 'count' => $group->count(),
-                                'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->fullName() : '')
+                                'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->displayName() : '')
                                     ->filter()->unique()->values()->toArray(),
                             ];
                         });
@@ -672,7 +672,7 @@
 
                         <div class="pm-message-body">
                             @if(!$isSent)
-                                <div class="pm-message-sender">{{ $message->sender->fullName() }}</div>
+                                <div class="pm-message-sender">{{ $message->sender->displayName() }}</div>
                             @endif
 
                             <div class="pm-message-bubble">{{ $message->message }}</div>

@@ -1000,7 +1000,7 @@ Route::get('/test-rbac', function() {
         'user' => [
             'id' => $user->id,
             'email' => $user->email,
-            'name' => $user->fullName(),
+            'name' => $user->displayName(),
             'is_admin' => $user->is_admin,
         ],
         'roles' => $user->roles->map(function($role) {

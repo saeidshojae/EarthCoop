@@ -537,7 +537,7 @@
 
 
 
-                            <h6 class="font-14"><a href='{{ route('profile.show') }}' style='text-decoration: none; color: #333'>{{ Auth::user()->fullName() }}</a></h6>
+                            <h6 class="font-14"><a href='{{ route('profile.show') }}' style='text-decoration: none; color: #333'>{{ Auth::user()->displayName() }}</a></h6>
 
 
 

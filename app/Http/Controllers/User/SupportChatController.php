@@ -155,7 +155,7 @@ class SupportChatController extends Controller
         $transcript = '';
         
         foreach ($messages as $msg) {
-            $sender = $msg->type === 'user' ? 'کاربر' : ($msg->user ? $msg->user->fullName() : 'پشتیبان');
+            $sender = $msg->type === 'user' ? 'کاربر' : ($msg->user ? $msg->user->displayName() : 'پشتیبان');
             $transcript .= "**{$sender}** ({$msg->created_at->format('Y/m/d H:i')}):\n{$msg->message}\n\n";
         }
 

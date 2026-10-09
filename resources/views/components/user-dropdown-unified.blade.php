@@ -60,7 +60,7 @@
         
         @if($hasAvatar)
             <img src="{{ asset('images/users/avatars/' . $user->avatar) }}" 
-                 alt="{{ $user->fullName() }}"
+                 alt="{{ $user->displayName() }}"
                  class="w-10 h-10 md:w-8 md:h-8 rounded-full object-cover border-2 border-white/30 md:ml-2 user-avatar-img"
                  style="display: block;">
         @else
@@ -69,7 +69,7 @@
             </div>
         @endif
         
-        <span class="hidden md:inline">{{ $user ? $user->fullName() : '' }}</span>
+        <span class="hidden md:inline">{{ $user ? $user->displayName() : '' }}</span>
         
         <i class="fas fa-chevron-down hidden md:block mr-2 text-sm transition-transform duration-300" 
            :class="{ 'rotate-180': userDropdownOpen }"></i>

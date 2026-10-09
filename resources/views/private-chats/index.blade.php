@@ -320,7 +320,7 @@
                 <li>
                     <a href="{{ route('private-chats.show', $conversation->id) }}"
                        class="pm-conversation-row {{ $unreadCount > 0 ? 'is-unread' : '' }}"
-                       aria-label="گفتگو با {{ $otherUser?->fullName() ?? 'عضو EarthCoop' }}{{ $unreadCount > 0 ? '، ' . $unreadCount . ' پیام خوانده‌نشده' : '' }}">
+                       aria-label="گفتگو با {{ $otherUser?->displayName() ?? 'عضو EarthCoop' }}{{ $unreadCount > 0 ? '، ' . $unreadCount . ' پیام خوانده‌نشده' : '' }}">
                         <span class="pm-avatar-wrap" aria-hidden="true">
                             <img src="{{ $otherUser && $otherUser->avatar ? asset('images/users/' . $otherUser->avatar) : asset('images/default-avatar.png') }}"
                                  alt=""
@@ -328,7 +328,7 @@
                         </span>
 
                         <span class="pm-conversation-main">
-                            <span class="pm-conversation-name">{{ $otherUser?->fullName() ?? 'گفتگوی خصوصی' }}</span>
+                            <span class="pm-conversation-name">{{ $otherUser?->displayName() ?? 'گفتگوی خصوصی' }}</span>
                             <span class="pm-conversation-preview">
                                 @if($lastMessage)
                                     @if((int) $lastMessage->sender_id === (int) auth()->id())

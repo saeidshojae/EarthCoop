@@ -69,7 +69,7 @@ class SupportChatMessageSent implements ShouldBroadcast
             'created_at' => $this->message->created_at->toIso8601String(),
             'user' => [
                 'id' => $this->sender->id,
-                'name' => $this->sender->fullName(),
+                'name' => $this->sender->displayName(),
             ],
             'chat' => [
                 'id' => $this->chat->id,

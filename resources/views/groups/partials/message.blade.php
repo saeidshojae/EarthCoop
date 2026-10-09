@@ -12,13 +12,9 @@
 
     $isMine = $item->user_id === auth()->id();
 
-    $first = $sender->first_name ?? '';
+    $senderName = $sender ? $sender->displayName() : '';
 
-    $last = $sender->last_name ?? '';
-
-    $initials = trim(($first ? mb_substr($first, 0, 1) : '') . ' ' . ($last ? mb_substr($last, 0, 1) : '')) ?: '؟';
-
-    $senderName = trim($first . ' ' . $last);
+    $initials = $senderName !== '' ? mb_substr($senderName, 0, 1) : '؟';
 
     $rawContent = $item->content ?? '';
 
@@ -356,9 +352,7 @@
 
         $parent = \App\Models\Poll::with('user')->find($id);
 
-        $replySender = trim((optional(optional($parent)->user)->first_name ?? '') . ' ' .
-
-        (optional(optional($parent)->user)->last_name ?? ''));
+        $replySender = optional($parent)->user?->displayName() ?? '';
 
         $replyText = optional($parent)->title ?? optional($parent)->question ?? 'Poll';
 
@@ -370,9 +364,7 @@
 
         $parent = \App\Models\Blog::with('user')->find($id);
 
-        $replySender = trim((optional(optional($parent)->user)->first_name ?? '') . ' ' .
-
-        (optional(optional($parent)->user)->last_name ?? ''));
+        $replySender = optional($parent)->user?->displayName() ?? '';
 
         $replyText = optional($parent)->title ?? 'Post';
 
@@ -382,9 +374,7 @@
 
         $parent = $item->parent ?? null;
 
-        $replySender = trim((optional(optional($parent)->user)->first_name ?? '') . ' ' .
-
-        (optional(optional($parent)->user)->last_name ?? ''));
+        $replySender = optional($parent)->user?->displayName() ?? '';
 
         $replyText = optional($parent)->message ?? '';
 

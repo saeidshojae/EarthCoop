@@ -37,7 +37,7 @@ class CommunityStoryController extends Controller
         $user = $request->user();
         $showName = $request->boolean('show_name');
         $showAvatar = $request->boolean('show_avatar') && filled($user->avatar);
-        $fullName = trim((string) $user->fullName());
+        $fullName = trim((string) $user->displayName());
 
         CommunityStory::create([
             'user_id' => $user->id,

@@ -11,7 +11,7 @@
 
     @if($commenter)
         <p style="font-size:14px;color:#4b5563;">
-            <strong>پاسخ از:</strong> {{ trim(($commenter->first_name ?? '').' '.($commenter->last_name ?? '')) ?: 'تیم پشتیبانی EarthCoop' }}
+            <strong>پاسخ از:</strong> {{ $commenter->displayName() ?: 'تیم پشتیبانی EarthCoop' }}
             <br>
             <strong>زمان:</strong> <x-temporal.date-time :value="$comment->created_at" style="short" />
         </p>

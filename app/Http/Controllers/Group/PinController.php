@@ -118,7 +118,7 @@ class PinController extends Controller
 
                 return $this->serializeContent($type, $pin->content) + [
                     'pinned_at' => optional($pin->created_at)->toIso8601String(),
-                    'pinned_by' => trim(($pin->pinnedBy->first_name ?? '') . ' ' . ($pin->pinnedBy->last_name ?? '')),
+                    'pinned_by' => $pin->pinnedBy?->displayName() ?? '',
                 ];
             })->filter()->values()->all();
     }

@@ -84,8 +84,8 @@
                                         $memberId = (int) $member->id;
                                         $checked = in_array($memberId, $selectedManagers, true);
                                         $visibility = $visibilityMap[$memberId] ?? 'confidential';
-                                        $memberName = trim(($member->first_name ?? '').' '.($member->last_name ?? '')) ?: ('عضو #'.$memberId);
-                                        $memberInitials = trim(mb_substr((string)($member->first_name ?? ''), 0, 1).mb_substr((string)($member->last_name ?? ''), 0, 1)) ?: mb_substr($memberName, 0, 2);
+                                        $memberName = $member->displayName() ?: ('عضو #'.$memberId);
+                                        $memberInitials = mb_substr($memberName, 0, 1);
                                         $memberAvatar = !empty($member->avatar) ? asset('storage/'.ltrim((string)$member->avatar, '/')) : null;
                                     @endphp
                                     <div class="election-member-option border-bottom py-2" data-election-member data-member-name="{{ mb_strtolower($memberName) }}">
