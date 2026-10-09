@@ -645,7 +645,18 @@ class ProfileController
         $najmHodaEmail = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');
         if ($user->isSystemIdentity() && $user->email === $najmHodaEmail) return redirect()->route('najm-hoda.profile');
         $chatRequests = ChatRequest::where('receiver_id', auth()->id())->where('status', 'pending')->with('sender')->latest()->get();
-        $currentGroups = app(\App\Services\Groups\CurrentGroupAccessService::class)->groupsFor($user);
+        $access = app(\App\Services\Groups\CurrentGroupAccessService::class);
+        $currentGroups = $access->groupsFor($user);
+        $viewerGroupIds = auth()->check() ? $access->idsFor(auth()->user()) : [];
+
+        // Show pending location groups as non-navigable presentation shells.
+        // Read-only: never synchronize another member's residence while viewing.
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $pendingService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+            $pendingRequests = $pendingService->readOpenForUser($user);
+            $currentGroups = $pendingService->presentableCanonicalGroups($currentGroups, $pendingRequests)
+                ->concat($pendingService->presentationGroups($pendingRequests))->values();
+        }
         // Canonical dimensions are identified by dimension_key; legacy presentation
         // fields (specialty_id / experience_id) are not authoritative in Stage C.
         $generalGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'public' || ($group->dimension_key === null && (int) $group->group_type === 0))->values();
@@ -653,7 +664,7 @@ class ProfileController
         $experienceGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'specialty' || ($group->dimension_key === null && $group->specialty_id === null && $group->experience_id !== null))->values();
         $ageGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'age' || ($group->dimension_key === null && (int) $group->group_type === 3))->values();
         $genderGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'gender' || ($group->dimension_key === null && (int) $group->group_type === 4))->values();
-        return view('profile.profile-member', compact('user','chatRequests','generalGroups','specialityGroups','experienceGroups','ageGroups','genderGroups'));
+        return view('profile.profile-member', compact('user','chatRequests','generalGroups','specialityGroups','experienceGroups','ageGroups','genderGroups','viewerGroupIds'));
     }
 
     public function showInfo(Request $request)
