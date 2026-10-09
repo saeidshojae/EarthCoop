@@ -135,6 +135,59 @@ class InitialMembershipCreditTest extends TestCase
             ->where('user_id', $user->id)->where('context', 'najm_bahar')->count());
     }
 
+    public function test_stale_financial_agreement_version_cannot_be_accepted_after_new_publication(): void
+    {
+        $this->allowEligibleMembership();
+        $user = User::factory()->create();
+        $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
+            'agreement_accepted' => '1',
+        ])->assertRedirect(route('najm-bahar.dashboard'));
+
+        $account = Account::where('user_id', $user->id)->where('type', 'user')->firstOrFail();
+        $before = (int) $account->balance;
+        $document = LegalDocument::create([
+            'slug' => 'najm-bahar',
+            'title' => 'توافقنامه نجم‌بهار',
+            'source_type' => 'najm_bahar_agreements',
+        ]);
+        $publisher = app(LegalDocumentPublicationService::class);
+        $old = $publisher->publish(LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.0',
+            'language' => 'fa',
+            'status' => 'draft',
+        ]), 'متن قدیمی', $user->id);
+        $new = $publisher->publish(LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.1',
+            'language' => 'fa',
+            'status' => 'draft',
+        ]), 'متن جدید', $user->id);
+
+        $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
+            'agreement_accepted' => '1',
+            'legal_version_id' => $old->id,
+        ])->assertSessionHasErrors();
+
+        $this->assertSame($before, (int) $account->fresh()->balance);
+        $this->assertDatabaseMissing('legal_document_acceptances', [
+            'user_id' => $user->id,
+            'legal_document_version_id' => $old->id,
+        ]);
+
+        $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
+            'agreement_accepted' => '1',
+            'legal_version_id' => $new->id,
+        ])->assertRedirect(route('najm-bahar.dashboard'));
+
+        $this->assertDatabaseHas('legal_document_acceptances', [
+            'user_id' => $user->id,
+            'legal_document_version_id' => $new->id,
+            'context' => 'najm_bahar',
+        ]);
+        $this->assertSame($before, (int) $account->fresh()->balance);
+    }
+
     private function allowEligibleMembership(): void
     {
         $this->mock(MembershipEligibilityService::class, function ($mock) {
