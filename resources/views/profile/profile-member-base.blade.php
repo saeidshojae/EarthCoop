@@ -6393,105 +6393,19 @@
 
 
                                 @php
-
-
-
-
-
-
-
-
-
-                                    $checkCurrentUserIsHere = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->user()->id)->first();
-
-
-
-
-
-
-
-
-
+                                    $isPendingGroup = (bool) ($group->pending_location ?? false);
+                                    $canOpenGroup = ! $isPendingGroup && in_array((int) $group->id, $viewerGroupIds ?? [], true);
                                 @endphp
-
-
-
-
-
-
-
-
-
                                 <tr>
-
-
-
-
-
-
-
-
-
                                     <th>
-
-
-
-
-
-
-
-
-
-                                        <a href="{{ $checkCurrentUserIsHere != null ? route('groups.chat', $group->id) : '#' }}" 
-
-
-
-
-
-
-
-
-
-                                           class="{{ $checkCurrentUserIsHere == null ? 'disabled-link' : '' }}">
-
-
-
-
-
-
-
-
-
-                                            {{ $group->name }}
-
-
-
-
-
-
-
-
-
-                                        </a>
-
-
-
-
-
-
-
-
-
+                                        @if($isPendingGroup)
+                                            <span>{{ $group->name }} — در انتظار تأیید مکان</span>
+                                        @elseif($canOpenGroup)
+                                            <a href="{{ route('groups.chat', $group->id) }}">{{ $group->name }}</a>
+                                        @else
+                                            <span>{{ $group->name }}</span>
+                                        @endif
                                     </th>
-
-
-
-
-
-
-
-
-
                                 </tr>
 
 
@@ -6643,105 +6557,19 @@
 
 
                                 @php
-
-
-
-
-
-
-
-
-
-                                    $checkCurrentUserIsHere = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->user()->id)->first();
-
-
-
-
-
-
-
-
-
+                                    $isPendingGroup = (bool) ($group->pending_location ?? false);
+                                    $canOpenGroup = ! $isPendingGroup && in_array((int) $group->id, $viewerGroupIds ?? [], true);
                                 @endphp
-
-
-
-
-
-
-
-
-
                                 <tr>
-
-
-
-
-
-
-
-
-
                                     <th>
-
-
-
-
-
-
-
-
-
-                                        <a href="{{ $checkCurrentUserIsHere != null ? route('groups.chat', $group->id) : '#' }}" 
-
-
-
-
-
-
-
-
-
-                                           class="{{ $checkCurrentUserIsHere == null ? 'disabled-link' : '' }}">
-
-
-
-
-
-
-
-
-
-                                            {{ $group->name }}
-
-
-
-
-
-
-
-
-
-                                        </a>
-
-
-
-
-
-
-
-
-
+                                        @if($isPendingGroup)
+                                            <span>{{ $group->name }} — در انتظار تأیید مکان</span>
+                                        @elseif($canOpenGroup)
+                                            <a href="{{ route('groups.chat', $group->id) }}">{{ $group->name }}</a>
+                                        @else
+                                            <span>{{ $group->name }}</span>
+                                        @endif
                                     </th>
-
-
-
-
-
-
-
-
-
                                 </tr>
 
 
@@ -6893,105 +6721,19 @@
 
 
                                 @php
-
-
-
-
-
-
-
-
-
-                                    $checkCurrentUserIsHere = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->user()->id)->first();
-
-
-
-
-
-
-
-
-
+                                    $isPendingGroup = (bool) ($group->pending_location ?? false);
+                                    $canOpenGroup = ! $isPendingGroup && in_array((int) $group->id, $viewerGroupIds ?? [], true);
                                 @endphp
-
-
-
-
-
-
-
-
-
                                 <tr>
-
-
-
-
-
-
-
-
-
                                     <th>
-
-
-
-
-
-
-
-
-
-                                        <a href="{{ $checkCurrentUserIsHere != null ? route('groups.chat', $group->id) : '#' }}" 
-
-
-
-
-
-
-
-
-
-                                           class="{{ $checkCurrentUserIsHere == null ? 'disabled-link' : '' }}">
-
-
-
-
-
-
-
-
-
-                                            {{ $group->name }}
-
-
-
-
-
-
-
-
-
-                                        </a>
-
-
-
-
-
-
-
-
-
+                                        @if($isPendingGroup)
+                                            <span>{{ $group->name }} — در انتظار تأیید مکان</span>
+                                        @elseif($canOpenGroup)
+                                            <a href="{{ route('groups.chat', $group->id) }}">{{ $group->name }}</a>
+                                        @else
+                                            <span>{{ $group->name }}</span>
+                                        @endif
                                     </th>
-
-
-
-
-
-
-
-
-
                                 </tr>
 
 
@@ -7143,105 +6885,19 @@
 
 
                                 @php
-
-
-
-
-
-
-
-
-
-                                    $checkCurrentUserIsHere = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->user()->id)->first();
-
-
-
-
-
-
-
-
-
+                                    $isPendingGroup = (bool) ($group->pending_location ?? false);
+                                    $canOpenGroup = ! $isPendingGroup && in_array((int) $group->id, $viewerGroupIds ?? [], true);
                                 @endphp
-
-
-
-
-
-
-
-
-
                                 <tr>
-
-
-
-
-
-
-
-
-
                                     <th>
-
-
-
-
-
-
-
-
-
-                                        <a href="{{ $checkCurrentUserIsHere != null ? route('groups.chat', $group->id) : '#' }}" 
-
-
-
-
-
-
-
-
-
-                                           class="{{ $checkCurrentUserIsHere == null ? 'disabled-link' : '' }}">
-
-
-
-
-
-
-
-
-
-                                            {{ $group->name }}
-
-
-
-
-
-
-
-
-
-                                        </a>
-
-
-
-
-
-
-
-
-
+                                        @if($isPendingGroup)
+                                            <span>{{ $group->name }} — در انتظار تأیید مکان</span>
+                                        @elseif($canOpenGroup)
+                                            <a href="{{ route('groups.chat', $group->id) }}">{{ $group->name }}</a>
+                                        @else
+                                            <span>{{ $group->name }}</span>
+                                        @endif
                                     </th>
-
-
-
-
-
-
-
-
-
                                 </tr>
 
 
@@ -7393,105 +7049,19 @@
 
 
                                 @php
-
-
-
-
-
-
-
-
-
-                                    $checkCurrentUserIsHere = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->user()->id)->first();
-
-
-
-
-
-
-
-
-
+                                    $isPendingGroup = (bool) ($group->pending_location ?? false);
+                                    $canOpenGroup = ! $isPendingGroup && in_array((int) $group->id, $viewerGroupIds ?? [], true);
                                 @endphp
-
-
-
-
-
-
-
-
-
                                 <tr>
-
-
-
-
-
-
-
-
-
                                     <th>
-
-
-
-
-
-
-
-
-
-                                        <a href="{{ $checkCurrentUserIsHere != null ? route('groups.chat', $group->id) : '#' }}" 
-
-
-
-
-
-
-
-
-
-                                           class="{{ $checkCurrentUserIsHere == null ? 'disabled-link' : '' }}">
-
-
-
-
-
-
-
-
-
-                                            {{ $group->name }}
-
-
-
-
-
-
-
-
-
-                                        </a>
-
-
-
-
-
-
-
-
-
+                                        @if($isPendingGroup)
+                                            <span>{{ $group->name }} — در انتظار تأیید مکان</span>
+                                        @elseif($canOpenGroup)
+                                            <a href="{{ route('groups.chat', $group->id) }}">{{ $group->name }}</a>
+                                        @else
+                                            <span>{{ $group->name }}</span>
+                                        @endif
                                     </th>
-
-
-
-
-
-
-
-
-
                                 </tr>
 
 
