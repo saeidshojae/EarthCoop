@@ -279,17 +279,14 @@ class UserController extends Controller
             'roles.permissions'
         ]);
 
-        $user->setRelation('groups', app(\App\Services\Groups\CurrentGroupAccessService::class)->groupsFor($user));
-
-        // Pending official groups have no persisted Group ID; count them separately
-        // rather than turning presentation shells into navigable group records.
-        $pendingGroupCount = (bool) config('location-governance.groups_enabled', false)
-            ? app(\App\Services\Groups\PendingLocationGroupRequestService::class)
-                ->readOpenForUser($user)->count()
-            : 0;
+        $groupSnapshot = app(\App\Services\Groups\CurrentGroupPresentationService::class)->forUser($user);
+        // Only materialized groups are navigable on the admin details page.
+        $user->setRelation('groups', $groupSnapshot['materialized']);
+        $pendingGroupCount = $groupSnapshot['pending']->count();
+        $displayedGroupCount = $groupSnapshot['all']->count();
 
         $userStats = [
-            'groups_count' => $user->groups->count() + $pendingGroupCount,
+            'groups_count' => $displayedGroupCount,
             'pending_groups_count' => $pendingGroupCount,
             'blog_posts_count' => \App\Models\Blog::where('user_id', $user->id)->count(),
             'website_posts_count' => \App\Modules\Blog\Models\Post::where('user_id', $user->id)->count(),
