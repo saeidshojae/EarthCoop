@@ -35,7 +35,7 @@ final class CurrentGroupAccessService
         ]))->flip();
 
         return $groups->filter(static function (Group $group) use ($allowed): bool {
-            if ((string) $group->location_level === '10') {
+            if ((int) $group->location_level === 10) {
                 return true;
             }
 
