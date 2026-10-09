@@ -1,4 +1,6 @@
-import $ from 'jquery';
+// Match the jQuery instance resolved by persian-datepicker@0.5.11.
+// Its locked dependency is jquery@2.2.0, separate from the application's jquery@3.7.1.
+import $ from 'persian-datepicker/node_modules/jquery/dist/jquery.js';
 
 const GREGORIAN_MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -31,7 +33,10 @@ export const localeFromCookie = (cookieString = '') => {
 export const resolvedLocale = () => {
     if (typeof document === 'undefined') return 'fa';
 
-    return localeFromCookie(document.cookie)
+    const cookieLocale = localeFromCookie(document.cookie);
+    // Laravel may encrypt this cookie: only trust an actual locale code.
+    const validLocale = /^(fa|en|ar)(?:[-_][a-z0-9]+)*$/i.test(cookieLocale);
+    return (validLocale ? cookieLocale : '')
         || document.documentElement.lang
         || 'fa';
 };
@@ -97,50 +102,6 @@ export const enhanceLegacyBirthDate = (root = document, locale = resolvedLocale(
     return true;
 };
 
-const LEGACY_ADMIN_DATE_FILTERS = new Map([
-    ['/admin/najm-bahar/analytics', ['date_from', 'date_to']],
-    ['/admin/reports', ['date_from', 'date_to']],
-    ['/admin/users', ['created_from', 'created_to']],
-]);
-
-export const adminDateFilterNamesForPath = (path = '') => LEGACY_ADMIN_DATE_FILTERS.get(
-    String(path || '').replace(/\/+$/, '') || '/',
-) || [];
-
-export const markLegacyAdminDateInputs = (root = document, locale = resolvedLocale()) => {
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-    const names = adminDateFilterNamesForPath(path);
-    if (names.length === 0) return false;
-
-    const selector = names.map((name) => `input[name="${name}"]`).join(', ');
-    const inputs = [...root.querySelectorAll(selector)];
-    if (inputs.length === 0) return false;
-
-    const calendar = calendarForLocale(locale);
-    inputs.forEach((input) => {
-        const rawValue = input.getAttribute('value') || input.value || '';
-        input.classList.remove('jalali-date');
-        input.dataset.temporalDateInput = '';
-        input.dataset.calendar = calendar;
-        input.autocomplete = 'off';
-
-        if (calendar === 'jalali') {
-            input.type = 'text';
-            input.inputMode = 'numeric';
-            input.placeholder = '۱۴۰۵/۰۷/۰۹';
-        } else {
-            input.type = 'date';
-            input.removeAttribute('inputmode');
-            input.removeAttribute('placeholder');
-            input.dir = 'ltr';
-        }
-
-        input.value = rawValue;
-    });
-
-    return true;
-};
-
 let persianDatepickerPromise = null;
 
 const temporalJQuery = $;
@@ -159,6 +120,7 @@ const loadBundledPersianDatepicker = async () => {
         window.$ = temporalJQuery;
         window.jQuery = temporalJQuery;
 
+        await import('../css/temporal-picker.css');
         const persianDateModule = await import('persian-date');
         window.persianDate = window.persianDate || persianDateModule.default || persianDateModule;
         await import('persian-datepicker/dist/js/persian-datepicker.min.js');
@@ -169,9 +131,97 @@ const loadBundledPersianDatepicker = async () => {
     return persianDatepickerPromise;
 };
 
+export const jalaliPickerOptions = (input) => {
+    const isDateTime = input.matches('[data-temporal-datetime-input]');
+    const options = {
+        format: isDateTime ? 'YYYY/MM/DD HH:mm' : 'YYYY/MM/DD',
+        // Never let plugin initialization replace a server-rendered date with today.
+        initialValue: false,
+        initialValueType: 'persian',
+        autoClose: true,
+        observer: true,
+        viewMode: input.name === 'birth_date' && !input.value ? 'year' : 'day',
+        calendar: { persian: { locale: 'fa' } },
+    };
+
+    if (isDateTime) {
+        options.timePicker = {
+            enabled: true,
+            meridiem: { enabled: false },
+        };
+    }
+
+    return options;
+};
+
+// Only the stored birth-date field needs its calendar navigated to its initial date.
+// Other shared date/datetime inputs retain the existing picker behavior.
+export const storedBirthDateParts = (input) => {
+    if (input?.name !== 'birth_date' || input.matches('[data-temporal-datetime-input]')) return null;
+    const normalized = String(input.value || '').replace(/[۰-۹٠-٩]/g, (digit) => {
+        const code = digit.charCodeAt(0);
+        return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
+    });
+    const match = /^([0-9]{4})\/([0-9]{2})\/([0-9]{2})$/.exec(normalized);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
+    return [year, month, day];
+};
+
+// Only adjust the visible calendar page; never call setDate/onSelect.
+export const navigateBirthPickerView = (input, picker, PersianDate = window.persianDate) => {
+    const parts = storedBirthDateParts(input);
+    const state = picker?.model?.state;
+    const view = picker?.model?.view;
+    if (!parts || typeof PersianDate !== 'function'
+        || typeof state?.setViewDateTime !== 'function'
+        || typeof view?.render !== 'function') return false;
+
+    try {
+        const timestamp = new PersianDate(parts).toDate().getTime();
+        if (!Number.isFinite(timestamp)) return false;
+        const originalValue = input.value;
+        state.setViewDateTime('unix', timestamp);
+        view.render();
+        // No date-selection callback or input assignment is invoked here.
+        if (input.value !== originalValue) input.value = originalValue;
+        return true;
+    } catch (error) {
+        console.warn('EarthCoop birth-date calendar navigation skipped:', error);
+        return false;
+    }
+};
+
+const bindPickerTrigger = (input, picker) => {
+    const field = input.closest('[data-temporal-picker-field]');
+    const trigger = field?.querySelector('[data-temporal-picker-trigger]');
+    if (!trigger || trigger.dataset.temporalPickerTriggerReady === 'true') return;
+
+    trigger.addEventListener('click', () => {
+        if (input.disabled) return;
+
+        if (picker && typeof picker.show === 'function') {
+            if (input.dataset.temporalBirthPickerPositioned !== 'true') {
+                navigateBirthPickerView(input, picker);
+                input.dataset.temporalBirthPickerPositioned = 'true';
+            }
+            picker.show();
+            return;
+        }
+
+        input.focus();
+        temporalJQuery(input).trigger('click');
+    });
+
+    trigger.dataset.temporalPickerTriggerReady = 'true';
+};
+
 export const enhanceJalaliDateInputs = async (root = document) => {
     const inputs = [...root.querySelectorAll(
-        '[data-temporal-date-input][data-calendar="jalali"], [data-temporal-date][data-calendar="jalali"]',
+        '[data-temporal-date-input][data-calendar="jalali"], [data-temporal-datetime-input][data-calendar="jalali"]',
     )];
     if (inputs.length === 0) return false;
 
@@ -180,15 +230,20 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 
     inputs.forEach((input) => {
         const $input = temporalJQuery(input);
-        if ($input.data('temporalDatepickerReady')) return;
+        if ($input.data('temporalDatepickerReady')) {
+            bindPickerTrigger(input, $input.data('temporalDatepickerInstance'));
+            return;
+        }
 
-        $input.persianDatepicker({
-            format: 'YYYY/MM/DD',
-            initialValue: Boolean(input.value),
-            autoClose: true,
-            calendar: { persian: { locale: 'fa' } },
-        });
+        const originalValue = input.value;
+        const picker = $input.persianDatepicker(jalaliPickerOptions(input));
+        // The installed legacy picker can still write to the field on init.
+        // Restore the original DOM value; actual user selection remains enabled.
+        if (input.value !== originalValue) input.value = originalValue;
         $input.data('temporalDatepickerReady', true);
+        $input.data('temporalDatepickerInstance', picker);
+        input.dataset.temporalPickerReady = 'true';
+        bindPickerTrigger(input, picker);
     });
 
     return true;
@@ -197,23 +252,47 @@ export const enhanceJalaliDateInputs = async (root = document) => {
 export const enhanceTemporalInputs = async (root = document) => {
     const locale = resolvedLocale();
     enhanceLegacyBirthDate(root, locale);
-    markLegacyAdminDateInputs(root, locale);
-
     if (calendarForLocale(locale) === 'jalali') {
         await enhanceJalaliDateInputs(root);
     }
 };
 
 if (typeof document !== 'undefined') {
-    const run = () => {
-        void enhanceTemporalInputs(document).catch((error) => {
+    const run = (root = document) => {
+        void enhanceTemporalInputs(root).catch((error) => {
             console.warn('EarthCoop temporal input enhancement failed; manual date entry remains available.', error);
         });
     };
 
+    const observeDynamicTemporalInputs = () => {
+        if (typeof MutationObserver === 'undefined' || !document.body) return;
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (!(node instanceof Element)) continue;
+
+                    if (
+                        node.matches?.('[data-temporal-date-input], [data-temporal-datetime-input]')
+                        || node.querySelector?.('[data-temporal-date-input], [data-temporal-datetime-input]')
+                    ) {
+                        run(node.matches?.('[data-temporal-date-input], [data-temporal-datetime-input]') ? node.parentElement || node : node);
+                    }
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    const boot = () => {
+        run(document);
+        observeDynamicTemporalInputs();
+    };
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', run, { once: true });
+        document.addEventListener('DOMContentLoaded', boot, { once: true });
     } else {
-        run();
+        boot();
     }
 }

@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class TemporalDateInputAssetContractTest extends TestCase
 {
-    public function test_persian_date_input_is_jalali_manual_first_and_progressively_enhanced(): void
+    public function test_persian_date_input_is_picker_first_with_manual_fallback(): void
     {
         app()->setLocale('fa');
 
@@ -26,9 +26,51 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringContainsString('value="۱۴۰۵/۰۷/۰۹"', $html);
         $this->assertStringContainsString('placeholder="۱۴۰۵/۰۷/۰۹"', $html);
         $this->assertStringContainsString('inputmode="numeric"', $html);
+        $this->assertStringContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringContainsString('aria-haspopup="dialog"', $html);
+        $this->assertStringContainsString('تاریخ را از تقویم انتخاب کنید', $html);
         $this->assertStringNotContainsString('unpkg.com', $html);
         $this->assertStringNotContainsString('http://', $html);
         $this->assertStringNotContainsString('https://', $html);
+    }
+
+    public function test_persian_date_input_shows_picker_when_disabled_binding_is_false(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="birth_date" :disabled="false" />',
+        );
+
+        $this->assertStringContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringNotContainsString(' disabled', $html);
+    }
+
+    public function test_persian_date_input_hides_picker_when_disabled_binding_is_true(): void
+    {
+        app()->setLocale('fa');
+
+        $html = Blade::render(
+            '<x-temporal.date-input name="birth_date" :disabled="true" />',
+        );
+
+        $this->assertStringNotContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringContainsString('disabled', $html);
+    }
+
+    public function test_persian_datetime_input_respects_boolean_disabled_binding_for_picker(): void
+    {
+        app()->setLocale('fa');
+
+        $enabled = Blade::render(
+            '<x-temporal.date-time-input name="starts_at" :disabled="false" />',
+        );
+        $disabled = Blade::render(
+            '<x-temporal.date-time-input name="starts_at" :disabled="true" />',
+        );
+
+        $this->assertStringContainsString('data-temporal-picker-trigger', $enabled);
+        $this->assertStringNotContainsString('data-temporal-picker-trigger', $disabled);
     }
 
     public function test_persian_date_input_preserves_already_localized_filter_value(): void
@@ -59,7 +101,7 @@ class TemporalDateInputAssetContractTest extends TestCase
         }
     }
 
-    public function test_persian_datetime_input_is_jalali_manual_first(): void
+    public function test_persian_datetime_input_is_picker_first_with_time_selection(): void
     {
         app()->setLocale('fa');
         $instant = new DateTimeImmutable('2026-10-01 10:30:00', new DateTimeZone('UTC'));
@@ -76,6 +118,8 @@ class TemporalDateInputAssetContractTest extends TestCase
         $this->assertStringContainsString('value="۱۴۰۵/۰۷/۰۹ ۱۰:۳۰"', $html);
         $this->assertStringContainsString('placeholder="۱۴۰۵/۰۷/۰۹ ۱۰:۳۰"', $html);
         $this->assertStringContainsString('inputmode="numeric"', $html);
+        $this->assertStringContainsString('data-temporal-picker-trigger', $html);
+        $this->assertStringContainsString('انتخاب تاریخ و ساعت', $html);
     }
 
     public function test_persian_datetime_input_preserves_already_localized_value(): void
@@ -122,17 +166,34 @@ class TemporalDateInputAssetContractTest extends TestCase
 
     public function test_vite_owns_temporal_datepicker_assets_and_runtime(): void
     {
-        $css = file_get_contents(resource_path('css/vite.css'));
+        $pickerCss = file_get_contents(resource_path('css/temporal-picker.css'));
         $app = file_get_contents(resource_path('js/app.js'));
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString('persian-datepicker/dist/css/persian-datepicker.min.css', $css);
+        $this->assertStringContainsString("await import('../css/temporal-picker.css');", $runtime);
+        $this->assertStringContainsString('persian-datepicker/dist/css/persian-datepicker.min.css', $pickerCss);
         $this->assertStringContainsString('temporal-input.js', $app);
         $this->assertStringContainsString('data-temporal-date-input', $app);
+        $this->assertStringContainsString('data-temporal-datetime-input', $app);
         $this->assertStringContainsString("import('persian-date')", $runtime);
         $this->assertStringContainsString("import('persian-datepicker/dist/js/persian-datepicker.min.js')", $runtime);
+        $this->assertStringContainsString('data-temporal-picker-trigger', $runtime);
+        $this->assertStringContainsString('timePicker', $runtime);
+        $this->assertStringContainsString('MutationObserver', $runtime);
         $this->assertStringNotContainsString('unpkg.com/persian-datepicker', $app);
         $this->assertStringNotContainsString('unpkg.com/persian-datepicker', $runtime);
+    }
+
+    public function test_registration_step_one_uses_the_shared_temporal_picker(): void
+    {
+        $view = file_get_contents(resource_path('views/auth/register_step1.blade.php'));
+
+        $this->assertStringContainsString("@vite(['resources/js/app.js'])", $view);
+        $this->assertStringContainsString('<x-temporal.date-input', $view);
+        $this->assertStringContainsString('name="birth_date"', $view);
+        $this->assertStringNotContainsString('name="birth_date[]"', $view);
+        $this->assertStringNotContainsString('unpkg.com/persian-datepicker', $view);
+        $this->assertStringNotContainsString('vendor/persian-datepicker', $view);
     }
 
     public function test_profile_edit_uses_vite_jquery_for_temporal_datepicker_runtime(): void
@@ -149,6 +210,7 @@ class TemporalDateInputAssetContractTest extends TestCase
             $app
         );
         $this->assertStringContainsString("profile-assets/js/jquery.min.js", $profile);
+        $this->assertStringNotContainsString("profile-assets/css/persian-datepicker.min.css", $profile);
         $this->assertStringContainsString('temporal-input.js', $app);
     }
 
@@ -157,8 +219,11 @@ class TemporalDateInputAssetContractTest extends TestCase
     {
         $runtime = file_get_contents(resource_path('js/temporal-input.js'));
 
-        $this->assertStringContainsString("import $ from 'jquery';", $runtime);
+        $this->assertStringContainsString("import $ from 'persian-datepicker/node_modules/jquery/dist/jquery.js';", $runtime);
         $this->assertStringContainsString('const temporalJQuery = $;', $runtime);
+        $lock = json_decode(file_get_contents(base_path('package-lock.json')), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('2.2.0', $lock['packages']['node_modules/persian-datepicker/node_modules/jquery']['version']);
+        $this->assertSame('3.7.1', $lock['packages']['node_modules/jquery']['version']);
         $this->assertStringContainsString('window.jQuery = temporalJQuery;', $runtime);
         $this->assertStringContainsString('window.$ = temporalJQuery;', $runtime);
         $this->assertStringContainsString('const $input = temporalJQuery(input);', $runtime);

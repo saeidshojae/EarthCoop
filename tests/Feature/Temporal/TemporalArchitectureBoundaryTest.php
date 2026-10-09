@@ -203,6 +203,11 @@ class TemporalArchitectureBoundaryTest extends TestCase
             "->format('Y/m/d')",
             "->format('Y/m/d H:i')",
             "->format('Y-m-d H:i')",
+            'persianDatepicker(',
+            'unpkg.com/persian-datepicker',
+            'vendor/persian-datepicker',
+            'profile-assets/css/persian-datepicker',
+            '/>format(',
         ];
         $offenders = [];
 

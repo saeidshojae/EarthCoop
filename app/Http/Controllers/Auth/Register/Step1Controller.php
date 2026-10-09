@@ -27,14 +27,7 @@ class Step1Controller extends Controller
     public function show()
     {
         if (auth()->user()->national_id == null) {
-            $context = $this->temporalContexts->defaultContext();
-            $birthYearMax = $this->temporal->year(
-                new DateTimeImmutable('now', new DateTimeZone('UTC')),
-                $context,
-            ) - 15;
-            $birthYearMin = $birthYearMax - 135;
-
-            return view('auth.register_step1', compact('birthYearMax', 'birthYearMin'));
+            return view('auth.register_step1');
         }
 
         $checkUserHave = UserExperience::where('user_id', auth()->user()->id)->first();
@@ -81,7 +74,7 @@ class Step1Controller extends Controller
         $rules = [
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
-            'birth_date' => 'required|array|min:3',
+            'birth_date' => 'required',
             'gender' => 'required|in:male,female',
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
@@ -187,7 +180,7 @@ class Step1Controller extends Controller
         $rules = [
             'first_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\x{0600}-\x{06FF}\s]+$/u',
-            'birth_date' => 'required|array|min:3',
+            'birth_date' => 'required',
             'gender' => 'required|in:male,female',
             'nationality' => 'required|string',
             'national_id' => 'required|string|regex:/^\d{10}$/|unique:users,national_id',
@@ -314,14 +307,26 @@ class Step1Controller extends Controller
         $request->merge(['phone' => $normalized]);
     }
 
-    private function parseBirthDate(array $parts, TemporalContext $context): LocalDate
+    private function parseBirthDate(mixed $value, TemporalContext $context): LocalDate
     {
-        [$day, $month, $year] = array_map(
-            fn ($value): int => (int) $this->convertNumbersToEnglish($value),
-            array_values($parts),
-        );
+        if (is_array($value)) {
+            if (count($value) < 3) {
+                throw new \InvalidArgumentException('Birth date parts are incomplete.');
+            }
 
-        return $this->temporal->parseDateParts($day, $month, $year, $context);
+            [$day, $month, $year] = array_map(
+                fn ($part): int => (int) $this->convertNumbersToEnglish((string) $part),
+                array_values($value),
+            );
+
+            return $this->temporal->parseDateParts($day, $month, $year, $context);
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            return $this->temporal->parseDate(trim($value), $context);
+        }
+
+        throw new \InvalidArgumentException('Birth date must be a localized date string or legacy date-parts array.');
     }
 
     private function meetsMinimumRegistrationAge(LocalDate $birthDate, TemporalContext $context): bool

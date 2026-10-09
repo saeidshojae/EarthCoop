@@ -3397,6 +3397,29 @@
 
 
 
+        {{-- The publication text is shown before any previously stored admin-configured clauses. --}}
+        <section class="accordion-wrapper p-6 md:p-8 space-y-6 fade-up" id="published-legal-texts">
+            <header class="space-y-3">
+                <h2 class="text-2xl font-bold text-gentle-black">اساسنامه عضویت و شرایط استفاده</h2>
+                <p class="text-slate-700">متن‌های انتشار اولیه ـ هر ماده را جداگانه باز کنید و بخوانید. توافقنامه نجم‌بهار مستقل است.</p>
+            </header>
+            <details class="ec-legal-volume" open>
+                <summary class="ec-legal-volume-title">اساسنامه بین‌المللی عضویت EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-membership-statute.fa.md'])
+            </details>
+            <details class="ec-legal-volume">
+                <summary class="ec-legal-volume-title">شرایط استفاده از خدمات EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-terms-of-use.fa.md'])
+            </details>
+            <nav class="ec-legal-references" aria-label="متن کامل اسناد بنیادین">
+                <h3 class="font-bold">اسناد بنیادین و مرجع</h3>
+                @foreach(config('docs-links.foundational', []) as $document)
+                    <a href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
+                @endforeach
+                <a href="{{ config('docs-links.foundational_index.href') }}" target="_blank" rel="noopener noreferrer">فهرست اسناد بنیادین</a>
+            </nav>
+        </section>
+
         <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up">
 
 

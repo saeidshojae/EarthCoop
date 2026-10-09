@@ -2764,6 +2764,21 @@
 
 
 
+        {{-- Proposed legal text is intentionally not treated as an already accepted agreement. --}}
+        <section class="agreement-card space-y-6 fade-in-section" id="published-najm-bahar-agreement">
+            <h2 class="text-2xl font-bold">توافقنامه مالی و پولی نجم‌بهار</h2>
+            <p class="agreement-note">متن انتشار اولیه ـ مواد به‌صورت مستقل و قابل مطالعه نمایش داده می‌شوند. پذیرش مالی مستقل از ثبت‌نام EarthCoop است.</p>
+            @include('partials.legal.structured-document', ['sourcePath' => 'legal/najm-bahar-agreement.fa.md'])
+            <nav class="ec-legal-references" aria-label="اسناد اقتصادی مرتبط">
+                @foreach(config('docs-links.foundational', []) as $document)
+                    @if(in_array($document['code'], ['FC', 'CO', 'EX', 'ECON'], true))
+                        <a href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
+                    @endif
+                @endforeach
+                <a href="{{ config('docs-links.references.0.href') }}" target="_blank" rel="noopener noreferrer">سند مرجع اقتصاد نجم‌بهار</a>
+            </nav>
+        </section>
+
         <section class="agreement-card space-y-6 fade-in-section">
 
 

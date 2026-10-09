@@ -57,16 +57,6 @@
 
 
 
-<link rel="stylesheet" href="{{ asset('profile-assets/css/persian-datepicker.min.css') }}">
-
-
-
-
-
-
-
-
-
 <link rel="stylesheet" href="{{ asset('profile-assets/css/cropper.min.css') }}">
 
 
