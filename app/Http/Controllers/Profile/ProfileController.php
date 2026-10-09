@@ -74,11 +74,13 @@ class ProfileController
                 });
             })
             ->get();
-        $generalGroups = $currentGroups->where('group_type', 0)->values();
-        $specialityGroups = $currentGroups->filter(fn ($group) => $group->specialty_id !== null && $group->experience_id === null)->values();
-        $experienceGroups = $currentGroups->filter(fn ($group) => $group->specialty_id === null && $group->experience_id !== null)->values();
-        $ageGroups = $currentGroups->where('group_type', 3)->values();
-        $genderGroups = $currentGroups->where('group_type', 4)->values();
+        // Canonical dimensions are identified by dimension_key; legacy presentation
+        // fields (specialty_id / experience_id) are not authoritative in Stage C.
+        $generalGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'public' || ($group->dimension_key === null && (int) $group->group_type === 0))->values();
+        $specialityGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'profession' || ($group->dimension_key === null && $group->specialty_id !== null && $group->experience_id === null))->values();
+        $experienceGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'specialty' || ($group->dimension_key === null && $group->specialty_id === null && $group->experience_id !== null))->values();
+        $ageGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'age' || ($group->dimension_key === null && (int) $group->group_type === 3))->values();
+        $genderGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'gender' || ($group->dimension_key === null && (int) $group->group_type === 4))->values();
         return view('profile.profile-member', compact('user','chatRequests','generalGroups','specialityGroups','experienceGroups','ageGroups','genderGroups'));
     }
 
