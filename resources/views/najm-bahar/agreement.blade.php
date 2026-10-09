@@ -2771,8 +2771,8 @@
         @endphp
         {{-- Proposed legal text is intentionally not treated as an already accepted agreement. --}}
         <section class="agreement-card space-y-6 fade-in-section" id="published-najm-bahar-agreement">
-            <h2 class="text-2xl font-bold">توافقنامه مالی و پولی نجم‌بهار</h2>
-            <p class="agreement-note">متن انتشار اولیه ـ مواد به‌صورت مستقل و قابل مطالعه نمایش داده می‌شوند. پذیرش مالی مستقل از ثبت‌نام EarthCoop است.</p>
+            <h2 class="text-2xl font-bold">توافقنامه عضویت و بهره‌مندی از خدمات نجم‌بهار</h2>
+            <p class="agreement-note">این سند اصول عضویت و خدمات اقتصادی نجم‌بهار را توضیح می‌دهد. پذیرش آن مستقل از ثبت‌نام EarthCoop است.</p>
             @if($legalFinancialVersion)
                 @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalFinancialVersion->content_snapshot, true)])
             @else
