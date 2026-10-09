@@ -67,7 +67,7 @@ final class PublicMemberProfileCurrentGroupsTest extends TestCase
     {
         config(['location-governance.groups_enabled' => true]);
         $viewer = User::factory()->create();
-        $member = User::factory()->create();
+        $member = User::factory()->create(['show_groups' => true]);
         foreach (['public' => 1, 'profession' => 3, 'specialty' => 3, 'age' => 1, 'gender' => 1] as $dimension => $count) {
             for ($i = 1; $i <= $count; $i++) {
                 \App\Models\LocationScopedGroupRequest::query()->create([
