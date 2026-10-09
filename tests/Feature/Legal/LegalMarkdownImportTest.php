@@ -29,7 +29,7 @@ class LegalMarkdownImportTest extends TestCase
 
     public function test_import_rejects_unreviewed_content_fingerprint_without_creating_rows(): void
     {
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\AdminMiddleware::class);
+        $this->withoutMiddleware(\App\Http\Middleware\AdminMiddleware::class);
         $admin = User::factory()->create();
 
         $this->actingAs($admin)->post(route('admin.legal-versions.import', 'najm-bahar'), [
@@ -38,7 +38,7 @@ class LegalMarkdownImportTest extends TestCase
         ])->assertSessionHasErrors('document');
 
         $this->assertSame(0, NajmBaharAgreement::count());
-        $this->assertSame(0, \\App\\Models\\LegalDocument::count());
+        $this->assertSame(0, \App\Models\\LegalDocument::count());
     }
 
     public function test_import_does_not_overwrite_existing_root_with_same_title(): void
