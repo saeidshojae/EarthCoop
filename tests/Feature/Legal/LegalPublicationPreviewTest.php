@@ -16,7 +16,7 @@ class LegalPublicationPreviewTest extends TestCase
 
     public function test_changed_editor_content_cannot_be_published_from_an_old_preview(): void
     {
-        $this->withoutMiddleware();
+        $this->withoutMiddleware(\App\Http\Middleware\AdminMiddleware::class);
         $admin = User::factory()->create();
         $root = Term::create(['title' => 'قرارداد آزمایشی', 'message' => 'متن نخست']);
         $document = LegalDocument::create([
@@ -46,7 +46,7 @@ class LegalPublicationPreviewTest extends TestCase
 
     public function test_matching_reviewed_snapshot_can_be_published(): void
     {
-        $this->withoutMiddleware();
+        $this->withoutMiddleware(\App\Http\Middleware\AdminMiddleware::class);
         $admin = User::factory()->create();
         $root = Term::create(['title' => 'قرارداد آزمایشی', 'message' => 'متن قطعی']);
         $document = LegalDocument::create([
