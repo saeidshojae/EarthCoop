@@ -252,30 +252,7 @@ class NajmHodaDelegatedPermissionService
                     return false;
                 }
 
-                $membership = $user->groups()->where('groups.id', (int) $id)
-                    ->wherePivot('status', 1)
-                    ->where(function ($query): void {
-                        $query->whereNull('group_user.expired')->orWhere('group_user.expired', '>', now());
-                    })
-                    ->first();
-                if ($membership === null) {
-                    return false;
-                }
-                if (! (bool) config('location-governance.groups_enabled', false)) {
-                    return true;
-                }
-                if ((string) $membership->location_level === '10') {
-                    return true;
-                }
-                if ($membership->governance_area_id === null) {
-                    return false;
-                }
-                $resolution = app(\App\Services\Membership\MembershipEngine::class)->resolve($user, false);
-                return $resolution->materializableIntents->contains(
-                    fn ($intent): bool => (int) $intent->governanceAreaId === (int) $membership->governance_area_id
-                        && (string) $intent->dimensionKey === (string) $membership->dimension_key
-                        && (string) $intent->valueKey === (string) $membership->dimension_value_key
-                );
+                return app(\App\Services\Groups\CurrentGroupAccessService::class)->contains($user, (int) $id);
             }
         } catch (\Throwable) {
             return false;
