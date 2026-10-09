@@ -49,4 +49,28 @@ final class GroupDelegationCurrentMembershipTest extends TestCase
         $user->groups()->updateExistingPivot($group->id, ['status' => 1, 'expired' => null]);
         $this->assertTrue((bool) $service->authorize($user->id, 'run_ops_monitor', 'autonomy:run_ops_monitor')['allowed']);
     }
+    public function test_legacy_systemic_membership_is_not_a_group_delegation_during_canonical_cutover(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+        $user = User::factory()->create();
+        $legacyGroup = Group::query()->create([
+            'name' => 'Historical legacy group',
+            'group_type' => '0',
+            'location_level' => 'city',
+            'is_open' => 1,
+        ]);
+        $user->groups()->attach($legacyGroup->id, ['role' => 0, 'status' => 1]);
+
+        $service = new NajmHodaDelegatedPermissionService(new InMemoryRuntimeEventBus(100));
+        $service->grant([
+            'principal_type' => 'group',
+            'principal_id' => (string) $legacyGroup->id,
+            'action' => 'run_ops_monitor',
+            'scope' => 'autonomy:run_ops_monitor',
+        ]);
+
+        $auth = $service->authorize($user->id, 'run_ops_monitor', 'autonomy:run_ops_monitor');
+        $this->assertFalse((bool) ($auth['allowed'] ?? true));
+    }
+
 }
