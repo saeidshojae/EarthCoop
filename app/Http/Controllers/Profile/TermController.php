@@ -22,6 +22,7 @@ class TermController extends Controller
             'terms.accepted' => 'لطفاً اساسنامه و شرایط استفاده را بپذیرید.',
         ]);
 
+        $consentVersions = app(\App\Services\Legal\LegalMembershipConsentService::class)->validateForm($request);
         $updateData = ['terms_accepted_at' => now()];
 
         if ($request->hasFile('finger')) {
@@ -31,7 +32,11 @@ class TermController extends Controller
         }
 
         if (auth()->check()) {
-            auth()->user()->update($updateData);
+            \Illuminate\Support\Facades\DB::transaction(function () use ($updateData, $consentVersions) {
+                app(\App\Services\Legal\LegalMembershipConsentService::class)
+                    ->recordForUser((int) auth()->id(), $consentVersions, 'membership');
+                auth()->user()->update($updateData);
+            });
         }
 
         return redirect('/')->with('success', 'تایید اساسنامه باموفقیت انجام شد، به مراحل ثبت نام بازگردید');
