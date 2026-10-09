@@ -14,6 +14,7 @@
 </div>
 <form method="POST" action="{{ route('admin.legal-versions.import', $data['slug']) }}">
 @csrf
+<input type="hidden" name="preview_sha256" value="{{ $previewSha256 }}">
 <label class="block mb-3"><input type="checkbox" name="confirm_import" value="1" required> متن را بررسی کرده‌ام و ورود بدون انتشار را تأیید می‌کنم.</label>
 <button class="btn btn-primary" type="submit">ایجاد والد و مواد فرزند</button>
 </form>
