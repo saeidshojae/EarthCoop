@@ -646,17 +646,13 @@ class ProfileController
         if ($user->isSystemIdentity() && $user->email === $najmHodaEmail) return redirect()->route('najm-hoda.profile');
         $chatRequests = ChatRequest::where('receiver_id', auth()->id())->where('status', 'pending')->with('sender')->latest()->get();
         $access = app(\App\Services\Groups\CurrentGroupAccessService::class);
-        $currentGroups = $access->groupsFor($user);
         $viewerGroupIds = auth()->check() ? $access->idsFor(auth()->user()) : [];
 
-        // Show pending location groups as non-navigable presentation shells.
-        // Read-only: never synchronize another member's residence while viewing.
-        if ((bool) config('location-governance.groups_enabled', false)) {
-            $pendingService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
-            $pendingRequests = $pendingService->readOpenForUser($user);
-            $currentGroups = $pendingService->presentableCanonicalGroups($currentGroups, $pendingRequests)
-                ->concat($pendingService->presentationGroups($pendingRequests))->values();
-        }
+        // Respect the member's privacy preference before retrieving any group data.
+        $canViewGroups = (bool) $user->show_groups;
+        $currentGroups = $canViewGroups
+            ? app(\App\Services\Groups\CurrentGroupPresentationService::class)->forUser($user)['all']
+            : collect();
         // Canonical dimensions are identified by dimension_key; legacy presentation
         // fields (specialty_id / experience_id) are not authoritative in Stage C.
         $generalGroups = $currentGroups->filter(fn ($group) => $group->dimension_key === 'public' || ($group->dimension_key === null && (int) $group->group_type === 0))->values();
