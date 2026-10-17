@@ -350,6 +350,9 @@
         </div>
 
         <div class="mobile-navigation-drawer__footer">
+            <button type="button" data-pwa-install-trigger aria-label="نصب اپلیکیشن EarthCoop" class="navigation-link w-full mb-3">
+                <i class="fas fa-download" aria-hidden="true"></i><span>نصب اپلیکیشن EarthCoop</span>
+            </button>
             <div class="flex items-center justify-between gap-3">
                 <div class="theme-toggle" onclick="toggleTheme()" role="button" tabindex="0" aria-label="{{ __('navigation.theme_toggle') }}">
                     <span class="theme-toggle-icon sun">☀️</span><span class="theme-toggle-icon moon">🌙</span><div class="theme-toggle-slider"></div>

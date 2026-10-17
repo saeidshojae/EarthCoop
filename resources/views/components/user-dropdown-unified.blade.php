@@ -238,6 +238,11 @@
             <i class="fas fa-file-contract"></i>
             <span class="text-right">{{ __('navigation.financial_agreement') }}</span>
         </a>
+
+        <button type="button" data-pwa-install-trigger class="w-full block px-4 py-2 hover:bg-emerald-50 transition duration-200 flex items-center gap-3 text-right" style="color: var(--color-earth-green);">
+            <i class="fas fa-download" aria-hidden="true"></i>
+            <span class="text-right">نصب اپلیکیشن EarthCoop</span>
+        </button>
         
         <hr class="my-1 border-gray-200">
         
