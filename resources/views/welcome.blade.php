@@ -13,6 +13,7 @@
     @php
         $homeCanonical = app(\App\Support\Seo\CanonicalUrl::class)->to('/');
         $homeImage = app(\App\Support\Seo\CanonicalUrl::class)->to(config('seo.default_image'));
+        $homeLogo = app(\App\Support\Seo\CanonicalUrl::class)->to('/icons/earthcoop-brand-192.png');
         $homeJsonLd = [
             [
                 '@context' => 'https://schema.org',
@@ -20,7 +21,7 @@
                 'name' => 'EarthCoop',
                 'alternateName' => ['ارث‌کوپ', 'ارث کوپ'],
                 'url' => $homeCanonical,
-                'logo' => $homeImage,
+                'logo' => $homeLogo,
                 'sameAs' => config('seo.social_profiles', []),
             ],
             [
