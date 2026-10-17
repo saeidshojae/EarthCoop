@@ -39,6 +39,7 @@ class PwaInstallExperienceTest extends TestCase
         $this->assertStringContainsString("const openInstallPanel = () =>", $source);
         $this->assertStringContainsString("triggers.forEach((trigger) => trigger.addEventListener('click', openInstallPanel));", $source);
         $this->assertStringContainsString("const showManualInstructions = () =>", $source);
+        $this->assertStringContainsString("const hideInstallTriggers = () =>", $source);
         $this->assertStringContainsString("earthcoop-pwa-dismissed-at", $source);
     }
 }

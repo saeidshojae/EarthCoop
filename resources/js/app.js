@@ -175,6 +175,14 @@ if ('serviceWorker' in navigator && localDevelopmentHost) {
         });
     };
 
+    const hideInstallTriggers = () => {
+        triggers.forEach((trigger) => {
+            trigger.classList.add('hidden');
+            trigger.setAttribute('aria-hidden', 'true');
+            trigger.tabIndex = -1;
+        });
+    };
+
     syncInstallTriggers();
     installButton?.classList.toggle('hidden', !deferredInstallPrompt);
     triggers.forEach((trigger) => trigger.addEventListener('click', openInstallPanel));
@@ -210,6 +218,7 @@ if ('serviceWorker' in navigator && localDevelopmentHost) {
             deferredInstallPrompt = null;
             installButton.disabled = false;
             installButton.classList.add('hidden');
+            if (choice?.outcome === 'accepted') hideInstallTriggers();
             hideBanner(choice?.outcome === 'dismissed');
         } catch (error) {
             deferredInstallPrompt = null;
@@ -224,6 +233,6 @@ if ('serviceWorker' in navigator && localDevelopmentHost) {
     window.addEventListener('appinstalled', () => {
         deferredInstallPrompt = null;
         hideBanner(false);
-        syncInstallTriggers();
+        hideInstallTriggers();
     });
 })();
