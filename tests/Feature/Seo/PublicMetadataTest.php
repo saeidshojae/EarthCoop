@@ -74,6 +74,7 @@ class PublicMetadataTest extends TestCase
         $this->assertSame('maskable', $manifest['icons'][3]['purpose']);
         $maskableIcon = file_get_contents(public_path('icons/icon-maskable.svg'));
         $this->assertStringContainsString('viewBox="-96 -96 1216 1216"', $maskableIcon);
+        $this->assertStringContainsString('fill="#ffffff"', $maskableIcon);
         $vectorIcon = file_get_contents(public_path('icons/icon.svg'));
         $this->assertStringContainsString('fill="#10b981"', $vectorIcon);
         $this->assertStringContainsString('fill="#047857"', $vectorIcon);
