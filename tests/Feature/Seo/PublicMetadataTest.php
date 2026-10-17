@@ -23,7 +23,8 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('content="index,follow"', $html);
         $this->assertStringContainsString('rel="icon" type="image/png"', $html);
         $this->assertStringContainsString('/icons/earthcoop-brand-192.png', $html);
-        $this->assertStringContainsString('property="og:image" content="https://earthcoop.ir/icons/earthcoop-brand-192.png"', $html);
+        $this->assertStringContainsString('property="og:image" content="https://earthcoop.ir/images/earthcoop-social-preview-v2.png"', $html);
+        $this->assertStringContainsString('name="twitter:image" content="https://earthcoop.ir/images/earthcoop-social-preview-v2.png"', $html);
 
         preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $matches);
         $this->assertCount(2, $matches[1]);
@@ -43,6 +44,7 @@ class PublicMetadataTest extends TestCase
 
         $this->assertFileExists($iconPath);
         $this->assertSame([192, 192], array_slice(getimagesize($iconPath), 0, 2));
+        $this->assertPngChunksAreValid($iconPath);
 
         $manifest = json_decode(
             file_get_contents(public_path('manifest.json')),
@@ -55,6 +57,16 @@ class PublicMetadataTest extends TestCase
         $this->assertSame('192x192', $manifest['icons'][0]['sizes']);
         $this->assertSame('image/png', $manifest['icons'][0]['type']);
         $this->assertStringContainsString('ارث‌کوپ', $manifest['description']);
+
+        $this->assertSame('/icons/icon.svg?v=3', $manifest['icons'][1]['src']);
+        $vectorIcon = file_get_contents(public_path('icons/icon.svg'));
+        $this->assertStringContainsString('fill="#10b981"', $vectorIcon);
+        $this->assertStringContainsString('fill="#047857"', $vectorIcon);
+
+        $socialPath = public_path('images/earthcoop-social-preview-v2.png');
+        $this->assertFileExists($socialPath);
+        $this->assertSame([400, 210], array_slice(getimagesize($socialPath), 0, 2));
+        $this->assertPngChunksAreValid($socialPath);
     }
 
     public function test_home_is_a_concise_semantic_hub_for_core_earthcoop_topics(): void
@@ -141,6 +153,40 @@ class PublicMetadataTest extends TestCase
             ->get('/notifications')
             ->assertOk()
             ->assertSee('content="noindex,nofollow"', false);
+    }
+
+    private function assertPngChunksAreValid(string $path): void
+    {
+        $data = file_get_contents($path);
+        $this->assertNotFalse($data);
+        $this->assertSame("\x89PNG\r\n\x1a\n", substr($data, 0, 8), 'Invalid PNG signature.');
+
+        $offset = 8;
+        $totalLength = strlen($data);
+        $foundIend = false;
+
+        while ($offset < $totalLength) {
+            $this->assertGreaterThanOrEqual($offset + 12, $totalLength, 'Truncated PNG chunk header.');
+
+            $chunkLength = unpack('Nlength', substr($data, $offset, 4))['length'];
+            $chunkType = substr($data, $offset + 4, 4);
+            $this->assertGreaterThanOrEqual($offset + 12 + $chunkLength, $totalLength, 'Truncated PNG chunk data.');
+
+            $chunkData = substr($data, $offset + 8, $chunkLength);
+            $crcOffset = $offset + 8 + $chunkLength;
+            $expectedCrc = substr($data, $crcOffset, 4);
+            $actualCrc = hex2bin(hash('crc32b', $chunkType . $chunkData));
+            $this->assertSame($expectedCrc, $actualCrc, 'PNG chunk CRC mismatch for ' . $chunkType);
+
+            $offset = $crcOffset + 4;
+            if ($chunkType === 'IEND') {
+                $foundIend = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($foundIend, 'PNG is missing its IEND chunk.');
+        $this->assertSame($totalLength, $offset, 'PNG has unexpected trailing data.');
     }
 
     private function page(array $attributes = []): Page
