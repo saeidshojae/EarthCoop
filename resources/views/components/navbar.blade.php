@@ -195,6 +195,9 @@
 
             {{-- Desktop Actions --}}
             <div class="hidden lg:flex items-center gap-3">
+                <button type="button" data-pwa-install-trigger class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3 py-2 text-sm font-semibold text-white hover:bg-white/25" aria-label="نصب اپلیکیشن EarthCoop">
+                    <i class="fas fa-download" aria-hidden="true"></i><span>نصب اپ</span>
+                </button>
                 {{-- Theme Toggle --}}
                 <div class="theme-toggle-navbar" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') ?? 'تغییر تم' }}" role="button" aria-label="تغییر تم" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}">
                     <span class="theme-toggle-icon sun">☀️</span>
@@ -294,6 +297,10 @@
         {{-- Mobile Menu --}}
         <div id="mobile-menu" class="mobile-nav-menu">
             <nav class="flex flex-col gap-3 px-4">
+                <button type="button" data-pwa-install-trigger class="flex items-center gap-2 py-2 font-medium text-earth-green" aria-label="نصب اپلیکیشن EarthCoop">
+                    <i class="fas fa-download" aria-hidden="true"></i><span>نصب اپلیکیشن EarthCoop</span>
+                </button>
+                <hr>
                 @auth
                     <a href="{{ route('home') }}" class="text-gray-700 dark:text-gray-300 hover:text-earth-green font-medium py-2">
                         <i class="fas fa-home me-2"></i>{{ __('navigation.home') ?? 'خانه' }}

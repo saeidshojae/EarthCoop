@@ -384,6 +384,11 @@
         </nav>
 
         <div class="hidden 2xl:flex items-center gap-3 flex-shrink-0">
+            @if(!$isAuth)
+                <button type="button" data-pwa-install-trigger class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-earth-green shadow-sm hover:bg-light-gray" aria-label="نصب اپلیکیشن EarthCoop">
+                    <i class="fas fa-download" aria-hidden="true"></i><span>نصب اپ</span>
+                </button>
+            @endif
             <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" tabindex="0" aria-label="{{ __('navigation.theme_toggle') }}">
                 <span class="theme-toggle-icon sun">☀️</span><span class="theme-toggle-icon moon">🌙</span><div class="theme-toggle-slider"></div>
             </div>

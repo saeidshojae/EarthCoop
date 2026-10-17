@@ -6,11 +6,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="format-detection" content="telephone=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="manifest" href="{{ asset('manifest.json') }}?v=4">
+    <link rel="manifest" href="{{ asset('manifest.json') }}?v=5">
     <meta name="theme-color" content="#10b981">
-    <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('icons/icon-192.png') }}?v=4">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}?v=4">
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icons/icon-192.png') }}?v=4">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('icons/icon-192.png') }}?v=5">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}?v=5">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icons/icon-192.png') }}?v=5">
     @php
         $homeCanonical = app(\App\Support\Seo\CanonicalUrl::class)->to('/');
         $homeImage = app(\App\Support\Seo\CanonicalUrl::class)->to(config('seo.default_image'));
