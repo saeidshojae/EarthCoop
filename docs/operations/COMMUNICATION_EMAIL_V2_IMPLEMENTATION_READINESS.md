@@ -6,13 +6,13 @@
 
 ## 1. Canonical brand asset
 
-Current header logo:
+Approved email brand mark:
 
-- repository asset: `public/images/logo.png`
-- Blade usage: `asset('images/logo.png')`
-- current header also displays the text `EarthCoop`.
+- repository asset: `public/icons/earthcoop-brand-192.png`
+- Blade usage: `asset('icons/earthcoop-brand-192.png')`
+- this is the same approved green circular mark used for the social-link preview; the separate `public/images/logo.png` graphic is not the correct email mark.
 
-**Implementation decision:** professional email layout should reuse this asset using an absolute `asset('images/logo.png')` URL and retain visible text `EarthCoop`. Website-only animation/filter styling must not be copied into email.
+**Implementation decision:** the shared email layout must use the approved icon at an absolute HTTPS URL, retain visible text `EarthCoop`, and use a pale sky-blue header (`#E0F2FE`) with dark blue text (`#075985`). Persian content must have explicit RTL direction and right alignment. Vazirmatn may load where the email client supports web fonts; Tahoma/Arial remain fallbacks. Website-only animation/filter styling must not be copied into email.
 
 ## 2. Confirmed member-facing route inventory
 
