@@ -22,7 +22,9 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('name="twitter:card"', $html);
         $this->assertStringContainsString('content="index,follow"', $html);
         $this->assertStringContainsString('rel="icon" type="image/png"', $html);
-        $this->assertStringContainsString('/icons/earthcoop-brand-192.png', $html);
+        $this->assertStringContainsString('/icons/icon-192.png?v=4', $html);
+        $this->assertStringContainsString('/icons/icon.svg?v=4', $html);
+        $this->assertStringContainsString('rel="apple-touch-icon"', $html);
         $this->assertStringContainsString('property="og:image" content="https://earthcoop.ir/images/earthcoop-social-preview-v2.png"', $html);
         $this->assertStringContainsString('name="twitter:image" content="https://earthcoop.ir/images/earthcoop-social-preview-v2.png"', $html);
 
@@ -33,14 +35,14 @@ class PublicMetadataTest extends TestCase
             $matches[1],
         );
         $this->assertSame(['Organization', 'WebSite'], array_column($payloads, '@type'));
-        $this->assertSame('https://earthcoop.ir/icons/earthcoop-brand-192.png', $payloads[0]['logo']);
+        $this->assertSame('https://earthcoop.ir/icons/icon-192.png', $payloads[0]['logo']);
         $this->assertSame(['ارث‌کوپ', 'ارث کوپ'], $payloads[0]['alternateName']);
         $this->assertSame(['ارث‌کوپ', 'ارث کوپ'], $payloads[1]['alternateName']);
     }
 
-    public function test_search_brand_icon_is_a_real_square_png_and_manifest_uses_it(): void
+    public function test_pwa_icons_use_the_canonical_logo_and_valid_manifest_assets(): void
     {
-        $iconPath = public_path('icons/earthcoop-brand-192.png');
+        $iconPath = public_path('icons/icon-192.png');
 
         $this->assertFileExists($iconPath);
         $this->assertSame([192, 192], array_slice(getimagesize($iconPath), 0, 2));
@@ -53,12 +55,25 @@ class PublicMetadataTest extends TestCase
             JSON_THROW_ON_ERROR,
         );
 
-        $this->assertSame('/icons/earthcoop-brand-192.png', $manifest['icons'][0]['src']);
+        $this->assertSame('/icons/icon-192.png?v=4', $manifest['icons'][0]['src']);
         $this->assertSame('192x192', $manifest['icons'][0]['sizes']);
         $this->assertSame('image/png', $manifest['icons'][0]['type']);
+        $this->assertSame('any', $manifest['icons'][0]['purpose']);
         $this->assertStringContainsString('ارث‌کوپ', $manifest['description']);
 
-        $this->assertSame('/icons/icon.svg?v=3', $manifest['icons'][1]['src']);
+        $icon512Path = public_path('icons/icon-512.png');
+        $this->assertFileExists($icon512Path);
+        $this->assertSame([512, 512], array_slice(getimagesize($icon512Path), 0, 2));
+        $this->assertPngChunksAreValid($icon512Path);
+        $this->assertSame('/icons/icon-512.png?v=4', $manifest['icons'][1]['src']);
+        $this->assertSame('512x512', $manifest['icons'][1]['sizes']);
+        $this->assertSame('image/png', $manifest['icons'][1]['type']);
+
+        $this->assertSame('/icons/icon.svg?v=4', $manifest['icons'][2]['src']);
+        $this->assertSame('/icons/icon-maskable.svg?v=4', $manifest['icons'][3]['src']);
+        $this->assertSame('maskable', $manifest['icons'][3]['purpose']);
+        $maskableIcon = file_get_contents(public_path('icons/icon-maskable.svg'));
+        $this->assertStringContainsString('viewBox="-96 -96 1216 1216"', $maskableIcon);
         $vectorIcon = file_get_contents(public_path('icons/icon.svg'));
         $this->assertStringContainsString('fill="#10b981"', $vectorIcon);
         $this->assertStringContainsString('fill="#047857"', $vectorIcon);

@@ -209,11 +209,15 @@ Member-originated invitation should name the inviter only when that identity is 
 
 ## 15. EarthCoop logo and email header
 
-The approved EarthCoop brand mark for email is:
+The canonical current site logo asset is:
 
-`public/icons/earthcoop-brand-192.png`
+`public/images/logo.png`
 
-This is the same original green circular mark approved for the social-link preview. Do not use `public/images/logo.png` as the email mark; it is a different graphic and is not the approved mark for this email header.
+and the site header renders it through:
+
+`asset('images/logo.png')`
+
+Email should reuse this same official asset so website and email identity do not drift.
 
 Recommended email-header contract:
 
@@ -238,8 +242,7 @@ CID/embedded-image delivery can be considered later only if real client testing 
 
 Recommended body conventions:
 
-- RTL container and explicit right alignment for Persian body copy (not only `dir="rtl"`);
-- use Vazirmatn where the email client supports hosted web fonts, with Tahoma/Arial fallbacks so readability does not depend on web-font loading;
+- RTL container;
 - short paragraphs;
 - clear headings;
 - 16px body-equivalent readability;
