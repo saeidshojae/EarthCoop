@@ -47,6 +47,7 @@ class PublicMetadataTest extends TestCase
         $this->assertFileExists($iconPath);
         $this->assertSame([192, 192], array_slice(getimagesize($iconPath), 0, 2));
         $this->assertPngChunksAreValid($iconPath);
+        $this->assertStringContainsString('tRNS', file_get_contents($iconPath), 'The PWA icon must preserve transparent corners.');
 
         $manifest = json_decode(
             file_get_contents(public_path('manifest.json')),
@@ -65,6 +66,7 @@ class PublicMetadataTest extends TestCase
         $this->assertFileExists($icon512Path);
         $this->assertSame([512, 512], array_slice(getimagesize($icon512Path), 0, 2));
         $this->assertPngChunksAreValid($icon512Path);
+        $this->assertStringContainsString('tRNS', file_get_contents($icon512Path), 'The PWA icon must preserve transparent corners.');
         $this->assertSame('/icons/icon-512.png?v=5', $manifest['icons'][1]['src']);
         $this->assertSame('512x512', $manifest['icons'][1]['sizes']);
         $this->assertSame('image/png', $manifest['icons'][1]['type']);
