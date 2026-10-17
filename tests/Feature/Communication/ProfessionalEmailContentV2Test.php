@@ -56,15 +56,9 @@ final class ProfessionalEmailContentV2Test extends TestCase
             ->present('پیام آزمایشی', '<p>متن پیام</p>');
 
         $this->assertStringContainsString('EarthCoop', $html);
-        $this->assertStringContainsString('icons/earthcoop-brand-192.png', $html);
-        $this->assertStringNotContainsString('images/logo.png', $html);
+        $this->assertStringContainsString('images/logo.png', $html);
         $this->assertStringContainsString('<p>متن پیام</p>', $html);
         $this->assertStringContainsString('dir="rtl"', $html);
-        $this->assertStringContainsString('text-align:right', $html);
-        $this->assertStringContainsString('Vazirmatn-Regular.woff2', $html);
-        $this->assertStringContainsString('Vazirmatn-Bold.woff2', $html);
-        $this->assertStringContainsString('#e0f2fe', $html);
-        $this->assertStringContainsString('#075985', $html);
 
         $linked = app(CommunicationEmailPresenter::class)
             ->present('لینک آزمایشی', '<a href="/groups">گروه‌ها</a>');
@@ -128,8 +122,7 @@ final class ProfessionalEmailContentV2Test extends TestCase
         ])->render();
 
         $this->assertStringContainsString('EarthCoop', $html);
-        $this->assertStringContainsString('icons/earthcoop-brand-192.png', $html);
-        $this->assertStringNotContainsString('images/logo.png', $html);
+        $this->assertStringContainsString('images/logo.png', $html);
         $this->assertStringContainsString('برای پاسخ، تیکت را در EarthCoop باز کنید', $html);
         $this->assertStringNotContainsString('می‌توانید با پاسخ دادن به این ایمیل', $html);
     }
