@@ -10,28 +10,10 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/icon-192.png?v=5",
-      "sizes": "192x192",
+      "src": "/icons/Code_Generated_Image.png?v=6",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-512.png?v=5",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon.svg?v=5",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-maskable.svg?v=5",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
     }
   ],
   "id": "/",
