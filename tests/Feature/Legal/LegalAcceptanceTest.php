@@ -59,6 +59,8 @@ class LegalAcceptanceTest extends TestCase
 
         $this->assertSame($material->id, $material->fresh()->acceptance_required_version_id);
         $this->assertSame($material->id, $minor->acceptance_required_version_id);
+        $consent = app(\\App\\Services\\Legal\\LegalMembershipConsentService::class);
+        $this->assertTrue($consent->canCarryForwardVersion('terms', $material->id));
         $this->assertDatabaseHas('legal_document_acceptances', [
             'user_id' => $user->id,
             'legal_document_version_id' => $material->id,
@@ -75,6 +77,7 @@ class LegalAcceptanceTest extends TestCase
 
         $this->assertSame($newMaterial->id, $newMaterial->acceptance_required_version_id);
         $this->assertNotSame($minor->acceptance_required_version_id, $newMaterial->acceptance_required_version_id);
+        $this->assertFalse($consent->canCarryForwardVersion('terms', $minor->id));
         $this->assertDatabaseHas('legal_document_acceptances', [
             'user_id' => $user->id,
             'legal_document_version_id' => $material->id,
