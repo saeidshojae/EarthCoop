@@ -21,6 +21,8 @@ class DeliverLegalPublicationNotice implements ShouldQueue
 
     public int $tries = 3;
 
+    private const STALE_SENDING_MINUTES = 10;
+
     public function __construct(
         public readonly int $versionId,
         public readonly int $userId,
@@ -41,9 +43,17 @@ class DeliverLegalPublicationNotice implements ShouldQueue
             return;
         }
 
+        // Reclaim a delivery only if a worker's sending lease has gone stale.
+        $staleSendingBefore = now()->subMinutes(self::STALE_SENDING_MINUTES);
         $claimed = DB::table('legal_publication_deliveries')
             ->where('id', $delivery->id)
-            ->whereIn('status', ['queued', 'failed'])
+            ->where(function ($query) use ($staleSendingBefore): void {
+                $query->whereIn('status', ['queued', 'failed'])
+                    ->orWhere(function ($query) use ($staleSendingBefore): void {
+                        $query->where('status', 'sending')
+                            ->where('updated_at', '<=', $staleSendingBefore);
+                    });
+            })
             ->update([
                 'status' => 'sending',
                 'attempts' => DB::raw('attempts + 1'),
