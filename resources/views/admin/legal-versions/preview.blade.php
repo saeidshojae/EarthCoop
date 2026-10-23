@@ -7,7 +7,19 @@
 @php
 $renderNode = function ($node) use (&$renderNode) {
     $html = '<details open class="border rounded mb-3 p-3"><summary class="font-bold">' . e($node['title']) . '</summary>';
-    $html .= '<div class="mt-3 leading-loose">' . nl2br(e($node['content'])) . '</div>';
+    $content = (string) $node['content'];
+
+    // The legacy editor may store rich-text HTML. Convert its safe textual
+    // structure to readable plain text instead of displaying raw tags or
+    // rendering untrusted HTML in the admin preview.
+    if (preg_match('/<\/?(?:p|div|br|strong|b|em|i|ul|ol|li|blockquote)\b/i', $content)) {
+        $content = preg_replace('/<\s*br\s*\/?>/i', "\n", $content);
+        $content = preg_replace('/<\s*\/(?:p|div|li|blockquote)\s*>/i', "\n", $content);
+        $content = strip_tags($content);
+        $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    $html .= '<div class="mt-3 leading-loose">' . nl2br(e($content)) . '</div>';
     foreach ($node['children'] ?? [] as $child) $html .= $renderNode($child);
     return $html . '</details>';
 };

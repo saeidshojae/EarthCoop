@@ -4957,7 +4957,7 @@
 
 
 
-                آخرین به‌روزرسانی: <strong><x-temporal.date :value="$setting->updated_at ?? now()" style="short" /></strong>
+                آخرین به‌روزرسانی: <strong><x-temporal.date :value="collect([app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('membership')?->published_at, app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('terms')?->published_at])->filter()->max() ?? ($setting->updated_at ?? now())" style="short" /></strong>
 
 
 
