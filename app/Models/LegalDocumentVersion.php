@@ -8,7 +8,7 @@ use LogicException;
 class LegalDocumentVersion extends Model
 {
     protected $fillable = [
-        'legal_document_id', 'version_label', 'language', 'status',
+        'legal_document_id', 'version_label', 'language', 'status', 'publication_policy', 'acceptance_required_version_id',
         'content_snapshot', 'content_sha256', 'published_at', 'published_by',
     ];
 
@@ -21,7 +21,7 @@ class LegalDocumentVersion extends Model
                 return;
             }
 
-            foreach (['legal_document_id', 'version_label', 'language', 'content_snapshot', 'content_sha256', 'published_at', 'published_by'] as $field) {
+            foreach (['legal_document_id', 'version_label', 'language', 'publication_policy', 'acceptance_required_version_id', 'content_snapshot', 'content_sha256', 'published_at', 'published_by'] as $field) {
                 if ($version->isDirty($field)) {
                     throw new LogicException('Published legal document snapshots are immutable.');
                 }

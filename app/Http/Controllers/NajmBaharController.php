@@ -49,9 +49,12 @@ class NajmBaharController extends Controller
         $financialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
             ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
             : null;
-        $hasAcceptedCurrentVersion = ! $financialVersion || \Illuminate\Support\Facades\DB::table('legal_document_acceptances')
-            ->where('user_id', $user->id)->where('legal_document_version_id', $financialVersion->id)
-            ->where('context', 'najm_bahar')->exists();
+        $hasAcceptedCurrentVersion = ! $financialVersion || DB::table('legal_document_acceptances as acceptance')
+            ->join('legal_document_versions as accepted_version', 'accepted_version.id', '=', 'acceptance.legal_document_version_id')
+            ->where('acceptance.user_id', $user->id)
+            ->where('acceptance.context', 'najm_bahar')
+            ->where('accepted_version.acceptance_required_version_id', $financialVersion->acceptance_required_version_id)
+            ->exists();
         $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);
 
         return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement', 'hasAcceptedCurrentVersion'));

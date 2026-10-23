@@ -1,0 +1,260 @@
+<?php
+
+namespace Tests\Feature\Legal;
+
+use App\Jobs\DeliverLegalPublicationNotice;
+use App\Jobs\SendLegalPublicationNotices;
+use App\Mail\LegalPublicationNotice;
+use App\Notifications\GenericNotification;
+use App\Models\LegalDocument;
+use App\Models\LegalDocumentVersion;
+use App\Models\NotificationSetting;
+use App\Models\User;
+use App\Services\Legal\LegalDocumentPublicationService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Tests\TestCase;
+
+// Regression coverage for mandatory legal notices and retry-safe delivery tracking.
+class LegalPublicationNotificationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_notify_policy_queues_in_app_and_email_deliveries_with_separate_status_rows(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        (new SendLegalPublicationNotices($version->id))->handle();
+
+        $this->assertDatabaseHas('legal_publication_deliveries', [
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'in_app',
+            'status' => 'queued',
+        ]);
+        $this->assertDatabaseHas('legal_publication_deliveries', [
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'queued',
+        ]);
+        foreach (['in_app', 'email'] as $channel) {
+            Queue::assertPushed(DeliverLegalPublicationNotice::class, fn (DeliverLegalPublicationNotice $job) =>
+                $job->versionId === $version->id
+                && $job->userId === $user->id
+                && $job->channel === $channel
+            );
+        }
+    }
+
+    public function test_delivery_job_records_sent_status_for_each_channel(): void
+    {
+        Mail::fake();
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        // Legal notices are mandatory transactional communications, even when
+        // the member has opted out of general email notifications.
+        NotificationSetting::forUser($user->id)->update(['email_notifications' => false]);
+
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        foreach (['in_app', 'email'] as $channel) {
+            DB::table('legal_publication_deliveries')->insert([
+                'legal_document_version_id' => $version->id,
+                'user_id' => $user->id,
+                'channel' => $channel,
+                'status' => 'queued',
+                'attempts' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            (new DeliverLegalPublicationNotice($version->id, $user->id, $channel))->handle();
+            $this->assertDatabaseHas('legal_publication_deliveries', [
+                'legal_document_version_id' => $version->id,
+                'user_id' => $user->id,
+                'channel' => $channel,
+                'status' => 'sent',
+            ]);
+        }
+
+        Notification::assertSentTo($user, GenericNotification::class);
+        Mail::assertSent(LegalPublicationNotice::class);
+        Mail::assertSent(LegalPublicationNotice::class, fn ($mail) => $mail->hasTo('member@example.test'));
+    }
+
+    public function test_stale_sending_delivery_can_be_recovered(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        DB::table('legal_publication_deliveries')->insert([
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sending',
+            'attempts' => 1,
+            'created_at' => now()->subMinutes(2),
+            'updated_at' => now()->subSeconds(121),
+        ]);
+
+        (new DeliverLegalPublicationNotice($version->id, $user->id, 'email'))->handle();
+
+        $this->assertDatabaseHas('legal_publication_deliveries', [
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sent',
+            'attempts' => 2,
+        ]);
+        Mail::assertSent(LegalPublicationNotice::class);
+    }
+
+    public function test_recent_sending_delivery_is_not_claimed_twice(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        DB::table('legal_publication_deliveries')->insert([
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sending',
+            'attempts' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        (new DeliverLegalPublicationNotice($version->id, $user->id, 'email'))->handle();
+
+        $this->assertDatabaseHas('legal_publication_deliveries', [
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sending',
+            'attempts' => 1,
+        ]);
+        Mail::assertNothingSent();
+    }
+
+    public function test_recovery_command_requeues_pending_and_stale_deliveries_only(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        foreach ([
+            ['channel' => 'email', 'status' => 'queued', 'attempts' => 0, 'updated_at' => now()->subSeconds(121)],
+            ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 1, 'updated_at' => now()->subSeconds(121)],
+            ['channel' => 'email', 'status' => 'queued', 'attempts' => 0, 'updated_at' => now()],
+            ['channel' => 'email', 'status' => 'sending', 'attempts' => 2, 'updated_at' => now()->subSeconds(121)],
+            ['channel' => 'in_app', 'status' => 'sending', 'attempts' => 1, 'updated_at' => now()],
+            ['channel' => 'email', 'status' => 'sent', 'attempts' => 1, 'updated_at' => now()],
+            ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 5, 'updated_at' => now()],
+        ] as $delivery) {
+            $deliveryUser = User::factory()->create(['is_system' => false]);
+            DB::table('legal_publication_deliveries')->insert([
+                'legal_document_version_id' => $version->id,
+                'user_id' => $deliveryUser->id,
+                'channel' => $delivery['channel'],
+                'status' => $delivery['status'],
+                'attempts' => $delivery['attempts'],
+                'created_at' => now(),
+                'updated_at' => $delivery['updated_at'],
+            ]);
+        }
+
+        $this->artisan('legal:recover-publication-deliveries --limit=200')
+            ->assertExitCode(0);
+
+        Queue::assertPushedTimes(DeliverLegalPublicationNotice::class, 3);
+    }
+
+    public function test_minor_policy_does_not_queue_publication_notices(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.0',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'minor',
+            ]),
+            'نسخه جزئی',
+            $user->id
+        );
+
+        (new SendLegalPublicationNotices($version->id))->handle();
+
+        $this->assertSame(0, DB::table('legal_publication_deliveries')->count());
+        Queue::assertNothingPushed();
+    }
+}

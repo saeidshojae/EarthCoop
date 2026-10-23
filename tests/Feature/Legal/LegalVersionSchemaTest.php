@@ -13,17 +13,22 @@ class LegalVersionSchemaTest extends TestCase
 
     public function test_legal_version_tables_are_additive_and_contain_snapshot_and_consent_keys(): void
     {
-        foreach (['legal_documents', 'legal_document_versions', 'legal_document_acceptances'] as $table) {
+        foreach (['legal_documents', 'legal_document_versions', 'legal_document_acceptances', 'legal_publication_deliveries'] as $table) {
             $this->assertTrue(Schema::hasTable($table), $table);
         }
 
         $this->assertTrue(Schema::hasColumns('legal_document_versions', [
             'legal_document_id', 'version_label', 'language',
             'content_snapshot', 'content_sha256', 'published_at', 'status',
+            'publication_policy', 'acceptance_required_version_id',
         ]));
 
         $this->assertTrue(Schema::hasColumns('legal_document_acceptances', [
             'user_id', 'legal_document_version_id', 'accepted_at', 'context',
+        ]));
+
+        $this->assertTrue(Schema::hasColumns('legal_publication_deliveries', [
+            'legal_document_version_id', 'user_id', 'channel', 'status', 'attempts', 'sent_at', 'last_error',
         ]));
 
         // Existing content and historical timestamp columns must remain untouched.

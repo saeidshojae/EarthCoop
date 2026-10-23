@@ -71,4 +71,34 @@ class LegalPublicationPreviewTest extends TestCase
         $this->assertSame('published', $version->fresh()->status);
         $this->assertSame($reviewed, $version->fresh()->content_snapshot);
     }
+
+    public function test_preview_renders_legacy_editor_html_as_readable_text_without_raw_tags(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\AdminMiddleware::class);
+        $admin = User::factory()->create();
+        $root = Term::create([
+            'title' => 'ماده ۱۶',
+            'message' => '<p>&laquo;شرایط استفاده را مطالعه کرده‌ام و می‌پذیرم.&raquo;<br />&nbsp;</p>',
+        ]);
+        $document = LegalDocument::create([
+            'slug' => 'preview-html',
+            'title' => 'شرایط استفاده',
+            'source_type' => 'terms',
+            'source_root_id' => $root->id,
+        ]);
+        $version = LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.1',
+            'language' => 'fa',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.legal-versions.preview', $version))
+            ->assertOk()
+            ->assertSee('«شرایط استفاده را مطالعه کرده‌ام و می‌پذیرم.»')
+            ->assertDontSee('&laquo;')
+            ->assertDontSee('&nbsp;')
+            ->assertDontSee('&lt;p&gt;');
+    }
 }

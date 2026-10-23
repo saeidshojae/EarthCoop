@@ -33,6 +33,13 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 <label>شماره نسخه
 <input class="form-control" name="version_label" value="1.0" required pattern="[0-9]+(\.[0-9]+){1,3}">
 </label>
+<label>نوع انتشار
+<select class="form-control" name="publication_policy" required>
+<option value="minor">تغییر جزئی — بدون اعلان و پذیرش مجدد</option>
+<option value="notify">اطلاع‌رسانی — بدون پذیرش مجدد</option>
+<option value="material" selected>تغییر اساسی — اعلان و الزام پذیرش مجدد</option>
+</select>
+</label>
 <button class="btn btn-primary" type="submit">ساخت پیش‌نویس این سند</button>
 </div>
 <p class="text-sm mt-2">ریشه والد: {{ $document->source_root_id }} — نوع منبع: {{ $document->source_type }}</p>
@@ -46,10 +53,45 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 @foreach($documents->filter(fn ($document) => $document->versions->isNotEmpty()) as $document)
 <section class="border rounded p-4 mb-4">
 <h3 class="font-bold">{{ $document->title }} <small>({{ $document->slug }})</small></h3>
+@if($document->source_root_id)
+<form method="POST" action="{{ route('admin.legal-versions.draft') }}" class="border rounded p-3 my-3">
+    @csrf
+    <input type="hidden" name="slug" value="{{ $document->slug }}">
+    <input type="hidden" name="title" value="{{ $document->title }}">
+    <input type="hidden" name="source_type" value="{{ $document->source_type }}">
+    <input type="hidden" name="source_root_id" value="{{ $document->source_root_id }}">
+    <div class="flex flex-wrap items-end gap-3">
+        <label>شماره نسخه جدید
+            <input class="form-control" name="version_label" placeholder="مثلاً 1.1" required>
+        </label>
+        <label>سیاست انتشار
+            <select class="form-control" name="publication_policy" required>
+                <option value="minor">تغییر جزئی — بدون اعلان و پذیرش مجدد</option>
+                <option value="notify">اطلاع‌رسانی — بدون پذیرش مجدد</option>
+                <option value="material" selected>تغییر اساسی — اعلان و الزام پذیرش مجدد</option>
+            </select>
+        </label>
+        <button class="btn btn-primary" type="submit">ساخت پیش‌نویس نسخه جدید</button>
+    </div>
+</form>
+@endif
 @foreach($document->versions as $version)
 <div class="flex flex-wrap gap-3 items-center border-t py-3">
 <span>نسخه {{ $version->version_label }}</span>
 <span>{{ $version->status }}</span>
+<span>سیاست انتشار:
+    {{ ['minor' => 'جزئی', 'notify' => 'اطلاع‌رسانی', 'material' => 'اساسی'][$version->publication_policy ?? 'material'] ?? 'اساسی' }}
+</span>
+@if($version->status === 'published')
+    <span>پذیرش: {{ $acceptanceSummary[$version->acceptance_required_version_id] ?? 0 }} از {{ $memberCount }} عضو؛ در انتظار: {{ max(0, $memberCount - ($acceptanceSummary[$version->acceptance_required_version_id] ?? 0)) }}</span>
+    @foreach(($deliverySummary[$version->id] ?? collect()) as $delivery)
+        <span>
+            {{ $delivery->channel === 'email' ? 'ایمیل' : 'درون‌برنامه‌ای' }}:
+            {{ ['queued' => 'در صف', 'sending' => 'در حال ارسال', 'sent' => 'ارسال‌شده', 'failed' => 'ناموفق', 'skipped' => 'ردشده'][$delivery->status] ?? $delivery->status }}
+            ({{ $delivery->total }})
+        </span>
+    @endforeach
+@endif
 <a href="{{ route('admin.legal-versions.preview', $version) }}" class="btn btn-outline-primary">بازبینی نسخه</a>
 @if($version->status === 'draft')
 <span class="text-sm">برای انتشار، نسخه را باز کنید و پس از بررسی، تأیید انتشار را انجام دهید.</span>

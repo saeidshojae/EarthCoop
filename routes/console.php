@@ -30,6 +30,13 @@ Schedule::command('najm-bahar:retry-failed-monetary-operations --limit=20')
     ->everyFiveMinutes()
     ->withoutOverlapping();
 
+// Recover pending, failed, or stale in-flight legal publication notices.
+// Delivery rows are uniquely keyed per version/user/channel and jobs claim
+// them atomically, so duplicate scheduler runs do not normally double-send.
+Schedule::command('legal:recover-publication-deliveries --limit=200')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
 // Proactive Najm Hoda stewardship is explicitly opt-in per group. Each cycle
 // evaluates the real action queue, deduplicates attention events, then delivers
 // only due managerial digests according to the group's policy. The cycle never

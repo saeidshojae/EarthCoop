@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendLegalPublicationNotices;
 use App\Models\LegalDocument;
 use App\Models\LegalDocumentVersion;
 use App\Models\NajmBaharAgreement;
@@ -17,10 +18,33 @@ class LegalVersionController extends Controller
 {
     public function index()
     {
+        $deliverySummary = [];
+        $acceptanceSummary = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('legal_publication_deliveries')) {
+            $deliverySummary = \Illuminate\Support\Facades\DB::table('legal_publication_deliveries')
+                ->select('legal_document_version_id', 'channel', 'status', \Illuminate\Support\Facades\DB::raw('COUNT(*) as total'))
+                ->groupBy('legal_document_version_id', 'channel', 'status')
+                ->get()
+                ->groupBy('legal_document_version_id');
+        }
+        if (\Illuminate\Support\Facades\Schema::hasTable('legal_document_acceptances')) {
+            $acceptanceSummary = \Illuminate\Support\Facades\DB::table('legal_document_acceptances as acceptance')
+                ->join('legal_document_versions as accepted_version', 'accepted_version.id', '=', 'acceptance.legal_document_version_id')
+                ->whereIn('acceptance.context', ['membership', 'registration', 'najm_bahar'])
+                ->select('accepted_version.acceptance_required_version_id')
+                ->selectRaw('COUNT(DISTINCT acceptance.user_id) as users_count')
+                ->groupBy('accepted_version.acceptance_required_version_id')
+                ->pluck('users_count', 'accepted_version.acceptance_required_version_id')
+                ->all();
+        }
+
         return view('admin.legal-versions.index', [
             'documents' => LegalDocument::with(['versions' => fn ($query) => $query->orderByDesc('id')])->orderBy('slug')->get(),
             'termRoots' => Term::whereNull('parent_id')->orderBy('id')->get(['id', 'title']),
             'financialRoots' => NajmBaharAgreement::whereNull('parent_id')->orderBy('order')->orderBy('id')->get(['id', 'title']),
+            'deliverySummary' => $deliverySummary,
+            'acceptanceSummary' => $acceptanceSummary,
+            'memberCount' => \App\Models\User::query()->where('is_system', false)->count(),
         ]);
     }
 
@@ -71,11 +95,12 @@ class LegalVersionController extends Controller
             'source_type' => 'required|in:terms,najm_bahar_agreements',
             'source_root_id' => 'required|integer|min:1',
             'version_label' => 'required|string|max:40',
+            'publication_policy' => 'required|in:minor,notify,material',
         ]);
 
         $drafts->createFromAdminSource(
             $data['slug'], $data['title'], $data['source_type'],
-            (int) $data['source_root_id'], $data['version_label']
+            (int) $data['source_root_id'], $data['version_label'], 'fa', $data['publication_policy']
         );
 
         return redirect()->route('admin.legal-versions.index')
@@ -116,7 +141,10 @@ class LegalVersionController extends Controller
         if (! hash_equals($data['preview_sha256'], hash('sha256', $snapshot))) {
             throw ValidationException::withMessages(['content' => 'متن سند پس از پیش‌نمایش تغییر کرده است؛ لطفاً نسخه جدید را بازبینی کنید.']);
         }
-        $publications->publish($version, $snapshot, (int) $request->user()->id);
+        $published = $publications->publish($version, $snapshot, (int) $request->user()->id);
+        if (in_array($published->publication_policy, ['notify', 'material'], true)) {
+            SendLegalPublicationNotices::dispatch($published->id)->afterCommit();
+        }
 
         return redirect()->route('admin.legal-versions.index')
             ->with('success', 'نسخه منتشر شد و تصویر ثابت متن ثبت گردید.');
