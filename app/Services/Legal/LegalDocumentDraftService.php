@@ -19,8 +19,8 @@ class LegalDocumentDraftService
         string $sourceType,
         int $rootId,
         string $versionLabel,
-        string $publicationPolicy = 'material',
-        string $language = 'fa'
+        string $language = 'fa',
+        string $publicationPolicy = 'material'
     ): LegalDocumentVersion {
         if (! preg_match('/^[a-z][a-z0-9-]{2,99}$/', $slug)
             || ! preg_match('/^[0-9]+(?:\.[0-9]+){1,3}$/', $versionLabel)
