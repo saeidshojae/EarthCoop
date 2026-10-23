@@ -44,7 +44,7 @@ class LegalVersionController extends Controller
             'financialRoots' => NajmBaharAgreement::whereNull('parent_id')->orderBy('order')->orderBy('id')->get(['id', 'title']),
             'deliverySummary' => $deliverySummary,
             'acceptanceSummary' => $acceptanceSummary,
-            'memberCount' => \\App\\Models\\User::query()->where('is_system', false)->count(),
+            'memberCount' => \App\Models\User::query()->where('is_system', false)->count(),
         ]);
     }
 
