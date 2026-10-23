@@ -53,6 +53,28 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 @foreach($documents->filter(fn ($document) => $document->versions->isNotEmpty()) as $document)
 <section class="border rounded p-4 mb-4">
 <h3 class="font-bold">{{ $document->title }} <small>({{ $document->slug }})</small></h3>
+@if($document->source_root_id)
+<form method="POST" action="{{ route('admin.legal-versions.draft') }}" class="border rounded p-3 my-3">
+    @csrf
+    <input type="hidden" name="slug" value="{{ $document->slug }}">
+    <input type="hidden" name="title" value="{{ $document->title }}">
+    <input type="hidden" name="source_type" value="{{ $document->source_type }}">
+    <input type="hidden" name="source_root_id" value="{{ $document->source_root_id }}">
+    <div class="flex flex-wrap items-end gap-3">
+        <label>شماره نسخه جدید
+            <input class="form-control" name="version_label" placeholder="مثلاً 1.1" required>
+        </label>
+        <label>سیاست انتشار
+            <select class="form-control" name="publication_policy" required>
+                <option value="minor">تغییر جزئی — بدون اعلان و پذیرش مجدد</option>
+                <option value="notify">اطلاع‌رسانی — بدون پذیرش مجدد</option>
+                <option value="material" selected>تغییر اساسی — اعلان و الزام پذیرش مجدد</option>
+            </select>
+        </label>
+        <button class="btn btn-primary" type="submit">ساخت پیش‌نویس نسخه جدید</button>
+    </div>
+</form>
+@endif
 @foreach($document->versions as $version)
 <div class="flex flex-wrap gap-3 items-center border-t py-3">
 <span>نسخه {{ $version->version_label }}</span>
