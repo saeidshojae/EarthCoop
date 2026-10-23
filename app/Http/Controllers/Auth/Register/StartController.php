@@ -178,10 +178,10 @@ class StartController extends Controller
 
         $legalVersions = (array) $request->session()->get('registration_legal_version_ids', []);
         $currentLegalPair = app(\App\Services\Legal\LegalMembershipConsentService::class)->publishedPair();
-        if ($currentLegalPair && ($legalVersions['membership'] ?? null) !== $currentLegalPair['membership']->id) {
+        if ($currentLegalPair && ($legalVersions['membership'] ?? null) !== $currentLegalPair['membership']->id && ! app(\App\Services\Legal\LegalMembershipConsentService::class)->canCarryForwardVersion('membership', (int) ($legalVersions['membership'] ?? 0))) {
             return redirect()->route('terms')->withErrors(['terms' => 'نسخه اساسنامه تغییر کرده است؛ لطفاً دوباره مطالعه کنید.']);
         }
-        if ($currentLegalPair && ($legalVersions['terms'] ?? null) !== $currentLegalPair['terms']->id) {
+        if ($currentLegalPair && ($legalVersions['terms'] ?? null) !== $currentLegalPair['terms']->id && ! app(\App\Services\Legal\LegalMembershipConsentService::class)->canCarryForwardVersion('terms', (int) ($legalVersions['terms'] ?? 0))) {
             return redirect()->route('terms')->withErrors(['terms' => 'نسخه شرایط استفاده تغییر کرده است؛ لطفاً دوباره مطالعه کنید.']);
         }
 
