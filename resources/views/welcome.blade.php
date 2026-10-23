@@ -10,7 +10,6 @@
     <meta name="theme-color" content="#10b981">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icons/apple-touch-icon.png') }}?v=7">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('icons/favicon-32.png') }}?v=7">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('icons/favicon-16.png') }}?v=7">
     @php
         $homeCanonical = app(\App\Support\Seo\CanonicalUrl::class)->to('/');
         $homeImage = app(\App\Support\Seo\CanonicalUrl::class)->to(config('seo.default_image'));
