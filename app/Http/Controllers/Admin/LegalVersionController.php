@@ -71,11 +71,12 @@ class LegalVersionController extends Controller
             'source_type' => 'required|in:terms,najm_bahar_agreements',
             'source_root_id' => 'required|integer|min:1',
             'version_label' => 'required|string|max:40',
+            'publication_policy' => 'required|in:minor,notify,material',
         ]);
 
         $drafts->createFromAdminSource(
             $data['slug'], $data['title'], $data['source_type'],
-            (int) $data['source_root_id'], $data['version_label']
+            (int) $data['source_root_id'], $data['version_label'], $data['publication_policy']
         );
 
         return redirect()->route('admin.legal-versions.index')
