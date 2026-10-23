@@ -66,8 +66,14 @@ class LegalMembershipConsentService
             return;
         }
         $service = app(LegalAcceptanceService::class);
+        $publications = app(LegalDocumentPublicationService::class);
         foreach (['membership', 'terms'] as $slug) {
-            $version = $service->validatePublishedVersion($slug, (int) $ids[$slug]);
+            $current = $publications->current($slug);
+            $versionId = (int) $ids[$slug];
+            if ($current && $versionId !== $current->id && $this->canCarryForwardVersion($slug, $versionId)) {
+                $versionId = $current->id;
+            }
+            $version = $service->validatePublishedVersion($slug, $versionId);
             $service->record($userId, $version, $context);
         }
     }
