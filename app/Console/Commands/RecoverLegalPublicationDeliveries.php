@@ -15,7 +15,7 @@ class RecoverLegalPublicationDeliveries extends Command
     public function handle(): int
     {
         $limit = max(1, min(1000, (int) $this->option('limit')));
-        $staleBefore = now()->subSeconds(60);
+        $staleBefore = now()->subSeconds(120);
         $requeued = 0;
 
         $candidates = DB::table('legal_publication_deliveries as delivery')
@@ -38,8 +38,8 @@ class RecoverLegalPublicationDeliveries extends Command
             ->get();
 
         foreach ($candidates as $delivery) {
-            // Atomically acquire the recovery lease before dispatch. This avoids
-            // re-enqueuing the same queued/failed row every five-minute cycle.
+            // Atomically acquire the recovery lease before dispatch. The 120-second
+            // cutoff exceeds queue retry_after (90s) to reduce concurrent sends.
             $updated = DB::table('legal_publication_deliveries')
                 ->where('id', $delivery->id)
                 ->where('status', $delivery->status)
