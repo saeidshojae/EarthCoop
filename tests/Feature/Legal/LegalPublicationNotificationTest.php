@@ -127,8 +127,8 @@ class LegalPublicationNotificationTest extends TestCase
             'channel' => 'email',
             'status' => 'sending',
             'attempts' => 1,
-            'created_at' => now()->subMinutes(20),
-            'updated_at' => now()->subMinutes(11),
+            'created_at' => now()->subMinutes(2),
+            'updated_at' => now()->subSeconds(61),
         ]);
 
         (new DeliverLegalPublicationNotice($version->id, $user->id, 'email'))->handle();
