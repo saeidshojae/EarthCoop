@@ -23,6 +23,20 @@ class LegalDocumentPublicationService
                 throw ValidationException::withMessages(['content' => 'متن قرارداد نمی‌تواند خالی باشد.']);
             }
 
+            $previousCurrent = LegalDocumentVersion::query()
+                ->where('legal_document_id', $document->id)
+                ->where('language', $locked->language)
+                ->where('status', 'published')
+                ->orderByDesc('published_at')
+                ->first();
+
+            // Material changes start a new consent requirement. Minor/notice-only
+            // revisions inherit the outstanding requirement so they cannot bypass
+            // an unaccepted material version.
+            $baselineId = $locked->publication_policy === 'material' || ! $previousCurrent
+                ? $locked->id
+                : ($previousCurrent->acceptance_required_version_id ?: $previousCurrent->id);
+
             // Retire via model events so immutable snapshot protections remain enforced.
             LegalDocumentVersion::query()
                 ->where('legal_document_id', $document->id)
@@ -37,6 +51,7 @@ class LegalDocumentPublicationService
             $locked->forceFill([
                 'content_snapshot' => $snapshot,
                 'content_sha256' => hash('sha256', $snapshot),
+                'acceptance_required_version_id' => $baselineId,
                 'published_at' => now(),
                 'published_by' => $publisherId,
                 'status' => 'published',
