@@ -30,7 +30,7 @@ class LegalVersionController extends Controller
         if (\Illuminate\Support\Facades\Schema::hasTable('legal_document_acceptances')) {
             $acceptanceSummary = \Illuminate\Support\Facades\DB::table('legal_document_acceptances as acceptance')
                 ->join('legal_document_versions as accepted_version', 'accepted_version.id', '=', 'acceptance.legal_document_version_id')
-                ->whereIn('acceptance.context', ['membership', 'registration'])
+                ->whereIn('acceptance.context', ['membership', 'registration', 'najm_bahar'])
                 ->select('accepted_version.acceptance_required_version_id')
                 ->selectRaw('COUNT(DISTINCT acceptance.user_id) as users_count')
                 ->groupBy('accepted_version.acceptance_required_version_id')
