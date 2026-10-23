@@ -20,10 +20,20 @@ class LegalDocumentDraftTest extends TestCase
             ->createFromAdminSource('membership', 'عضویت', 'terms', $root->id, '1.0');
 
         $this->assertSame('draft', $version->status);
+        $this->assertSame('material', $version->publication_policy);
         $this->assertNull($version->published_at);
         $this->assertNull($version->content_snapshot);
         $this->assertSame($root->id, LegalDocument::firstOrFail()->source_root_id);
         $this->assertSame('قواعد اولیه', $root->fresh()->message);
+    }
+
+    public function test_admin_can_select_publication_policy_for_a_draft(): void
+    {
+        $root = Term::create(['title' => 'شرایط', 'message' => 'متن']);
+        $version = app(LegalDocumentDraftService::class)
+            ->createFromAdminSource('terms', 'شرایط', 'terms', $root->id, '1.0', 'fa', 'minor');
+
+        $this->assertSame('minor', $version->publication_policy);
     }
 
     public function test_existing_version_cannot_be_recreated(): void
