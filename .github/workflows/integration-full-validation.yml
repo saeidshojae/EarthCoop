@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - main
+      - fix/legal-preview-html-and-publication-date
       - agent/integration-pre-elections-current-main
   workflow_dispatch:
 
