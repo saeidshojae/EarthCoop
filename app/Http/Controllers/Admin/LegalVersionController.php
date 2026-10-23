@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendLegalPublicationNotices;
 use App\Models\LegalDocument;
 use App\Models\LegalDocumentVersion;
 use App\Models\NajmBaharAgreement;
@@ -117,7 +118,10 @@ class LegalVersionController extends Controller
         if (! hash_equals($data['preview_sha256'], hash('sha256', $snapshot))) {
             throw ValidationException::withMessages(['content' => 'متن سند پس از پیش‌نمایش تغییر کرده است؛ لطفاً نسخه جدید را بازبینی کنید.']);
         }
-        $publications->publish($version, $snapshot, (int) $request->user()->id);
+        $published = $publications->publish($version, $snapshot, (int) $request->user()->id);
+        if (in_array($published->publication_policy, ['notify', 'material'], true)) {
+            SendLegalPublicationNotices::dispatch($published->id)->afterCommit();
+        }
 
         return redirect()->route('admin.legal-versions.index')
             ->with('success', 'نسخه منتشر شد و تصویر ثابت متن ثبت گردید.');
