@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Legal;
 
+use App\Models\LegalDocument;
 use App\Models\NajmBaharAgreement;
 use App\Models\Term;
 use App\Models\User;
@@ -30,7 +31,7 @@ class LegalMarkdownImportTest extends TestCase
 
     public function test_duplicate_import_shows_a_clear_error_on_the_preview_page(): void
     {
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\AdminMiddleware::class);
+        $this->withoutMiddleware(\App\Http\Middleware\AdminMiddleware::class);
         $admin = User::factory()->create();
         $service = app(LegalMarkdownImportService::class);
         $preview = $service->preview('membership');
