@@ -33,6 +33,13 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 <label>شماره نسخه
 <input class="form-control" name="version_label" value="1.0" required pattern="[0-9]+(\.[0-9]+){1,3}">
 </label>
+<label>نوع انتشار
+<select class="form-control" name="publication_policy" required>
+<option value="minor">تغییر جزئی — بدون اعلان و پذیرش مجدد</option>
+<option value="notify">اطلاع‌رسانی — بدون پذیرش مجدد</option>
+<option value="material" selected>تغییر اساسی — الزام پذیرش مجدد</option>
+</select>
+</label>
 <button class="btn btn-primary" type="submit">ساخت پیش‌نویس این سند</button>
 </div>
 <p class="text-sm mt-2">ریشه والد: {{ $document->source_root_id }} — نوع منبع: {{ $document->source_type }}</p>
