@@ -51,6 +51,48 @@ class LegalPublicationNotificationTest extends TestCase
         Queue::assertPushed(DeliverLegalPublicationNotice::class, 2);
     }
 
+    public function test_delivery_job_records_sent_status_for_each_channel(): void
+    {
+        Mail::fake();
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        foreach (['in_app', 'email'] as $channel) {
+            DB::table('legal_publication_deliveries')->insert([
+                'legal_document_version_id' => $version->id,
+                'user_id' => $user->id,
+                'channel' => $channel,
+                'status' => 'queued',
+                'attempts' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            (new DeliverLegalPublicationNotice($version->id, $user->id, $channel))->handle();
+            $this->assertDatabaseHas('legal_publication_deliveries', [
+                'legal_document_version_id' => $version->id,
+                'user_id' => $user->id,
+                'channel' => $channel,
+                'status' => 'sent',
+            ]);
+        }
+
+        Notification::assertSentTo($user, GenericNotification::class);
+        Mail::assertSent(LegalPublicationNotice::class);
+    }
+
     public function test_minor_policy_does_not_queue_publication_notices(): void
     {
         Queue::fake();
