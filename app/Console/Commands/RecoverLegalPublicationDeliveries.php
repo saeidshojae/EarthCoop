@@ -1,10 +1,10 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Jobs\\DeliverLegalPublicationNotice;
-use Illuminate\\Console\\Command;
-use Illuminate\\Support\\Facades\\DB;
+use App\Jobs\DeliverLegalPublicationNotice;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class RecoverLegalPublicationDeliveries extends Command
 {
@@ -61,7 +61,7 @@ class RecoverLegalPublicationDeliveries extends Command
                     (string) $delivery->channel
                 )->onQueue('notifications');
                 $requeued++;
-            } catch (\\Throwable $exception) {
+            } catch (\Throwable $exception) {
                 // Leave the row queued with a fresh timestamp; the recovery
                 // command will retry dispatch after the lease interval.
                 report($exception);
