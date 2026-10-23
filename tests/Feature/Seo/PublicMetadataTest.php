@@ -22,8 +22,8 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('name="twitter:card"', $html);
         $this->assertStringContainsString('content="index,follow"', $html);
         $this->assertStringContainsString('rel="icon" type="image/png"', $html);
-        $this->assertStringContainsString('/icons/Code_Generated_Image.png?v=6', $html);
-        $this->assertStringContainsString('/icons/Code_Generated_Image.png?v=6', $html);
+        $this->assertStringContainsString('/icons/favicon-32.png?v=7', $html);
+        $this->assertStringContainsString('/icons/apple-touch-icon.png?v=7', $html);
         $this->assertStringContainsString('rel="apple-touch-icon"', $html);
         $this->assertStringContainsString('property="og:image" content="https://earthcoop.ir/images/earthcoop-social-preview-v2.png"', $html);
         $this->assertStringContainsString('name="twitter:image" content="https://earthcoop.ir/images/earthcoop-social-preview-v2.png"', $html);
@@ -35,18 +35,29 @@ class PublicMetadataTest extends TestCase
             $matches[1],
         );
         $this->assertSame(['Organization', 'WebSite'], array_column($payloads, '@type'));
-        $this->assertSame('https://earthcoop.ir/icons/Code_Generated_Image.png', $payloads[0]['logo']);
+        $this->assertSame('https://earthcoop.ir/icons/icon-512.png', $payloads[0]['logo']);
         $this->assertSame(['ارث‌کوپ', 'ارث کوپ'], $payloads[0]['alternateName']);
         $this->assertSame(['ارث‌کوپ', 'ارث کوپ'], $payloads[1]['alternateName']);
     }
 
-    public function test_pwa_uses_the_user_selected_icon_and_valid_manifest_asset(): void
+    public function test_pwa_icons_use_the_selected_logo_and_valid_manifest_assets(): void
     {
-        $iconPath = public_path('icons/Code_Generated_Image.png');
+        $icon192Path = public_path('icons/icon-192.png');
+        $this->assertFileExists($icon192Path);
+        $this->assertSame([192, 192], array_slice(getimagesize($icon192Path), 0, 2));
+        $this->assertPngChunksAreValid($icon192Path);
+        $this->assertStringContainsString('tRNS', file_get_contents($icon192Path), 'The icon must preserve transparent corners.');
 
-        $this->assertFileExists($iconPath);
-        $this->assertSame([1024, 1024], array_slice(getimagesize($iconPath), 0, 2));
-        $this->assertPngChunksAreValid($iconPath);
+        $icon512Path = public_path('icons/icon-512.png');
+        $this->assertFileExists($icon512Path);
+        $this->assertSame([512, 512], array_slice(getimagesize($icon512Path), 0, 2));
+        $this->assertPngChunksAreValid($icon512Path);
+        $this->assertStringContainsString('tRNS', file_get_contents($icon512Path), 'The icon must preserve transparent corners.');
+
+        $maskablePath = public_path('icons/icon-maskable.png');
+        $this->assertFileExists($maskablePath);
+        $this->assertSame([512, 512], array_slice(getimagesize($maskablePath), 0, 2));
+        $this->assertPngChunksAreValid($maskablePath);
 
         $manifest = json_decode(
             file_get_contents(public_path('manifest.json')),
@@ -55,11 +66,19 @@ class PublicMetadataTest extends TestCase
             JSON_THROW_ON_ERROR,
         );
 
-        $this->assertCount(1, $manifest['icons']);
-        $this->assertSame('/icons/Code_Generated_Image.png?v=6', $manifest['icons'][0]['src']);
-        $this->assertSame('1024x1024', $manifest['icons'][0]['sizes']);
+        $this->assertCount(3, $manifest['icons']);
+        $this->assertSame('/icons/icon-192.png?v=7', $manifest['icons'][0]['src']);
+        $this->assertSame('192x192', $manifest['icons'][0]['sizes']);
         $this->assertSame('image/png', $manifest['icons'][0]['type']);
         $this->assertSame('any', $manifest['icons'][0]['purpose']);
+        $this->assertSame('/icons/icon-512.png?v=7', $manifest['icons'][1]['src']);
+        $this->assertSame('512x512', $manifest['icons'][1]['sizes']);
+        $this->assertSame('image/png', $manifest['icons'][1]['type']);
+        $this->assertSame('any', $manifest['icons'][1]['purpose']);
+        $this->assertSame('/icons/icon-maskable.png?v=7', $manifest['icons'][2]['src']);
+        $this->assertSame('512x512', $manifest['icons'][2]['sizes']);
+        $this->assertSame('image/png', $manifest['icons'][2]['type']);
+        $this->assertSame('maskable', $manifest['icons'][2]['purpose']);
         $this->assertStringContainsString('ارث‌کوپ', $manifest['description']);
         $this->assertSame(
             file_get_contents(base_path('manifest.json')),
