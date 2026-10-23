@@ -49,7 +49,7 @@ class NajmBaharController extends Controller
         $financialVersion = \Illuminate\Support\Facades\Schema::hasTable('legal_document_versions')
             ? app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('najm-bahar')
             : null;
-        $hasAcceptedCurrentVersion = ! $financialVersion || \\Illuminate\\Support\\Facades\\DB::table('legal_document_acceptances as acceptance')
+        $hasAcceptedCurrentVersion = ! $financialVersion || DB::table('legal_document_acceptances as acceptance')
             ->join('legal_document_versions as accepted_version', 'accepted_version.id', '=', 'acceptance.legal_document_version_id')
             ->where('acceptance.user_id', $user->id)
             ->where('acceptance.context', 'najm_bahar')
