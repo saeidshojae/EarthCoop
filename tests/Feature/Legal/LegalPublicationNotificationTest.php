@@ -103,6 +103,86 @@ class LegalPublicationNotificationTest extends TestCase
         Mail::assertSent(LegalPublicationNotice::class, fn ($mail) => $mail->hasTo('member@example.test'));
     }
 
+    public function test_stale_sending_delivery_can_be_recovered(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        DB::table('legal_publication_deliveries')->insert([
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sending',
+            'attempts' => 1,
+            'created_at' => now()->subMinutes(20),
+            'updated_at' => now()->subMinutes(11),
+        ]);
+
+        (new DeliverLegalPublicationNotice($version->id, $user->id, 'email'))->handle();
+
+        $this->assertDatabaseHas('legal_publication_deliveries', [
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sent',
+            'attempts' => 2,
+        ]);
+        Mail::assertSent(LegalPublicationNotice::class);
+    }
+
+    public function test_recent_sending_delivery_is_not_claimed_twice(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        DB::table('legal_publication_deliveries')->insert([
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sending',
+            'attempts' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        (new DeliverLegalPublicationNotice($version->id, $user->id, 'email'))->handle();
+
+        $this->assertDatabaseHas('legal_publication_deliveries', [
+            'legal_document_version_id' => $version->id,
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'sending',
+            'attempts' => 1,
+        ]);
+        Mail::assertNothingSent();
+    }
+
     public function test_minor_policy_does_not_queue_publication_notices(): void
     {
         Queue::fake();
