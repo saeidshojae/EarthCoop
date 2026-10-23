@@ -19,10 +19,12 @@ class LegalDocumentDraftService
         string $sourceType,
         int $rootId,
         string $versionLabel,
+        string $publicationPolicy = 'material',
         string $language = 'fa'
     ): LegalDocumentVersion {
         if (! preg_match('/^[a-z][a-z0-9-]{2,99}$/', $slug)
             || ! preg_match('/^[0-9]+(?:\.[0-9]+){1,3}$/', $versionLabel)
+            || ! in_array($publicationPolicy, ['minor', 'notify', 'material'], true)
             || ! preg_match('/^[a-z]{2}(?:-[A-Z]{2})?$/', $language)) {
             throw ValidationException::withMessages(['version' => 'شناسه یا نسخه پیش‌نویس معتبر نیست.']);
         }
@@ -30,7 +32,7 @@ class LegalDocumentDraftService
         // Capture first. A failed lookup must never create an empty document.
         $this->snapshots->capture($sourceType, $rootId);
 
-        return DB::transaction(function () use ($slug, $title, $sourceType, $rootId, $versionLabel, $language) {
+        return DB::transaction(function () use ($slug, $title, $sourceType, $rootId, $versionLabel, $publicationPolicy, $language) {
             $document = LegalDocument::query()->firstOrCreate(
                 ['slug' => $slug],
                 ['title' => $title, 'source_type' => $sourceType, 'source_root_id' => $rootId]
@@ -54,6 +56,7 @@ class LegalDocumentDraftService
                 'version_label' => $versionLabel,
                 'language' => $language,
                 'status' => 'draft',
+                'publication_policy' => $publicationPolicy,
             ]);
         });
     }
