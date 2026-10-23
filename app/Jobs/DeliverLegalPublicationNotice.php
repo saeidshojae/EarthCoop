@@ -21,7 +21,7 @@ class DeliverLegalPublicationNotice implements ShouldQueue
 
     public int $tries = 3;
 
-    private const STALE_SENDING_SECONDS = 60;
+    private const STALE_SENDING_SECONDS = 120;
 
     public function __construct(
         public readonly int $versionId,
@@ -43,8 +43,8 @@ class DeliverLegalPublicationNotice implements ShouldQueue
             return;
         }
 
-        // The lease expires before the configured queue retry_after (90s), so a
-        // redelivered job can recover a worker that died after claiming it.
+        // Keep the sending lease longer than queue retry_after (90s) so a slow,
+        // still-running worker is not reclaimed while it may still send.
         $staleSendingBefore = now()->subSeconds(self::STALE_SENDING_SECONDS);
         $claimed = DB::table('legal_publication_deliveries')
             ->where('id', $delivery->id)
