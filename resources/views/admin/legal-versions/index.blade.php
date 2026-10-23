@@ -37,7 +37,7 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 <select class="form-control" name="publication_policy" required>
 <option value="minor">تغییر جزئی — بدون اعلان و پذیرش مجدد</option>
 <option value="notify">اطلاع‌رسانی — بدون پذیرش مجدد</option>
-<option value="material" selected>تغییر اساسی — الزام پذیرش مجدد</option>
+<option value="material" selected>تغییر اساسی — اعلان و الزام پذیرش مجدد</option>
 </select>
 </label>
 <button class="btn btn-primary" type="submit">ساخت پیش‌نویس این سند</button>
