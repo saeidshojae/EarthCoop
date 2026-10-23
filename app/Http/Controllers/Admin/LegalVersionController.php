@@ -20,15 +20,15 @@ class LegalVersionController extends Controller
     {
         $deliverySummary = [];
         $acceptanceSummary = [];
-        if (\\Illuminate\\Support\\Facades\\Schema::hasTable('legal_publication_deliveries')) {
-            $deliverySummary = \\Illuminate\\Support\\Facades\\DB::table('legal_publication_deliveries')
-                ->select('legal_document_version_id', 'channel', 'status', \\Illuminate\\Support\\Facades\\DB::raw('COUNT(*) as total'))
+        if (\Illuminate\Support\Facades\Schema::hasTable('legal_publication_deliveries')) {
+            $deliverySummary = \Illuminate\Support\Facades\DB::table('legal_publication_deliveries')
+                ->select('legal_document_version_id', 'channel', 'status', \Illuminate\Support\Facades\DB::raw('COUNT(*) as total'))
                 ->groupBy('legal_document_version_id', 'channel', 'status')
                 ->get()
                 ->groupBy('legal_document_version_id');
         }
-        if (\\Illuminate\\Support\\Facades\\Schema::hasTable('legal_document_acceptances')) {
-            $acceptanceSummary = \\Illuminate\\Support\\Facades\\DB::table('legal_document_acceptances as acceptance')
+        if (\Illuminate\Support\Facades\Schema::hasTable('legal_document_acceptances')) {
+            $acceptanceSummary = \Illuminate\Support\Facades\DB::table('legal_document_acceptances as acceptance')
                 ->join('legal_document_versions as accepted_version', 'accepted_version.id', '=', 'acceptance.legal_document_version_id')
                 ->whereIn('acceptance.context', ['membership', 'registration'])
                 ->select('accepted_version.acceptance_required_version_id')
