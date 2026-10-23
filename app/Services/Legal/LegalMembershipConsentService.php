@@ -37,7 +37,7 @@ class LegalMembershipConsentService
             && in_array($accepted->status, ['published', 'retired'], true)
             && app(LegalDocumentPublicationService::class)->verifyIntegrity($accepted)
             && $accepted->acceptance_required_version_id !== null
-            && $accepted->acceptance_required_version_id === $current->acceptance_required_version_id;
+            && (int) $accepted->acceptance_required_version_id === (int) $current->acceptance_required_version_id;
     }
 
     public function validateForm(Request $request): array
