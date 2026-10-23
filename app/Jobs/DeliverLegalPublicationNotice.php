@@ -41,8 +41,19 @@ class DeliverLegalPublicationNotice implements ShouldQueue
             return;
         }
 
-        DB::table('legal_publication_deliveries')->where('id', $delivery->id)
-            ->update(['attempts' => DB::raw('attempts + 1'), 'updated_at' => now()]);
+        $claimed = DB::table('legal_publication_deliveries')
+            ->where('id', $delivery->id)
+            ->whereIn('status', ['queued', 'failed'])
+            ->update([
+                'status' => 'sending',
+                'attempts' => DB::raw('attempts + 1'),
+                'updated_at' => now(),
+            ]);
+
+        // Prevent duplicate queued jobs from sending the same channel twice.
+        if ($claimed !== 1) {
+            return;
+        }
 
         try {
             $version = LegalDocumentVersion::with('document')->findOrFail($this->versionId);
