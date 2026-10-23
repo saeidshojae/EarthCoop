@@ -2,6 +2,7 @@
 
 namespace App\Services\Legal;
 
+use App\Models\LegalDocumentVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,26 @@ class LegalMembershipConsentService
         $membership = $publisher->current('membership');
         $terms = $publisher->current('terms');
         return $membership && $terms ? ['membership' => $membership, 'terms' => $terms] : [];
+    }
+
+    /**
+     * A registration flow may finish against an older snapshot only when the
+     * published revision kept the same acceptance baseline (minor/notice-only).
+     */
+    public function canCarryForwardVersion(string $slug, int $acceptedVersionId): bool
+    {
+        $current = app(LegalDocumentPublicationService::class)->current($slug);
+        if (! $current) {
+            return false;
+        }
+
+        $accepted = LegalDocumentVersion::with('document')->find($acceptedVersionId);
+        return $accepted
+            && $accepted->document?->slug === $slug
+            && in_array($accepted->status, ['published', 'retired'], true)
+            && app(LegalDocumentPublicationService::class)->verifyIntegrity($accepted)
+            && $accepted->acceptance_required_version_id !== null
+            && $accepted->acceptance_required_version_id === $current->acceptance_required_version_id;
     }
 
     public function validateForm(Request $request): array
