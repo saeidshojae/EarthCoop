@@ -39,7 +39,7 @@
     <div class="rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-2xl backdrop-blur dark:border-emerald-800 dark:bg-slate-900/95">
         <div class="flex items-start gap-3">
             <span class="flex h-12 w-12 flex-none items-center justify-center" aria-hidden="true">
-                <img src="{{ asset('icons/Code_Generated_Image.png') }}?v=6" width="45" height="45" class="brand-logo-animated h-11 w-11" alt="">
+                <img src="{{ asset('icons/icon-512.png') }}?v=7" width="45" height="45" class="brand-logo-animated h-11 w-11" alt="">
             </span>
             <div class="min-w-0 flex-1 font-vazirmatn">
                 <strong class="block text-base text-slate-900 dark:text-white">{{ $pwaText['title'] }}</strong>
