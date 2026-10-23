@@ -9,7 +9,7 @@
 </style>
 <div id="earthcoop-pwa-splash" aria-hidden="true">
     <div class="earthcoop-pwa-splash__brand">
-        <img class="earthcoop-pwa-splash__logo" src="{{ asset('icons/icon.svg') }}?v=5" alt="">
+        <img class="earthcoop-pwa-splash__logo" src="{{ asset('icons/icon-512.png') }}?v=7" alt="">
         <span>EarthCoop</span>
     </div>
 </div>
