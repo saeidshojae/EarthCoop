@@ -209,9 +209,10 @@ class LegalPublicationNotificationTest extends TestCase
             ['channel' => 'email', 'status' => 'sent', 'attempts' => 1, 'updated_at' => now()],
             ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 5, 'updated_at' => now()],
         ] as $delivery) {
+            $deliveryUser = User::factory()->create(['is_system' => false]);
             DB::table('legal_publication_deliveries')->insert([
                 'legal_document_version_id' => $version->id,
-                'user_id' => $user->id,
+                'user_id' => $deliveryUser->id,
                 'channel' => $delivery['channel'],
                 'status' => $delivery['status'],
                 'attempts' => $delivery['attempts'],
