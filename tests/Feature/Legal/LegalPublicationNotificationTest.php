@@ -4,6 +4,8 @@ namespace Tests\Feature\Legal;
 
 use App\Jobs\DeliverLegalPublicationNotice;
 use App\Jobs\SendLegalPublicationNotices;
+use App\Mail\LegalPublicationNotice;
+use App\Notifications\GenericNotification;
 use App\Models\LegalDocument;
 use App\Models\LegalDocumentVersion;
 use App\Models\User;
@@ -11,6 +13,8 @@ use App\Services\Legal\LegalDocumentPublicationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class LegalPublicationNotificationTest extends TestCase
