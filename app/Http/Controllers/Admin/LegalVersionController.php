@@ -76,7 +76,7 @@ class LegalVersionController extends Controller
 
         $drafts->createFromAdminSource(
             $data['slug'], $data['title'], $data['source_type'],
-            (int) $data['source_root_id'], $data['version_label'], $data['publication_policy']
+            (int) $data['source_root_id'], $data['version_label'], 'fa', $data['publication_policy']
         );
 
         return redirect()->route('admin.legal-versions.index')
