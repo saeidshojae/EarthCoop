@@ -8,6 +8,7 @@ use App\Mail\LegalPublicationNotice;
 use App\Notifications\GenericNotification;
 use App\Models\LegalDocument;
 use App\Models\LegalDocumentVersion;
+use App\Models\NotificationSetting;
 use App\Models\User;
 use App\Services\Legal\LegalDocumentPublicationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,6 +62,10 @@ class LegalPublicationNotificationTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        // Legal notices are mandatory transactional communications, even when
+        // the member has opted out of general email notifications.
+        NotificationSetting::forUser($user->id)->update(['email_notifications' => false]);
+
         $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
         $version = app(LegalDocumentPublicationService::class)->publish(
             LegalDocumentVersion::create([
@@ -95,6 +100,7 @@ class LegalPublicationNotificationTest extends TestCase
 
         Notification::assertSentTo($user, GenericNotification::class);
         Mail::assertSent(LegalPublicationNotice::class);
+        Mail::assertSent(LegalPublicationNotice::class, fn ($mail) => $mail->hasTo('member@example.test'));
     }
 
     public function test_minor_policy_does_not_queue_publication_notices(): void
