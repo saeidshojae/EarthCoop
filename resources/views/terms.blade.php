@@ -3413,15 +3413,17 @@
                     $legalPublished = [];
                 }
                 if ($legalPublished && auth()->check()) {
-                    $acceptedIds = \Illuminate\Support\Facades\DB::table('legal_document_acceptances')
-                        ->where('user_id', auth()->id())
-                        ->whereIn('legal_document_version_id', [
-                            $legalPublished['membership']->id,
-                            $legalPublished['terms']->id,
-                        ])->whereIn('context', ['membership', 'registration'])
-                        ->distinct()->pluck('legal_document_version_id')->all();
-                    if (count($acceptedIds) !== 2) {
-                        $termsAcceptedAt = null; // Show explicit re-consent form; do not change the old timestamp.
+                    $hasAcceptedRequirement = function ($currentVersion): bool {
+                        return \Illuminate\Support\Facades\DB::table('legal_document_acceptances as acceptance')
+                            ->join('legal_document_versions as accepted_version', 'accepted_version.id', '=', 'acceptance.legal_document_version_id')
+                            ->where('acceptance.user_id', auth()->id())
+                            ->whereIn('acceptance.context', ['membership', 'registration'])
+                            ->where('accepted_version.acceptance_required_version_id', $currentVersion->acceptance_required_version_id)
+                            ->exists();
+                    };
+                    if (! $hasAcceptedRequirement($legalPublished['membership'])
+                        || ! $hasAcceptedRequirement($legalPublished['terms'])) {
+                        $termsAcceptedAt = null; // Keep historical acceptance rows and require consent only for a new material baseline.
                     }
                 }
             }
