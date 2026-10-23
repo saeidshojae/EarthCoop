@@ -1,19 +1,19 @@
 <?php
 
-namespace App\\Jobs;
+namespace App\Jobs;
 
-use App\\Mail\\LegalPublicationNotice;
-use App\\Models\\LegalDocumentVersion;
-use App\\Models\\User;
-use App\\Notifications\\GenericNotification;
-use Illuminate\\Bus\\Queueable;
-use Illuminate\\Contracts\\Queue\\ShouldQueue;
-use Illuminate\\Foundation\\Bus\\Dispatchable;
-use Illuminate\\Queue\\InteractsWithQueue;
-use Illuminate\\Queue\\SerializesModels;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Mail;
-use Illuminate\\Support\\Facades\\Notification;
+use App\Mail\LegalPublicationNotice;
+use App\Models\LegalDocumentVersion;
+use App\Models\User;
+use App\Notifications\GenericNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class DeliverLegalPublicationNotice implements ShouldQueue
 {
@@ -91,7 +91,7 @@ class DeliverLegalPublicationNotice implements ShouldQueue
                 'last_error' => null,
                 'updated_at' => now(),
             ]);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             DB::table('legal_publication_deliveries')->where('id', $delivery->id)->update([
                 'status' => 'failed',
                 'last_error' => mb_substr($exception->getMessage(), 0, 2000),
