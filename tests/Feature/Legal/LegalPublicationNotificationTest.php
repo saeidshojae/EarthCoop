@@ -54,7 +54,13 @@ class LegalPublicationNotificationTest extends TestCase
             'channel' => 'email',
             'status' => 'queued',
         ]);
-        Queue::assertPushedTimes(DeliverLegalPublicationNotice::class, 2);
+        foreach (['in_app', 'email'] as $channel) {
+            Queue::assertPushed(DeliverLegalPublicationNotice::class, fn (DeliverLegalPublicationNotice $job) =>
+                $job->versionId === $version->id
+                && $job->userId === $user->id
+                && $job->channel === $channel
+            );
+        }
     }
 
     public function test_delivery_job_records_sent_status_for_each_channel(): void
