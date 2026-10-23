@@ -183,6 +183,49 @@ class LegalPublicationNotificationTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_recovery_command_requeues_pending_and_stale_deliveries_only(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create(['email' => 'member@example.test', 'is_system' => false]);
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط استفاده', 'source_type' => 'terms']);
+        $version = app(LegalDocumentPublicationService::class)->publish(
+            LegalDocumentVersion::create([
+                'legal_document_id' => $document->id,
+                'version_label' => '1.1',
+                'language' => 'fa',
+                'status' => 'draft',
+                'publication_policy' => 'notify',
+            ]),
+            'نسخه جدید',
+            $user->id
+        );
+
+        foreach ([
+            ['channel' => 'email', 'status' => 'queued', 'attempts' => 0, 'updated_at' => now()],
+            ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 1, 'updated_at' => now()],
+            ['channel' => 'email', 'status' => 'sending', 'attempts' => 2, 'updated_at' => now()->subSeconds(61)],
+            ['channel' => 'in_app', 'status' => 'sending', 'attempts' => 1, 'updated_at' => now()],
+            ['channel' => 'email', 'status' => 'sent', 'attempts' => 1, 'updated_at' => now()],
+            ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 5, 'updated_at' => now()],
+        ] as $delivery) {
+            DB::table('legal_publication_deliveries')->insert([
+                'legal_document_version_id' => $version->id,
+                'user_id' => $user->id,
+                'channel' => $delivery['channel'],
+                'status' => $delivery['status'],
+                'attempts' => $delivery['attempts'],
+                'created_at' => now(),
+                'updated_at' => $delivery['updated_at'],
+            ]);
+        }
+
+        $this->artisan('legal:recover-publication-deliveries --limit=200')
+            ->assertExitCode(0);
+
+        Queue::assertPushedTimes(DeliverLegalPublicationNotice::class, 3);
+    }
+
     public function test_minor_policy_does_not_queue_publication_notices(): void
     {
         Queue::fake();
