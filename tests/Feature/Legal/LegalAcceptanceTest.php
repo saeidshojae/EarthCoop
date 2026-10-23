@@ -33,6 +33,55 @@ class LegalAcceptanceTest extends TestCase
         ]);
     }
 
+    public function test_minor_revision_inherits_unaccepted_material_requirement_and_preserves_acceptance_history(): void
+    {
+        $user = User::factory()->create();
+        $document = LegalDocument::create(['slug' => 'terms', 'title' => 'شرایط', 'source_type' => 'terms']);
+        $publisher = app(LegalDocumentPublicationService::class);
+
+        $material = $publisher->publish(LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.0',
+            'language' => 'fa',
+            'status' => 'draft',
+            'publication_policy' => 'material',
+        ]), 'نسخه اساسی', $user->id);
+
+        app(LegalAcceptanceService::class)->record($user->id, $material, 'membership');
+
+        $minor = $publisher->publish(LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.1',
+            'language' => 'fa',
+            'status' => 'draft',
+            'publication_policy' => 'minor',
+        ]), 'نسخه جزئی', $user->id);
+
+        $this->assertSame($material->id, $material->fresh()->acceptance_required_version_id);
+        $this->assertSame($material->id, $minor->acceptance_required_version_id);
+        $this->assertDatabaseHas('legal_document_acceptances', [
+            'user_id' => $user->id,
+            'legal_document_version_id' => $material->id,
+            'context' => 'membership',
+        ]);
+
+        $newMaterial = $publisher->publish(LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '2.0',
+            'language' => 'fa',
+            'status' => 'draft',
+            'publication_policy' => 'material',
+        ]), 'نسخه اساسی جدید', $user->id);
+
+        $this->assertSame($newMaterial->id, $newMaterial->acceptance_required_version_id);
+        $this->assertNotSame($minor->acceptance_required_version_id, $newMaterial->acceptance_required_version_id);
+        $this->assertDatabaseHas('legal_document_acceptances', [
+            'user_id' => $user->id,
+            'legal_document_version_id' => $material->id,
+            'context' => 'membership',
+        ]);
+    }
+
     public function test_retired_version_cannot_be_newly_accepted(): void
     {
         $user = User::factory()->create();
