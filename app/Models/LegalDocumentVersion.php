@@ -8,7 +8,7 @@ use LogicException;
 class LegalDocumentVersion extends Model
 {
     protected $fillable = [
-        'legal_document_id', 'version_label', 'language', 'status', 'publication_policy',
+        'legal_document_id', 'version_label', 'language', 'status', 'publication_policy', 'acceptance_required_version_id',
         'content_snapshot', 'content_sha256', 'published_at', 'published_by',
     ];
 
