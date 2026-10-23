@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
+// Regression coverage for mandatory legal notices and retry-safe delivery tracking.
 class LegalPublicationNotificationTest extends TestCase
 {
     use RefreshDatabase;
