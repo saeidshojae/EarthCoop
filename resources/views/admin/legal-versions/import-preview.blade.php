@@ -5,6 +5,8 @@
 <a href="{{ route('admin.legal-versions.index') }}">بازگشت</a>
 <h1 class="text-2xl font-bold my-3">پیش‌نمایش ورود {{ $data['title'] }}</h1>
 <p class="mb-4">این عملیات فقط پس از تأیید، یک والد جدید و مواد فرزند را می‌سازد. هیچ متن قبلی بازنویسی نمی‌شود و این عملیات به‌معنای انتشار رسمی نیست.</p>
+@if(session('success'))<div role="status" class="alert alert-success mb-4">{{ session('success') }}</div>@endif
+@if($errors->any())<div role="alert" class="alert alert-danger mb-4"><strong>ورود انجام نشد.</strong><ul class="list-disc pr-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 <div class="border rounded p-4 leading-loose mb-4">
 <h2 class="font-bold">{{ $data['title'] }}</h2>
 <p class="whitespace-pre-wrap">{{ $data['content'] }}</p>

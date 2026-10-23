@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Legal;
 
+use App\Models\LegalDocument;
 use App\Models\NajmBaharAgreement;
 use App\Models\Term;
 use App\Models\User;
@@ -25,6 +26,39 @@ class LegalMarkdownImportTest extends TestCase
         $rootId = $service->importToNewRoot('membership');
         $this->assertDatabaseHas('terms', ['id' => $rootId, 'parent_id' => null]);
         $this->assertSame(count($source['children']), Term::where('parent_id', $rootId)->count());
+    }
+
+
+    public function test_duplicate_import_shows_a_clear_error_on_the_preview_page(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\AdminMiddleware::class);
+        $admin = User::factory()->create();
+        $service = app(LegalMarkdownImportService::class);
+        $preview = $service->preview('membership');
+        $fingerprint = hash('sha256', json_encode($preview, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+        LegalDocument::create([
+            'slug' => 'membership',
+            'title' => $preview['title'],
+            'source_type' => 'terms',
+            'source_root_id' => 1,
+            'is_staged_import' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.legal-versions.import-preview', 'membership'))
+            ->post(route('admin.legal-versions.import', 'membership'), [
+                'confirm_import' => '1',
+                'preview_sha256' => $fingerprint,
+            ])
+            ->assertRedirect(route('admin.legal-versions.import-preview', 'membership'))
+            ->assertSessionHasErrors('document');
+
+        $this->actingAs($admin)
+            ->get(route('admin.legal-versions.import-preview', 'membership'))
+            ->assertOk()
+            ->assertSee('ورود انجام نشد.')
+            ->assertSee('این سند قبلاً برای نسخه‌بندی ثبت شده است.');
     }
 
     public function test_import_rejects_unreviewed_content_fingerprint_without_creating_rows(): void
