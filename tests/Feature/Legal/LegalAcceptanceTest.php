@@ -67,6 +67,17 @@ class LegalAcceptanceTest extends TestCase
             'context' => 'membership',
         ]);
 
+        $noticeOnly = $publisher->publish(LegalDocumentVersion::create([
+            'legal_document_id' => $document->id,
+            'version_label' => '1.2',
+            'language' => 'fa',
+            'status' => 'draft',
+            'publication_policy' => 'notify',
+        ]), 'نسخه اطلاع‌رسانی', $user->id);
+
+        $this->assertSame($material->id, $noticeOnly->acceptance_required_version_id);
+        $this->assertTrue($consent->canCarryForwardVersion('terms', $noticeOnly->id));
+
         $newMaterial = $publisher->publish(LegalDocumentVersion::create([
             'legal_document_id' => $document->id,
             'version_label' => '2.0',
@@ -76,7 +87,7 @@ class LegalAcceptanceTest extends TestCase
         ]), 'نسخه اساسی جدید', $user->id);
 
         $this->assertSame($newMaterial->id, $newMaterial->acceptance_required_version_id);
-        $this->assertNotSame($minor->acceptance_required_version_id, $newMaterial->acceptance_required_version_id);
+        $this->assertNotSame($noticeOnly->acceptance_required_version_id, $newMaterial->acceptance_required_version_id);
         $this->assertFalse($consent->canCarryForwardVersion('terms', $minor->id));
         $this->assertDatabaseHas('legal_document_acceptances', [
             'user_id' => $user->id,
