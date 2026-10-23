@@ -1,11 +1,11 @@
 <?php
 
-namespace App\\Mail;
+namespace App\Mail;
 
-use App\\Models\\LegalDocumentVersion;
-use Illuminate\\Bus\\Queueable;
-use Illuminate\\Mail\\Mailable;
-use Illuminate\\Queue\\SerializesModels;
+use App\Models\LegalDocumentVersion;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
 
 class LegalPublicationNotice extends Mailable
 {
