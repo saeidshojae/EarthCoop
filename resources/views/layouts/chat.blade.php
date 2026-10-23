@@ -6,10 +6,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="format-detection" content="telephone=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="manifest" href="{{ asset('manifest.json') }}?v=6">
+    <link rel="manifest" href="{{ asset('manifest.json') }}?v=7">
     <meta name="theme-color" content="#10b981">
-    <link rel="apple-touch-icon" href="{{ asset('icons/Code_Generated_Image.png') }}?v=6">
-    <link rel="icon" type="image/png" href="{{ asset('icons/Code_Generated_Image.png') }}?v=6
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icons/apple-touch-icon.png') }}?v=7">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('icons/favicon-32.png') }}?v=7">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('icons/favicon-16.png') }}?v=7">
     <title>@yield('title', 'New Earth Coop')</title>
 
     <script defer src="{{ asset('vendor/alpinejs/cdn.min.js') }}"></script>
