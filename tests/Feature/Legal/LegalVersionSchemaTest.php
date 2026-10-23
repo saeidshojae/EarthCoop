@@ -20,6 +20,7 @@ class LegalVersionSchemaTest extends TestCase
         $this->assertTrue(Schema::hasColumns('legal_document_versions', [
             'legal_document_id', 'version_label', 'language',
             'content_snapshot', 'content_sha256', 'published_at', 'status',
+            'publication_policy', 'acceptance_required_version_id',
         ]));
 
         $this->assertTrue(Schema::hasColumns('legal_document_acceptances', [
