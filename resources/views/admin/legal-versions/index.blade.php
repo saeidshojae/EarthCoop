@@ -54,7 +54,7 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 @if($version->status === 'draft')
 <span class="text-sm">برای انتشار، نسخه را باز کنید و پس از بررسی، تأیید انتشار را انجام دهید.</span>
 @elseif($version->status === 'published')
-<span class="text-sm">منتشرشده در {{ optional($version->published_at)->format('Y-m-d H:i') }}</span>
+<span class="text-sm">این نسخه منتشر شده است.</span>
 @endif
 </div>
 @endforeach
