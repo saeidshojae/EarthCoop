@@ -202,8 +202,9 @@ class LegalPublicationNotificationTest extends TestCase
         );
 
         foreach ([
+            ['channel' => 'email', 'status' => 'queued', 'attempts' => 0, 'updated_at' => now()->subSeconds(61)],
+            ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 1, 'updated_at' => now()->subSeconds(61)],
             ['channel' => 'email', 'status' => 'queued', 'attempts' => 0, 'updated_at' => now()],
-            ['channel' => 'in_app', 'status' => 'failed', 'attempts' => 1, 'updated_at' => now()],
             ['channel' => 'email', 'status' => 'sending', 'attempts' => 2, 'updated_at' => now()->subSeconds(61)],
             ['channel' => 'in_app', 'status' => 'sending', 'attempts' => 1, 'updated_at' => now()],
             ['channel' => 'email', 'status' => 'sent', 'attempts' => 1, 'updated_at' => now()],
