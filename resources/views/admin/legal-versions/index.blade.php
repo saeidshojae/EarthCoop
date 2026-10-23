@@ -57,6 +57,19 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
 <div class="flex flex-wrap gap-3 items-center border-t py-3">
 <span>نسخه {{ $version->version_label }}</span>
 <span>{{ $version->status }}</span>
+<span>سیاست انتشار:
+    {{ ['minor' => 'جزئی', 'notify' => 'اطلاع‌رسانی', 'material' => 'اساسی'][$version->publication_policy ?? 'material'] ?? 'اساسی' }}
+</span>
+@if($version->status === 'published')
+    <span>پذیرش‌های ثبت‌شده برای این الزام: {{ $acceptanceSummary[$version->acceptance_required_version_id] ?? 0 }}</span>
+    @foreach(($deliverySummary[$version->id] ?? collect()) as $delivery)
+        <span>
+            {{ $delivery->channel === 'email' ? 'ایمیل' : 'درون‌برنامه‌ای' }}:
+            {{ ['queued' => 'در صف', 'sending' => 'در حال ارسال', 'sent' => 'ارسال‌شده', 'failed' => 'ناموفق', 'skipped' => 'ردشده'][$delivery->status] ?? $delivery->status }}
+            ({{ $delivery->total }})
+        </span>
+    @endforeach
+@endif
 <a href="{{ route('admin.legal-versions.preview', $version) }}" class="btn btn-outline-primary">بازبینی نسخه</a>
 @if($version->status === 'draft')
 <span class="text-sm">برای انتشار، نسخه را باز کنید و پس از بررسی، تأیید انتشار را انجام دهید.</span>
