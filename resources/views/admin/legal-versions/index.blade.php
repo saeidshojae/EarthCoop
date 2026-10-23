@@ -83,7 +83,7 @@ $documentsNeedingVersion = $documents->filter(fn ($document) => $document->versi
     {{ ['minor' => 'جزئی', 'notify' => 'اطلاع‌رسانی', 'material' => 'اساسی'][$version->publication_policy ?? 'material'] ?? 'اساسی' }}
 </span>
 @if($version->status === 'published')
-    <span>پذیرش‌های ثبت‌شده برای این الزام: {{ $acceptanceSummary[$version->acceptance_required_version_id] ?? 0 }}</span>
+    <span>پذیرش: {{ $acceptanceSummary[$version->acceptance_required_version_id] ?? 0 }} از {{ $memberCount }} عضو؛ در انتظار: {{ max(0, $memberCount - ($acceptanceSummary[$version->acceptance_required_version_id] ?? 0)) }}</span>
     @foreach(($deliverySummary[$version->id] ?? collect()) as $delivery)
         <span>
             {{ $delivery->channel === 'email' ? 'ایمیل' : 'درون‌برنامه‌ای' }}:
