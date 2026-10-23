@@ -52,7 +52,7 @@ class LegalPublicationNotificationTest extends TestCase
             'channel' => 'email',
             'status' => 'queued',
         ]);
-        Queue::assertPushed(DeliverLegalPublicationNotice::class, 2);
+        Queue::assertPushedTimes(DeliverLegalPublicationNotice::class, 2);
     }
 
     public function test_delivery_job_records_sent_status_for_each_channel(): void
