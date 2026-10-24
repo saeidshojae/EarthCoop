@@ -311,7 +311,7 @@
                 @if($mobileNavUser?->is_admin == 1)
                     <section class="navigation-section">
                         <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'admin' ? null : 'admin'">
-                            <span><i class="fas fa-user-shield" aria-hidden="true"></i > {{ __('navigation.admin_section') }}</span>
+                            <span><i class="fas fa-user-shield" aria-hidden="true"></i> {{ __('navigation.admin_section') }}</span>
                             <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'admin' }"></i>
                         </button>
                         <div x-show="openSection === 'admin'" x-transition class="navigation-section__links">
