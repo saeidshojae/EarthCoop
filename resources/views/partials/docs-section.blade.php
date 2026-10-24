@@ -50,6 +50,10 @@
                 </div>
             </div>
 
+            <h3 class="text-xl md:text-2xl font-bold font-vazirmatn text-gentle-black mt-8 mb-4">
+                {{ __('langWelcome.docs_section_grid_label') }}
+            </h3>
+
             <div class="docs-card-grid" aria-label="{{ __('langWelcome.docs_section_grid_label') }}">
                 @foreach($foundationalDocuments as $document)
                     <a href="{{ $document['href'] }}" class="docs-card">
