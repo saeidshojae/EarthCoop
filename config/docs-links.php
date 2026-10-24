@@ -19,6 +19,12 @@ return [
         'href' => "{$docsBaseUrl}/api/overview",
     ],
 
+    'api' => [
+        'id' => 'api',
+        'label_key' => 'langWelcome.docs_footer_api',
+        'href' => "{$docsBaseUrl}/api/overview",
+    ],
+
     'publication_policy' => [
         'id' => 'publication-policy',
         'label_key' => 'langWelcome.docs_footer_governance',
