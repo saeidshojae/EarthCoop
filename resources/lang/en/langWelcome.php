@@ -27,10 +27,10 @@ return [
 	'modal_request_invite' => 'Request one',
 	'modal_terms_agree' => 'I agree',
 	'modal_terms_text' => 'with the',
-	'modal_terms_link' => 'Terms and Conditions',
-	'modal_terms_error' => 'You must accept the terms and conditions to continue',
+	'modal_terms_link' => 'Charter and Terms of Use',
+	'modal_terms_error' => 'You must accept the charter and terms of use to continue',
 	'modal_already_member' => 'Already registered?',
-	'modal_login_link' => 'Login to System',
+	'modal_login_link' => 'Sign in to the platform',
 
 	// Themes
 	'theme_toggle_title' => 'Toggle Day/Night Mode',
