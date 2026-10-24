@@ -73,6 +73,7 @@ class WelcomeCommunityStoriesTest extends TestCase
         $response->assertSee('با بنیادهای EarthCoop آشنا شوید');
         $response->assertSee('این اسناد را بخوانید، با چارچوب و شیوه کار EarthCoop آشنا شوید');
         $response->assertSee('مرجع API');
+        $response->assertSee('فهرست اسناد بنیادین EarthCoop');
         $response->assertSee('داستان‌های الهام‌بخش: چگونه اعضای EarthCoop در حال تغییر جهان هستند');
     }
 
