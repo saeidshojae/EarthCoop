@@ -354,7 +354,7 @@
                    data-earthcoop-history-back="true"
                    class="flex-shrink-0 text-gray-600 hover:text-earth-green transition p-1"
                    aria-label="{{ __('navigation.back') }}"
-                   title="بازگشت">
+                   title="{{ __('navigation.back') }}">
                     <i class="fas fa-arrow-left text-lg" aria-hidden="true"></i>
                 </a>
             @endif
@@ -443,7 +443,7 @@
                    data-earthcoop-history-back="true"
                    class="site-header-mobile-back"
                    aria-label="{{ __('navigation.back') }}"
-                   title="بازگشت">
+                   title="{{ __('navigation.back') }}">
                     <i class="fas fa-arrow-left" aria-hidden="true"></i>
                 </a>
             @endif
