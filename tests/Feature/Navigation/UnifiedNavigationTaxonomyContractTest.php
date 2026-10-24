@@ -11,8 +11,18 @@ class UnifiedNavigationTaxonomyContractTest extends TestCase
         $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
         $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
 
-        foreach (['شبکه و ارتباطات', 'حکمرانی و مشارکت', 'اقتصاد', 'سازمان و همکاری', 'حساب و پشتیبانی', 'کاوش و اسناد'] as $label) {
+        foreach ([
+            "__('navigation.section_network')",
+            "__('navigation.section_governance')",
+            "__('navigation.section_economy')",
+            "__('navigation.section_organization')",
+            "__('navigation.section_account_support')",
+            "__('navigation.section_explore_documents')",
+        ] as $label) {
             $this->assertStringContainsString($label, $drawer);
+        }
+
+        foreach (['شبکه و ارتباطات', 'حکمرانی و مشارکت', 'اقتصاد', 'سازمان و همکاری', 'حساب و پشتیبانی', 'کاوش و اسناد'] as $label) {
             $this->assertStringContainsString($label, $sidebar);
         }
 
@@ -48,8 +58,11 @@ class UnifiedNavigationTaxonomyContractTest extends TestCase
         $this->assertStringNotContainsString("route('wallet.index')", $drawer);
         $this->assertStringNotContainsString("route('holding.index')", $drawer);
 
-        foreach (['دفتر سهام ارزش', 'حراج‌های سهم ارزش'] as $label) {
+        foreach (["__('navigation.value_share_ledger')", "__('navigation.value_share_auctions')"] as $label) {
             $this->assertStringContainsString($label, $drawer);
+        }
+
+        foreach (['دفتر سهام ارزش', 'حراج‌های سهم ارزش'] as $label) {
             $this->assertStringContainsString($label, $sidebar);
         }
     }
