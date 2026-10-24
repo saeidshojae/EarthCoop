@@ -26,10 +26,10 @@ class ElectionHistoryNavigationTest extends TestCase
 
         $this->assertIsString($source);
         $this->assertStringContainsString("route('history.election')", $source);
-        $this->assertStringContainsString('انتخابات جاری', $source);
+        $this->assertStringContainsString("__('navigation.current_elections')", $source);
         $this->assertStringContainsString("route('history.election-history')", $source);
-        $this->assertStringContainsString('تاریخچه انتخابات من', $source);
-        $this->assertStringContainsString('گفتگوهای خصوصی', $source);
+        $this->assertStringContainsString("__('navigation.my_election_history')", $source);
+        $this->assertStringContainsString("__('navigation.private_conversations')", $source);
         $this->assertStringNotContainsString('درخواست‌های چت', $source);
     }
 }
