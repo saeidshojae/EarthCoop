@@ -26,7 +26,7 @@ return [
 	'modal_no_invite' => "Don't have an invitation code?",
 	'modal_request_invite' => 'Request one',
 	'modal_terms_agree' => 'I agree',
-	'modal_terms_text' => 'with the',
+	'modal_terms_text' => 'to the',
 	'modal_terms_link' => 'Charter and Terms of Use',
 	'modal_terms_error' => 'You must accept the charter and terms of use to continue',
 	'modal_already_member' => 'Already registered?',
