@@ -58,7 +58,7 @@ return [
     'submit_ticket' => 'Submit a support ticket',
     'my_tickets' => 'My tickets',
     'support_chat' => 'Support chat',
-    'section_explore_documents' => 'Explore and documents',
+    'section_explore_documents' => 'Explore & documents',
     'documents' => 'Documents',
     'documents_center' => 'Document center',
     'foundational_documents' => 'Foundational documents',
