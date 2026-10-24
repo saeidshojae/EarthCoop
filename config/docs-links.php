@@ -13,6 +13,12 @@ return [
         'href' => "{$docsBaseUrl}/home/",
     ],
 
+    'api' => [
+        'id' => 'api',
+        'label_key' => 'langWelcome.docs_footer_api',
+        'href' => "{$docsBaseUrl}/api/overview",
+    ],
+
     'publication_policy' => [
         'id' => 'publication-policy',
         'label_key' => 'langWelcome.docs_footer_governance',

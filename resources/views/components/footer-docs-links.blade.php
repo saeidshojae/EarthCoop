@@ -44,6 +44,7 @@
             </div>
         </div>
 
+        <a href="{{ $docsLinks['api']['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __($docsLinks['api']['label_key']) }}</a>
         <a href="{{ $docsLinks['publication_policy']['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __($docsLinks['publication_policy']['label_key']) }}</a>
         <a href="{{ $docsLinks['github']['href'] }}" class="{{ $linkClass }} footer-docs-link">{{ __($docsLinks['github']['label_key']) }}</a>
     </div>

@@ -18,6 +18,22 @@
                     {{ __('langWelcome.docs_section_title') }}
                 </h2>
 
+                <h3 class="text-2xl md:text-3xl font-bold font-vazirmatn text-gentle-black leading-tight">
+                    {{ __('langWelcome.docs_section_intro_title') }}
+                </h3>
+
+                <p class="text-lg md:text-xl text-gray-700 font-vazirmatn leading-relaxed">
+                    {{ __('langWelcome.docs_section_intro') }}
+                </p>
+
+                <p class="text-base md:text-lg text-gray-700 font-vazirmatn leading-relaxed">
+                    {{ __('langWelcome.docs_section_invitation') }}
+                </p>
+
+                <h3 class="text-xl md:text-2xl font-bold font-vazirmatn text-gentle-black leading-tight">
+                    {{ __('langWelcome.docs_section_documents_title') }}
+                </h3>
+
                 <p class="text-lg md:text-xl text-gray-700 font-vazirmatn leading-relaxed">
                     {{ __('langWelcome.docs_section_text') }}
                 </p>
@@ -33,6 +49,10 @@
                     </a>
                 </div>
             </div>
+
+            <h3 class="text-xl md:text-2xl font-bold font-vazirmatn text-gentle-black mt-8 mb-4">
+                {{ __('langWelcome.docs_section_grid_label') }}
+            </h3>
 
             <div class="docs-card-grid" aria-label="{{ __('langWelcome.docs_section_grid_label') }}">
                 @foreach($foundationalDocuments as $document)
