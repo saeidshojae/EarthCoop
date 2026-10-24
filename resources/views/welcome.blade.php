@@ -688,15 +688,15 @@
     <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full my-4 sm:my-8 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
         <!-- Modal Header -->
         <div class="relative bg-gradient-to-br from-earth-green to-ocean-blue text-white p-6 rounded-t-3xl">
-            <button onclick="closeModal()" class="absolute top-4 left-4 text-white hover:text-gray-200 transition">
+            <button onclick="closeModal()" aria-label="{{ __('langWelcome.btn_close') }}" title="{{ __('langWelcome.btn_close') }}" class="absolute top-4 left-4 text-white hover:text-gray-200 transition">
                 <i class="fas fa-times text-2xl"></i>
             </button>
             <div class="text-center">
                 <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <i class="fas fa-user-plus text-earth-green text-3xl"></i>
                 </div>
-                <h2 class="text-2xl font-bold font-vazirmatn">خوش آمدید به EarthCoop</h2>
-                <p class="text-sm mt-2 opacity-90 font-vazirmatn">برای شروع عضویت، لطفاً اطلاعات زیر را تکمیل کنید</p>
+                <h2 class="text-2xl font-bold">{{ __('langWelcome.modal_welcome_title') }}</h2>
+                <p class="text-sm mt-2 opacity-90">{{ __('langWelcome.modal_welcome_subtitle') }}</p>
             </div>
         </div>
 
@@ -714,20 +714,20 @@
                     <div class="bg-blue-50 border-r-4 border-ocean-blue p-4 rounded-lg mb-4">
                         <p class="text-sm text-gray-700 font-vazirmatn">
                             <i class="fas fa-info-circle text-ocean-blue ml-2"></i>
-                            در حال حاضر ثبت‌نام فقط با کد دعوت امکان‌پذیر است
+                            {{ __('langWelcome.modal_invite_only') }}
                         </p>
                     </div>
                     
                     <label for="invite_code" class="block text-sm font-semibold text-gray-700 mb-2 font-vazirmatn">
                         <i class="fas fa-ticket-alt ml-2 text-digital-gold"></i>
-                        کد دعوت:
+                        {{ __('langWelcome.modal_invite_code') }}
                     </label>
                     <input 
                         type="text" 
                         name="invite_code" 
                         id="invite_code" 
                         class="w-full px-4 py-3 border-2 @error('invite_code') border-red-500 @else border-gray-300 @enderror rounded-xl focus:border-earth-green focus:ring-2 focus:ring-earth-green focus:outline-none transition font-vazirmatn text-center tracking-widest text-lg"
-                        placeholder="مثال: ABC123"
+                        placeholder="{{ __('langWelcome.modal_invite_code_placeholder') }}"
                         value="{{ old('invite_code', isset($_GET['code']) ? $_GET['code'] : '') }}"
                         required
                     >
@@ -740,9 +740,9 @@
                     
                     <div class="mt-3 text-center">
                         <p class="text-sm text-gray-600 font-vazirmatn">
-                            کد دعوت ندارید؟ 
+                            {{ __('langWelcome.modal_no_invite') }} 
                             <a href="{{ route('invite') }}" class="text-digital-gold hover:text-orange-600 font-semibold transition">
-                                یکی درخواست کنید
+                                {{ __('langWelcome.modal_request_invite') }}
                                 <i class="fas fa-arrow-left mr-1"></i>
                             </a>
                         </p>
@@ -762,12 +762,19 @@
                             class="mt-1 w-5 h-5 text-earth-green border-gray-300 rounded focus:ring-earth-green focus:ring-2"
                             required
                         >
-                        <span class="mr-3 text-sm text-gray-700 font-vazirmatn leading-relaxed">
-                            با 
-                            <a href="javascript:void(0)" onclick="openTerms()" class="text-ocean-blue hover:text-blue-700 font-semibold underline">
-                                اساسنامه و شرایط استفاده
-                            </a> 
-                            موافقم
+                        <span class="mr-3 text-sm text-gray-700 leading-relaxed">
+                            @if(in_array(app()->getLocale(), ['en', 'ar'], true))
+                                {{ __('langWelcome.modal_terms_agree') }} {{ __('langWelcome.modal_terms_text') }}
+                                <a href="javascript:void(0)" onclick="openTerms()" class="text-ocean-blue hover:text-blue-700 font-semibold underline">
+                                    {{ __('langWelcome.modal_terms_link') }}
+                                </a>
+                            @else
+                                {{ __('langWelcome.modal_terms_text') }}
+                                <a href="javascript:void(0)" onclick="openTerms()" class="text-ocean-blue hover:text-blue-700 font-semibold underline">
+                                    {{ __('langWelcome.modal_terms_link') }}
+                                </a>
+                                {{ __('langWelcome.modal_terms_agree') }}
+                            @endif
                         </span>
                     </label>
                     @error('terms')
@@ -778,7 +785,7 @@
                     @else
                         <div id="agreementError" class="text-red-500 text-sm mt-2 font-vazirmatn hidden">
                             <i class="fas fa-exclamation-triangle ml-1"></i>
-                            برای ادامه باید شرایط و اساسنامه را بپذیرید
+                            {{ __('langWelcome.modal_terms_error') }}
                         </div>
                     @enderror
                 </div>
@@ -791,15 +798,15 @@
                 style="background: linear-gradient(to right, #10b981, #059669);"
             >
                 <i class="fas fa-arrow-left ml-2"></i>
-                شروع ثبت‌نام
+                {{ __('langWelcome.btn_start_registration') }}
             </button>
 
             <!-- Login Link -->
             <div class="mt-4 text-center">
                 <p class="text-sm text-gray-600 font-vazirmatn">
-                    قبلاً ثبت‌نام کرده‌اید؟
+                    {{ __('langWelcome.modal_already_member') }}
                     <a href="{{ route('login') }}" class="text-ocean-blue hover:text-blue-700 font-semibold transition">
-                        ورود به سامانه
+                        {{ __('langWelcome.modal_login_link') }}
                         <i class="fas fa-sign-in-alt mr-1"></i>
                     </a>
                 </p>
