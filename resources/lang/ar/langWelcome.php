@@ -27,10 +27,10 @@ return [
 	'modal_request_invite' => 'اطلب واحدًا',
 	'modal_terms_agree' => 'أوافق',
 	'modal_terms_text' => 'على',
-	'modal_terms_link' => 'الشروط والأحكام',
-	'modal_terms_error' => 'يجب عليك قبول الشروط والأحكام للمتابعة',
+	'modal_terms_link' => 'النظام الأساسي وشروط الاستخدام',
+	'modal_terms_error' => 'يجب قبول النظام الأساسي وشروط الاستخدام للمتابعة',
 	'modal_already_member' => 'هل أنت مسجل بالفعل؟',
-	'modal_login_link' => 'تسجيل الدخول إلى النظام',
+	'modal_login_link' => 'تسجيل الدخول إلى المنصة',
 
 	// Themes
 	'theme_toggle_title' => 'تبديل وضع النهار/الليل',
