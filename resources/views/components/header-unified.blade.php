@@ -353,7 +353,7 @@
                 <a href="{{ route('home') }}"
                    data-earthcoop-history-back="true"
                    class="flex-shrink-0 text-gray-600 hover:text-earth-green transition p-1"
-                   aria-label="بازگشت"
+                   aria-label="{{ __('navigation.back') }}"
                    title="بازگشت">
                     <i class="fas fa-arrow-left text-lg" aria-hidden="true"></i>
                 </a>
@@ -385,8 +385,8 @@
 
         <div class="hidden 2xl:flex items-center gap-3 flex-shrink-0">
             @if(!$isAuth)
-                <button type="button" data-pwa-install-trigger class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-earth-green shadow-sm hover:bg-light-gray" aria-label="نصب اپلیکیشن EarthCoop">
-                    <i class="fas fa-download" aria-hidden="true"></i><span>نصب اپ</span>
+                <button type="button" data-pwa-install-trigger class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-earth-green shadow-sm hover:bg-light-gray" aria-label="{{ __('navigation.install_app') }}">
+                    <i class="fas fa-download" aria-hidden="true"></i><span>{{ __('navigation.install_app_short') }}</span>
                 </button>
             @endif
             <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" tabindex="0" aria-label="{{ __('navigation.theme_toggle') }}">
@@ -409,9 +409,9 @@
             @if($isWelcomeHeader)
                 <button type="button" onclick="openModal()" class="bg-earth-green text-white px-6 py-2 rounded-full shadow-md hover:bg-dark-green transition font-medium">{{ __('langWelcome.btn_join') }}</button>
                 <a href="{{ route('login') }}" class="bg-ocean-blue text-white px-6 py-2 rounded-full shadow-md hover:bg-dark-blue transition font-medium">{{ __('langWelcome.btn_login') }}</a>
-                <a href="{{ route('invite') }}" class="bg-digital-gold text-white px-6 py-2 rounded-full shadow-md transition font-medium">درخواست کد دعوت</a>
+                <a href="{{ route('invite') }}" class="bg-digital-gold text-white px-6 py-2 rounded-full shadow-md transition font-medium">{{ __('navigation.request_invite') }}</a>
             @elseif($isAuth)
-                <a href="{{ route('support.kb.index') }}" class="inline-flex w-10 h-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm" title="پایگاه دانش"><i class="fas fa-circle-question text-ocean-blue"></i></a>
+                <a href="{{ route('support.kb.index') }}" class="inline-flex w-10 h-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm" title="{{ __('navigation.knowledge_base') }}"><i class="fas fa-circle-question text-ocean-blue"></i></a>
                 @include('components.user-dropdown-unified')
             @else
                 <a href="{{ route('login') }}" class="bg-earth-green text-white px-5 py-2 rounded-full shadow-md font-medium">{{ __('navigation.login') }}</a>
@@ -442,7 +442,7 @@
                 <a href="{{ route('home') }}"
                    data-earthcoop-history-back="true"
                    class="site-header-mobile-back"
-                   aria-label="بازگشت"
+                   aria-label="{{ __('navigation.back') }}"
                    title="بازگشت">
                     <i class="fas fa-arrow-left" aria-hidden="true"></i>
                 </a>
