@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'page_title' => 'Charter and Terms of Use',
+    'page_title' => 'Membership Statute and Terms of Use',
     'meta_description' => 'Read the EarthCoop membership statute, terms of use, and participation rules.',
     'official_document' => 'Official EarthCoop document',
     'hero_title' => 'EarthCoop Membership Statute and Terms of Use',
