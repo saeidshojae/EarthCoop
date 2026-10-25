@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\\Feature\\Pages;
+namespace Tests\Feature\Pages;
 
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class PrivacyPolicyLocalizationTest extends TestCase
 {
