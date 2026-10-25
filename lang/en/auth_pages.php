@@ -40,5 +40,6 @@ return [
     'validation_message_max' => 'The message must not exceed 500 characters.',
     'validation_job_max' => 'The profession or expertise description must not exceed 500 characters.',
     'validation_password_required' => 'Please enter your password.',
+    'password_changed_success' => 'Your password has been changed successfully.',
     'validation_string' => 'The value entered is invalid.',
 ];
