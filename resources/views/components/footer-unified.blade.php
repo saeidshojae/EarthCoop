@@ -25,10 +25,10 @@
 
     // Core EarthCoop pillar pages are part of every footer, in every locale.
     $quickLinks = array_merge($quickLinks, [
-        ['label' => __('langWelcome.footer_pillar_cooperative'), 'url' => route('pillar.cooperative')],
-        ['label' => __('langWelcome.footer_pillar_economy'), 'url' => route('pillar.economy')],
-        ['label' => __('langWelcome.footer_pillar_governance'), 'url' => route('pillar.governance')],
-        ['label' => __('langWelcome.footer_pillar_justice'), 'url' => route('pillar.justice')],
+        ['label' => __('langWelcome.footer_pillar_cooperative'), 'url' => route('seo.pillars.cooperative')],
+        ['label' => __('langWelcome.footer_pillar_economy'), 'url' => route('seo.pillars.economy')],
+        ['label' => __('langWelcome.footer_pillar_governance'), 'url' => route('seo.pillars.governance')],
+        ['label' => __('langWelcome.footer_pillar_justice'), 'url' => route('seo.pillars.justice')],
     ]);
 
     $supportLinks = [
