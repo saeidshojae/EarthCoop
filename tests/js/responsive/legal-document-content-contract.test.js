@@ -56,3 +56,53 @@ test('legal Blade template references the real Str class and splits headings cor
     assert.doesNotMatch(template, /IlluminateSupportStr/);
     assert.ok(template.includes(String.raw`/(?=^##\s+)/mu`));
 });
+
+
+test('membership statute and terms translations preserve the full clause structure', () => {
+    const locales = ['fa', 'en', 'ar'];
+    const documentNames = [
+        'earthcoop-membership-statute',
+        'earthcoop-terms-of-use',
+    ];
+
+    for (const documentName of documentNames) {
+        const documents = locales.map(locale => read(`resources/legal/${documentName}.${locale}.md`));
+        const headingCounts = documents.map(document => (document.match(/^## /gm) || []).length);
+
+        assert.deepEqual(headingCounts, [headingCounts[0], headingCounts[0], headingCounts[0]], `${documentName} must preserve every section in all locales`);
+        assert.ok(documents.every(document => document.includes('EC-')), `${documentName} must preserve its document identifier`);
+        assert.ok(documents.every(document => /Requirements before publication|متطلبات ما قبل النشر/.test(document)), `${documentName} must preserve the pre-publication requirements`);
+    }
+
+    const membershipEn = read('resources/legal/earthcoop-membership-statute.en.md');
+    const membershipAr = read('resources/legal/earthcoop-membership-statute.ar.md');
+    const termsEn = read('resources/legal/earthcoop-terms-of-use.en.md');
+    const termsAr = read('resources/legal/earthcoop-terms-of-use.ar.md');
+
+    assert.match(membershipEn, /Article 13 — Statement of acceptance/);
+    assert.match(membershipAr, /المادة 13 — إقرار القبول/);
+    assert.match(termsEn, /16\. Statement of acceptance/);
+    assert.match(termsAr, /16\. إقرار القبول/);
+    assert.match(membershipEn, /registered legal-person status/);
+    assert.match(membershipAr, /صفة شخص اعتباري مسجل/);
+    assert.match(termsEn, /does not automatically constitute acceptance of the Najm Bahar financial agreement/);
+    assert.match(termsAr, /لا يعني قبول هذه الشروط القبول التلقائي بالاتفاق المالي لنجم بهار/);
+});
+
+test('legal page interface is localized and the document renderer selects the current language', () => {
+    const terms = read('resources/views/terms.blade.php');
+    const partial = read('resources/views/partials/legal/structured-document.blade.php');
+
+    assert.doesNotMatch(terms, /[\u0600-\u06FF]/, 'static legal page copy must not remain hard-coded in Persian');
+    assert.match(partial, /preg_replace\('\/\\\\\.fa\\\\\.md\$\//);
+    assert.match(partial, /is_file\(resource_path\(\$localizedSourcePath\)\)/);
+    assert.match(partial, /\$documentDirection = in_array\(\$locale, \['fa', 'ar'\], true\) \? 'rtl' : 'ltr'/);
+    assert.match(terms, /app\(\)->getLocale\(\) === 'fa'/);
+    for (const locale of ['fa', 'en', 'ar']) {
+        const translations = read(`resources/lang/${locale}/legal_page.php`);
+        assert.match(translations, /'hero_title'\s*=>/);
+        assert.match(translations, /'membership_statute'\s*=>/);
+        assert.match(translations, /'terms_document'\s*=>/);
+        assert.match(translations, /'guest_terms_error'\s*=>/);
+    }
+});
