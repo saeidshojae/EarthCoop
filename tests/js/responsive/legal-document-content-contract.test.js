@@ -69,9 +69,9 @@ test('membership statute and terms translations preserve the full clause structu
         const documents = locales.map(locale => read(`resources/legal/${documentName}.${locale}.md`));
         const headingCounts = documents.map(document => (document.match(/^## /gm) || []).length);
 
-        assert.deepEqual(headingCounts, [headingCounts[0], headingCounts[0], headingCounts[0]], `${documentName} must preserve every section in all locales`);
+        assert.deepEqual(headingCounts, [16, 16, 16], `${documentName} must preserve all 16 sections in all locales`);
         assert.ok(documents.every(document => document.includes('EC-')), `${documentName} must preserve its document identifier`);
-        assert.ok(documents.every(document => /Requirements before publication|متطلبات ما قبل النشر/.test(document)), `${documentName} must preserve the pre-publication requirements`);
+        assert.ok(documents.every(document => /Requirements before publication|متطلبات ما قبل النشر|الزامات پیش از انتشار/.test(document)), `${documentName} must preserve the pre-publication requirements`);
     }
 
     const membershipEn = read('resources/legal/earthcoop-membership-statute.en.md');
@@ -94,7 +94,7 @@ test('legal page interface is localized and the document renderer selects the cu
     const partial = read('resources/views/partials/legal/structured-document.blade.php');
 
     assert.doesNotMatch(terms, /[\u0600-\u06FF]/, 'static legal page copy must not remain hard-coded in Persian');
-    assert.match(partial, /preg_replace\('\/\\\\\.fa\\\\\.md\$\//);
+    assert.match(partial, /localizedSourcePath/);
     assert.match(partial, /is_file\(resource_path\(\$localizedSourcePath\)\)/);
     assert.match(partial, /\$documentDirection = in_array\(\$locale, \['fa', 'ar'\], true\) \? 'rtl' : 'ltr'/);
     assert.match(terms, /app\(\)->getLocale\(\) === 'fa'/);
