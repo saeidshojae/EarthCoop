@@ -13,10 +13,11 @@ class CommunityStoryNavigationTest extends TestCase
 
         foreach ([$desktop, $mobile] as $navigation) {
             $this->assertStringContainsString("route('community-stories.index')", $navigation);
-            $this->assertStringContainsString('داستان من در EarthCoop', $navigation);
         }
 
-        $this->assertStringContainsString('مشارکت', $mobile);
+        $this->assertStringContainsString('داستان من در EarthCoop', $desktop);
+        $this->assertStringContainsString("__('navigation.my_earthcoop_story')", $mobile);
+        $this->assertStringContainsString("__('navigation.my_participations')", $mobile);
         $this->assertStringContainsString('مشارکت من', $desktop);
     }
 }

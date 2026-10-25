@@ -164,7 +164,7 @@
 <div class="mobile-navigation-drawer" x-data="{ openSection: 'network', openDocumentSection: false }">
     <div class="mobile-navigation-drawer__backdrop" @click="headerMenuOpen = false" aria-hidden="true"></div>
 
-    <aside class="mobile-navigation-drawer__panel" role="dialog" aria-modal="true" aria-label="ناوبری EarthCoop">
+    <aside class="mobile-navigation-drawer__panel" role="dialog" aria-modal="true" aria-label="{{ __('navigation.drawer_label') }}">
         <div class="mobile-navigation-drawer__header">
             <div class="flex items-center gap-3 min-w-0">
                 <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-earth-green">
@@ -172,10 +172,10 @@
                 </span>
                 <div class="min-w-0">
                     <div class="font-extrabold text-gentle-black">EarthCoop</div>
-                    <div class="text-xs text-gray-500">دسترسی سریع و خدمات</div>
+                    <div class="text-xs text-gray-500">{{ __('navigation.drawer_subtitle') }}</div>
                 </div>
             </div>
-            <button type="button" @click="headerMenuOpen = false" class="mobile-navigation-close" aria-label="بستن منو">
+            <button type="button" @click="headerMenuOpen = false" class="mobile-navigation-close" aria-label="{{ __('navigation.drawer_close') }}">
                 <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
@@ -183,22 +183,22 @@
         <div class="mobile-navigation-drawer__body">
             @if($isWelcomeHeader)
                 <section class="navigation-section">
-                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
+                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">{{ __('navigation.drawer_auth_section') }}</div>
                     <div class="navigation-section__links">
                         <a href="{{ route('login') }}" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--login">
-                            <i class="fas fa-right-to-bracket" aria-hidden="true"></i><span>ورود</span>
+                            <i class="fas fa-right-to-bracket" aria-hidden="true"></i><span>{{ __('navigation.login') }}</span>
                         </a>
                         <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--join">
-                            <i class="fas fa-user-plus" aria-hidden="true"></i><span>عضویت</span>
+                            <i class="fas fa-user-plus" aria-hidden="true"></i><span>{{ __('langWelcome.btn_join') }}</span>
                         </button>
                         <a href="{{ route('invite') }}" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--invite">
-                            <i class="fas fa-ticket" aria-hidden="true"></i><span>درخواست کد دعوت</span>
+                            <i class="fas fa-ticket" aria-hidden="true"></i><span>{{ __('navigation.request_invite') }}</span>
                         </a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
-                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">آشنایی با EarthCoop</div>
+                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">{{ __('navigation.drawer_about_section') }}</div>
                     <div class="navigation-section__links">
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" @click="headerMenuOpen = false" class="navigation-link">
@@ -210,82 +210,82 @@
             @elseif($isAuth)
                 <section class="navigation-section">
                     <div class="navigation-section__links">
-                        <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>خانه</span></a>
+                        <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>{{ __('navigation.footer_home') }}</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'network' ? null : 'network'">
-                        <span><i class="fas fa-users" aria-hidden="true"></i> شبکه و ارتباطات</span>
+                        <span><i class="fas fa-users" aria-hidden="true"></i> {{ __('navigation.section_network') }}</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'network' }" aria-hidden="true"></i>
                     </button>
                     <div x-show="openSection === 'network'" x-transition class="navigation-section__links">
                         <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() + $mobileNavPendingGroupCount }}</span></a>
-                        <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>اعلان‌ها</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
-                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>گفتگوهای خصوصی</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
-                        <a href="{{ route('my-invation-code') }}" class="navigation-link"><i class="fas fa-user-plus"></i><span>دعوت از دوستان</span></a>
+                        <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>{{ __('navigation.notifications') }}</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
+                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>{{ __('navigation.private_conversations') }}</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
+                        <a href="{{ route('my-invation-code') }}" class="navigation-link"><i class="fas fa-user-plus"></i><span>{{ __('navigation.invite_friends') }}</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'governance' ? null : 'governance'">
-                        <span><i class="fas fa-people-arrows" aria-hidden="true"></i> حکمرانی و مشارکت</span>
+                        <span><i class="fas fa-people-arrows" aria-hidden="true"></i> {{ __('navigation.section_governance') }}</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'governance' }"></i>
                     </button>
                     <div x-show="openSection === 'governance'" x-transition class="navigation-section__links">
                         @if((bool) config('location-governance.runtime_enabled'))
-                            <a href="{{ route('location-governance.me') }}" class="navigation-link"><i class="fas fa-location-dot"></i><span>مکان و حکمرانی من</span></a>
+                            <a href="{{ route('location-governance.me') }}" class="navigation-link"><i class="fas fa-location-dot"></i><span>{{ __('navigation.my_location_governance') }}</span></a>
                         @endif
-                        <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>
-                        <a href="{{ route('community-stories.index') }}" class="navigation-link"><i class="fas fa-feather"></i><span>داستان من در EarthCoop</span></a>
-                        <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>انتخابات جاری</span></a>
-                        <a href="{{ route('history.election-history') }}" class="navigation-link"><i class="fas fa-clock-rotate-left"></i><span>تاریخچه انتخابات من</span></a>
-                        <a href="{{ route('history.poll') }}" class="navigation-link"><i class="fas fa-chart-pie"></i><span>نظرسنجی‌های جاری</span></a>
+                        <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>{{ __('navigation.my_participations') }}</span></a>
+                        <a href="{{ route('community-stories.index') }}" class="navigation-link"><i class="fas fa-feather"></i><span>{{ __('navigation.my_earthcoop_story') }}</span></a>
+                        <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>{{ __('navigation.current_elections') }}</span></a>
+                        <a href="{{ route('history.election-history') }}" class="navigation-link"><i class="fas fa-clock-rotate-left"></i><span>{{ __('navigation.my_election_history') }}</span></a>
+                        <a href="{{ route('history.poll') }}" class="navigation-link"><i class="fas fa-chart-pie"></i><span>{{ __('navigation.current_polls') }}</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'economy' ? null : 'economy'">
-                        <span><i class="fas fa-coins" aria-hidden="true"></i> اقتصاد</span>
+                        <span><i class="fas fa-coins" aria-hidden="true"></i> {{ __('navigation.section_economy') }}</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'economy' }"></i>
                     </button>
                     <div x-show="openSection === 'economy'" x-transition class="navigation-section__links">
-                        <a href="{{ route('najm-bahar.dashboard') }}" class="navigation-link"><i class="fas fa-wallet"></i><span>حساب مالی نجم بهار</span></a>
-                        <a href="{{ route('stock.book') }}" class="navigation-link"><i class="fas fa-chart-line"></i><span>دفتر سهام ارزش</span></a>
-                        <a href="{{ route('auction.index') }}" class="navigation-link"><i class="fas fa-gavel"></i><span>حراج‌های سهم ارزش</span></a>
+                        <a href="{{ route('najm-bahar.dashboard') }}" class="navigation-link"><i class="fas fa-wallet"></i><span>{{ __('navigation.bahar_financial_account') }}</span></a>
+                        <a href="{{ route('stock.book') }}" class="navigation-link"><i class="fas fa-chart-line"></i><span>{{ __('navigation.value_share_ledger') }}</span></a>
+                        <a href="{{ route('auction.index') }}" class="navigation-link"><i class="fas fa-gavel"></i><span>{{ __('navigation.value_share_auctions') }}</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'organization' ? null : 'organization'">
-                        <span><i class="fas fa-sitemap" aria-hidden="true"></i> سازمان و همکاری</span>
+                        <span><i class="fas fa-sitemap" aria-hidden="true"></i> {{ __('navigation.section_organization') }}</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'organization' }"></i>
                     </button>
                     <div x-show="openSection === 'organization'" x-transition class="navigation-section__links">
-                        <a href="{{ route('secretariat.directory') }}" class="navigation-link"><i class="fas fa-box-archive"></i><span>دبیرخانه‌های من</span></a>
+                        <a href="{{ route('secretariat.directory') }}" class="navigation-link"><i class="fas fa-box-archive"></i><span>{{ __('navigation.my_secretariats') }}</span></a>
                         @if($mobileCurrentGroup)
-                            <a href="{{ route('secretariat.group', $mobileCurrentGroup) }}" class="navigation-link"><i class="fas fa-people-group"></i><span>دبیرخانه گروه</span></a>
+                            <a href="{{ route('secretariat.group', $mobileCurrentGroup) }}" class="navigation-link"><i class="fas fa-people-group"></i><span>{{ __('navigation.group_secretariat') }}</span></a>
                         @endif
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'support' ? null : 'support'">
-                        <span><i class="fas fa-headset" aria-hidden="true"></i> حساب و پشتیبانی</span>
+                        <span><i class="fas fa-headset" aria-hidden="true"></i> {{ __('navigation.section_account_support') }}</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'support' }"></i>
                     </button>
                     <div x-show="openSection === 'support'" x-transition class="navigation-section__links">
-                        <a href="{{ route('profile.edit') }}" class="navigation-link"><i class="fas fa-user-gear"></i><span>ویرایش حساب کاربری</span></a>
-                        <a href="{{ route('support.kb.index') }}" class="navigation-link"><i class="fas fa-book"></i><span>پایگاه دانش</span></a>
-                        <a href="{{ route('user.tickets.create') }}" class="navigation-link"><i class="fas fa-plus-circle"></i><span>ارسال تیکت</span></a>
-                        <a href="{{ route('user.tickets.index') }}" class="navigation-link"><i class="fas fa-ticket-alt"></i><span>تیکت‌های من</span></a>
-                        <a href="{{ route('user.support-chat.index') }}" class="navigation-link"><i class="fas fa-comments"></i><span>چت پشتیبانی</span></a>
+                        <a href="{{ route('profile.edit') }}" class="navigation-link"><i class="fas fa-user-gear"></i><span>{{ __('navigation.edit_account') }}</span></a>
+                        <a href="{{ route('support.kb.index') }}" class="navigation-link"><i class="fas fa-book"></i><span>{{ __('navigation.knowledge_base') }}</span></a>
+                        <a href="{{ route('user.tickets.create') }}" class="navigation-link"><i class="fas fa-plus-circle"></i><span>{{ __('navigation.submit_ticket') }}</span></a>
+                        <a href="{{ route('user.tickets.index') }}" class="navigation-link"><i class="fas fa-ticket-alt"></i><span>{{ __('navigation.my_tickets') }}</span></a>
+                        <a href="{{ route('user.support-chat.index') }}" class="navigation-link"><i class="fas fa-comments"></i><span>{{ __('navigation.support_chat') }}</span></a>
                     </div>
                 </section>
 
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'explore' ? null : 'explore'">
-                        <span><i class="fas fa-earth-americas" aria-hidden="true"></i> کاوش و اسناد</span>
+                        <span><i class="fas fa-earth-americas" aria-hidden="true"></i> {{ __('navigation.section_explore_documents') }}</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'explore' }"></i>
                     </button>
                     <div x-show="openSection === 'explore'" x-transition class="navigation-section__links">
@@ -294,16 +294,16 @@
                         @endforeach
 
                         <button type="button" class="navigation-link documents-navigation-toggle w-full" @click="openDocumentSection = !openDocumentSection" :aria-expanded="openDocumentSection">
-                            <i class="fas fa-folder-open" aria-hidden="true"></i><span>اسناد</span>
+                            <i class="fas fa-folder-open" aria-hidden="true"></i><span>{{ __('navigation.documents') }}</span>
                             <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': openDocumentSection }" aria-hidden="true"></i>
                         </button>
                         <div x-show="openDocumentSection" x-transition class="navigation-section__links ms-3 border-s border-gray-200 ps-2">
-                            <a href="{{ $mobileDocsLinks['center']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-book-open"></i><span>مرکز اسناد</span></a>
-                            <a href="{{ $mobileDocsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-landmark"></i><span>اسناد بنیادین</span></a>
-                            <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-scroll"></i><span>اساسنامه</span></a>
-                            <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>توافقنامه مالی</span></a>
-                            <a href="{{ route('elections.guideline') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>شیوه‌نامه انتخابات سیال</span></a>
-                            <a href="{{ route('participation.credit-regulation') }}" class="navigation-link"><i class="fas fa-award"></i><span>نظام‌نامه اعتبارات مشارکت</span></a>
+                            <a href="{{ $mobileDocsLinks['center']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-book-open"></i><span>{{ __('navigation.documents_center') }}</span></a>
+                            <a href="{{ $mobileDocsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-landmark"></i><span>{{ __('navigation.foundational_documents') }}</span></a>
+                            <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-scroll"></i><span>{{ __('navigation.charter') }}</span></a>
+                            <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>{{ __('navigation.financial_agreement') }}</span></a>
+                            <a href="{{ route('elections.guideline') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>{{ __('navigation.fluid_election_guideline') }}</span></a>
+                            <a href="{{ route('participation.credit-regulation') }}" class="navigation-link"><i class="fas fa-award"></i><span>{{ __('navigation.participation_credit_regulation') }}</span></a>
                         </div>
                     </div>
                 </section>
@@ -311,12 +311,12 @@
                 @if($mobileNavUser?->is_admin == 1)
                     <section class="navigation-section">
                         <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'admin' ? null : 'admin'">
-                            <span><i class="fas fa-user-shield" aria-hidden="true"></i> مدیریت</span>
+                            <span><i class="fas fa-user-shield" aria-hidden="true"></i> {{ __('navigation.admin_section') }}</span>
                             <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'admin' }"></i>
                         </button>
                         <div x-show="openSection === 'admin'" x-transition class="navigation-section__links">
                             <a href="{{ route('admin.dashboard') }}" class="navigation-link"><i class="fas fa-gauge-high"></i><span>{{ __('navigation.admin_dashboard') }}</span></a>
-                            <a href="{{ route('secretariat.central') }}" class="navigation-link"><i class="fas fa-building-columns"></i><span>دبیرخانه مرکزی</span></a>
+                            <a href="{{ route('secretariat.central') }}" class="navigation-link"><i class="fas fa-building-columns"></i><span>{{ __('navigation.central_secretariat') }}</span></a>
                             <a href="{{ route('admin.blog.dashboard') }}" class="navigation-link"><i class="fas fa-blog"></i><span>{{ __('navigation.admin_blog') }}</span></a>
                         </div>
                     </section>
@@ -332,11 +332,11 @@
                 </section>
             @else
                 <section class="navigation-section">
-                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
+                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">{{ __('navigation.drawer_auth_section') }}</div>
                     <div class="navigation-section__links">
-                        <a href="{{ route('login') }}" class="navigation-link"><i class="fas fa-right-to-bracket"></i><span>ورود</span></a>
-                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link"><i class="fas fa-user-plus"></i><span>عضویت</span></a>
-                        <a href="{{ route('invite') }}" class="navigation-link"><i class="fas fa-ticket"></i><span>درخواست کد دعوت</span></a>
+                        <a href="{{ route('login') }}" class="navigation-link"><i class="fas fa-right-to-bracket"></i><span>{{ __('navigation.login') }}</span></a>
+                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link"><i class="fas fa-user-plus"></i><span>{{ __('langWelcome.btn_join') }}</span></a>
+                        <a href="{{ route('invite') }}" class="navigation-link"><i class="fas fa-ticket"></i><span>{{ __('navigation.request_invite') }}</span></a>
                     </div>
                 </section>
                 <section class="navigation-section">
@@ -350,8 +350,8 @@
         </div>
 
         <div class="mobile-navigation-drawer__footer">
-            <button type="button" data-pwa-install-trigger aria-label="نصب اپلیکیشن EarthCoop" class="navigation-link w-full mb-3">
-                <i class="fas fa-download" aria-hidden="true"></i><span>نصب اپلیکیشن EarthCoop</span>
+            <button type="button" data-pwa-install-trigger aria-label="{{ __('navigation.install_app') }}" class="navigation-link w-full mb-3">
+                <i class="fas fa-download" aria-hidden="true"></i><span>{{ __('navigation.install_app') }}</span>
             </button>
             <div class="flex items-center justify-between gap-3">
                 <div class="theme-toggle" onclick="toggleTheme()" role="button" tabindex="0" aria-label="{{ __('navigation.theme_toggle') }}">

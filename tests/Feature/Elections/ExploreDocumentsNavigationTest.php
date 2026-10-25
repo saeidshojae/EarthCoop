@@ -36,7 +36,7 @@ class ExploreDocumentsNavigationTest extends TestCase
         $source = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString('کاوش و اسناد', $source);
+        $this->assertStringContainsString("__('navigation.section_explore_documents')", $source);
         $this->assertStringContainsString("openDocumentSection", $source);
         $this->assertStringContainsString("@click=\"openDocumentSection = !openDocumentSection\"", $source);
         $this->assertStringContainsString('documents-navigation-toggle', $source);
@@ -47,12 +47,12 @@ class ExploreDocumentsNavigationTest extends TestCase
         $this->assertStringContainsString("config('docs-links')", $source);
         $this->assertStringContainsString("route('terms')", $source);
         $this->assertStringContainsString("route('najm-bahar.agreement')", $source);
-        $this->assertStringContainsString('مرکز اسناد', $source);
-        $this->assertStringContainsString('اسناد بنیادین', $source);
-        $this->assertStringContainsString('اساسنامه', $source);
-        $this->assertStringContainsString('توافقنامه مالی', $source);
-        $this->assertStringContainsString('شیوه‌نامه انتخابات سیال', $source);
-        $this->assertStringContainsString('نظام‌نامه اعتبارات مشارکت', $source);
+        $this->assertStringContainsString("__('navigation.documents_center')", $source);
+        $this->assertStringContainsString("__('navigation.foundational_documents')", $source);
+        $this->assertStringContainsString("__('navigation.charter')", $source);
+        $this->assertStringContainsString("__('navigation.financial_agreement')", $source);
+        $this->assertStringContainsString("__('navigation.fluid_election_guideline')", $source);
+        $this->assertStringContainsString("__('navigation.participation_credit_regulation')", $source);
     }
 
     public function test_welcome_navigation_links_to_the_documents_section(): void

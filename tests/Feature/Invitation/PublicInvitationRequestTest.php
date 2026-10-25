@@ -36,6 +36,6 @@ class PublicInvitationRequestTest extends TestCase
         $welcome = file_get_contents(resource_path('views/welcome.blade.php'));
 
         $this->assertStringContainsString("route('invite')", $welcome);
-        $this->assertStringContainsString('درخواست', $welcome);
+        $this->assertStringContainsString("__('langWelcome.btn_invite')", $welcome);
     }
 }

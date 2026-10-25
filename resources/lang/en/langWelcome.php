@@ -26,11 +26,11 @@ return [
 	'modal_no_invite' => "Don't have an invitation code?",
 	'modal_request_invite' => 'Request one',
 	'modal_terms_agree' => 'I agree',
-	'modal_terms_text' => 'with the',
-	'modal_terms_link' => 'Terms and Conditions',
-	'modal_terms_error' => 'You must accept the terms and conditions to continue',
+	'modal_terms_text' => 'to the',
+	'modal_terms_link' => 'Charter and Terms of Use',
+	'modal_terms_error' => 'You must accept the charter and terms of use to continue',
 	'modal_already_member' => 'Already registered?',
-	'modal_login_link' => 'Login to System',
+	'modal_login_link' => 'Sign in to the platform',
 
 	// Themes
 	'theme_toggle_title' => 'Toggle Day/Night Mode',
@@ -42,9 +42,9 @@ return [
 	'lang_arabic' => 'العربية',
 
 	// Hero Section
-	'hero_title' => 'Become a shareholder of our planet',
-	'hero_title_highlight' => 'planet',
-	'hero_subtitle' => 'Join a global cooperative working toward a sustainable future through shared ownership and democratic governance.',
+	'hero_title' => 'Become a shareholder in your own land',
+	'hero_title_highlight' => 'land',
+	'hero_subtitle' => 'Join a global cooperation ecosystem working toward a fair and sustainable future through collective ownership and democratic governance.',
 	'hero_cta_start' => 'Get Started',
 	'hero_cta_more' => 'Learn More',
 	'hero_stats_members_label' => 'Members',
@@ -57,19 +57,19 @@ return [
 	'hero_card_image_alt' => 'People collaborating in nature',
 
 	// Mission Section
-	'mission_title' => 'Earth: our shared home, our shared asset',
-	'mission_text' => 'At EarthCoop, we deeply believe that our planet is a shared heritage and that we are all equal co-owners. Our mission is to provide a platform that supports this equitable partnership and enables everyone to actively participate in building a fairer, more sustainable future for all inhabitants of Earth.',
+	'mission_title' => 'Earth: our shared home, our shared heritage',
+	'mission_text' => 'At EarthCoop, we deeply believe that our planet is a shared heritage and that we are all equal co-owners. Our mission is to build an ecosystem that supports this equal partnership and enables everyone to actively participate in shaping a more sustainable and equitable future for all inhabitants of Earth.',
 	'mission_image_alt' => 'Inspirational illustration of global cooperation',
 
 	// Features Section
-	'features_title' => 'Cooperative features that make the difference',
-	'features_subtitle' => 'EarthCoop combines democratic governance with innovative economic systems to create real, lasting change for the planet and its people.',
-	'features_card1_title' => 'Democratic ownership',
-	'features_card1_desc' => 'Every member has an equal vote on key decisions, ensuring true collective stewardship over our shared resources and future.',
+	'features_title' => 'Ecosystem features that make a difference',
+	'features_subtitle' => 'EarthCoop combines universal partnership and democratic governance with innovative economic systems to create real, lasting change for the planet and its people.',
+	'features_card1_title' => 'Democratic governance',
+	'features_card1_desc' => 'Every member has an equal vote in major decisions, ensuring genuine collective governance of our shared resources, assets, and future.',
 	'features_card2_title' => 'Extensive network',
-	'features_card2_desc' => 'Connect with local, professional, or interest-based groups to collaborate on the initiatives that matter most to you.',
-	'features_card3_title' => 'Reward-first economy',
-	'features_card3_desc' => 'Earn Bahar coins for your contributions and redeem them for cooperative perks, goods, and services.',
+	'features_card2_desc' => 'Connect automatically with local, professional, or interest-based groups through a single registration, and collaborate on projects that matter to you.',
+	'features_card3_title' => 'Justice-centered economy',
+	'features_card3_desc' => 'Receive Bahar coins equally through membership, then, once activated, exchange them for investments, goods, services, or ecosystem benefits.',
 
 	// Governance Section
 	'governance_title' => 'Your voice, our future: how EarthCoop democratic governance works',
@@ -79,7 +79,7 @@ return [
 	'governance_card2_title' => 'Power of your vote',
 	'governance_card2_desc' => 'Retract, change, or delegate your vote to subject-matter experts whenever needed so you stay in full control of your participation.',
 	'governance_card3_title' => 'Accountable leadership',
-	'governance_card3_desc' => 'Representatives remain in office only while they retain voter support, ensuring transparency and accountability.',
+	'governance_card3_desc' => 'Elected representatives remain in office only while they retain voters’ support, ensuring transparency and accountability.',
 
 	// Network Section
 	'network_title' => 'Explore our thriving global network',
@@ -93,34 +93,34 @@ return [
 
 	// How It Works Section
 	'how_title' => 'Your path to making an impact: how EarthCoop works',
-	'how_subtitle' => 'Join millions of members and make a difference in just four simple, meaningful steps.',
+	'how_subtitle' => 'Join other members and make a difference in four simple, meaningful steps.',
 	'how_step1_title' => '1. Register',
-	'how_step1_desc' => 'Complete the secure, streamlined registration process to become an official EarthCoop member.',
+	'how_step1_desc' => 'Complete the simple, secure three-step registration process to become an official EarthCoop member.',
 	'how_step2_title' => '2. Join groups',
-	'how_step2_desc' => 'Explore and join local or interest-based groups that align with your passions.',
+	'how_step2_desc' => 'Explore and connect with local or interest-based groups aligned with your interests, experiences, expertise, and profession.',
 	'how_step3_title' => '3. Participate',
-	'how_step3_desc' => 'Engage actively in projects, vote on key initiatives, and help shape our collective future.',
-	'how_step4_title' => '4. Earn rewards',
-	'how_step4_desc' => 'Receive valuable Bahar coins for each contribution and redeem them for a wide range of benefits.',
+	'how_step3_desc' => 'Actively participate in groups, conversations, and projects; vote on key initiatives; and help shape our collective future.',
+	'how_step4_title' => '4. Invest',
+	'how_step4_desc' => 'Use the valuable Bahar coins you receive to help fund projects.',
 	'how_cta' => 'Start your journey today',
 
 	// Bahar Economy Section
 	'bahar_title' => 'Bahar economy: creating value for a sustainable future',
-	'bahar_subtitle' => 'Discover how Bahar, our unique internal digital asset, lets you invest in profitable projects while empowering your community.',
+	'bahar_subtitle' => 'Discover how our unique internal digital capital, Bahar, enables you to participate in profitable projects and empower yourself and your community.',
 	'bahar_card1_title' => 'Initial capital',
-	'bahar_card1_desc' => 'After registration, the equivalent of 1 kilogram of gold - 10,000 Bahar - is deposited into your account.',
-	'bahar_card2_title' => 'Business development',
-	'bahar_card2_desc' => 'Soon you will be able to establish private companies, shops, and offices for individuals and businesses.',
-	'bahar_card3_title' => 'Collective investment',
-	'bahar_card3_desc' => 'Invest your Bahar in local, national, and global public projects and share in their returns.',
+	'bahar_card1_desc' => 'Within the EarthCoop ecosystem, every person is credited, based on the value of their share of our common heritage and under a collective agreement, with the equivalent of one kilogram of pure gold. After registering and confirming and joining the EarthCoop Monetary and Financial Agreement, this credit is deposited into your account as 10,000 Bahar.',
+	'bahar_card2_title' => 'Collective investment',
+	'bahar_card2_desc' => 'Your initial capital is inactive at first. Activate your Bahar by participating actively in groups and investing in local, national, and global public projects, then benefit from their returns.',
+	'bahar_card3_title' => 'Business development',
+	'bahar_card3_desc' => 'As the first public projects begin, opportunities will gradually emerge to establish private companies, shops, and offices for individuals and private businesses within the ecosystem market.',
 	'bahar_cta_invest' => 'Investment opportunities',
 	'bahar_cta_learn' => 'Learn more about Bahar',
 
 	// Projects Section
 	'projects_title' => 'Collaborate for progress: EarthCoop public projects',
-	'projects_subtitle' => 'Unique collective investment opportunities in projects that generate profit while serving our communities and planet.',
+	'projects_subtitle' => 'Collective investment opportunities in projects that are profitable while serving our communities and planet.',
 	'projects_card1_title' => 'Local projects',
-	'projects_card1_desc' => 'Propose your ideas to improve your neighborhood and city, and watch them come to life with community support.',
+	'projects_card1_desc' => 'Easily propose ideas to improve your neighborhood and city, and watch them become reality with community support.',
 	'projects_card2_title' => 'Renewable energy',
 	'projects_card2_desc' => 'Invest in clean-energy projects that protect the environment while delivering financial returns.',
 	'projects_card3_title' => 'Social initiatives',
@@ -129,7 +129,7 @@ return [
 
 	// Invite Section
 	'invite_title' => 'Grow EarthCoop and earn participation credit',
-	'invite_text' => 'Successful invitations can earn participation credit under the Participation Credit Regulation. Eligibility and credit amounts follow the current system rules.',
+	'invite_text' => 'By successfully inviting other partners to EarthCoop, you can receive participation credit under the Participation Credit Regulation. Eligibility and credit amounts are applied and communicated according to the system’s current rules.',
 	'invite_btn_learn' => 'Participation Credit Regulation',
 	'invite_reward_label' => 'Participation credit',
 	'invite_btn_send' => 'Send an invitation',
@@ -151,11 +151,15 @@ return [
 	'testimonials_card3_alt' => 'Dr. Lena Schmidt',
     // Documents Section
     'docs_section_eyebrow' => 'Legal and institutional framework',
-    'docs_section_title' => 'EarthCoop Foundational Documents',
-    'docs_section_text' => 'EarthCoop principles, charter, constitution, executive bylaws, and specialized laws are published publicly, versioned, and available for review. This collection defines the legal, economic, digital, judicial, local, and ethical framework of the EarthCoop cooperative system.',
+    'docs_section_title' => 'From shared principles to a shared future',
+    'docs_section_intro_title' => 'Discover the foundations of EarthCoop',
+    'docs_section_intro' => 'At EarthCoop, our global partnership is built on shared principles, values, and rules. Our foundational documents explain how we can rely on shared ownership, cooperation, justice, and democratic governance to build a sustainable and equitable future.',
+    'docs_section_invitation' => 'Read these documents, learn about EarthCoop’s framework and how it works, and take part in understanding and shaping the future of this global ecosystem.',
+    'docs_section_documents_title' => 'EarthCoop foundational documents',
+    'docs_section_text' => 'EarthCoop principles, charter, constitution, executive bylaws, and specialized laws are publicly available, versioned, and open to review. Together, these documents define the legal, economic, digital, judicial, local, and ethical framework of the EarthCoop partnership ecosystem.',
     'docs_section_primary' => 'Read foundational documents',
     'docs_section_secondary' => 'Open documentation center',
-    'docs_section_grid_label' => 'EarthCoop foundational documents list',
+    'docs_section_grid_label' => 'List of EarthCoop foundational documents',
     'docs_footer_title' => 'Documents',
     'docs_footer_center' => 'Documentation center',
     'docs_footer_foundational' => 'Foundational documents',
@@ -174,7 +178,7 @@ return [
     'docs_foundational_loc' => 'Local Communities Law',
     'docs_foundational_eth' => 'Ethical Charter',
     // Welcome Footer and Final CTA
-    'footer_about_text' => 'A global cooperative empowering people to collectively build a sustainable future through shared ownership and democratic principles.',
+    'footer_about_text' => 'A global cooperation ecosystem that empowers people to collectively build a sustainable future through shared ownership and democratic principles.',
     'footer_quick_links' => 'Quick links',
     'footer_home' => 'Home',
     'footer_about' => 'About us',
@@ -190,7 +194,7 @@ return [
     'footer_global_office' => 'Global headquarters, EarthCoop',
     'footer_rights' => 'All rights reserved.',
     'cta_title' => 'Ready to be part of the solution?',
-    'cta_text' => 'Join EarthCoop today and become a key participant in shaping a more sustainable and fair future for everyone.',
+    'cta_text' => 'Join EarthCoop today and become a key actor in shaping a more sustainable and equitable future for everyone.',
     'cta_discover_mission' => 'Discover our mission',
     'cta_join_now' => 'Join EarthCoop now',
 ];

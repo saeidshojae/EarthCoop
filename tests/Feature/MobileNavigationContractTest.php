@@ -37,6 +37,58 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString('navigation-section', $drawer);
     }
 
+    public function test_mobile_drawer_and_registration_modal_use_localized_copy(): void
+    {
+        $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
+        $welcome = file_get_contents(resource_path('views/welcome.blade.php'));
+
+        foreach ([
+            'drawer_label', 'drawer_subtitle', 'drawer_close', 'drawer_auth_section',
+            'drawer_about_section', 'request_invite', 'section_network', 'notifications',
+            'private_conversations', 'invite_friends', 'section_governance',
+            'my_location_governance', 'my_participations', 'my_earthcoop_story',
+            'current_elections', 'my_election_history', 'current_polls', 'section_economy',
+            'bahar_financial_account', 'value_share_ledger', 'value_share_auctions',
+            'section_organization', 'my_secretariats', 'group_secretariat',
+            'section_account_support', 'edit_account', 'knowledge_base', 'submit_ticket',
+            'my_tickets', 'support_chat', 'section_explore_documents', 'documents',
+            'documents_center', 'foundational_documents', 'fluid_election_guideline',
+            'participation_credit_regulation', 'central_secretariat', 'install_app',
+        ] as $key) {
+            $this->assertStringContainsString("__('navigation.{$key}')", $drawer, "Missing drawer translation key: {$key}");
+        }
+
+        foreach ([
+            'modal_welcome_title', 'modal_welcome_subtitle', 'modal_invite_only',
+            'modal_invite_code', 'modal_invite_code_placeholder', 'modal_no_invite',
+            'modal_request_invite', 'modal_terms_text', 'modal_terms_link',
+            'modal_terms_agree', 'modal_terms_error', 'modal_already_member',
+            'modal_login_link', 'btn_start_registration', 'btn_close',
+        ] as $key) {
+            $this->assertStringContainsString("__('langWelcome.{$key}')", $welcome, "Missing modal translation key: {$key}");
+        }
+
+        foreach (['fa', 'en', 'ar'] as $locale) {
+            $translations = require resource_path("lang/{$locale}/navigation.php");
+            foreach ([
+                'drawer_label', 'drawer_subtitle', 'drawer_close', 'drawer_auth_section',
+                'drawer_about_section', 'request_invite', 'section_network', 'notifications',
+                'private_conversations', 'invite_friends', 'section_governance',
+                'my_location_governance', 'my_participations', 'my_earthcoop_story',
+                'current_elections', 'my_election_history', 'current_polls', 'section_economy',
+                'bahar_financial_account', 'value_share_ledger', 'value_share_auctions',
+                'section_organization', 'my_secretariats', 'group_secretariat',
+                'section_account_support', 'edit_account', 'knowledge_base', 'submit_ticket',
+                'my_tickets', 'support_chat', 'section_explore_documents', 'documents',
+                'documents_center', 'foundational_documents', 'fluid_election_guideline',
+                'participation_credit_regulation', 'central_secretariat', 'install_app',
+                'install_app_short', 'open_menu', 'back',
+            ] as $key) {
+                $this->assertArrayHasKey($key, $translations, "Missing {$locale} navigation translation: {$key}");
+            }
+        }
+    }
+
     public function test_public_sidebar_is_hidden_on_mobile_after_navigation_consolidation(): void
     {
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
@@ -102,11 +154,11 @@ class MobileNavigationContractTest extends TestCase
     {
         $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
 
-        $this->assertStringContainsString('ورود و عضویت', $drawer);
+        $this->assertStringContainsString("__('navigation.drawer_auth_section')", $drawer);
         $this->assertStringContainsString("route('login')", $drawer);
         $this->assertStringContainsString('openModal()', $drawer);
         $this->assertStringContainsString("route('invite')", $drawer);
-        $this->assertStringContainsString('درخواست کد دعوت', $drawer);
+        $this->assertStringContainsString("__('navigation.request_invite')", $drawer);
         $this->assertStringContainsString('guest-navigation-cta--login', $drawer);
         $this->assertStringContainsString('guest-navigation-cta--join', $drawer);
         $this->assertStringContainsString('guest-navigation-cta--invite', $drawer);
@@ -156,7 +208,7 @@ class MobileNavigationContractTest extends TestCase
         $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
 
         $this->assertStringContainsString("route('location-governance.me')", $drawer);
-        $this->assertStringContainsString('مکان و حکمرانی من', $drawer);
+        $this->assertStringContainsString("__('navigation.my_location_governance')", $drawer);
         $this->assertStringContainsString('CanonicalGroupMembershipReconciler', $drawer);
         $this->assertStringContainsString("whereIn('groups.id', \$mobileMaterializedGroupIds->all())", $drawer);
         $this->assertStringContainsString("wherePivot('status', 1)", $drawer);
