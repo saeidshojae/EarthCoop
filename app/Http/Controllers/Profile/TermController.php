@@ -18,8 +18,8 @@ class TermController extends Controller
                 ? 'required|image|mimes:png,jpg,jpeg,webp|max:5020'
                 : 'nullable|image|mimes:png,jpg,jpeg,webp|max:5020',
         ], [
-            'terms.required' => 'لطفاً اساسنامه و شرایط استفاده را بپذیرید.',
-            'terms.accepted' => 'لطفاً اساسنامه و شرایط استفاده را بپذیرید.',
+            'terms.required' => __('legal_page.terms_acceptance_required'),
+            'terms.accepted' => __('legal_page.terms_acceptance_required'),
         ]);
 
         $consentVersions = app(\App\Services\Legal\LegalMembershipConsentService::class)->validateForm($request);
@@ -39,6 +39,6 @@ class TermController extends Controller
             });
         }
 
-        return redirect('/')->with('success', 'تایید اساسنامه باموفقیت انجام شد، به مراحل ثبت نام بازگردید');
+        return redirect('/')->with('success', __('legal_page.terms_accept_success'));
     }
 }
