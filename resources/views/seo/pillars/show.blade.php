@@ -13,7 +13,7 @@
     .seo-pillar-section { padding: clamp(1.2rem, 3vw, 2rem); margin-bottom: 1rem; }
     .seo-pillar-section h2 { font-size: 1.4rem; font-weight: 850; margin: 0 0 .8rem; }
     .seo-pillar-section p, .seo-pillar-section li { line-height: 2; }
-    .seo-pillar-section ul { padding-right: 1.3rem; margin-bottom: 0; }
+    .seo-pillar-section ul { padding-inline-start: 1.3rem; margin-bottom: 0; }
     .seo-pillar-links { padding: 1.4rem; margin-top: 1.5rem; }
     .seo-pillar-link-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
     .seo-pillar-link { display: block; padding: .9rem 1rem; border: 1px solid rgba(148, 163, 184, .28); border-radius: .85rem; text-decoration: none; font-weight: 750; }
@@ -25,8 +25,8 @@
 @endpush
 
 @section('content')
-<div class="seo-pillar-shell">
-    <nav class="seo-pillar-breadcrumbs" aria-label="مسیر صفحه">
+<div class="seo-pillar-shell" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}">
+    <nav class="seo-pillar-breadcrumbs" aria-label="{{ app()->getLocale() === 'en' ? 'Breadcrumb' : (app()->getLocale() === 'ar' ? 'مسار التنقل' : 'مسیر صفحه') }}">
         @foreach($pillar['breadcrumbs'] as $index => $crumb)
             @if($index > 0)<span aria-hidden="true">/</span>@endif
             @if(!$loop->last)
@@ -62,8 +62,8 @@
     </article>
 
     @if(!empty($supportingArticles))
-        <aside class="seo-pillar-links" aria-label="مقالات مرتبط">
-            <h2 class="h5 fw-bold mb-3">مقالات مرتبط</h2>
+        <aside class="seo-pillar-links" aria-label="{{ app()->getLocale() === 'en' ? 'Related articles' : (app()->getLocale() === 'ar' ? 'مقالات ذات صلة' : 'مقالات مرتبط') }}">
+            <h2 class="h5 fw-bold mb-3">{{ app()->getLocale() === 'en' ? 'Related articles' : (app()->getLocale() === 'ar' ? 'مقالات ذات صلة' : 'مقالات مرتبط') }}</h2>
             <div class="seo-pillar-link-grid">
                 @foreach($supportingArticles as $article)
                     <a class="seo-pillar-link" href="{{ $article['path'] }}">{{ $article['label'] }}</a>
@@ -72,8 +72,8 @@
         </aside>
     @endif
 
-    <aside class="seo-pillar-links" aria-label="مطالعه بیشتر">
-        <h2 class="h5 fw-bold mb-3">مطالعه مرتبط</h2>
+    <aside class="seo-pillar-links" aria-label="{{ app()->getLocale() === 'en' ? 'Further reading' : (app()->getLocale() === 'ar' ? 'للمطالعة' : 'مطالعه بیشتر') }}">
+        <h2 class="h5 fw-bold mb-3">{{ app()->getLocale() === 'en' ? 'Related reading' : (app()->getLocale() === 'ar' ? 'قراءات ذات صلة' : 'مطالعه مرتبط') }}</h2>
         <div class="seo-pillar-link-grid">
             @foreach($pillar['related'] as $link)
                 <a class="seo-pillar-link" href="{{ $link['path'] }}">{{ $link['label'] }}</a>
@@ -82,7 +82,7 @@
                 <a class="seo-pillar-link" href="{{ $document['url'] }}">{{ $document['label'] }} <span aria-hidden="true">↗</span></a>
             @endforeach
         </div>
-        <p class="seo-pillar-source-note">برای قواعد رسمی و نسخه‌های مرجع EarthCoop، متن اسناد بنیادین در مرکز اسناد ملاک است. این صفحه برای توضیح عمومی و آموزشی مفاهیم نوشته شده است.</p>
+        <p class="seo-pillar-source-note">@if(app()->getLocale() === 'en') For official rules and authoritative versions, the foundational documents in the EarthCoop document centre are controlling. This page provides a general, educational explanation of the concepts. @elseif(app()->getLocale() === 'ar') تُعدّ الوثائق التأسيسية المنشورة في مركز وثائق EarthCoop المرجع للقواعد الرسمية والنسخ المعتمدة. وتقدّم هذه الصفحة شرحًا عامًا وتعليميًا للمفاهيم. @else برای قواعد رسمی و نسخه‌های مرجع EarthCoop، متن اسناد بنیادین در مرکز اسناد ملاک است. این صفحه برای توضیح عمومی و آموزشی مفاهیم نوشته شده است. @endif</p>
     </aside>
 </div>
 @endsection
