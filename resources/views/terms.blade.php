@@ -22,8 +22,8 @@
 
 
 
-@section('title', 'اساسنامه و شرایط استفاده - ' . config('app.name', 'EarthCoop'))
-@section('meta_description', 'اساسنامه، شرایط استفاده و قواعد مشارکت در پلتفرم ارث‌کوپ را مطالعه کنید.')
+@section('title', __('legal_page.page_title') . ' - ' . config('app.name', 'EarthCoop'))
+@section('meta_description', __('legal_page.meta_description'))
 
 
 
@@ -3127,7 +3127,7 @@
 
 
 
-                مستند رسمی EarthCoop
+                {{ __('legal_page.official_document') }}
 
 
 
@@ -3187,7 +3187,7 @@
 
 
 
-                    اساسنامه و شرایط استفاده از سامانه ارث‌کوپ
+                    {{ __('legal_page.hero_title') }}
 
 
 
@@ -3223,7 +3223,7 @@
 
 
 
-                    این توافقنامه ارزش‌ها، مسئولیت‌ها و استانداردهای مشارکت در زیست‌بوم همکاری EarthCoop را مشخص می‌کند. لطفاً به دقت مطالعه نمایید.
+                    {{ __('legal_page.hero_description') }}
 
 
 
@@ -3283,7 +3283,7 @@
 
 
 
-                        حفاظت از حقوق و شفافیت اطلاعات
+                        {{ __('legal_page.rights_transparency') }}
 
 
 
@@ -3331,7 +3331,7 @@
 
 
 
-                        مشارکت مسئولانه در اقتصاد جمعی
+                        {{ __('legal_page.responsible_economy') }}
 
 
 
@@ -3431,31 +3431,31 @@
         {{-- The publication text is shown before any previously stored admin-configured clauses. --}}
         <section class="accordion-wrapper p-6 md:p-8 space-y-6 fade-up" id="published-legal-texts">
             <header class="space-y-3">
-                <h2 class="text-2xl font-bold text-gentle-black">اساسنامه عضویت و شرایط استفاده</h2>
-                <p class="text-slate-700">متن‌های انتشار اولیه ـ هر ماده را جداگانه باز کنید و بخوانید. توافقنامه نجم‌بهار مستقل است.</p>
+                <h2 class="text-2xl font-bold text-gentle-black">{{ __('legal_page.documents_title') }}</h2>
+                <p class="text-slate-700">{{ __('legal_page.documents_intro') }}</p>
             </header>
             <details class="ec-legal-volume" open>
-                <summary class="ec-legal-volume-title">اساسنامه بین‌المللی عضویت EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
-                @if($legalPublished['membership'] ?? null)
+                <summary class="ec-legal-volume-title">{{ __('legal_page.membership_statute') }} <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                @if(app()->getLocale() === 'fa' && ($legalPublished['membership'] ?? null))
                     @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalPublished['membership']->content_snapshot, true)])
                 @else
                     @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-membership-statute.fa.md'])
                 @endif
             </details>
             <details class="ec-legal-volume">
-                <summary class="ec-legal-volume-title">شرایط استفاده از خدمات EarthCoop <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
-                @if($legalPublished['terms'] ?? null)
+                <summary class="ec-legal-volume-title">{{ __('legal_page.terms_document') }} <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                @if(app()->getLocale() === 'fa' && ($legalPublished['terms'] ?? null))
                     @include('partials.legal.published-snapshot', ['snapshot' => json_decode($legalPublished['terms']->content_snapshot, true)])
                 @else
                     @include('partials.legal.structured-document', ['sourcePath' => 'legal/earthcoop-terms-of-use.fa.md'])
                 @endif
             </details>
-            <nav class="ec-legal-references" aria-label="متن کامل اسناد بنیادین">
-                <h3 class="font-bold">اسناد بنیادین و مرجع</h3>
+            <nav class="ec-legal-references" aria-label="{{ __('legal_page.foundational_references') }}">
+                <h3 class="font-bold">{{ __('legal_page.foundational_documents') }}</h3>
                 @foreach(config('docs-links.foundational', []) as $document)
                     <a href="{{ $document['href'] }}" target="_blank" rel="noopener noreferrer">{{ $document['code'] }}</a>
                 @endforeach
-                <a href="{{ config('docs-links.foundational_index.href') }}" target="_blank" rel="noopener noreferrer">فهرست اسناد بنیادین</a>
+                <a href="{{ config('docs-links.foundational_index.href') }}" target="_blank" rel="noopener noreferrer">{{ __('legal_page.foundational_index') }}</a>
             </nav>
         </section>
 
@@ -3723,7 +3723,7 @@
 
 
 
-                                            بخش‌های تکمیلی
+                                            {{ __('legal_page.supplementary_sections') }}
 
 
 
@@ -4035,7 +4035,7 @@
 
 
 
-                    <p class="text-lg text-slate-600">هنوز اساسنامه‌ای ثبت نشده است.</p>
+                    <p class="text-lg text-slate-600">{{ __('legal_page.no_statute') }}</p>
 
 
 
@@ -4107,7 +4107,7 @@
 
 
 
-            <h3>مطالعه و پذیرش شرایط</h3>
+            <h3>{{ __('legal_page.read_accept') }}</h3>
 
 
 
@@ -4131,7 +4131,7 @@
 
 
 
-                تایید این توافقنامه به معنای پذیرش کامل قوانین و چارچوب‌های همکاری EarthCoop است. بدون پذیرش این شرایط، امکان ادامه مراحل ثبت‌نام و استفاده از خدمات نجم بهار وجود نخواهد داشت.
+                {{ __('legal_page.acceptance_notice') }}
 
 
 
@@ -4227,7 +4227,7 @@
 
 
 
-                            <span class="font-extrabold text-lg">شما قبلاً اساسنامه را پذیرفته‌اید.</span>
+                            <span class="font-extrabold text-lg">{{ __('legal_page.already_accepted') }}</span>
 
 
 
@@ -4263,7 +4263,7 @@
 
 
 
-                            تاریخ پذیرش: <strong><x-temporal.date-time :value="$termsAcceptedAt" style="short" /></strong>
+                            {{ __('legal_page.accepted_at') }} <strong><x-temporal.date-time :value="$termsAcceptedAt" style="short" /></strong>
 
 
 
@@ -4311,7 +4311,7 @@
 
 
 
-                            بازگشت به داشبورد
+                            {{ __('legal_page.back_dashboard') }}
 
 
 
@@ -4436,7 +4436,7 @@
 
 
 
-                                    بارگذاری تصویر امضای دیجیتال (الزامی)
+                                    {{ __('legal_page.digital_signature_upload') }}
 
 
 
@@ -4520,7 +4520,7 @@
 
 
 
-                                در حال حاضر، بارگذاری امضای دیجیتال الزامی نیست. در صورت فعال شدن، از همین بخش اعلام خواهد شد.
+                                {{ __('legal_page.signature_optional') }}
 
 
 
@@ -4592,7 +4592,7 @@
 
 
 
-                            <span class="font-semibold text-slate-700">تمامی موارد فوق را مطالعه کرده‌ام و می‌پذیرم.</span>
+                            <span class="font-semibold text-slate-700">{{ __('legal_page.accept_all') }}</span>
 
 
 
@@ -4652,7 +4652,7 @@
 
 
 
-                            تایید و ادامه ثبت‌نام
+                            {{ __('legal_page.confirm_continue') }}
 
 
 
@@ -4795,7 +4795,7 @@
 
 
 
-                            ورود به حساب کاربری
+                            {{ __('legal_page.login') }}
 
 
 
@@ -4827,17 +4827,17 @@
                         @endif
                         
                             @if($setting && $setting->invation_status == 1)
-                                <label class="guest-full-row block text-right font-semibold text-slate-700" for="guestInviteCode">کد دعوت</label>
-                                <input type="text" id="guestInviteCode" name="invite_code" value="{{ old('invite_code', request('code')) }}" required class="guest-full-row w-full rounded-xl border border-slate-300 px-4 py-3 text-center focus:border-earth-green focus:ring-2 focus:ring-earth-green" placeholder="کد دعوت خود را وارد کنید">
+                                <label class="guest-full-row block text-right font-semibold text-slate-700" for="guestInviteCode">{{ __('legal_page.invite_code') }}</label>
+                                <input type="text" id="guestInviteCode" name="invite_code" value="{{ old('invite_code', request('code')) }}" required class="guest-full-row w-full rounded-xl border border-slate-300 px-4 py-3 text-center focus:border-earth-green focus:ring-2 focus:ring-earth-green" placeholder="{{ __('legal_page.invite_placeholder') }}">
                                 @error('invite_code')
                                     <p class="guest-full-row text-sm font-semibold text-red-600" role="alert">{{ $message }}</p>
                                 @enderror
                             @endif
                             <label class="guest-terms-consent guest-full-row">
                                 <input type="checkbox" id="guestAcceptTerms" name="terms" value="1" class="w-6 h-6 shrink-0 text-earth-green border-slate-300 rounded focus:ring-2 focus:ring-earth-green">
-                                <span class="font-semibold text-slate-700">اساسنامه و شرایط استفاده را مطالعه کرده‌ام و می‌پذیرم.</span>
+                                <span class="font-semibold text-slate-700">{{ __('legal_page.guest_accept') }}</span>
                             </label>
-                            <p id="guestTermsError" class="guest-full-row hidden text-sm font-semibold text-red-600" role="alert">برای ثبت‌نام باید ابتدا اساسنامه و شرایط استفاده را بپذیرید.</p>
+                            <p id="guestTermsError" class="guest-full-row hidden text-sm font-semibold text-red-600" role="alert">{{ __('legal_page.guest_terms_error') }}</p>
                             <button type="submit" id="guestRegisterButton" aria-disabled="true" class="terms-cta opacity-60 cursor-not-allowed" style="background: linear-gradient(120deg, var(--color-ocean-blue), #1d4ed8); box-shadow: 0 20px 32px rgba(59, 130, 246, 0.22);">
 
 
@@ -4862,7 +4862,7 @@
 
 
 
-                            ثبت‌نام در EarthCoop
+                            {{ __('legal_page.register') }}
 
 
 
@@ -4959,7 +4959,7 @@
 
 
 
-                آخرین به‌روزرسانی: <strong><x-temporal.date :value="collect([app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('membership')?->published_at, app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('terms')?->published_at])->filter()->max() ?? ($setting->updated_at ?? now())" style="short" /></strong>
+                {{ __('legal_page.last_updated') }} <strong><x-temporal.date :value="collect([app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('membership')?->published_at, app(\App\Services\Legal\LegalDocumentPublicationService::class)->current('terms')?->published_at])->filter()->max() ?? ($setting->updated_at ?? now())" style="short" /></strong>
 
 
 
@@ -5067,7 +5067,7 @@
 
 
 
-                <h4 class="font-bold text-gentle-black">حفاظت از حقوق اعضا</h4>
+                <h4 class="font-bold text-gentle-black">{{ __('legal_page.member_rights') }}</h4>
 
 
 
@@ -5079,7 +5079,7 @@
 
 
 
-                <p class="text-slate-600 text-sm">تمامی داده‌ها و تعاملات شما تحت قوانین شفاف و نظارت جمعی محافظت می‌شود.</p>
+                <p class="text-slate-600 text-sm">{{ __('legal_page.member_rights_text') }}</p>
 
 
 
@@ -5151,7 +5151,7 @@
 
 
 
-                <h4 class="font-bold text-gentle-black">همکاری و مسئولیت مشترک</h4>
+                <h4 class="font-bold text-gentle-black">{{ __('legal_page.cooperation_responsibility') }}</h4>
 
 
 
@@ -5163,7 +5163,7 @@
 
 
 
-                <p class="text-slate-600 text-sm">پایبندی به اصول اعتماد، شفافیت و همکاری، سنگ‌بنای جامعه EarthCoop است.</p>
+                <p class="text-slate-600 text-sm">{{ __('legal_page.cooperation_text') }}</p>
 
 
 
@@ -5235,7 +5235,7 @@
 
 
 
-                <h4 class="font-bold text-gentle-black">عدالت و پاسخ‌گویی</h4>
+                <h4 class="font-bold text-gentle-black">{{ __('legal_page.justice_accountability') }}</h4>
 
 
 
@@ -5247,7 +5247,7 @@
 
 
 
-                <p class="text-slate-600 text-sm">همه اعضا در یک چارچوب عادلانه و برابر مشارکت می‌کنند و پاسخ‌گو هستند.</p>
+                <p class="text-slate-600 text-sm">{{ __('legal_page.justice_text') }}</p>
 
 
 
@@ -5331,7 +5331,7 @@
 
 
 
-                اگر سوالی دارید یا نیاز به راهنمایی دارید، با <a href="{{ route('pages.show', 'contact') }}#contact-form" class="text-earth-green font-bold underline hover:text-dark-green transition" aria-label="رفتن به فرم تماس با پشتیبانی EarthCoop">پشتیبانی EarthCoop</a> در ارتباط باشید.
+                {{ __('legal_page.contact_support') }} <a href="{{ route('pages.show', 'contact') }}#contact-form" class="text-earth-green font-bold underline hover:text-dark-green transition" aria-label="{{ __('legal_page.contact_support_aria') }}">{{ __('legal_page.support') }}</a>.
 
 
 
