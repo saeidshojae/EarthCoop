@@ -3519,7 +3519,7 @@
 
 
 
-                            <div class="flex items-center gap-3 text-right">
+                            <div class="flex items-center gap-3 text-start">
 
 
 
@@ -3724,6 +3724,9 @@
 
 
                                             {{ __('legal_page.supplementary_sections') }}
+                @if(app()->getLocale() !== 'fa')
+                    <p class="text-sm text-slate-600">{{ __('legal_page.supplementary_notice') }}</p>
+                @endif
 
 
 
@@ -4400,7 +4403,7 @@
 
 
 
-                            <div class="bg-white/80 border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center gap-4 text-right">
+                            <div class="bg-white/80 border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center gap-4 text-start">
 
 
 
@@ -4508,7 +4511,7 @@
 
 
 
-                                <i class="fas fa-fingerprint text-earth-green ml-2"></i>
+                                <i class="fas fa-fingerprint text-earth-green me-2"></i>
 
 
 
@@ -4827,7 +4830,7 @@
                         @endif
                         
                             @if($setting && $setting->invation_status == 1)
-                                <label class="guest-full-row block text-right font-semibold text-slate-700" for="guestInviteCode">{{ __('legal_page.invite_code') }}</label>
+                                <label class="guest-full-row block text-start font-semibold text-slate-700" for="guestInviteCode">{{ __('legal_page.invite_code') }}</label>
                                 <input type="text" id="guestInviteCode" name="invite_code" value="{{ old('invite_code', request('code')) }}" required class="guest-full-row w-full rounded-xl border border-slate-300 px-4 py-3 text-center focus:border-earth-green focus:ring-2 focus:ring-earth-green" placeholder="{{ __('legal_page.invite_placeholder') }}">
                                 @error('invite_code')
                                     <p class="guest-full-row text-sm font-semibold text-red-600" role="alert">{{ $message }}</p>
@@ -5319,7 +5322,7 @@
 
 
 
-                <i class="fas fa-question-circle text-ocean-blue ml-2"></i>
+                <i class="fas fa-question-circle text-ocean-blue me-2"></i>
 
 
 
