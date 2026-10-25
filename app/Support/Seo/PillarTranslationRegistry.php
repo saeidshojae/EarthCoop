@@ -46,6 +46,10 @@ final class PillarTranslationRegistry
                             'EarthCoop presents this as its own proposed model, not as a theory already accepted by every legal or economic system.',
                         ]],
                     ],
+                    'supportingArticles' => [
+                        ['label' => 'What is the People’s Economy? From economic participation to the People’s Free Economy', 'path' => '/blog/people-economy-explained'],
+                        ['label' => 'How can a free market work without monopolies?', 'path' => '/blog/free-market-without-monopoly'],
+                    ],
                     'related' => [
                         ['label' => 'Glass Economy: transparent and secure', 'path' => '/economy/glass'],
                         ['label' => 'Ownership and common entitlement', 'path' => '/economy/ownership'],
@@ -79,6 +83,9 @@ final class PillarTranslationRegistry
                             'In EarthCoop’s approach, participation means more than having an account on a platform or buying a share. Within their role and level, members should be able to take part in discussion, proposals, selection, oversight and evaluation of decisions.',
                         ]],
                     ],
+                    'supportingArticles' => [
+                        ['label' => 'What is a platform cooperative, and how does it relate to EarthCoop?', 'path' => '/blog/platform-cooperative-and-earthcoop'],
+                    ],
                     'related' => [
                         ['label' => 'Global cooperation', 'path' => '/cooperative/global'],
                         ['label' => 'Participatory governance', 'path' => '/governance'],
@@ -110,6 +117,9 @@ final class PillarTranslationRegistry
                         ['heading' => 'Limiting the concentration of power', 'paragraphs' => [
                             'Selection, accountability, inspection, recorded decisions and opportunities for review are intended to prevent responsibility from turning into power without accountability. Implementation details may evolve as the system matures, while accountability and limits on concentrated power remain stable principles.',
                         ]],
+                    ],
+                    'supportingArticles' => [
+                        ['label' => 'Participatory governance beyond periodic voting', 'path' => '/blog/participatory-governance-beyond-voting'],
                     ],
                     'related' => [
                         ['label' => 'Continuous elections without candidates', 'path' => '/governance/elections'],
@@ -146,6 +156,9 @@ final class PillarTranslationRegistry
                         ['heading' => 'Human dignity before the system', 'paragraphs' => [
                             'People must not be reduced to instruments of production, consumption, voting, data collection or profit. Markets, institutions and technology at EarthCoop should remain in service of human dignity.',
                         ]],
+                    ],
+                    'supportingArticles' => [
+                        ['label' => 'What place does the Earth have in EarthCoop’s definition of justice?', 'path' => '/blog/earth-in-earthcoop-justice'],
                     ],
                     'related' => [
                         ['label' => 'The Earth and common resources', 'path' => '/commons'],
@@ -188,6 +201,10 @@ final class PillarTranslationRegistry
                             'تقدّم EarthCoop هذا النموذج بوصفه اقتراحها الخاص، لا نظريةً مقبولة مسبقًا في جميع الأنظمة القانونية أو الاقتصادية.',
                         ]],
                     ],
+                    'supportingArticles' => [
+                        ['label' => 'ما الاقتصاد الشعبي؟ من المشاركة الاقتصادية إلى الاقتصاد الحرّ الشعبي', 'path' => '/blog/people-economy-explained'],
+                        ['label' => 'كيف يمكن أن يعمل السوق الحر من دون احتكار؟', 'path' => '/blog/free-market-without-monopoly'],
+                    ],
                     'related' => [
                         ['label' => 'الاقتصاد الزجاجي: الشفافية والأمان', 'path' => '/economy/glass'],
                         ['label' => 'الملكية والاستحقاق المشترك', 'path' => '/economy/ownership'],
@@ -221,6 +238,9 @@ final class PillarTranslationRegistry
                             'في نهج EarthCoop، لا تقتصر المشاركة على امتلاك حساب في منصة أو شراء حصة. ينبغي أن يتمكن العضو، ضمن دوره ومستواه، من المشاركة في النقاش وتقديم المقترحات والاختيار والرقابة وتقييم القرارات.',
                         ]],
                     ],
+                    'supportingArticles' => [
+                        ['label' => 'ما تعاونية المنصة، وما علاقتها بـ EarthCoop؟', 'path' => '/blog/platform-cooperative-and-earthcoop'],
+                    ],
                     'related' => [
                         ['label' => 'التعاون العالمي', 'path' => '/cooperative/global'],
                         ['label' => 'الحوكمة التشاركية', 'path' => '/governance'],
@@ -252,6 +272,9 @@ final class PillarTranslationRegistry
                         ['heading' => 'الحد من تركّز السلطة', 'paragraphs' => [
                             'يُراد من الاختيار والمساءلة والتفتيش وتوثيق القرارات وإتاحة مراجعتها منع تحوّل المسؤولية إلى سلطة لا تخضع للمساءلة. وقد تتطور تفاصيل التنفيذ مع نضج النظام، بينما يظل مبدأ المساءلة والحد من تركّز السلطة ثابتًا.',
                         ]],
+                    ],
+                    'supportingArticles' => [
+                        ['label' => 'الحوكمة التشاركية بما يتجاوز التصويت الدوري', 'path' => '/blog/participatory-governance-beyond-voting'],
                     ],
                     'related' => [
                         ['label' => 'انتخابات مستمرة بلا مرشحين', 'path' => '/governance/elections'],
@@ -288,6 +311,9 @@ final class PillarTranslationRegistry
                         ['heading' => 'كرامة الإنسان قبل النظام', 'paragraphs' => [
                             'يجب ألا يُختزل الإنسان إلى أداة للإنتاج أو الاستهلاك أو التصويت أو جمع البيانات أو الربح. وينبغي أن تظل الأسواق والمؤسسات والتكنولوجيا في EarthCoop في خدمة كرامة الإنسان.',
                         ]],
+                    ],
+                    'supportingArticles' => [
+                        ['label' => 'ما مكانة الأرض في تعريف EarthCoop للعدالة؟', 'path' => '/blog/earth-in-earthcoop-justice'],
                     ],
                     'related' => [
                         ['label' => 'الأرض والموارد المشتركة', 'path' => '/commons'],
