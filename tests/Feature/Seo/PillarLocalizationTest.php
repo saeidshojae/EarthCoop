@@ -20,9 +20,9 @@ class PillarLocalizationTest extends TestCase
         $this->assertStringContainsString($expectedSection, $html);
         $this->assertStringContainsString($expectedRelatedLabel, $html);
         $this->assertStringContainsString('dir="' . ($locale === 'en' ? 'ltr' : 'rtl') . '"', $html);
-        $this->assertStringContainsString('inLanguage&quot;:&quot;' . $locale, $html);
+        $this->assertStringContainsString('"inLanguage":"' . $locale . '"', $html);
         $this->assertStringContainsString('content="index,follow"', $html);
-        $this->assertStringNotContainsString('مدل اقتصادی EarthCoop', $html);
+        $this->assertStringNotContainsString('اقتصاد در خدمت عدالت، نه برعکس', $html);
     }
 
     public static function localizedPillarProvider(): array
