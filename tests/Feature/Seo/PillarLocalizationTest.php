@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\\Feature\\Seo;
+namespace Tests\Feature\Seo;
 
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class PillarLocalizationTest extends TestCase
 {
