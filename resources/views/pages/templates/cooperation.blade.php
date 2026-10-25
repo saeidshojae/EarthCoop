@@ -222,9 +222,9 @@
                     <div class="w-24 h-24 bg-earth-green/15 rounded-full flex items-center justify-center text-4xl text-earth-green mb-6 transform group-hover:scale-110 transition-transform duration-300">
                         <i class="fas fa-palette"></i>
                     </div>
-                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">گرافیست و طراح رابط کاربری</h3>
+                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.cooperation_graphic_title') }}</h3>
                     <p class="text-gray-700 text-center font-vazirmatn">
-                        خلاقیت خود را در طراحی رابط‌های کاربری زیبا و کاربرپسند به کار گیرید.
+                        {{ __('page_templates.cooperation_graphic_text') }}
                     </p>
                 </div>
 
@@ -234,9 +234,9 @@
                         <i class="fab fa-android"></i>
                         <i class="fab fa-apple ml-2"></i>
                     </div>
-                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">برنامه نویس اپلیکیشن اندروید و آی او آس</h3>
+                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.cooperation_mobile_title') }}</h3>
                     <p class="text-gray-700 text-center font-vazirmatn">
-                        به تیم ما در توسعه اپلیکیشن‌های موبایل قدرتمند و کارآمد بپیوندید.
+                        {{ __('page_templates.cooperation_mobile_text') }}
                     </p>
                 </div>
 
@@ -245,9 +245,9 @@
                     <div class="w-24 h-24 bg-digital-gold/15 rounded-full flex items-center justify-center text-4xl text-digital-gold mb-6 transform group-hover:scale-110 transition-transform duration-300">
                         <i class="fas fa-robot"></i>
                     </div>
-                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">توسعه دهنده دستیارهای هوش مصنوعی</h3>
+                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.cooperation_ai_title') }}</h3>
                     <p class="text-gray-700 text-center font-vazirmatn">
-                        در ساخت دستیارهای هوشمند و نوآورانه با ما همکاری کنید.
+                        {{ __('page_templates.cooperation_ai_text') }}
                     </p>
                 </div>
 
@@ -257,9 +257,9 @@
                         <i class="fas fa-chart-pie"></i>
                         <i class="fas fa-film ml-2"></i>
                     </div>
-                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">سازنده اینفوگرافی و موشن گرافی</h3>
+                    <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.cooperation_motion_title') }}</h3>
                     <p class="text-gray-700 text-center font-vazirmatn">
-                        با ساخت محتوای بصری جذاب، پیام ما را به بهترین شکل منتقل کنید.
+                        {{ __('page_templates.cooperation_motion_text') }}
                     </p>
                 </div>
             </div>
@@ -305,7 +305,7 @@
     function copyEmail() {
         const email = 'Team@EarthCoop.ir';
         navigator.clipboard.writeText(email).then(() => {
-            alert('ایمیل کپی شد: ' + email);
+            alert(@json(__('page_templates.email_copied')) + email);
         }).catch(err => {
             console.error('Error copying email:', err);
         });
