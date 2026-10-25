@@ -16,6 +16,7 @@ class PrivacyPolicyLocalizationTest extends TestCase
         $html = $this->withSession(['locale' => $locale])->get('/privacy')->assertOk()->getContent();
 
         $this->assertStringContainsString($expectedTitle, $html);
+        $this->assertStringContainsString('<title>' . $expectedTitle . '</title>', $html);
         $this->assertStringContainsString($expectedSection, $html);
         $this->assertStringContainsString($expectedTermsLabel, $html);
         $this->assertStringContainsString('content="index,follow"', $html);
