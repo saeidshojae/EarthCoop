@@ -1,6 +1,6 @@
 <?php
 
-namespace App\\Support\\Seo;
+namespace App\Support\Seo;
 
 /**
  * Human-reviewed English and Arabic copy for the stable public pillar pages.
