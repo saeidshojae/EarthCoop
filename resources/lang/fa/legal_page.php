@@ -43,5 +43,10 @@ return [
     'contact_support' => 'اگر سوالی دارید یا نیاز به راهنمایی دارید، با',
     'support' => 'پشتیبانی EarthCoop',
     'contact_support_aria' => 'رفتن به فرم تماس با پشتیبانی EarthCoop',
+    'terms_acceptance_required' => 'لطفاً اساسنامه و شرایط استفاده را بپذیرید.',
+    'terms_accept_success' => 'پذیرش اساسنامه با موفقیت ثبت شد؛ به مراحل ثبت‌نام بازگردید.',
+    'registration_requires_terms' => 'برای ثبت‌نام، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+    'registration_start_requires_terms' => 'برای ورود به صفحه ثبت‌نام، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+    'google_registration_requires_terms' => 'برای ثبت‌نام با گوگل، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
     'please_accept' => 'برای ادامه باید اساسنامه و شرایط استفاده را بپذیرید.',
 ];
