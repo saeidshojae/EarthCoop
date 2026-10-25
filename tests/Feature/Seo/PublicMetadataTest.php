@@ -99,10 +99,14 @@ class PublicMetadataTest extends TestCase
         $this->assertStringContainsString('ارث‌کوپ', $html);
         $this->assertStringContainsString('اقتصاد آزاد مردمی', $html);
         $this->assertStringContainsString('حکمرانی مشارکتی', $html);
-        $this->assertStringContainsString('href="/cooperative"', $html);
-        $this->assertStringContainsString('href="/economy"', $html);
-        $this->assertStringContainsString('href="/governance"', $html);
-        $this->assertStringContainsString('href="/justice"', $html);
+        foreach ([
+            'seo.pillars.cooperative',
+            'seo.pillars.economy',
+            'seo.pillars.governance',
+            'seo.pillars.justice',
+        ] as $routeName) {
+            $this->assertStringContainsString(route($routeName), $html);
+        }
     }
 
     public function test_published_page_prefers_translated_meta_values_and_is_indexable(): void
