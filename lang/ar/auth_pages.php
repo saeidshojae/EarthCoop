@@ -40,5 +40,6 @@ return [
     'validation_message_max' => 'يجب ألا يتجاوز النص 500 حرف.',
     'validation_job_max' => 'يجب ألا يتجاوز وصف المهنة أو مجال الخبرة 500 حرف.',
     'validation_password_required' => 'يرجى إدخال كلمة المرور.',
+    'password_changed_success' => 'تم تغيير كلمة المرور بنجاح.',
     'validation_string' => 'القيمة المدخلة غير صالحة.',
 ];
