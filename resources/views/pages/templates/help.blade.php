@@ -430,125 +430,37 @@
     </section>
     @endif
 
-    <!-- Progressive, task-oriented guide -->
-    <section class="py-10 md:py-16 bg-light-gray fade-in-section" aria-label="راهنمای استفاده">
+    <!-- Progressive, task-oriented guide; all visible copy is localized. -->
+    <section class="py-10 md:py-16 bg-light-gray fade-in-section" aria-label="{{ __('help_guide.aria_label') }}">
         <div class="container mx-auto px-4 sm:px-6">
             <div class="max-w-5xl mx-auto">
-                <!-- Card 1: Agreement and account creation -->
-                <article class="help-guide-card">
-                    <button type="button" class="help-guide-header" id="guide-heading-1" data-card="1" aria-expanded="false" aria-controls="content-1">
-                        <span class="help-guide-header-content">
-                            <span class="help-guide-icon earth-green" aria-hidden="true"><i class="fas fa-user-plus"></i></span>
-                            <span class="help-guide-heading-copy">
-                                <span class="help-guide-title">پذیرش شرایط و آغاز ثبت‌نام</span>
-                                <span class="help-guide-subtitle">از پذیرش مقررات تا تأیید حساب</span>
+                @php
+                    $guideCards = [
+                        ['number' => 1, 'title' => 'help_guide.card1_title', 'subtitle' => 'help_guide.card1_subtitle', 'body' => 'help_guide.card1_body', 'icon' => 'fa-user-plus', 'color' => 'earth-green'],
+                        ['number' => 2, 'title' => 'help_guide.card2_title', 'subtitle' => 'help_guide.card2_subtitle', 'body' => 'help_guide.card2_body', 'icon' => 'fa-clipboard-list', 'color' => 'ocean-blue'],
+                        ['number' => 3, 'title' => 'help_guide.card3_title', 'subtitle' => 'help_guide.card3_subtitle', 'body' => 'help_guide.card3_body', 'icon' => 'fa-house-user', 'color' => 'digital-gold'],
+                    ];
+                @endphp
+                @foreach ($guideCards as $card)
+                    <article class="help-guide-card">
+                        <button type="button" class="help-guide-header" id="guide-heading-{{ $card['number'] }}" data-card="{{ $card['number'] }}" aria-expanded="false" aria-controls="content-{{ $card['number'] }}">
+                            <span class="help-guide-header-content">
+                                <span class="help-guide-icon {{ $card['color'] }}" aria-hidden="true"><i class="fas {{ $card['icon'] }}"></i></span>
+                                <span class="help-guide-heading-copy">
+                                    <span class="help-guide-title">{{ __($card['title']) }}</span>
+                                    <span class="help-guide-subtitle">{{ __($card['subtitle']) }}</span>
+                                </span>
                             </span>
-                        </span>
-                        <i class="fas fa-chevron-down help-guide-chevron" aria-hidden="true"></i>
-                    </button>
-                    <div class="help-guide-content" id="content-1" role="region" aria-labelledby="guide-heading-1" hidden>
-                        <p>برای آغاز عضویت، ابتدا اساسنامه، شرایط استفاده و مفاد حقوقی نمایش‌داده‌شده را با دقت مطالعه و پذیرش خود را ثبت کنید.</p>
-                        <h3><i class="fas fa-clipboard-check" aria-hidden="true"></i> کد دعوت و ایجاد حساب</h3>
-                        <p>اگر در زمان ثبت‌نام کد دعوت الزامی باشد، یک کد معتبر، استفاده‌نشده و منقضی‌نشده وارد کنید. الزام به کد دعوت تابع تنظیمات جاری سامانه است.</p>
-                        <p>سپس حساب خود را با واردکردن نشانی ایمیل و تعیین رمز عبور ایجاد کنید یا، اگر این گزینه در صفحه ارائه شده است، از ورود با حساب گوگل استفاده کنید. اگر سامانه تأیید ایمیل را درخواست کرد، پیش از ادامه آن را تکمیل کنید.</p>
-                        <div class="guide-note guide-note-info">
-                            <i class="fas fa-info-circle" aria-hidden="true"></i>
-                            <span>مراحل و گزینه‌های در دسترس ممکن است با توجه به تنظیمات فعال سامانه متفاوت باشند. پیام‌های همان صفحه را مبنا قرار دهید.</span>
+                            <i class="fas fa-chevron-down help-guide-chevron" aria-hidden="true"></i>
+                        </button>
+                        <div class="help-guide-content" id="content-{{ $card['number'] }}" role="region" aria-labelledby="guide-heading-{{ $card['number'] }}" hidden>
+                            {!! __($card['body']) !!}
                         </div>
-                    </div>
-                </article>
-
-                <!-- Card 2: Registration details -->
-                <article class="help-guide-card">
-                    <button type="button" class="help-guide-header" id="guide-heading-2" data-card="2" aria-expanded="false" aria-controls="content-2">
-                        <span class="help-guide-header-content">
-                            <span class="help-guide-icon ocean-blue" aria-hidden="true"><i class="fas fa-clipboard-list"></i></span>
-                            <span class="help-guide-heading-copy">
-                                <span class="help-guide-title">مراحل ثبت‌نام در EarthCoop</span>
-                                <span class="help-guide-subtitle">اطلاعات هویتی، زمینه‌های فعالیت و محل سکونت</span>
-                            </span>
-                        </span>
-                        <i class="fas fa-chevron-down help-guide-chevron" aria-hidden="true"></i>
-                    </button>
-                    <div class="help-guide-content" id="content-2" role="region" aria-labelledby="guide-heading-2" hidden>
-                        <h3><i class="fas fa-id-card" aria-hidden="true"></i> ۱. اطلاعات هویتی</h3>
-                        <p>فیلدهای هویتی نمایش‌داده‌شده را دقیق و مطابق قالب فرم تکمیل کنید. این اطلاعات می‌تواند شامل موارد زیر باشد:</p>
-                        <ul>
-                            <li>نام و نام خانوادگی؛</li>
-                            <li>تاریخ تولد و جنسیت؛</li>
-                            <li>ملیت؛</li>
-                            <li>کد ملی، در صورت درخواست فرم؛</li>
-                            <li>شماره تلفن همراه و کد کشور.</li>
-                        </ul>
-                        <p>سامانه برخی شناسه‌ها و شماره‌های تماس را برای جلوگیری از ثبت اطلاعات تکراری اعتبارسنجی می‌کند. تاریخ تولد و جنسیت نیز در تعیین برخی ابعاد عضویت گروهی کاربرد دارند.</p>
-
-                        <h3><i class="fas fa-briefcase" aria-hidden="true"></i> ۲. زمینه‌های صنفی و تخصصی</h3>
-                        <p>زمینه‌های شغلی و صنفی و نیز زمینه‌های علمی یا تجربی مرتبط با خود را از فهرست‌های موجود انتخاب کنید. انتخاب‌ها به‌صورت سلسله‌مراتبی ارائه می‌شوند و امکان انتخاب چند زمینه، مطابق امکانات فرم، وجود دارد.</p>
-                        <p>این اطلاعات به تعیین عضویت‌های صنفی و تخصصی شما کمک می‌کنند. در صورت تغییر زمینه‌های فعالیت در آینده، عضویت‌های مرتبط نیز ممکن است بر اساس اطلاعات جدید تغییر کنند.</p>
-
-                        <h3><i class="fas fa-map-marked-alt" aria-hidden="true"></i> ۳. محل سکونت اصلی</h3>
-                        <p>مسیر معتبر محل سکونت را از میان گزینه‌های ارائه‌شده انتخاب کنید. توالی سطوح مکانی در همه مناطق یکسان نیست؛ انتخاب‌گر بر اساس ساختار معتبر و داده‌های موجود، مسیر قابل انتخاب را نشان می‌دهد.</p>
-                        <p>ثبت‌نام در سطحی پایان می‌یابد که سامانه برای مسیر انتخاب‌شده به‌عنوان پایه معتبر محل سکونت می‌پذیرد. الزام همیشگی به انتخاب محله یا ثبت خیابان، کوچه، مجتمع و ساختمان را فرض نکنید؛ سطح قابل ثبت به ساختار همان مکان بستگی دارد.</p>
-                        <p>اگر مکان موردنظر در فهرست نیست، از گزینه پیشنهاد مکان استفاده کنید. پیشنهادها ممکن است برای جمع‌آوری شواهد یا بررسی انسانی در انتظار بمانند. حمایت کاربران به‌تنهایی باعث تأیید خودکار مکان نمی‌شود.</p>
-                        <div class="guide-note guide-note-info">
-                            <i class="fas fa-map-pin" aria-hidden="true"></i>
-                            <span>پس از ثبت محل سکونت، می‌توانید از بخش «مکان و حکمرانی من» وضعیت مکانی و گزینه‌های تکمیلی موجود را بررسی کنید.</span>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Card 3: Dashboard, groups and governance -->
-                <article class="help-guide-card">
-                    <button type="button" class="help-guide-header" id="guide-heading-3" data-card="3" aria-expanded="false" aria-controls="content-3">
-                        <span class="help-guide-header-content">
-                            <span class="help-guide-icon digital-gold" aria-hidden="true"><i class="fas fa-house-user"></i></span>
-                            <span class="help-guide-heading-copy">
-                                <span class="help-guide-title">خانهٔ شما در EarthCoop</span>
-                                <span class="help-guide-subtitle">حساب کاربری، گروه‌ها، اجتماع محلی و حکمرانی</span>
-                            </span>
-                        </span>
-                        <i class="fas fa-chevron-down help-guide-chevron" aria-hidden="true"></i>
-                    </button>
-                    <div class="help-guide-content" id="content-3" role="region" aria-labelledby="guide-heading-3" hidden>
-                        <h3><i class="fas fa-user-circle" aria-hidden="true"></i> حساب کاربری</h3>
-                        <p>از بخش حساب کاربری برای مشاهده و ویرایش اطلاعاتی که امکان تغییرشان فراهم شده است استفاده کنید. بسته به امکانات فعال، ممکن است بتوانید اطلاعات تکمیلی، تصویر، معرفی کوتاه یا پیوندهای خود را مدیریت کنید. تنظیمات نمایش اطلاعات را با توجه به حریم خصوصی خود بررسی کنید.</p>
-                        <p>تغییر زمینه‌های فعالیت یا محل سکونت اصلی می‌تواند بر عضویت‌های گروهی و جایگاه مکانی شما اثر بگذارد.</p>
-
-                        <h3><i class="fas fa-layer-group" aria-hidden="true"></i> گروه‌های من</h3>
-                        <p>عضویت‌های شما در ابعاد مختلف سازمان‌دهی می‌شوند:</p>
-                        <ul>
-                            <li><strong>عمومی و مکانی:</strong> مرتبط با محل سکونت اصلی و ساختار رسمی حکمرانی؛</li>
-                            <li><strong>صنفی:</strong> مرتبط با زمینه‌های شغلی و صنفی؛</li>
-                            <li><strong>تخصصی:</strong> مرتبط با زمینه‌های علمی و تجربی؛</li>
-                            <li><strong>سنی و جنسیتی:</strong> بر اساس دسته‌بندی‌های تعریف‌شده در سامانه.</li>
-                        </ul>
-                        <p>همه گروه‌های قابل تصور لزوماً ایجاد نشده‌اند و نوع دسترسی شما به وضعیت عضویت و نقش‌تان در هر گروه بستگی دارد. مشاهده یک گروه به‌تنهایی به معنای داشتن حق رأی یا اختیار مدیریتی در آن نیست.</p>
-
-                        <h3><i class="fas fa-map-marked-alt" aria-hidden="true"></i> مکان و حکمرانی من</h3>
-                        <p>این بخش برای مشاهده و مدیریت محل سکونت و جایگاه شما در ساختار رسمی حکمرانی است. محل سکونت اصلی تأییدشده مبنای مهمی برای تعیین حوزه‌های رسمی مکانی و حقوق مشارکت در آن‌هاست. روابطی مانند محل کار یا تحصیل، به‌خودی‌خود جایگزین محل سکونت اصلی برای رأی‌دادن در حکمرانی رسمی نمی‌شوند.</p>
-                        <p><strong>اجتماع محلی با حکمرانی رسمی یکسان نیست.</strong> در صورت وجود گزینه، ممکن است بتوانید به اجتماع اختیاری مرتبط با خیابان، کوچه، مجتمع یا ساختمان بپیوندید یا از آن خارج شوید. این عضویت خودکار نیست و اجتماع محلی به‌طور خودکار به سطحی از انتخابات رسمی تبدیل نمی‌شود.</p>
-
-                        <h3><i class="fas fa-comments" aria-hidden="true"></i> فعالیت در گروه و گفت‌وگوی گروهی</h3>
-                        <p>در گروه‌هایی که برای نقش شما مجاز است، امکاناتی مانند انتشار پست، ثبت نظر، نظرسنجی یا رأی‌گیری می‌تواند در دسترس باشد. قابلیت‌های قابل استفاده را از همان صفحه گروه بررسی کنید.</p>
-                        <p>مشاهده گروه و ارسال پیام در گفت‌وگوی گروهی دو قابلیت متفاوت‌اند. ارسال پیام در گفت‌وگوی گروهی به داشتن حساب نجم بهار و پرداخت حق عضویت دوره جاری وابسته است؛ در صورت تکمیل‌نبودن این پیش‌نیاز، سامانه مسیر مربوط را نمایش می‌دهد.</p>
-
-                        <h3><i class="fas fa-user-friends" aria-hidden="true"></i> دعوت از اعضای جدید</h3>
-                        <p>سهمیه دعوت، مدت اعتبار کدها و امتیاز دعوت موفق تابع تنظیمات و قواعد جاری سامانه‌اند و ممکن است تغییر کنند. برای اطلاع از مقادیر فعلی، بخش دعوت را بررسی کنید.</p>
-                        <p>صدور دعوت می‌تواند به تکمیل اطلاعات پروفایل و واجد شرایط بودن حساب نجم بهار، از جمله پرداخت حق عضویت دوره جاری، وابسته باشد. اگر پیش‌نیازی کامل نباشد، ابتدا دستور نمایش‌داده‌شده را دنبال کنید.</p>
-
-                        <h3><i class="fas fa-vote-yea" aria-hidden="true"></i> انتخابات و مشارکت دموکراتیک</h3>
-                        <p>انتخابات رسمی در چارچوب ساختار حکمرانی و بر اساس شرایط مشارکت در حوزه مربوط برگزار می‌شود. برای شرکت، وضعیت انتخابات، شرایط احراز صلاحیت و دستورهای صفحه را بررسی کنید و در صورت بازبودن انتخابات و واجد شرایط بودن، رأی خود را از همان فرم ثبت کنید.</p>
-                        <p>آغاز و پایان انتخابات، شمارش آرا و مراحل بعدی تابع چرخه رسمی سامانه است؛ بنابراین نباید حدنصاب یا دوره زمانی ثابتی را برای همه گروه‌ها فرض کرد.</p>
-                        <div class="guide-note guide-note-info">
-                            <i class="fas fa-lightbulb" aria-hidden="true"></i>
-                            <span>اگر گزینه‌ای را نمی‌بینید، ممکن است به نقش شما، وضعیت عضویت، سیاست فعال گروه یا تکمیل‌نبودن یک پیش‌نیاز مربوط باشد.</span>
-                        </div>
-                    </div>
-                </article>
+                    </article>
+                @endforeach
             </div>
         </div>
     </section>
-</main>
 
 @push('scripts')
 <script>
