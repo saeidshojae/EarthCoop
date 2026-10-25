@@ -75,6 +75,22 @@ class LoginController extends Controller
         ]);
     }
 
+    protected function validateLogin(Request $request)
+    {
+        $request->validate([
+            $this->username() => 'required|string',
+            'password' => 'required|string',
+        ], [
+            $this->username() . '.required' => __('auth_pages.validation_email_required'),
+            $this->username() . '.string' => __('auth_pages.validation_string'),
+            'password.required' => __('auth_pages.validation_password_required'),
+            'password.string' => __('auth_pages.validation_string'),
+        ], [
+            $this->username() => __('auth_pages.field_email'),
+            'password' => __('auth_pages.field_password'),
+        ]);
+    }
+
     protected function sendFailedLoginResponse(Request $request)
     {
         $this->emitRuntime('najm_hoda.input.auth.service.login.failed', [
