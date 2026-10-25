@@ -108,3 +108,31 @@ test('legal page interface is localized and the document renderer selects the cu
         assert.match(translations, /'guest_terms_error'\s*=>/);
     }
 });
+
+
+test('legal consent and registration feedback uses localized strings', () => {
+    const termController = read('app/Http/Controllers/Profile/TermController.php');
+    const startController = read('app/Http/Controllers/Auth/Register/StartController.php');
+    const googleController = read('app/Http/Controllers/Auth/GoogleController.php');
+
+    assert.match(termController, /legal_page\.terms_acceptance_required/);
+    assert.match(termController, /legal_page\.terms_accept_success/);
+    assert.match(startController, /legal_page\.registration_start_requires_terms/);
+    assert.match(startController, /legal_page\.registration_requires_terms/);
+    assert.match(googleController, /legal_page\.google_registration_requires_terms/);
+    assert.match(googleController, /legal_page\.google_invite_code_required/);
+
+    for (const locale of ['fa', 'en', 'ar']) {
+        const translations = read(`resources/lang/${locale}/legal_page.php`);
+        for (const key of [
+            'terms_acceptance_required',
+            'terms_accept_success',
+            'registration_start_requires_terms',
+            'registration_requires_terms',
+            'google_registration_requires_terms',
+            'google_invite_code_required',
+        ]) {
+            assert.match(translations, new RegExp(`'${key}'\\s*=>`));
+        }
+    }
+});
