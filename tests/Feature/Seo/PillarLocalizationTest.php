@@ -23,6 +23,7 @@ class PillarLocalizationTest extends TestCase
         $this->assertStringContainsString('"inLanguage":"' . $locale . '"', $html);
         $this->assertStringContainsString('content="index,follow"', $html);
         $this->assertStringNotContainsString('اقتصاد در خدمت عدالت، نه برعکس', $html);
+        $this->assertStringNotContainsString('تعاونی پلتفرمی چیست و چه نسبتی با EarthCoop دارد؟', $html);
     }
 
     public static function localizedPillarProvider(): array
