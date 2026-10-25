@@ -15,6 +15,7 @@ return [
     'foundational_references' => 'Full text of foundational documents',
     'foundational_documents' => 'Foundational and reference documents',
     'foundational_index' => 'Foundational documents index',
+    'supplementary_notice' => 'These supplementary clauses are loaded from separately maintained administrator content. Their wording may not be translated; review the original text of each clause before relying on it.',
     'supplementary_sections' => 'Supplementary sections',
     'no_statute' => 'No statute has been registered yet.',
     'read_accept' => 'Review and accept the terms',
