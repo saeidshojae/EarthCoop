@@ -58,4 +58,67 @@ class HelpGuidePageTest extends TestCase
             ->assertDontSee('هر سه ماه یک‌بار')
             ->assertDontSee('تا سطح محله الزامی است');
     }
+    public function test_help_guide_accordion_copy_is_localized_in_english_and_arabic(): void
+    {
+        Page::create([
+            'title' => 'راهنمای استفاده',
+            'title_translations' => [
+                'fa' => 'راهنمای استفاده',
+                'en' => 'User Guide',
+                'ar' => 'دليل الاستخدام',
+            ],
+            'slug' => 'help-guide-localization-test',
+            'template' => 'help',
+            'content' => '<p>مقدمه فارسی</p>',
+            'content_translations' => [
+                'fa' => '<p>مقدمه فارسی</p>',
+                'en' => '<p>English introduction</p>',
+                'ar' => '<p>مقدمة عربية</p>',
+            ],
+            'meta_title' => 'User guide',
+            'meta_description' => 'User guide',
+            'meta_description_translations' => [
+                'fa' => 'راهنمای استفاده',
+                'en' => 'User guide',
+                'ar' => 'دليل الاستخدام',
+            ],
+            'is_published' => true,
+            'show_in_header' => false,
+        ]);
+
+        $cases = [
+            'en' => [
+                'Accept the Terms and Start Registration',
+                'Registration Steps on EarthCoop',
+                'Your Home on EarthCoop',
+                'Invitation code and account creation',
+                'My location and governance',
+                'A local community is not the same as formal governance.',
+                'Group-chat messaging requires a Najm Bahar account',
+            ],
+            'ar' => [
+                'الموافقة على الشروط وبدء التسجيل',
+                'خطوات التسجيل في EarthCoop',
+                'مساحتك على EarthCoop',
+                'رمز الدعوة وإنشاء الحساب',
+                'موقعي وحوكمتي',
+                'المجتمع المحلي ليس هو الحوكمة الرسمية.',
+                'يتطلب إرسال الرسائل في الدردشة الجماعية امتلاك حساب نجم بهار',
+            ],
+        ];
+
+        foreach ($cases as $locale => $expectedTexts) {
+            $response = $this->withSession(['locale' => $locale])
+                ->get('/pages/help-guide-localization-test');
+
+            $response->assertOk();
+            foreach ($expectedTexts as $text) {
+                $response->assertSee($text);
+            }
+            $response->assertDontSee('پذیرش شرایط و آغاز ثبت‌نام');
+            $response->assertDontSee('اجتماع محلی با حکمرانی رسمی یکسان نیست');
+            $response->assertDontSee('کد دعوت و ایجاد حساب');
+        }
+    }
+
 }
