@@ -268,6 +268,10 @@
 
 
                 <li><a href="#bahar" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_bahar') }}</a></li>
+                <li><a href="{{ route('seo.pillars.cooperative') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_pillar_cooperative') }}</a></li>
+                <li><a href="{{ route('seo.pillars.economy') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_pillar_economy') }}</a></li>
+                <li><a href="{{ route('seo.pillars.governance') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_pillar_governance') }}</a></li>
+                <li><a href="{{ route('seo.pillars.justice') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_pillar_justice') }}</a></li>
 
 
 
