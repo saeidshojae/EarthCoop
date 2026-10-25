@@ -305,7 +305,7 @@
     function copyEmail() {
         const email = 'Team@EarthCoop.ir';
         navigator.clipboard.writeText(email).then(() => {
-            alert(@json(__('page_templates.email_copied')) + email);
+            alert(@json(__('page_templates.email_copied'), JSON_UNESCAPED_UNICODE) + email);
         }).catch(err => {
             console.error('Error copying email:', err);
         });
