@@ -103,14 +103,74 @@
     }
 
     .help-guide-header {
+        appearance: none;
+        width: 100%;
+        border: 0;
+        text-align: right;
+        color: inherit;
+        font: inherit;
         cursor: pointer;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1.5rem 2rem;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
-        transition: all 0.3s ease;
+        transition: background-color 0.25s ease;
     }
+
+    .help-guide-header:focus-visible {
+        outline: 3px solid var(--color-ocean-blue);
+        outline-offset: -4px;
+    }
+
+    .help-guide-header-content { min-width: 0; }
+
+    .help-guide-heading-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .25rem;
+        text-align: right;
+    }
+
+    .help-guide-subtitle {
+        color: #64748b;
+        font-size: .9rem;
+        font-weight: 400;
+        line-height: 1.6;
+    }
+
+    .guide-intro {
+        max-width: 54rem;
+        margin-inline: auto;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid rgba(16,185,129,.18);
+        border-radius: 1rem;
+        background: linear-gradient(135deg, rgba(16,185,129,.06), rgba(59,130,246,.05));
+    }
+
+    .guide-intro p { margin: 0; }
+
+    .guide-note {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+        margin-top: 1.25rem;
+        padding: 1rem 1.1rem;
+        border-radius: .85rem;
+        line-height: 1.8;
+    }
+
+    .guide-note-info {
+        color: #1e3a8a;
+        background: #eff6ff;
+        border-inline-start: 4px solid #3b82f6;
+    }
+
+    .guide-note i { margin-top: .35rem; flex: 0 0 auto; }
+
+    .help-guide-content[hidden] { display: none !important; }
 
     .help-guide-header:hover {
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
@@ -252,24 +312,7 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    .help-guide-content .note {
-        background: linear-gradient(135deg, var(--color-digital-gold), var(--color-accent-peach));
-        border-right: 5px solid var(--color-accent-peach);
-        padding: 1.25rem 1.5rem;
-        margin-top: 1.5rem;
-        border-radius: 0.75rem;
-        color: var(--color-pure-white);
-        font-size: 1rem;
-        font-weight: 500;
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-        text-align: justify;
-        font-family: 'Vazirmatn', sans-serif;
-    }
-
-    .help-guide-content .note i {
-        color: var(--color-pure-white);
-        margin-left: 0.75rem;
-    }
+    .help-guide-content .note { margin-top: 1rem; }
 
     /* Page content styling */
     .page-content-help {
@@ -374,12 +417,12 @@
         </div>
     </section>
 
-    <!-- Dynamic Content Section (Introduction) -->
+    <!-- Short introduction: detailed guidance lives in the three accordion cards below. -->
     @if($page->translated_content)
-    <section class="py-12 md:py-16 bg-pure-white fade-in-section">
+    <section class="py-10 md:py-12 bg-pure-white fade-in-section">
         <div class="container mx-auto px-6">
             <div class="max-w-4xl mx-auto">
-                <div class="page-content-help text-lg md:text-xl text-gray-700 leading-relaxed">
+                <div class="page-content-help guide-intro text-base md:text-lg text-gray-700 leading-relaxed">
                     {!! $page->translated_content !!}
                 </div>
             </div>
@@ -387,146 +430,37 @@
     </section>
     @endif
 
-    <!-- Help Guide Cards Section -->
-    <section class="py-16 md:py-24 bg-light-gray fade-in-section">
-        <div class="container mx-auto px-6">
+    <!-- Progressive, task-oriented guide; all visible copy is localized. -->
+    <section class="py-10 md:py-16 bg-light-gray fade-in-section" aria-label="{{ __('help_guide.aria_label') }}">
+        <div class="container mx-auto px-4 sm:px-6">
             <div class="max-w-5xl mx-auto">
-                <!-- Card 1: Registration -->
-                <div class="help-guide-card">
-                    <div class="help-guide-header" data-card="1">
-                        <div class="help-guide-header-content">
-                            <div class="help-guide-icon earth-green">
-                                <i class="fas fa-user-plus"></i>
-                            </div>
-                            <h2 class="help-guide-title">پذیرش شرایط و آغاز ثبت‌نام</h2>
+                @php
+                    $guideCards = [
+                        ['number' => 1, 'title' => 'help_guide.card1_title', 'subtitle' => 'help_guide.card1_subtitle', 'body' => 'help_guide.card1_body', 'icon' => 'fa-user-plus', 'color' => 'earth-green'],
+                        ['number' => 2, 'title' => 'help_guide.card2_title', 'subtitle' => 'help_guide.card2_subtitle', 'body' => 'help_guide.card2_body', 'icon' => 'fa-clipboard-list', 'color' => 'ocean-blue'],
+                        ['number' => 3, 'title' => 'help_guide.card3_title', 'subtitle' => 'help_guide.card3_subtitle', 'body' => 'help_guide.card3_body', 'icon' => 'fa-house-user', 'color' => 'digital-gold'],
+                    ];
+                @endphp
+                @foreach ($guideCards as $card)
+                    <article class="help-guide-card">
+                        <button type="button" class="help-guide-header" id="guide-heading-{{ $card['number'] }}" data-card="{{ $card['number'] }}" aria-expanded="false" aria-controls="content-{{ $card['number'] }}">
+                            <span class="help-guide-header-content">
+                                <span class="help-guide-icon {{ $card['color'] }}" aria-hidden="true"><i class="fas {{ $card['icon'] }}"></i></span>
+                                <span class="help-guide-heading-copy">
+                                    <span class="help-guide-title">{{ __($card['title']) }}</span>
+                                    <span class="help-guide-subtitle">{{ __($card['subtitle']) }}</span>
+                                </span>
+                            </span>
+                            <i class="fas fa-chevron-down help-guide-chevron" aria-hidden="true"></i>
+                        </button>
+                        <div class="help-guide-content" id="content-{{ $card['number'] }}" role="region" aria-labelledby="guide-heading-{{ $card['number'] }}" hidden>
+                            {!! __($card['body']) !!}
                         </div>
-                        <i class="fas fa-chevron-down help-guide-chevron"></i>
-                    </div>
-                    <div class="help-guide-content" id="content-1">
-                        <p>اولین گام برای پیوستن به EarthCoop، مطالعه و پذیرش <span class="highlight">اساسنامه و شرایط استفاده</span> است. با وارد کردن کد دعوت و تأیید شرایط، وارد مرحله‌ی ثبت‌نام اولیه می‌شوید.</p>
-                        <h3><i class="fas fa-check-circle"></i> مراحل ثبت‌نام اولیه</h3>
-                        <ul>
-                            <li>آدرس ایمیل معتبر وارد کنید</li>
-                            <li>یک رمز عبور تعیین کنید</li>
-                            <li>ایمیل خود را تأیید نمایید</li>
-                        </ul>
-                        <p>همچنین می‌توانید از طریق حساب گوگل نیز ثبت‌نام کنید.</p>
-                    </div>
-                </div>
-
-                <!-- Card 2: Registration Steps -->
-                <div class="help-guide-card">
-                    <div class="help-guide-header" data-card="2">
-                        <div class="help-guide-header-content">
-                            <div class="help-guide-icon ocean-blue">
-                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                            <h2 class="help-guide-title">مراحل ثبت‌نام در EarthCoop</h2>
-                        </div>
-                        <i class="fas fa-chevron-down help-guide-chevron"></i>
-                    </div>
-                    <div class="help-guide-content" id="content-2">
-                        <h3><i class="fas fa-id-card"></i> ۱. اطلاعات هویتی</h3>
-                        <p>در این مرحله اطلاعات زیر از شما دریافت می‌شود:</p>
-                        <ul>
-                            <li>نام و نام خانوادگی</li>
-                            <li>تاریخ تولد</li>
-                            <li>جنسیت</li>
-                            <li>ملیت</li>
-                            <li>کد ملی</li>
-                            <li>شماره تلفن همراه</li>
-                        </ul>
-                        <p>ما برای حفظ شفافیت و هویت واقعی سهامداران، اطمینان حاصل می‌کنیم که هیچ‌کس نتواند بیش از یک حساب داشته باشد. همچنین، از اطلاعات سن و جنسیت شما برای تشکیل <span class="highlight">گروه‌های اختصاصی سنی و جنسیتی</span> استفاده می‌شود.</p>
-
-                        <h3><i class="fas fa-briefcase"></i> ۲. اطلاعات شغلی و تخصصی</h3>
-                        <p>در این بخش، باید:</p>
-                        <ul>
-                            <li>زمینه‌های فعالیت شغلی و صنفی</li>
-                            <li>زمینه‌های علمی و تجربی</li>
-                        </ul>
-                        <p>خود را از فهرست موجود انتخاب کنید. انتخاب‌ها در سه سطح انجام می‌شود (مثلاً: "آموزش > معلمان > دبیر ریاضی"). امکان انتخاب چندگانه در هر بخش وجود دارد. این اطلاعات مبنای عضویت شما در <span class="highlight">گروه‌های تخصصی (صنفی و علمی)</span> خواهد بود.</p>
-
-                        <h3><i class="fas fa-map-marker-alt"></i> ۳. اطلاعات مکانی</h3>
-                        <p>در این مرحله، باید موقعیت مکانی خود را به‌صورت دقیق انتخاب کنید:</p>
-                        <ul>
-                            <li>قاره ← کشور ← استان ← شهرستان ← بخش ← شهر یا دهستان ← منطقه شهری یا روستا ← محله</li>
-                        </ul>
-                        <p>مشخص‌کردن محل سکونت تا سطح <span class="highlight">محله</span> الزامی است. به‌صورت اختیاری، می‌توانید خیابان و کوچه را هم تعیین کنید تا به گروه‌های دقیق‌تر بپیوندید. اگر مکان شما در فهرست موجود نیست، می‌توانید مکان جدیدی را پیشنهاد دهید.</p>
-                        <p>با تکمیل این مرحله، با زدن دکمه <span class="highlight">«تکمیل ثبت‌نام»</span>، ثبت‌نام شما به پایان می‌رسد.</p>
-                    </div>
-                </div>
-
-                <!-- Card 3: Your Home in EarthCoop -->
-                <div class="help-guide-card">
-                    <div class="help-guide-header" data-card="3">
-                        <div class="help-guide-header-content">
-                            <div class="help-guide-icon digital-gold">
-                                <i class="fas fa-home"></i>
-                            </div>
-                            <h2 class="help-guide-title">خانه شما در EarthCoop</h2>
-                        </div>
-                        <i class="fas fa-chevron-down help-guide-chevron"></i>
-                    </div>
-                    <div class="help-guide-content" id="content-3">
-                        <h3><i class="fas fa-user"></i> حساب کاربری</h3>
-                        <p>در این بخش می‌توانید:</p>
-                        <ul>
-                            <li>اطلاعات خود را مشاهده و مدیریت کنید</li>
-                            <li>نمایش یا مخفی بودن آن‌ها را برای دیگران تنظیم کنید</li>
-                            <li>بیوگرافی، مدارک، تصویر و لینک‌های شخصی خود را اضافه کنید</li>
-                            <li>زمینه‌های فعالیت خود را تغییر دهید (تغییر زمینه‌ها باعث تغییر عضویت گروهی شما خواهد شد)</li>
-                        </ul>
-
-                        <h3><i class="fas fa-user-friends"></i> دعوت از دوستان</h3>
-                        <p>هر کاربر امکان ارسال <span class="highlight">۱۰ کد دعوت</span> دارد. هر کد تا <span class="highlight">۴۸ ساعت</span> معتبر است و پس از ثبت‌نام موفق طرف مقابل، شما به‌عنوان معرف ثبت می‌شوید.</p>
-                        <div class="note">
-                            <i class="fas fa-gift"></i> <span class="highlight">پاداش دعوت:</span> هر دعوت موفق معادل <span class="highlight">۱۰ بهار</span> (واحد پول داخلی EarthCoop) برابر با ارزش <span class="highlight">۱ گرم طلای خالص</span> به شما پاداش می‌دهد.
-                        </div>
-
-                        <h3><i class="fas fa-layer-group"></i> گروه‌های من</h3>
-                        <p>در این بخش به تمامی گروه‌هایی که به‌صورت خودکار عضو آن‌ها شده‌اید دسترسی دارید:</p>
-                        <ul>
-                            <li>گروه‌های مجامع عمومی: از سطح محله تا سطح جهانی</li>
-                            <li>گروه‌های تخصصی: صنفی و علمی (با امکان فیلتر بر اساس سطح مکانی)</li>
-                            <li>گروه‌های اختصاصی: سنی و جنسیتی در سطوح مختلف</li>
-                        </ul>
-                        <p>🔎 نقش شما در هر گروه (فعال یا ناظر) نیز مشخص است:</p>
-                        <ul>
-                            <li><span class="highlight">ناظر:</span> امکان مشاهده، بدون مشارکت</li>
-                            <li><span class="highlight">فعال:</span> امکان ارسال پست، شرکت در انتخابات، نظرسنجی، رأی‌گیری و...</li>
-                        </ul>
-
-                        <h3><i class="fas fa-comments"></i> گفتگوهای خصوصی</h3>
-                        <p>فهرست چت‌های شخصی شما با سایر کاربران در این بخش قابل مدیریت است.</p>
-
-                        <h3><i class="fas fa-map-marked-alt"></i> محیط گروه‌ها</h3>
-                        <p>با کلیک بر روی نام هر گروه، وارد محیط آن گروه می‌شوید. در گروه‌هایی که فعال هستید، می‌توانید پست و نظرسنجی با موضوعاتی مانند:</p>
-                        <ul>
-                            <li>معرفی خود</li>
-                            <li>پیشنهاد برای محله</li>
-                            <li>انتقاد</li>
-                            <li>گزارش مشکل</li>
-                            <li>درخواست نشست مجمع عمومی</li>
-                        </ul>
-                        <p>منتشر کنید.</p>
-                        <div class="note">
-                            <i class="fas fa-info-circle"></i> <span class="highlight">نکته مهم:</span> گروه‌های محله‌ای بنیادی‌ترین بخش EarthCoop هستند. اگر تنها عضو محله‌ی خود هستید، یعنی شما بنیان‌گذار آن گروه هستید. بنابراین دعوت از هم‌محله‌ای‌ها اولویت دارد!
-                        </div>
-
-                        <h3><i class="fas fa-vote-yea"></i> انتخابات</h3>
-                        <p>EarthCoop از یک <span class="highlight">سیستم انتخاباتی خودکار، لحظه‌ای و شفاف</span> استفاده می‌کند. به محض رسیدن اعضای فعال یک گروه عمومی (مثلاً محله) به <span class="highlight">حدنصاب مشخص (پیش‌فرض: ۲۰ نفر)</span>، انتخابات برای تعیین مدیران و بازرسان آغاز می‌شود.</p>
-                        <p>انتخابات پویاست، یعنی:</p>
-                        <ul>
-                            <li>هر کاربر هر زمان می‌تواند رأی خود را ثبت یا تغییر دهد</li>
-                            <li>نتایج هر سه ماه یک‌بار به‌روز می‌شوند</li>
-                            <li>هیچ مدیری بدون رأی حداقلی بیش از ۳ ماه نمی‌ماند</li>
-                        </ul>
-                    </div>
-                </div>
+                    </article>
+                @endforeach
             </div>
         </div>
     </section>
-</main>
 
 @push('scripts')
 <script>
@@ -553,44 +487,46 @@
             observer.observe(section);
         });
 
-        // Accordion functionality for help guide cards
+        // Accessible single-open accordion for help guide cards
         const helpGuideHeaders = document.querySelectorAll('.help-guide-header');
-        const headerElement = document.getElementById('header');
 
-        helpGuideHeaders.forEach(header => {
+        const closeGuideCard = (header) => {
+            const contentId = header.getAttribute('aria-controls');
+            const content = document.getElementById(contentId);
+            if (!content) return;
+            header.classList.remove('expanded');
+            header.setAttribute('aria-expanded', 'false');
+            content.classList.remove('active');
+            content.hidden = true;
+        };
+
+        helpGuideHeaders.forEach((header) => {
             header.addEventListener('click', () => {
-                const cardNumber = header.getAttribute('data-card');
-                const content = document.getElementById(`content-${cardNumber}`);
+                const wasExpanded = header.getAttribute('aria-expanded') === 'true';
 
-                if (header.classList.contains('expanded')) {
-                    // Close this card
-                    content.classList.remove('active');
-                    header.classList.remove('expanded');
-                } else {
-                    // Close all other cards
-                    helpGuideHeaders.forEach(otherHeader => {
-                        if (otherHeader !== header && otherHeader.classList.contains('expanded')) {
-                            const otherCardNumber = otherHeader.getAttribute('data-card');
-                            const otherContent = document.getElementById(`content-${otherCardNumber}`);
-                            otherContent.classList.remove('active');
-                            otherHeader.classList.remove('expanded');
-                        }
-                    });
+                helpGuideHeaders.forEach((otherHeader) => {
+                    if (otherHeader !== header) closeGuideCard(otherHeader);
+                });
 
-                    // Open this card
-                    content.classList.add('active');
-                    header.classList.add('expanded');
+                const content = document.getElementById(header.getAttribute('aria-controls'));
+                if (!content) return;
 
-                    // Smooth scroll to the opened card
-                    setTimeout(() => {
-                        const headerHeight = headerElement ? headerElement.offsetHeight : 0;
-                        const targetPosition = header.getBoundingClientRect().top + window.scrollY - headerHeight - 40;
-                        window.scrollTo({
-                            top: targetPosition,
-                            behavior: 'smooth'
-                        });
-                    }, 100);
+                if (wasExpanded) {
+                    closeGuideCard(header);
+                    return;
                 }
+
+                header.classList.add('expanded');
+                header.setAttribute('aria-expanded', 'true');
+                content.hidden = false;
+                content.classList.add('active');
+
+                window.setTimeout(() => {
+                    const headerElement = document.getElementById('header');
+                    const headerHeight = headerElement ? headerElement.offsetHeight : 0;
+                    const targetPosition = header.getBoundingClientRect().top + window.scrollY - headerHeight - 24;
+                    window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                }, 100);
             });
         });
     });
