@@ -236,7 +236,7 @@ class LoginController extends Controller
             'risk' => 'low',
         ]);
 
-        return redirect()->route('login')->with('success', 'Password changed successfully.');
+        return redirect()->route('login')->with('success', __('auth_pages.password_changed_success'));
     }
 
     /**
