@@ -43,5 +43,10 @@ return [
     'contact_support' => 'If you have questions or need guidance, contact',
     'support' => 'EarthCoop Support',
     'contact_support_aria' => 'Go to the EarthCoop Support contact form',
+    'terms_acceptance_required' => 'Please accept the Membership Statute and Terms of Use.',
+    'terms_accept_success' => 'Acceptance of the Statute was recorded successfully. Return to the registration steps.',
+    'registration_requires_terms' => 'Please accept the Membership Statute and Terms of Use before registering.',
+    'registration_start_requires_terms' => 'Please accept the Membership Statute and Terms of Use before opening the registration page.',
+    'google_registration_requires_terms' => 'Please accept the Membership Statute and Terms of Use before registering with Google.',
     'please_accept' => 'You must accept the Statute and Terms of Use to continue.',
 ];
