@@ -2,7 +2,7 @@
 
 
 
-@section('title', 'ورود به سیستم - ' . config('app.name', 'EarthCoop'))
+@section('title', __('auth_pages.login_page_title') . ' - ' . config('app.name', 'EarthCoop'))
 
 
 
@@ -214,9 +214,9 @@
 
                 </a>
 
-                <h1 class="text-4xl font-bold text-white mb-2">خوش آمدید</h1>
+                <h1 class="text-4xl font-bold text-white mb-2">{{ __('auth_pages.login_heading') }}</h1>
 
-                <p class="text-purple-100 text-lg">به زمین نو وارد شوید</p>
+                <p class="text-purple-100 text-lg">{{ __('auth_pages.login_subheading') }}</p>
 
             </div>
 
@@ -272,7 +272,7 @@
 
                             <i class="fas fa-envelope text-blue-500 ml-2"></i>
 
-                            آدرس ایمیل
+                            {{ __('auth_pages.field_email') }}
 
                         </label>
 
@@ -318,7 +318,7 @@
 
                             <i class="fas fa-lock text-blue-500 ml-2"></i>
 
-                            رمز عبور
+                            {{ __('auth_pages.field_password') }}
 
                         </label>
 
@@ -334,7 +334,7 @@
 
                                 class="w-full px-4 py-3 border-2 @error('password') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none pl-12"
 
-                                placeholder="رمز عبور خود را وارد کنید"
+                                placeholder="{{ __('auth_pages.password_placeholder') }}"
 
                                 required
 
@@ -388,13 +388,13 @@
 
                             >
 
-                            <span class="text-sm text-gray-700">مرا به خاطر بسپار</span>
+                            <span class="text-sm text-gray-700">{{ __('auth_pages.remember_me') }}</span>
 
                         </label>
 
                         <a href="{{ route('password.reset.view') }}" class="text-sm text-blue-500 hover:text-blue-700 font-medium transition">
 
-                            فراموشی رمز عبور؟
+                            {{ __('auth_pages.forgot_password') }}
 
                         </a>
 
@@ -414,7 +414,7 @@
 
                         <i class="fas fa-sign-in-alt ml-2"></i>
 
-                        ورود به سامانه
+                        {{ __('auth_pages.login_button') }}
 
                     </button>
 
@@ -433,7 +433,7 @@
                                 <path fill="#EA4335" d="M12 5.977c1.468 0 2.786.505 3.823 1.495l2.873-2.873C16.959 2.982 14.695 2 12 2a9.997 9.997 0 0 0-8.936 5.509L6.405 10.1C7.191 7.736 9.395 5.977 12 5.977Z"/>
                             </svg>
 
-                            <span>ورود با حساب گوگل</span>
+                            <span>{{ __('auth_pages.google_login') }}</span>
 
                         </div>
 
@@ -451,7 +451,7 @@
 
                         <div class="relative flex justify-center text-sm">
 
-                            <span class="px-4 bg-white text-gray-500">یا</span>
+                            <span class="px-4 bg-white text-gray-500">{{ __('auth_pages.or') }}</span>
 
                         </div>
 
@@ -463,11 +463,11 @@
 
                         <p class="text-gray-600">
 
-                            حساب کاربری ندارید؟
+                            {{ __('auth_pages.no_account') }}
 
                             <a href="{{ route('welcome') }}" class="text-blue-500 hover:text-blue-700 font-bold transition">
 
-                                ثبت‌نام کنید
+                                {{ __('auth_pages.register_link') }}
 
                                 <i class="fas fa-arrow-left mr-1"></i>
 
@@ -487,7 +487,7 @@
 
                 <p class="text-purple-100 text-sm">
 
-                    © {{ now()->year }} EarthCoop - تمامی حقوق محفوظ است
+                    {{ __('auth_pages.copyright', ['year' => now()->year]) }}
 
                 </p>
 

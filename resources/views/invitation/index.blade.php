@@ -18,7 +18,7 @@
 
 
 
-@section('title', 'درخواست کد دعوت - ' . config('app.name', 'EarthCoop'))
+@section('title', __('auth_pages.invitation_page_title') . ' - ' . config('app.name', 'EarthCoop'))
 
 
 
@@ -1177,7 +1177,7 @@
 
 
 
-                <h1 class="text-4xl md:text-5xl font-black text-white mb-3 drop-shadow-lg">درخواست کد دعوت</h1>
+                <h1 class="text-4xl md:text-5xl font-black text-white mb-3 drop-shadow-lg">{{ __('auth_pages.invitation_heading') }}</h1>
 
 
 
@@ -1187,7 +1187,7 @@
 
 
 
-                <p class="text-orange-50 text-lg md:text-xl font-medium">به جامعه زمین نو بپیوندید</p>
+                <p class="text-orange-50 text-lg md:text-xl font-medium">{{ __('auth_pages.invitation_subheading') }}</p>
 
 
 
@@ -1217,7 +1217,7 @@
 
 
 
-                    <span class="font-bold">هزاران نفر در انتظار شما هستند!</span>
+                    <span class="font-bold">{{ __('auth_pages.invitation_social_proof') }}</span>
 
 
 
@@ -1317,7 +1317,7 @@
 
 
 
-                                <p class="text-green-800 font-bold text-lg mb-1">درخواست شما ثبت شد!</p>
+                                <p class="text-green-800 font-bold text-lg mb-1">{{ __('auth_pages.invitation_success_heading') }}</p>
 
 
 
@@ -1447,7 +1447,7 @@
 
 
 
-                            <h3 class="text-lg font-bold text-gray-800 mb-2">چرا کد دعوت؟</h3>
+                            <h3 class="text-lg font-bold text-gray-800 mb-2">{{ __('auth_pages.invitation_why_heading') }}</h3>
 
 
 
@@ -1467,7 +1467,7 @@
 
 
 
-                                ما می‌خواهیم اعضای فعال و علاقه‌مند را در جامعه خود داشته باشیم.
+                                {{ __('auth_pages.invitation_why_paragraph_one') }}
 
 
 
@@ -1477,7 +1477,7 @@
 
 
 
-                                با پر کردن این فرم، درخواست شما بررسی و کد دعوت به ایمیل شما ارسال می‌شود.
+                                {{ __('auth_pages.invitation_why_paragraph_two') }}
 
 
 
@@ -1617,7 +1617,7 @@
 
 
 
-                            آدرس ایمیل
+                            {{ __('auth_pages.field_email') }}
 
 
 
@@ -1817,7 +1817,7 @@
 
 
 
-                            ایمیل شما محفوظ است و به اشتراک گذاشته نمی‌شود
+                            {{ __('auth_pages.invitation_email_privacy') }}
 
 
 
@@ -1887,7 +1887,7 @@
 
 
 
-                            چطور با ما آشنا شدید؟
+                            {{ __('auth_pages.invitation_referral_label') }}
 
 
 
@@ -1957,7 +1957,7 @@
 
 
 
-                            placeholder="مثلاً: از طریق شبکه‌های اجتماعی، دوستان، یا جستجو در اینترنت..."
+                            placeholder="{{ __('auth_pages.invitation_referral_placeholder') }}"
 
 
 
@@ -2087,7 +2087,7 @@
 
 
 
-                            حرفه یا زمینه تخصصی
+                            {{ __('auth_pages.invitation_profession_label') }}
 
 
 
@@ -2167,7 +2167,7 @@
 
 
 
-                            placeholder="مثلاً: توسعه‌دهنده وب، طراح گرافیک، مدیر پروژه..."
+                            placeholder="{{ __('auth_pages.invitation_profession_placeholder') }}"
 
 
 
@@ -2307,7 +2307,7 @@
 
 
 
-                        <span>ثبت درخواست و دریافت کد</span>
+                        <span>{{ __('auth_pages.invitation_submit') }}</span>
 
 
 
@@ -2367,7 +2367,7 @@
 
 
 
-                    <p>قبلاً عضو شده‌اید؟ <a href="{{ route('login') }}" class="font-bold text-orange-600 hover:text-orange-700">ورود به حساب کاربری</a></p>
+                    <p>{{ __('auth_pages.already_member') }} <a href="{{ route('login') }}" class="font-bold text-orange-600 hover:text-orange-700">{{ __('auth_pages.login_link') }}</a></p>
 
 
 
