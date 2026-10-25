@@ -417,18 +417,16 @@
         </div>
     </section>
 
-    <!-- Short introduction: detailed guidance lives in the three accordion cards below. -->
-    @if($page->translated_content)
+    <!-- Short localized introduction; deliberately independent of legacy page content in the database. -->
     <section class="py-10 md:py-12 bg-pure-white fade-in-section">
         <div class="container mx-auto px-6">
             <div class="max-w-4xl mx-auto">
                 <div class="page-content-help guide-intro text-base md:text-lg text-gray-700 leading-relaxed">
-                    {!! $page->translated_content !!}
+                    <p>{{ __('help_guide.intro') }}</p>
                 </div>
             </div>
         </div>
     </section>
-    @endif
 
     <!-- Progressive, task-oriented guide; all visible copy is localized. -->
     <section class="py-10 md:py-16 bg-light-gray fade-in-section" aria-label="{{ __('help_guide.aria_label') }}">

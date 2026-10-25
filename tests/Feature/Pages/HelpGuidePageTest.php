@@ -21,11 +21,11 @@ class HelpGuidePageTest extends TestCase
             ],
             'slug' => 'help-guide-accordion-test',
             'template' => 'help',
-            'content' => '<p>به راهنمای EarthCoop خوش آمدید.</p>',
+            'content' => '<p>متن قدیمی نباید نمایش داده شود.</p>',
             'content_translations' => [
-                'fa' => '<p>به راهنمای EarthCoop خوش آمدید.</p>',
-                'en' => '<p>Welcome to the EarthCoop user guide.</p>',
-                'ar' => '<p>مرحباً بكم في دليل استخدام EarthCoop.</p>',
+                'fa' => '<p>متن قدیمی نباید نمایش داده شود.</p>',
+                'en' => '<p>Old introduction must not appear.</p>',
+                'ar' => '<p>يجب ألا تظهر المقدمة القديمة.</p>',
             ],
             'meta_title' => 'راهنمای استفاده',
             'meta_description' => 'راهنمای استفاده از EarthCoop',
@@ -41,7 +41,8 @@ class HelpGuidePageTest extends TestCase
         $response = $this->get('/pages/help-guide-accordion-test');
 
         $response->assertOk()
-            ->assertSee('به راهنمای EarthCoop خوش آمدید.')
+            ->assertSee('در این راهنما، مسیر ثبت‌نام، تکمیل اطلاعات و استفاده از گروه‌ها و امکانات حکمرانی EarthCoop را در سه بخش زیر دنبال کنید.')
+            ->assertDontSee('متن قدیمی نباید نمایش داده شود.')
             ->assertSee('پذیرش شرایط و آغاز ثبت‌نام')
             ->assertSee('مراحل ثبت‌نام در EarthCoop')
             ->assertSee('خانهٔ شما در EarthCoop')
@@ -69,11 +70,11 @@ class HelpGuidePageTest extends TestCase
             ],
             'slug' => 'help-guide-localization-test',
             'template' => 'help',
-            'content' => '<p>مقدمه فارسی</p>',
+            'content' => '<p>متن قدیمی نباید نمایش داده شود.</p>',
             'content_translations' => [
-                'fa' => '<p>مقدمه فارسی</p>',
-                'en' => '<p>English introduction</p>',
-                'ar' => '<p>مقدمة عربية</p>',
+                'fa' => '<p>متن قدیمی نباید نمایش داده شود.</p>',
+                'en' => '<p>Old English introduction must not appear.</p>',
+                'ar' => '<p>يجب ألا تظهر المقدمة العربية القديمة.</p>',
             ],
             'meta_title' => 'User guide',
             'meta_description' => 'User guide',
@@ -88,6 +89,7 @@ class HelpGuidePageTest extends TestCase
 
         $cases = [
             'en' => [
+                'Use the three sections below to learn how to register, complete your profile, and take part in EarthCoop groups and governance.',
                 'Accept the Terms and Start Registration',
                 'Registration Steps on EarthCoop',
                 'Your Home on EarthCoop',
@@ -97,6 +99,7 @@ class HelpGuidePageTest extends TestCase
                 'Group-chat messaging requires a Najm Bahar account',
             ],
             'ar' => [
+                'استخدموا الأقسام الثلاثة أدناه للتعرّف على التسجيل واستكمال الملف الشخصي والمشاركة في مجموعات EarthCoop وميزات الحوكمة.',
                 'الموافقة على الشروط وبدء التسجيل',
                 'خطوات التسجيل في EarthCoop',
                 'مساحتك على EarthCoop',
@@ -115,7 +118,9 @@ class HelpGuidePageTest extends TestCase
             foreach ($expectedTexts as $text) {
                 $response->assertSee($text);
             }
-            $response->assertDontSee('پذیرش شرایط و آغاز ثبت‌نام');
+            $response->assertDontSee('Old English introduction must not appear.')
+                ->assertDontSee('يجب ألا تظهر المقدمة العربية القديمة.')
+                ->assertDontSee('پذیرش شرایط و آغاز ثبت‌نام');
             $response->assertDontSee('اجتماع محلی با حکمرانی رسمی یکسان نیست');
             $response->assertDontSee('کد دعوت و ایجاد حساب');
         }
