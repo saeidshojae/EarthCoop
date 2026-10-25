@@ -2,6 +2,7 @@
 
 return [
     'aria_label' => 'User guide',
+    'intro' => "Use the three sections below to learn how to register, complete your profile, and take part in EarthCoop groups and governance.",
     'card1_title' => 'Accept the Terms and Start Registration',
     'card1_subtitle' => 'From accepting the rules to verifying your account',
     'card1_body' => <<<'HTML'
