@@ -167,7 +167,7 @@
         <div class="container mx-auto px-6 text-center">
             <div class="max-w-4xl mx-auto mb-12">
                 <h2 class="text-3xl md:text-5xl font-extrabold font-vazirmatn text-gentle-black mb-6">
-                    به سامانه شراکت جهانی <span class="text-earth-green">ارث‌کوپ</span> خوش آمدید
+                    {{ __('page_templates.about_welcome_title') }}
                 </h2>
                 <div class="section-separator"></div>
                 <div class="text-lg md:text-xl text-gray-700 font-vazirmatn leading-relaxed mb-8 text-right">
@@ -179,18 +179,18 @@
                         <div class="icon-box bg-earth-green/15 text-earth-green transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-house-chimney"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">زمین، خانه مشترک همه‌ی ماست.</h3>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_common_home_title') }}</h3>
                         <p class="text-gray-700 text-center font-vazirmatn">
-                            خانه‌ای که ما در آن وارثانی برابر هستیم و در مالکیت، حقوق و مسئولیت‌های آن شریک یکدیگریم.
+                            {{ __('page_templates.about_common_home_text') }}
                         </p>
                     </div>
                     <div class="about-section-card p-8 flex flex-col items-center group text-center">
                         <div class="icon-box bg-ocean-blue/15 text-ocean-blue transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-handshake"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">شراکت جهانی، آغاز جامعه همکارانه</h3>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_cooperative_society_title') }}</h3>
                         <p class="text-gray-700 text-center font-vazirmatn">
-                            این شراکت جهانی، نقطه آغاز ساخت یک جامعه همکارانه و هم‌سرنوشت است که همه‌ی مردم زمین را دربرمی‌گیرد.
+                            {{ __('page_templates.about_cooperative_society_text') }}
                         </p>
                     </div>
                 </div>
@@ -203,14 +203,14 @@
         <div class="container mx-auto px-6 text-center">
             <div class="max-w-4xl mx-auto mb-12">
                 <h2 class="text-3xl md:text-5xl font-extrabold font-vazirmatn text-gentle-black mb-6">
-                    <span class="text-ocean-blue">ارث‌کوپ</span> چیست؟
+                    {{ __('page_templates.about_what_is_title') }}
                 </h2>
                 <div class="section-separator"></div>
                 <p class="text-lg md:text-xl text-gray-700 font-vazirmatn leading-relaxed mb-8">
-                    ارث‌کوپ یک شبکه مشارکت جهانی، با ساختار قانونی و شفاف است که برای همکاری، هم‌فکری و سرمایه‌گذاری جمعی از محله تا سیاره طراحی شده است.
+                    {{ __('page_templates.about_what_is_text') }}
                 </p>
                 <p class="text-lg md:text-xl text-gray-700 font-vazirmatn leading-relaxed mb-12 font-bold">
-                    با عضویت در ارث‌کوپ، شما یکی از سهامداران واقعی این شبکه خواهید بود.
+                    {{ __('page_templates.about_shareholder_text') }}
                 </p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-right mb-12">
@@ -218,53 +218,53 @@
                         <div class="icon-box bg-digital-gold/15 text-digital-gold transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-id-card"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">هویتی</h3>
-                        <p class="text-gray-700 text-center font-vazirmatn">(نام، سن، جنسیت و ...)</p>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_identity_title') }}</h3>
+                        <p class="text-gray-700 text-center font-vazirmatn">{{ __('page_templates.about_identity_text') }}</p>
                     </div>
                     <div class="about-section-card p-8 flex flex-col items-center group text-center">
                         <div class="icon-box bg-earth-green/15 text-earth-green transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-briefcase"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">زمینه‌های شغلی و تخصصی</h3>
-                        <p class="text-gray-700 text-center font-vazirmatn">شغلی، صنفی، تخصصی و تجربی</p>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_professional_title') }}</h3>
+                        <p class="text-gray-700 text-center font-vazirmatn">{{ __('page_templates.about_professional_text') }}</p>
                     </div>
                     <div class="about-section-card p-8 flex flex-col items-center group text-center">
                         <div class="icon-box bg-ocean-blue/15 text-ocean-blue transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-location-dot"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">موقعیت مکانی دقیق</h3>
-                        <p class="text-gray-700 text-center font-vazirmatn">(از قاره تا کوچه)</p>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_location_title') }}</h3>
+                        <p class="text-gray-700 text-center font-vazirmatn">{{ __('page_templates.about_location_text') }}</p>
                     </div>
                 </div>
 
                 <h3 class="text-2xl md:text-3xl font-extrabold font-vazirmatn text-gentle-black mb-6">
-                    بر این اساس، شما در سه نوع گروه سیستمی عضو می‌شوید:
+                    {{ __('page_templates.about_groups_intro') }}
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-right">
                     <div class="about-section-card p-8 flex flex-col items-center group text-center">
                         <div class="icon-box bg-earth-green/15 text-earth-green transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-users"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">گروه‌های مجامع عمومی</h3>
-                        <p class="text-gray-700 text-center font-vazirmatn">(بر اساس مکان سکونت)</p>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_general_assembly_groups') }}</h3>
+                        <p class="text-gray-700 text-center font-vazirmatn">{{ __('page_templates.about_residence_basis') }}</p>
                     </div>
                     <div class="about-section-card p-8 flex flex-col items-center group text-center">
                         <div class="icon-box bg-ocean-blue/15 text-ocean-blue transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-user-gear"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">گروه‌های تخصصی</h3>
-                        <p class="text-gray-700 text-center font-vazirmatn">(بر اساس صنف و تخصص)</p>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_specialized_groups') }}</h3>
+                        <p class="text-gray-700 text-center font-vazirmatn">{{ __('page_templates.about_profession_basis') }}</p>
                     </div>
                     <div class="about-section-card p-8 flex flex-col items-center group text-center">
                         <div class="icon-box bg-digital-gold/15 text-digital-gold transform group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-people-arrows"></i>
                         </div>
-                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">گروه‌های اختصاصی</h3>
-                        <p class="text-gray-700 text-center font-vazirmatn">(بر اساس سن و جنسیت)</p>
+                        <h3 class="text-2xl font-bold font-vazirmatn text-gentle-black mb-3">{{ __('page_templates.about_specific_groups') }}</h3>
+                        <p class="text-gray-700 text-center font-vazirmatn">{{ __('page_templates.about_age_gender_basis') }}</p>
                     </div>
                 </div>
                 <p class="text-lg md:text-xl text-gray-700 font-vazirmatn leading-relaxed mt-12">
-                    هر گروه، نقشی مشخص در توسعه پروژه‌های محلی و جهانی خواهد داشت و در چارچوب شفاف، مسئولانه و مشارکتی فعالیت می‌کند.
+                    {{ __('page_templates.about_group_role_text') }}
                 </p>
             </div>
         </div>
@@ -275,13 +275,13 @@
         <div class="absolute inset-0 bg-black/50 z-0"></div>
         <div class="container mx-auto px-6 relative z-10">
             <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold font-vazirmatn mb-8 leading-tight animate-pulse">
-                دعوت به عضویت
+                {{ __('page_templates.about_join_heading') }}
             </h2>
             <p class="text-xl md:text-2xl mb-12 max-w-4xl mx-auto font-vazirmatn opacity-90">
-                اگر شما هم به ساختن دنیایی بهتر برای خود، فرزندانتان و همه‌ی ساکنان این سیاره باور دارید، همین امروز عضویت بالقوه‌ی خود را در <span class="font-bold text-digital-gold">ارث‌کوپ</span> فعال کنید.
+                {{ __('page_templates.about_join_text') }}
             </p>
             <a href="{{ route('register.form') }}" class="bg-digital-gold text-pure-white px-12 py-5 rounded-full shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold inline-flex items-center justify-center">
-                با هم، آینده‌ای متفاوت بسازیم <i class="fas fa-hand-holding-seedling mr-3"></i>
+                {{ __('page_templates.about_join_button') }} <i class="fas fa-hand-holding-seedling mr-3"></i>
             </a>
         </div>
     </section>
