@@ -40,5 +40,6 @@ return [
     'validation_message_max' => 'توضیحات نباید بیشتر از ۵۰۰ نویسه باشد.',
     'validation_job_max' => 'توضیحات حرفه یا زمینه تخصصی نباید بیشتر از ۵۰۰ نویسه باشد.',
     'validation_password_required' => 'وارد کردن رمز عبور الزامی است.',
+    'password_changed_success' => 'رمز عبور با موفقیت تغییر کرد.',
     'validation_string' => 'مقدار واردشده معتبر نیست.',
 ];
