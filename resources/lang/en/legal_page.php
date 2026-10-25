@@ -47,6 +47,7 @@ return [
     'terms_accept_success' => 'Acceptance of the Statute was recorded successfully. Return to the registration steps.',
     'registration_requires_terms' => 'Please accept the Membership Statute and Terms of Use before registering.',
     'registration_start_requires_terms' => 'Please accept the Membership Statute and Terms of Use before opening the registration page.',
+    'google_invite_code_required' => 'A valid invitation code is required to register with Google.',
     'google_registration_requires_terms' => 'Please accept the Membership Statute and Terms of Use before registering with Google.',
     'please_accept' => 'You must accept the Statute and Terms of Use to continue.',
 ];
