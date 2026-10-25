@@ -32,7 +32,7 @@ class GoogleController extends Controller
         if ($mode === 'register') {
             if ($request->session()->get('registration_terms_accepted') !== true) {
                 return redirect()->route('welcome')->withErrors([
-                    'terms' => 'برای ثبت‌نام با گوگل، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+                    'terms' => __('legal_page.google_registration_requires_terms'),
                 ]);
             }
 
@@ -169,7 +169,7 @@ class GoogleController extends Controller
             // member is away at Google.
             if ($request->session()->get('registration_terms_accepted') !== true) {
                 return redirect()->route('welcome')->withErrors([
-                    'terms' => 'برای ثبت‌نام با گوگل، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+                    'terms' => __('legal_page.google_registration_requires_terms'),
                 ]);
             }
 
