@@ -18,6 +18,7 @@ final class PillarController extends Controller
         $pillar = PillarRegistry::get($key);
         $locale = app()->getLocale();
         $translation = PillarTranslationRegistry::get($key, $locale);
+        $supportingArticles = $translation['supportingArticles'] ?? PillarArticleRegistry::for($key);
         if ($translation !== []) {
             $pillar = array_replace_recursive($pillar, $translation);
         }
@@ -61,7 +62,7 @@ final class PillarController extends Controller
 
         return view('seo.pillars.show', [
             'pillar' => $pillar,
-            'supportingArticles' => PillarArticleRegistry::for($key),
+            'supportingArticles' => $supportingArticles,
             'seoTitle' => $pillar['meta_title'],
             'seoDescription' => $pillar['description'],
             'seoCanonical' => $canonical,
