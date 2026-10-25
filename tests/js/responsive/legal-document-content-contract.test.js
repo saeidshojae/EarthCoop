@@ -85,6 +85,8 @@ test('membership statute and terms translations preserve the full clause structu
     assert.match(termsAr, /16\. إقرار القبول/);
     assert.match(membershipEn, /registered legal-person status/);
     assert.match(membershipAr, /صفة شخص اعتباري مسجل/);
+    assert.match(membershipAr, /المادة 8 — مسؤوليات المديرين والمفتشين/);
+    assert.match(membershipAr, /الأعضاء المراقبون/);
     assert.match(termsEn, /does not automatically constitute acceptance of the Najm Bahar financial agreement/);
     assert.match(termsAr, /لا يعني قبول هذه الشروط القبول التلقائي بالاتفاق المالي لنجم بهار/);
 });
