@@ -21,11 +21,11 @@ class HelpGuidePageTest extends TestCase
             ],
             'slug' => 'help-guide-accordion-test',
             'template' => 'help',
-            'content' => '<p>به راهنمای EarthCoop خوش آمدید.</p>',
+            'content' => '<p>متن قدیمی نباید نمایش داده شود.</p>',
             'content_translations' => [
-                'fa' => '<p>به راهنمای EarthCoop خوش آمدید.</p>',
-                'en' => '<p>Welcome to the EarthCoop user guide.</p>',
-                'ar' => '<p>مرحباً بكم في دليل استخدام EarthCoop.</p>',
+                'fa' => '<p>متن قدیمی نباید نمایش داده شود.</p>',
+                'en' => '<p>Old introduction must not appear.</p>',
+                'ar' => '<p>يجب ألا تظهر المقدمة القديمة.</p>',
             ],
             'meta_title' => 'راهنمای استفاده',
             'meta_description' => 'راهنمای استفاده از EarthCoop',
@@ -41,7 +41,8 @@ class HelpGuidePageTest extends TestCase
         $response = $this->get('/pages/help-guide-accordion-test');
 
         $response->assertOk()
-            ->assertSee('به راهنمای EarthCoop خوش آمدید.')
+            ->assertSee('در این راهنما، مسیر ثبت‌نام، تکمیل اطلاعات و استفاده از گروه‌ها و امکانات حکمرانی EarthCoop را در سه بخش زیر دنبال کنید.')
+            ->assertDontSee('متن قدیمی نباید نمایش داده شود.')
             ->assertSee('پذیرش شرایط و آغاز ثبت‌نام')
             ->assertSee('مراحل ثبت‌نام در EarthCoop')
             ->assertSee('خانهٔ شما در EarthCoop')
@@ -88,6 +89,8 @@ class HelpGuidePageTest extends TestCase
 
         $cases = [
             'en' => [
+                'Use the three sections below to learn how to register, complete your profile, and take part in EarthCoop groups and governance.',
+                'Old introduction must not appear.',
                 'Accept the Terms and Start Registration',
                 'Registration Steps on EarthCoop',
                 'Your Home on EarthCoop',
@@ -97,6 +100,8 @@ class HelpGuidePageTest extends TestCase
                 'Group-chat messaging requires a Najm Bahar account',
             ],
             'ar' => [
+                'استخدموا الأقسام الثلاثة أدناه للتعرّف على التسجيل واستكمال الملف الشخصي والمشاركة في مجموعات EarthCoop وميزات الحوكمة.',
+                'يجب ألا تظهر المقدمة العربية القديمة.',
                 'الموافقة على الشروط وبدء التسجيل',
                 'خطوات التسجيل في EarthCoop',
                 'مساحتك على EarthCoop',
