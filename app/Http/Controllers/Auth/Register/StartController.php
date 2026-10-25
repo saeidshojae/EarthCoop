@@ -124,7 +124,7 @@ class StartController extends Controller
     {
         if ($request->session()->get('registration_terms_accepted') !== true) {
             return redirect()->route('welcome')->withErrors([
-                'terms' => 'برای ورود به صفحه ثبت‌نام، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+                'terms' => __('legal_page.registration_start_requires_terms'),
             ]);
         }
 
@@ -156,7 +156,7 @@ class StartController extends Controller
     {
         if ($request->session()->get('registration_terms_accepted') !== true) {
             return redirect()->route('welcome')->withErrors([
-                'terms' => 'برای ثبت‌نام، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+                'terms' => __('legal_page.registration_requires_terms'),
             ]);
         }
 

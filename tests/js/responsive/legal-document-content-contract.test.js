@@ -56,3 +56,83 @@ test('legal Blade template references the real Str class and splits headings cor
     assert.doesNotMatch(template, /IlluminateSupportStr/);
     assert.ok(template.includes(String.raw`/(?=^##\s+)/mu`));
 });
+
+
+test('membership statute and terms translations preserve the full clause structure', () => {
+    const locales = ['fa', 'en', 'ar'];
+    const documentNames = [
+        'earthcoop-membership-statute',
+        'earthcoop-terms-of-use',
+    ];
+
+    for (const documentName of documentNames) {
+        const documents = locales.map(locale => read(`resources/legal/${documentName}.${locale}.md`));
+        const headingCounts = documents.map(document => (document.match(/^## /gm) || []).length);
+
+        assert.deepEqual(headingCounts, [16, 16, 16], `${documentName} must preserve all 16 sections in all locales`);
+        assert.ok(documents.every(document => document.includes('EC-')), `${documentName} must preserve its document identifier`);
+        assert.ok(documents.every(document => /Requirements before publication|متطلبات ما قبل النشر|الزامات پیش از انتشار/.test(document)), `${documentName} must preserve the pre-publication requirements`);
+    }
+
+    const membershipEn = read('resources/legal/earthcoop-membership-statute.en.md');
+    const membershipAr = read('resources/legal/earthcoop-membership-statute.ar.md');
+    const termsEn = read('resources/legal/earthcoop-terms-of-use.en.md');
+    const termsAr = read('resources/legal/earthcoop-terms-of-use.ar.md');
+
+    assert.match(membershipEn, /Article 13 — Statement of acceptance/);
+    assert.match(membershipAr, /المادة 13 — إقرار القبول/);
+    assert.match(termsEn, /16\. Statement of acceptance/);
+    assert.match(termsAr, /16\. إقرار القبول/);
+    assert.match(membershipEn, /registered legal-person status/);
+    assert.match(membershipAr, /صفة شخص اعتباري مسجل/);
+    assert.match(membershipAr, /المادة 8 — مسؤوليات المديرين والمفتشين/);
+    assert.match(membershipAr, /الأعضاء المراقبون/);
+    assert.match(termsEn, /does not automatically constitute acceptance of the Najm Bahar financial agreement/);
+    assert.match(termsAr, /لا يعني قبول هذه الشروط القبول التلقائي بالاتفاق المالي لنجم بهار/);
+});
+
+test('legal page interface is localized and the document renderer selects the current language', () => {
+    const terms = read('resources/views/terms.blade.php');
+    const partial = read('resources/views/partials/legal/structured-document.blade.php');
+
+    assert.doesNotMatch(terms, /[\u0600-\u06FF]/, 'static legal page copy must not remain hard-coded in Persian');
+    assert.match(partial, /localizedSourcePath/);
+    assert.match(partial, /is_file\(resource_path\(\$localizedSourcePath\)\)/);
+    assert.match(partial, /\$documentDirection = in_array\(\$locale, \['fa', 'ar'\], true\) \? 'rtl' : 'ltr'/);
+    assert.match(terms, /app\(\)->getLocale\(\) === 'fa'/);
+    for (const locale of ['fa', 'en', 'ar']) {
+        const translations = read(`resources/lang/${locale}/legal_page.php`);
+        assert.match(translations, /'hero_title'\s*=>/);
+        assert.match(translations, /'membership_statute'\s*=>/);
+        assert.match(translations, /'terms_document'\s*=>/);
+        assert.match(translations, /'guest_terms_error'\s*=>/);
+    }
+});
+
+
+test('legal consent and registration feedback uses localized strings', () => {
+    const termController = read('app/Http/Controllers/Profile/TermController.php');
+    const startController = read('app/Http/Controllers/Auth/Register/StartController.php');
+    const googleController = read('app/Http/Controllers/Auth/GoogleController.php');
+
+    assert.match(termController, /legal_page\.terms_acceptance_required/);
+    assert.match(termController, /legal_page\.terms_accept_success/);
+    assert.match(startController, /legal_page\.registration_start_requires_terms/);
+    assert.match(startController, /legal_page\.registration_requires_terms/);
+    assert.match(googleController, /legal_page\.google_registration_requires_terms/);
+    assert.match(googleController, /legal_page\.google_invite_code_required/);
+
+    for (const locale of ['fa', 'en', 'ar']) {
+        const translations = read(`resources/lang/${locale}/legal_page.php`);
+        for (const key of [
+            'terms_acceptance_required',
+            'terms_accept_success',
+            'registration_start_requires_terms',
+            'registration_requires_terms',
+            'google_registration_requires_terms',
+            'google_invite_code_required',
+        ]) {
+            assert.match(translations, new RegExp(`'${key}'\\s*=>`));
+        }
+    }
+});
