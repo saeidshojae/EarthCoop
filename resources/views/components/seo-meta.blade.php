@@ -18,7 +18,7 @@
 <meta name="description" content="{{ $resolvedDescription }}">
 <meta name="robots" content="{{ $robots }}">
 <link rel="canonical" href="{{ $canonicalUrl }}">
-<meta property="og:locale" content="{{ app()->getLocale() === 'en' ? 'en_US' : (app()->getLocale() === 'ar' ? 'ar_AR' : 'fa_IR') }}">
+<meta property="og:locale" content="{{ app()->getLocale() === 'en' ? 'en_US' : (app()->getLocale() === 'ar' ? 'ar_SA' : 'fa_IR') }}">
 <meta property="og:type" content="{{ $type }}">
 <meta property="og:title" content="{{ $resolvedTitle }}">
 <meta property="og:description" content="{{ $resolvedDescription }}">
