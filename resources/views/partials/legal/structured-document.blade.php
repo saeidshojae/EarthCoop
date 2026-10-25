@@ -1,11 +1,15 @@
 {{-- Long legal texts are split at second-level Markdown headings into accessible, independent clauses. --}}
 @php
-    $source = file_get_contents(resource_path($sourcePath));
+    $locale = app()->getLocale();
+    $localizedSourcePath = preg_replace('/\.fa\.md$/', '.' . $locale . '.md', $sourcePath);
+    $resolvedSourcePath = is_file(resource_path($localizedSourcePath)) ? $localizedSourcePath : $sourcePath;
+    $source = file_get_contents(resource_path($resolvedSourcePath));
+    $documentDirection = in_array($locale, ['fa', 'ar'], true) ? 'rtl' : 'ltr';
     $parts = preg_split('/(?=^##\s+)/mu', $source, -1, PREG_SPLIT_NO_EMPTY);
     $intro = array_shift($parts);
     $renderMarkdown = static fn (string $value) => \Illuminate\Support\Str::markdown($value, ['html_input' => 'strip', 'allow_unsafe_links' => false]);
 @endphp
-<div class="ec-legal-document" dir="rtl">
+<div class="ec-legal-document" dir="{{ $documentDirection }}">
     <div class="ec-legal-document-intro prose max-w-none">{!! $renderMarkdown($intro) !!}</div>
     <div class="ec-legal-clauses">
         @foreach($parts as $index => $part)
