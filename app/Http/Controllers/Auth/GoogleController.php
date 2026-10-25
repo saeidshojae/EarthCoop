@@ -47,7 +47,7 @@ class GoogleController extends Controller
                     $request->session()->forget('registration_invitation_code');
 
                     return redirect()->route('welcome')->withErrors([
-                        'invite_code' => 'برای ثبت‌نام با گوگل باید یک کد دعوت معتبر وارد کنید.',
+                        'invite_code' => __('legal_page.google_invite_code_required'),
                     ]);
                 }
             } else {
