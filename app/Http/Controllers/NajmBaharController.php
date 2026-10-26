@@ -148,6 +148,10 @@ class NajmBaharController extends Controller
         $this->ensureInitialFunding($user, $account);
         $walletBalance = $this->balanceService->aggregate($account);
 
+        // Use the canonical participation-point ledger summary for the sidebar.
+        $pointSummary = $this->participationPointSummaryService->forUser((int) $user->id);
+        $uncashedPoints = (int) $pointSummary['remaining_convertible_points'];
+
         $settings = Setting::firstNajmBaharSettings();
         $userCount = User::members()->count();
         $userThreshold = (int) ($settings?->najm_bahar_user_threshold ?? 1111111);
@@ -178,7 +182,8 @@ class NajmBaharController extends Controller
             'totalMinted',
             'membershipAccountCode',
             'membershipBalance',
-            'userTransactionsCount'
+            'userTransactionsCount',
+            'uncashedPoints'
         ));
     }
 
