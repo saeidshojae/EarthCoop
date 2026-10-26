@@ -91,7 +91,7 @@ jobs:
         run: php artisan migrate --force
 
       - name: Run weighted delegation tests
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat/PollDelegatedVoteWeightTest.php
+        run: vendor/bin/phpunit --display-phpunit-deprecations --configuration phpunit.xml.dist tests/Feature/GroupChat/PollDelegatedVoteWeightTest.php
 
       - name: Run delegation workflow regression tests
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat/PollDelegationTest.php
+        run: vendor/bin/phpunit --display-phpunit-deprecations --configuration phpunit.xml.dist tests/Feature/GroupChat/PollDelegationTest.php
