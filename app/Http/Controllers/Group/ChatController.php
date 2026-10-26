@@ -1076,23 +1076,70 @@ class ChatController extends Controller
     {
         $this->authorize('view', $group);
         abort_unless((int) $poll->group_id === (int) $group->id, 404);
-        abort_unless((int) $poll->type === 1 && $poll->skill_id, 422, 'این رأی‌گیری تخصصی نیست.');
-        $qualified = $expert->experiences()->where('experience_fields.id', $poll->skill_id)->exists()
-            && $expert->groups()->where('groups.id', $group->id)->wherePivot('status', 1)->exists();
-        abort_unless($qualified && (int) $expert->id !== (int) auth()->id(), 422, 'این کاربر برای تفویض این رأی واجد شرایط نیست.');
+        abort_unless((int) ($poll->type ?? 0) === 1 && $poll->skill_id, 422, 'این رأی‌گیری یا انتخابات تخصصی نیست.');
 
-        $delegation = Delegation::query()->where('poll_id', $poll->id)->where('user_id', auth()->id())->first();
-        $removed = $delegation && (int) $delegation->expert_id === (int) $expert->id;
-        if ($removed) {
-            $delegation->delete();
-        } else {
-            Delegation::updateOrCreate(['poll_id' => $poll->id, 'user_id' => auth()->id()], ['expert_id' => $expert->id]);
-        }
+        $userId = (int) auth()->id();
+        $removed = DB::transaction(function () use ($group, $poll, $expert, $userId): bool {
+            $lockedPoll = Poll::query()->lockForUpdate()->findOrFail($poll->id);
+            abort_unless((int) $lockedPoll->group_id === (int) $group->id, 404);
 
-        return response()->json(['data' => ['delegated' => ! $removed,
+            $delegation = Delegation::query()
+                ->where('poll_id', $lockedPoll->id)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($delegation && (int) $delegation->expert_id === (int) $expert->id) {
+                $delegation->delete();
+
+                return true;
+            }
+
+            abort_if(! $lockedPoll->is_active || $lockedPoll->isExpired(), 422, 'مهلت این رأی‌گیری یا انتخابات تمام شده است.');
+            abort_unless(
+                GroupUser::query()->where('group_id', $group->id)->where('user_id', $userId)->where('status', 1)->exists(),
+                403,
+                'برای تفویض رأی باید عضو فعال این گروه باشید.'
+            );
+
+            $qualified = $expert->experiences()->where('experience_fields.id', $lockedPoll->skill_id)->exists()
+                && GroupUser::query()->where('group_id', $group->id)->where('user_id', $expert->id)->where('status', 1)->exists()
+                && (int) $expert->id !== $userId;
+            abort_unless($qualified, 422, 'این کاربر برای تفویض این رأی واجد شرایط نیست.');
+
+            Delegation::updateOrCreate(
+                ['poll_id' => $lockedPoll->id, 'user_id' => $userId],
+                ['expert_id' => $expert->id]
+            );
+
+            // Transfer the ballot rather than allowing an old direct ballot to
+            // reappear when the delegation is later revoked.
+            PollVote::query()->where('poll_id', $lockedPoll->id)->where('user_id', $userId)->delete();
+
+            return false;
+        }, 3);
+
+        $poll->refresh();
+        $weightedPayload = app(PollVoteTallyService::class)->resultPayload($poll);
+        app(\\App\\Services\\GroupChat\\GroupEventPublisher::class)->publish(
+            new \\App\\Events\\GroupPollUpdated((int) $group->id, $weightedPayload, $userId)
+        );
+        app(GroupFeedService::class)->recordMutation(
+            'poll',
+            (int) $poll->id,
+            'feed.poll.delegation_changed',
+            $userId,
+            ['delegated' => ! $removed, 'expert_id' => $removed ? null : (int) $expert->id]
+        );
+
+        return response()->json(['data' => [
+            'delegated' => ! $removed,
             'expert_id' => $removed ? null : (int) $expert->id,
-            'message' => $removed ? 'تفویض رأی برداشته شد.' : 'رأی شما با موفقیت تفویض شد.']]);
+            'message' => $removed ? 'تفویض رأی برداشته شد.' : 'رأی شما با ضریب تفویض به متخصص منتقل شد.',
+            'poll' => $weightedPayload,
+        ]]);
     }
+
 
     public function clearHistory(Group $group)
     {
