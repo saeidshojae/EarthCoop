@@ -7,15 +7,14 @@ use App\Events\GroupPollUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Group\StorePollRequest;
 use App\Http\Requests\Group\VotePollRequest;
-use App\Models\Delegation;
 use App\Models\Group;
-use App\Models\GroupUser;
 use App\Models\Poll;
 use App\Models\PollVote;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\GroupChat\PollVoteTallyService;
 
 class PollController extends Controller
 {
@@ -68,8 +67,14 @@ class PollController extends Controller
 
         $selectedOptionId = (int) $request->validated('option_id');
         $voteRemoved = DB::transaction(function () use ($poll, $selectedOptionId): bool {
-            Poll::whereKey($poll->id)->lockForUpdate()->firstOrFail();
-            $existing = $poll->votes()->where('user_id', auth()->id())->lockForUpdate()->first();
+            $lockedPoll = Poll::whereKey($poll->id)->lockForUpdate()->firstOrFail();
+            abort_if(
+                app(PollVoteTallyService::class)->hasActiveDelegation($lockedPoll, (int) auth()->id()),
+                422,
+                'رأی شما به متخصص تفویض شده است؛ برای رأی مستقیم ابتدا تفویض را لغو کنید.'
+            );
+
+            $existing = $lockedPoll->votes()->where('user_id', auth()->id())->lockForUpdate()->first();
 
             if ($existing && (int) $existing->option_id === $selectedOptionId) {
                 $existing->delete();
@@ -82,7 +87,7 @@ class PollController extends Controller
             }
 
             $existing?->delete();
-            $poll->votes()->create([
+            $lockedPoll->votes()->create([
                 'user_id' => auth()->id(),
                 'option_id' => $selectedOptionId,
             ]);
@@ -98,39 +103,9 @@ class PollController extends Controller
             $this->awardNormalPollParticipation($poll, auth()->user());
         }
 
-        $activeMemberIdsSubquery = GroupUser::query()
-            ->select('user_id')
-            ->where('status', 1)
-            ->where('group_id', $poll->group_id);
-
-        $voteCounts = PollVote::where('poll_id', $poll->id)
-            ->whereIn('user_id', $activeMemberIdsSubquery)
-            ->selectRaw('option_id, COUNT(*) as votes_count')
-            ->groupBy('option_id')
-            ->pluck('votes_count', 'option_id');
-
-        $totalVotes = (int) $voteCounts->sum();
-
-        $options = $poll->options()
-            ->select('id', 'text')
-            ->get()
-            ->map(function ($option) use ($voteCounts, $totalVotes) {
-                $count = (int) ($voteCounts[$option->id] ?? 0);
-
-                return [
-                    'id' => (int) $option->id,
-                    'text' => (string) $option->text,
-                    'count' => (int) $count,
-                    'percent' => $totalVotes > 0 ? (int) round(($count / $totalVotes) * 100) : 0,
-                ];
-            })
-            ->values();
-
-        $pollPayload = [
-            'id' => (int) $poll->id,
+        $weightedTally = app(PollVoteTallyService::class)->resultPayload($poll);
+        $pollPayload = $weightedTally + [
             'user_option_id' => $voteRemoved ? null : $selectedOptionId,
-            'total_votes' => (int) $totalVotes,
-            'options' => $options,
         ];
 
         $broadcastPayload = $pollPayload;
@@ -218,22 +193,11 @@ class PollController extends Controller
         $poll->load(['options', 'votes', 'user', 'skill']);
         $poll->setAttribute('real_type', (int) ($poll->type ?? 0));
 
-        $activeMemberIdsSubquery = GroupUser::query()
-            ->select('user_id')
-            ->where('status', 1)
-            ->where('group_id', $group->id);
-
-        $voteCounts = PollVote::query()
-            ->where('poll_id', $poll->id)
-            ->whereIn('user_id', $activeMemberIdsSubquery)
-            ->selectRaw('option_id, COUNT(*) as votes_count')
-            ->groupBy('option_id')
-            ->pluck('votes_count', 'option_id');
-
+        $weightedTally = app(PollVoteTallyService::class)->resultPayload($poll);
         $pollOptionVotes = [
-            (int) $poll->id => $voteCounts->map(fn ($count) => (int) $count)->all(),
+            (int) $poll->id => collect($weightedTally['options'])->mapWithKeys(fn ($option) => [(int) $option['id'] => (int) $option['count']])->all(),
         ];
-        $pollTotals = [(int) $poll->id => (int) $voteCounts->sum()];
+        $pollTotals = [(int) $poll->id => (int) $weightedTally['total_votes']];
 
         $userVoteOptionId = PollVote::query()
             ->where('poll_id', $poll->id)
@@ -243,16 +207,8 @@ class PollController extends Controller
             ? [(int) $poll->id => (int) $userVoteOptionId]
             : [];
 
-        $delegationsByPollId = collect();
-        if ((int) ($poll->type ?? 0) === 1) {
-            $delegation = Delegation::query()
-                ->where('poll_id', $poll->id)
-                ->where('user_id', auth()->id())
-                ->first();
-            if ($delegation) {
-                $delegationsByPollId = collect([(int) $poll->id => $delegation]);
-            }
-        }
+        $delegationsByPollId = app(PollVoteTallyService::class)
+            ->activeDelegationsByUserForPolls(collect([(int) $poll->id => $poll]), (int) auth()->id());
 
         return view('groups.partials.poll', [
             'item' => $poll,
