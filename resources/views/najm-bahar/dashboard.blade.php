@@ -725,11 +725,11 @@
 
 <!-- مدال نقد کردن امتیازات -->
 
-<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-start sm:items-center justify-center p-4 overflow-y-auto overscroll-contain" style="overscroll-behavior: contain;">
 
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all flex flex-col" style="max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem);">
 
-        <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 text-white">
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 text-white shrink-0">
 
             <div class="flex items-center justify-between">
 
@@ -763,7 +763,7 @@
 
 
 
-        <div id="reputationModalContent" class="p-6 space-y-4">
+        <div id="reputationModalContent" class="p-6 space-y-4 overflow-y-auto overscroll-contain" style="min-height: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;">
 
             <!-- محتوا از API بارگذاری می‌شود -->
 
@@ -1201,20 +1201,23 @@ function closeMembershipModal() {
 
 
 
-function openReputationModal() {
-
-    const modal = document.getElementById('reputationConversionModal');
-
-    const content = document.getElementById('reputationModalContent');
-
-
-
-    modal.classList.remove('hidden');
-
-    document.body.style.overflow = 'hidden';
-
-
-
+let reputationModalPreviousBodyOverflow = null;
+let reputationModalPreviousRootOverflow = null;
+
+function openReputationModal() {
+    const modal = document.getElementById('reputationConversionModal');
+    const content = document.getElementById('reputationModalContent');
+    if (!modal || !content) return;
+
+    // Keep the fixed overlay outside dashboard wrappers that can clip it.
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+
+    reputationModalPreviousBodyOverflow = document.body.style.overflow;
+    reputationModalPreviousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    modal.classList.remove('hidden');
+
     // بارگذاری اطلاعات از API
 
     fetch('{{ route("reputation.conversion.info") }}')
@@ -1541,18 +1544,16 @@ function openReputationModal() {
 
 
 
-function closeReputationModal() {
-
-    const modal = document.getElementById('reputationConversionModal');
-
-    modal.classList.add('hidden');
-
-    document.body.style.overflow = '';
-
-}
-
-
-
+function closeReputationModal() {
+    const modal = document.getElementById('reputationConversionModal');
+    if (modal) modal.classList.add('hidden');
+
+    document.body.style.overflow = reputationModalPreviousBodyOverflow ?? '';
+    document.documentElement.style.overflow = reputationModalPreviousRootOverflow ?? '';
+    reputationModalPreviousBodyOverflow = null;
+    reputationModalPreviousRootOverflow = null;
+}
+
 function updateConversionPreview(ratio) {
 
     const pointsInput = document.getElementById('pointsInput');
@@ -1597,7 +1598,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    const reputationModal = document.getElementById('reputationConversionModal');
+    const reputationModal = document.getElementById('reputationConversionModal');
+    if (reputationModal) document.body.appendChild(reputationModal);
 
     if (reputationModal) {
 
