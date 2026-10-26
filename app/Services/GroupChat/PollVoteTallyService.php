@@ -200,7 +200,7 @@ class PollVoteTallyService
             ->get(['id'])
             ->keyBy('id');
 
-        return $delegations->filter(function (Delegation $delegation) use ($polls, $experts): bool {
+        $qualifiedDelegations = $delegations->filter(function (Delegation $delegation) use ($polls, $experts): bool {
             $poll = $polls->get((int) $delegation->poll_id);
             $expert = $experts->get((int) $delegation->expert_id);
 
@@ -208,6 +208,19 @@ class PollVoteTallyService
                 && $this->isSpecialized($poll)
                 && $expert !== null
                 && $expert->experiences->contains(fn ($experience) => (int) $experience->id === (int) $poll->skill_id);
+        })->values();
+
+        // Fail closed for legacy chains/cycles too. Only a terminal expert who
+        // can cast a direct ballot receives delegated weight; otherwise the
+        // delegation is not treated as active and the delegator may vote directly.
+        $outgoingDelegatorsByPoll = $qualifiedDelegations
+            ->groupBy(fn (Delegation $delegation) => (int) $delegation->poll_id)
+            ->map(fn (Collection $rows) => $rows->pluck('user_id')->map(fn ($id) => (int) $id)->flip());
+
+        return $qualifiedDelegations->reject(function (Delegation $delegation) use ($outgoingDelegatorsByPoll): bool {
+            $outgoing = $outgoingDelegatorsByPoll->get((int) $delegation->poll_id, collect());
+
+            return $outgoing->has((int) $delegation->expert_id);
         })->values();
     }
 
