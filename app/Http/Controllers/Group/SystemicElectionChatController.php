@@ -119,11 +119,8 @@ class SystemicElectionChatController extends Controller
                 ->map(fn ($value) => (int) $value)
                 ->toArray();
 
-            $delegationsByPollId = Delegation::query()
-                ->whereIn('poll_id', $pollIds)
-                ->where('user_id', auth()->id())
-                ->get()
-                ->keyBy('poll_id');
+            $delegationsByPollId = app(PollVoteTallyService::class)
+                ->activeDelegationsByUserForPolls($polls, (int) auth()->id());
         }
 
         $anns = Announcement::query()->where('group_level', $groupPresentationLevel)
