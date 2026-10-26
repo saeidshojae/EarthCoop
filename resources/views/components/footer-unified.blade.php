@@ -23,14 +23,13 @@
             ['label' => __('navigation.footer_contact'), 'url' => route('pages.show', 'contact')],
         ];
 
-    if ($isWelcomeFooter && app()->getLocale() === 'fa') {
-        $quickLinks = array_merge($quickLinks, [
-            ['label' => 'تعاون نوین', 'url' => '/cooperative'],
-            ['label' => 'اقتصاد آزاد مردمی', 'url' => '/economy'],
-            ['label' => 'حکمرانی مشارکتی', 'url' => '/governance'],
-            ['label' => 'عدالت و حقوق بنیادین', 'url' => '/justice'],
-        ]);
-    }
+    // Core EarthCoop pillar pages are part of every footer, in every locale.
+    $quickLinks = array_merge($quickLinks, [
+        ['label' => __('langWelcome.footer_pillar_cooperative'), 'url' => route('seo.pillars.cooperative')],
+        ['label' => __('langWelcome.footer_pillar_economy'), 'url' => route('seo.pillars.economy')],
+        ['label' => __('langWelcome.footer_pillar_governance'), 'url' => route('seo.pillars.governance')],
+        ['label' => __('langWelcome.footer_pillar_justice'), 'url' => route('seo.pillars.justice')],
+    ]);
 
     $supportLinks = [
         ['label' => $isWelcomeFooter ? __('langWelcome.footer_faq') : __('navigation.footer_faq'), 'url' => route('pages.show', 'faq')],
