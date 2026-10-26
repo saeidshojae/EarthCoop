@@ -31,6 +31,7 @@ use App\Models\Comment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\GroupChat\PollVoteTallyService;
 use App\Services\GroupChat\GroupSessionService;
 use App\Services\Groups\GroupMembershipRoleResolver;
 
@@ -133,35 +134,18 @@ class ChatController extends Controller
               ->where('status', 1);
         };
 
-        $pollOptionVotes = [];
-        $pollTotals = [];
+        $weightedTally = app(PollVoteTallyService::class)->countOptionsForPolls($polls);
+        $pollOptionVotes = $weightedTally['options'];
+        $pollTotals = $weightedTally['totals'];
         $userVotesByPollId = [];
         $delegationsByPollId = collect();
 
         if ($pollIds->isNotEmpty()) {
-            $voteAgg = PollVote::query()
-                ->select('poll_id', 'option_id', DB::raw('COUNT(*) as c'))
-                ->whereIn('poll_id', $pollIds)
-                ->whereIn('user_id', $activeMemberIdsSubquery)
-                ->groupBy('poll_id', 'option_id')
-                ->get();
-
-            foreach ($voteAgg as $row) {
-                $pid = (int) $row->poll_id;
-                $oid = (int) $row->option_id;
-                $count = (int) $row->c;
-                if (!isset($pollOptionVotes[$pid])) {
-                    $pollOptionVotes[$pid] = [];
-                }
-                $pollOptionVotes[$pid][$oid] = $count;
-                $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + $count;
-            }
-
             $userVotesByPollId = PollVote::query()
                 ->whereIn('poll_id', $pollIds)
                 ->where('user_id', auth()->id())
                 ->pluck('option_id', 'poll_id')
-                ->map(fn ($v) => (int) $v)
+                ->map(fn ($value) => (int) $value)
                 ->toArray();
 
             $delegationsByPollId = Delegation::query()
@@ -169,27 +153,8 @@ class ChatController extends Controller
                 ->where('user_id', auth()->id())
                 ->get()
                 ->keyBy('poll_id');
-
-            $specializedPollIds = $polls
-                ->filter(fn ($p) => (int) ($p->real_type ?? 0) === 1)
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->values();
-
-            if ($specializedPollIds->isNotEmpty()) {
-                $delegationTotals = Delegation::query()
-                    ->select('poll_id', DB::raw('COUNT(*) as c'))
-                    ->whereIn('poll_id', $specializedPollIds)
-                    ->groupBy('poll_id')
-                    ->pluck('c', 'poll_id');
-
-                foreach ($delegationTotals as $pid => $c) {
-                    $pid = (int) $pid;
-                    $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + (int) $c;
-                }
-            }
         }
-        
+
         $anns = Announcement::where('group_level', $group->location_level)
             ->orderBy('created_at', 'asc')
             ->select('*')
