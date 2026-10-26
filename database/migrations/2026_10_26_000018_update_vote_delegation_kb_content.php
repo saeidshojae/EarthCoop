@@ -36,7 +36,15 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'delegate-vote')->where('content', 'like', '%در نظرسنجی‌های تخصصی گروه، می‌توانید رأی خود را به یک ع%')->where('content', 'like', '%فهرست متخصصان بر اساس حوزهٔ تخصصی تعیین‌شده برای نظرسنج%')->update([
+        DB::table('kb_articles')->where('slug', 'delegate-vote')->where(function ($query) {
+            $query->where(function ($query) {
+                $query->where('content', 'like', '%در نظرسنجی‌های تخصصی گروه، می‌توانید رأی خود را به یک ع%');
+$query->where('content', 'like', '%فهرست متخصصان بر اساس حوزهٔ تخصصی تعیین‌شده برای نظرسنج%');
+            })->orWhere(function ($query) {
+                $query->where('content', 'like', '%در نظرسنجی‌های تخصصی گروه، می‌توانید رأی خود را به یک ع%');
+$query->where('content', 'like', '%فهرست متخصصان بر اساس حوزهٔ تخصصی تعیین‌شده برای نظرسنج%');
+            });
+        })->update([
             'title' => 'تفویض رأی به کارشناسان',
             'excerpt' => 'راهنمای ثبت، تغییر و لغو تفویض و نحوهٔ محاسبهٔ وزن رأی متخصص',
             'content' => $content,

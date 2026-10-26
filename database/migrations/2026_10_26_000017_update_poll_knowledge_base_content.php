@@ -41,7 +41,15 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-polls')->where('content', 'like', '%نظرسنجی‌ها ابزاری برای جمع‌آوری نظرات اعضا در مورد موضو%')->where('content', 'like', '%برای رأی‌دادن باید نظرسنجی فعال باشد و مهلت آن تمام نشد%')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-polls')->where(function ($query) {
+            $query->where(function ($query) {
+                $query->where('content', 'like', '%نظرسنجی‌ها ابزاری برای جمع‌آوری نظرات اعضا در مورد موضو%');
+$query->where('content', 'like', '%برای رأی‌دادن باید نظرسنجی فعال باشد و مهلت آن تمام نشد%');
+            })->orWhere(function ($query) {
+                $query->where('content', 'like', '%نظرسنجی‌ها در جریان گروهی EarthCoop منتشر می‌شوند تا اع%');
+$query->where('content', 'like', '%در هر بار رأی‌دادن، یک گزینه انتخاب می‌شود. برای تغییر %');
+            });
+        })->update([
             'title' => 'شرکت در نظرسنجی‌ها',
             'excerpt' => 'راهنمای شرکت در نظرسنجی‌های گروه، ثبت و تغییر رأی، مهلت‌ها و تفویض رأی',
             'content' => $content,
