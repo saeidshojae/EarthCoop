@@ -1147,14 +1147,6 @@ class ChatController extends Controller
         app(GroupEventPublisher::class)->publish(
             new GroupPollUpdated((int) $group->id, $weightedPayload, $userId)
         );
-        app(GroupFeedService::class)->recordMutation(
-            'poll',
-            (int) $poll->id,
-            'feed.poll.delegation_changed',
-            $userId,
-            ['delegated' => ! $removed, 'expert_id' => $removed ? null : (int) $expert->id]
-        );
-
         return response()->json(['data' => [
             'delegated' => ! $removed,
             'expert_id' => $removed ? null : (int) $expert->id,
