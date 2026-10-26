@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Models\Vote;
 use App\Services\Elections\ElectionPolicyResolver;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\GroupChat\PollVoteTallyService;
 use App\Services\GroupChat\GroupSessionService;
 use App\Services\Groups\GroupMembershipRoleResolver;
 use App\Services\LocationGovernance\GroupGovernanceContext;
@@ -104,48 +105,25 @@ class SystemicElectionChatController extends Controller
             ->orderByDesc('id')->limit($initialPollLimit)->get()->reverse()->values();
 
         $pollIds = $polls->pluck('id')->filter()->values();
-        $pollOptionVotes = [];
-        $pollTotals = [];
+        $weightedTally = app(PollVoteTallyService::class)->countOptionsForPolls($polls);
+        $pollOptionVotes = $weightedTally['options'];
+        $pollTotals = $weightedTally['totals'];
         $userVotesByPollId = [];
         $delegationsByPollId = collect();
 
         if ($pollIds->isNotEmpty()) {
-            $activeMemberIdsSubquery = function ($query) use ($group) {
-                $query->select('user_id')->from('group_user')->where('group_id', $group->id)->where('status', 1);
-            };
-            $voteAgg = PollVote::query()
-                ->select('poll_id', 'option_id', DB::raw('COUNT(*) as c'))
-                ->whereIn('poll_id', $pollIds)
-                ->whereIn('user_id', $activeMemberIdsSubquery)
-                ->groupBy('poll_id', 'option_id')->get();
-            foreach ($voteAgg as $row) {
-                $pid = (int) $row->poll_id;
-                $oid = (int) $row->option_id;
-                $pollOptionVotes[$pid][$oid] = (int) $row->c;
-                $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + (int) $row->c;
-            }
             $userVotesByPollId = PollVote::query()
-                ->whereIn('poll_id', $pollIds)->where('user_id', auth()->id())
-                ->pluck('option_id', 'poll_id')->map(fn ($v) => (int) $v)->toArray();
-            $delegationsByPollId = Delegation::query()
-                ->whereIn('poll_id', $pollIds)->where('user_id', auth()->id())->get()->keyBy('poll_id');
+                ->whereIn('poll_id', $pollIds)
+                ->where('user_id', auth()->id())
+                ->pluck('option_id', 'poll_id')
+                ->map(fn ($value) => (int) $value)
+                ->toArray();
 
-            // Preserve the legacy group-chat display contract for specialized
-            // polls: delegated participation contributes to the displayed total.
-            $specializedPollIds = $polls
-                ->filter(fn ($poll) => (int) ($poll->real_type ?? 0) === 1)
-                ->pluck('id')->map(fn ($id) => (int) $id)->values();
-            if ($specializedPollIds->isNotEmpty()) {
-                $delegationTotals = Delegation::query()
-                    ->select('poll_id', DB::raw('COUNT(*) as c'))
-                    ->whereIn('poll_id', $specializedPollIds)
-                    ->groupBy('poll_id')
-                    ->pluck('c', 'poll_id');
-                foreach ($delegationTotals as $pollId => $count) {
-                    $pid = (int) $pollId;
-                    $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + (int) $count;
-                }
-            }
+            $delegationsByPollId = Delegation::query()
+                ->whereIn('poll_id', $pollIds)
+                ->where('user_id', auth()->id())
+                ->get()
+                ->keyBy('poll_id');
         }
 
         $anns = Announcement::query()->where('group_level', $groupPresentationLevel)
