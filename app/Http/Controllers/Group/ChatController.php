@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Group;
 
 use App\Http\Controllers\Controller;
+use App\Events\GroupPollUpdated;
 use App\Models\Announcement;
 use Illuminate\Http\Request;
 use App\Models\Category;
@@ -31,6 +32,7 @@ use App\Models\Comment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\GroupChat\GroupEventPublisher;
 use App\Services\GroupChat\PollVoteTallyService;
 use App\Services\GroupChat\GroupSessionService;
 use App\Services\Groups\GroupMembershipRoleResolver;
@@ -1121,8 +1123,8 @@ class ChatController extends Controller
 
         $poll->refresh();
         $weightedPayload = app(PollVoteTallyService::class)->resultPayload($poll);
-        app(\\App\\Services\\GroupChat\\GroupEventPublisher::class)->publish(
-            new \\App\\Events\\GroupPollUpdated((int) $group->id, $weightedPayload, $userId)
+        app(GroupEventPublisher::class)->publish(
+            new GroupPollUpdated((int) $group->id, $weightedPayload, $userId)
         );
         app(GroupFeedService::class)->recordMutation(
             'poll',
