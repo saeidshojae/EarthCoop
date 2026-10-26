@@ -1061,6 +1061,15 @@ class ChatController extends Controller
             ->where('users.id', '<>', auth()->id())
             ->whereHas('experiences', fn ($query) => $query->where('experience_fields.id', $poll->skill_id))
             ->whereHas('groups', fn ($query) => $query->where('groups.id', $group->id)->where('group_user.status', 1))
+            // A recipient must be able to cast a direct ballot; do not expose
+            // members who have already delegated their own vote elsewhere.
+            ->whereNotExists(function ($query) use ($poll) {
+                $query->select(DB::raw(1))
+                    ->from('delegations as outgoing_delegation')
+                    ->whereColumn('outgoing_delegation.user_id', 'users.id')
+                    ->where('outgoing_delegation.poll_id', $poll->id)
+                    ->whereNull('outgoing_delegation.deleted_at');
+            })
             ->orderBy('users.first_name')->orderBy('users.last_name')->limit(100)->get()
             ->map(fn (User $expert) => [
                 'id' => (int) $expert->id,
@@ -1108,6 +1117,18 @@ class ChatController extends Controller
                 && GroupUser::query()->where('group_id', $group->id)->where('user_id', $expert->id)->where('status', 1)->exists()
                 && (int) $expert->id !== $userId;
             abort_unless($qualified, 422, 'این کاربر برای تفویض این رأی واجد شرایط نیست.');
+
+            $tallyService = app(PollVoteTallyService::class);
+            abort_if(
+                $tallyService->hasIncomingActiveDelegations($lockedPoll, $userId),
+                422,
+                'چون رأی‌های اعضای دیگر به شما تفویض شده است، نمی‌توانید رأی خود را به شخص دیگری تفویض کنید.'
+            );
+            abort_if(
+                $tallyService->hasActiveDelegation($lockedPoll, (int) $expert->id),
+                422,
+                'این متخصص رأی خود را به شخص دیگری تفویض کرده و فعلاً نمی‌تواند مقصد تفویض باشد.'
+            );
 
             Delegation::updateOrCreate(
                 ['poll_id' => $lockedPoll->id, 'user_id' => $userId],
