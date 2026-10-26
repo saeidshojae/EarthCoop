@@ -124,6 +124,31 @@ class PollVoteTallyService
     }
 
     /**
+     * Return user IDs whose outgoing delegation is currently valid for this poll.
+     * This is used by the expert picker so stale/ineligible legacy rows do not
+     * hide an otherwise qualified expert from receiving a delegation.
+     */
+    public function usersWithActiveDelegationsForPoll(Poll $poll): Collection
+    {
+        if (! $this->isSpecialized($poll)) {
+            return collect();
+        }
+
+        $activeMemberIds = GroupUser::query()
+            ->where('group_id', (int) $poll->group_id)
+            ->where('status', 1)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        return $this->validDelegationsForPolls(collect([(int) $poll->id => $poll]), $activeMemberIds)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /**
      * A server-side guard: delegated members cannot submit a separate ballot.
      */
     public function hasActiveDelegation(Poll $poll, int $userId): bool
