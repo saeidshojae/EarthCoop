@@ -112,6 +112,27 @@ class PollVoteTallyService
     }
 
     /**
+     * Delegation is intentionally one-level: an expert with an outgoing
+     * delegation cannot receive another member's delegation for this poll.
+     */
+    public function hasIncomingActiveDelegations(Poll $poll, int $expertId): bool
+    {
+        if (! $this->isSpecialized($poll)) {
+            return false;
+        }
+
+        $activeMemberIds = GroupUser::query()
+            ->where('group_id', (int) $poll->group_id)
+            ->where('status', 1)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        return $this->validDelegationsForPolls(collect([(int) $poll->id => $poll]), $activeMemberIds)
+            ->contains(fn (Delegation $delegation) => (int) $delegation->expert_id === $expertId);
+    }
+
+    /**
      * Build the result payload shared by vote responses and real-time updates.
      */
     public function resultPayload(Poll $poll): array
