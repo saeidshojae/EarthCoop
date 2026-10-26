@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Group;
 
 use App\Http\Controllers\Controller;
+use App\Events\GroupPollUpdated;
 use App\Models\Announcement;
 use Illuminate\Http\Request;
 use App\Models\Category;
@@ -31,6 +32,8 @@ use App\Models\Comment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\GroupChat\GroupEventPublisher;
+use App\Services\GroupChat\PollVoteTallyService;
 use App\Services\GroupChat\GroupSessionService;
 use App\Services\Groups\GroupMembershipRoleResolver;
 
@@ -124,72 +127,24 @@ class ChatController extends Controller
         \Log::info('ChatController@chat T2 (after messages+posts+polls): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         $pollIds = $polls->pluck('id')->filter()->values();
-        // از subquery به جای لود همه ID‌ها در حافظه استفاده می‌کنیم
-        // (جلوگیری از WHERE IN با هزاران مقدار که باعث timeout می‌شود)
-        $activeMemberIdsSubquery = function($q) use ($group) {
-            $q->select('user_id')
-              ->from('group_user')
-              ->where('group_id', $group->id)
-              ->where('status', 1);
-        };
-
-        $pollOptionVotes = [];
-        $pollTotals = [];
+        $weightedTally = app(PollVoteTallyService::class)->countOptionsForPolls($polls);
+        $pollOptionVotes = $weightedTally['options'];
+        $pollTotals = $weightedTally['totals'];
         $userVotesByPollId = [];
         $delegationsByPollId = collect();
 
         if ($pollIds->isNotEmpty()) {
-            $voteAgg = PollVote::query()
-                ->select('poll_id', 'option_id', DB::raw('COUNT(*) as c'))
-                ->whereIn('poll_id', $pollIds)
-                ->whereIn('user_id', $activeMemberIdsSubquery)
-                ->groupBy('poll_id', 'option_id')
-                ->get();
-
-            foreach ($voteAgg as $row) {
-                $pid = (int) $row->poll_id;
-                $oid = (int) $row->option_id;
-                $count = (int) $row->c;
-                if (!isset($pollOptionVotes[$pid])) {
-                    $pollOptionVotes[$pid] = [];
-                }
-                $pollOptionVotes[$pid][$oid] = $count;
-                $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + $count;
-            }
-
             $userVotesByPollId = PollVote::query()
                 ->whereIn('poll_id', $pollIds)
                 ->where('user_id', auth()->id())
                 ->pluck('option_id', 'poll_id')
-                ->map(fn ($v) => (int) $v)
+                ->map(fn ($value) => (int) $value)
                 ->toArray();
 
-            $delegationsByPollId = Delegation::query()
-                ->whereIn('poll_id', $pollIds)
-                ->where('user_id', auth()->id())
-                ->get()
-                ->keyBy('poll_id');
-
-            $specializedPollIds = $polls
-                ->filter(fn ($p) => (int) ($p->real_type ?? 0) === 1)
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->values();
-
-            if ($specializedPollIds->isNotEmpty()) {
-                $delegationTotals = Delegation::query()
-                    ->select('poll_id', DB::raw('COUNT(*) as c'))
-                    ->whereIn('poll_id', $specializedPollIds)
-                    ->groupBy('poll_id')
-                    ->pluck('c', 'poll_id');
-
-                foreach ($delegationTotals as $pid => $c) {
-                    $pid = (int) $pid;
-                    $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + (int) $c;
-                }
-            }
+            $delegationsByPollId = app(PollVoteTallyService::class)
+                ->activeDelegationsByUserForPolls($polls, (int) auth()->id());
         }
-        
+
         $anns = Announcement::where('group_level', $group->location_level)
             ->orderBy('created_at', 'asc')
             ->select('*')
@@ -1089,11 +1044,21 @@ class ChatController extends Controller
 
         $selectedExpertId = Delegation::query()->where('poll_id', $poll->id)
             ->where('user_id', auth()->id())->value('expert_id');
+        $activeDelegatorIds = app(PollVoteTallyService::class)->usersWithActiveDelegationsForPoll($poll);
         $experts = User::query()
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.avatar')
             ->where('users.id', '<>', auth()->id())
             ->whereHas('experiences', fn ($query) => $query->where('experience_fields.id', $poll->skill_id))
             ->whereHas('groups', fn ($query) => $query->where('groups.id', $group->id)->where('group_user.status', 1))
+            // A recipient must be able to cast a direct ballot. Use the same
+            // eligibility rules as tallying, so stale/ineligible rows do not
+            // hide a qualified expert; preserve the current target for revocation.
+            ->where(function ($query) use ($activeDelegatorIds, $selectedExpertId) {
+                $query->whereNotIn('users.id', $activeDelegatorIds->all());
+                if ($selectedExpertId) {
+                    $query->orWhere('users.id', $selectedExpertId);
+                }
+            })
             ->orderBy('users.first_name')->orderBy('users.last_name')->limit(100)->get()
             ->map(fn (User $expert) => [
                 'id' => (int) $expert->id,
@@ -1111,23 +1076,74 @@ class ChatController extends Controller
     {
         $this->authorize('view', $group);
         abort_unless((int) $poll->group_id === (int) $group->id, 404);
-        abort_unless((int) $poll->type === 1 && $poll->skill_id, 422, 'این رأی‌گیری تخصصی نیست.');
-        $qualified = $expert->experiences()->where('experience_fields.id', $poll->skill_id)->exists()
-            && $expert->groups()->where('groups.id', $group->id)->wherePivot('status', 1)->exists();
-        abort_unless($qualified && (int) $expert->id !== (int) auth()->id(), 422, 'این کاربر برای تفویض این رأی واجد شرایط نیست.');
+        abort_unless((int) ($poll->type ?? 0) === 1 && $poll->skill_id, 422, 'این رأی‌گیری یا انتخابات تخصصی نیست.');
 
-        $delegation = Delegation::query()->where('poll_id', $poll->id)->where('user_id', auth()->id())->first();
-        $removed = $delegation && (int) $delegation->expert_id === (int) $expert->id;
-        if ($removed) {
-            $delegation->delete();
-        } else {
-            Delegation::updateOrCreate(['poll_id' => $poll->id, 'user_id' => auth()->id()], ['expert_id' => $expert->id]);
-        }
+        $userId = (int) auth()->id();
+        $removed = DB::transaction(function () use ($group, $poll, $expert, $userId): bool {
+            $lockedPoll = Poll::query()->lockForUpdate()->findOrFail($poll->id);
+            abort_unless((int) $lockedPoll->group_id === (int) $group->id, 404);
 
-        return response()->json(['data' => ['delegated' => ! $removed,
+            $delegation = Delegation::query()
+                ->where('poll_id', $lockedPoll->id)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($delegation && (int) $delegation->expert_id === (int) $expert->id) {
+                $delegation->delete();
+
+                return true;
+            }
+
+            abort_if(! $lockedPoll->is_active || $lockedPoll->isExpired(), 422, 'مهلت این رأی‌گیری یا انتخابات تمام شده است.');
+            abort_unless(
+                GroupUser::query()->where('group_id', $group->id)->where('user_id', $userId)->where('status', 1)->exists(),
+                403,
+                'برای تفویض رأی باید عضو فعال این گروه باشید.'
+            );
+
+            $qualified = $expert->experiences()->where('experience_fields.id', $lockedPoll->skill_id)->exists()
+                && GroupUser::query()->where('group_id', $group->id)->where('user_id', $expert->id)->where('status', 1)->exists()
+                && (int) $expert->id !== $userId;
+            abort_unless($qualified, 422, 'این کاربر برای تفویض این رأی واجد شرایط نیست.');
+
+            $tallyService = app(PollVoteTallyService::class);
+            abort_if(
+                $tallyService->hasIncomingActiveDelegations($lockedPoll, $userId),
+                422,
+                'چون رأی‌های اعضای دیگر به شما تفویض شده است، نمی‌توانید رأی خود را به شخص دیگری تفویض کنید.'
+            );
+            abort_if(
+                $tallyService->hasActiveDelegation($lockedPoll, (int) $expert->id),
+                422,
+                'این متخصص رأی خود را به شخص دیگری تفویض کرده و فعلاً نمی‌تواند مقصد تفویض باشد.'
+            );
+
+            Delegation::updateOrCreate(
+                ['poll_id' => $lockedPoll->id, 'user_id' => $userId],
+                ['expert_id' => $expert->id]
+            );
+
+            // Transfer the ballot rather than allowing an old direct ballot to
+            // reappear when the delegation is later revoked.
+            PollVote::query()->where('poll_id', $lockedPoll->id)->where('user_id', $userId)->delete();
+
+            return false;
+        }, 3);
+
+        $poll->refresh();
+        $weightedPayload = app(PollVoteTallyService::class)->resultPayload($poll);
+        app(GroupEventPublisher::class)->publish(
+            new GroupPollUpdated((int) $group->id, $weightedPayload, $userId)
+        );
+        return response()->json(['data' => [
+            'delegated' => ! $removed,
             'expert_id' => $removed ? null : (int) $expert->id,
-            'message' => $removed ? 'تفویض رأی برداشته شد.' : 'رأی شما با موفقیت تفویض شد.']]);
+            'message' => $removed ? 'تفویض رأی برداشته شد.' : 'رأی شما با ضریب تفویض به متخصص منتقل شد.',
+            'poll' => $weightedPayload,
+        ]]);
     }
+
 
     public function clearHistory(Group $group)
     {
