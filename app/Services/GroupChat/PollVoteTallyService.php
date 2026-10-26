@@ -144,8 +144,8 @@ class PollVoteTallyService
     }
 
     /**
-     * Delegation is intentionally one-level: an expert with an outgoing
-     * delegation cannot receive another member's delegation for this poll.
+     * Return true when this member has incoming delegations and therefore
+     * cannot pass their own ballot onward in the same poll.
      */
     public function hasIncomingActiveDelegations(Poll $poll, int $expertId): bool
     {
