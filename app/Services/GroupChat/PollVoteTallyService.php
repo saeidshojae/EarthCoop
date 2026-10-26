@@ -26,6 +26,9 @@ class PollVoteTallyService
         $result = ['options' => [], 'totals' => []];
 
         foreach ($polls->groupBy(fn (Poll $poll) => (int) $poll->group_id) as $groupId => $groupPolls) {
+            // Collection::groupBy resets inner keys by default; re-key by poll ID
+            // before any whereIn queries or poll-ID lookups.
+            $groupPolls = $groupPolls->keyBy(fn (Poll $poll) => (int) $poll->id);
             $pollIds = $groupPolls->keys()->map(fn ($id) => (int) $id)->values();
             $activeMemberIds = GroupUser::query()
                 ->where('group_id', (int) $groupId)
@@ -101,6 +104,7 @@ class PollVoteTallyService
         $result = collect();
 
         foreach ($polls->groupBy(fn (Poll $poll) => (int) $poll->group_id) as $groupId => $groupPolls) {
+            $groupPolls = $groupPolls->keyBy(fn (Poll $poll) => (int) $poll->id);
             $activeMemberIds = GroupUser::query()
                 ->where('group_id', (int) $groupId)
                 ->where('status', 1)
@@ -194,6 +198,8 @@ class PollVoteTallyService
 
     private function validDelegationsForPolls(Collection $polls, Collection $activeMemberIds): Collection
     {
+        $polls = $polls->keyBy(fn (Poll $poll) => (int) $poll->id);
+
         if ($polls->isEmpty() || $activeMemberIds->isEmpty()) {
             return collect();
         }
