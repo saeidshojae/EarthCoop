@@ -92,6 +92,34 @@ class PollVoteTallyService
     }
 
     /**
+     * Return only currently valid outgoing delegations for rendering card state.
+     * Stale or ineligible delegation rows must not disable a member's ballot.
+     */
+    public function activeDelegationsByUserForPolls(Collection $polls, int $userId): Collection
+    {
+        $polls = $polls->keyBy(fn (Poll $poll) => (int) $poll->id);
+        $result = collect();
+
+        foreach ($polls->groupBy(fn (Poll $poll) => (int) $poll->group_id) as $groupId => $groupPolls) {
+            $activeMemberIds = GroupUser::query()
+                ->where('group_id', (int) $groupId)
+                ->where('status', 1)
+                ->pluck('user_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            $specializedPolls = $groupPolls->filter(fn (Poll $poll) => $this->isSpecialized($poll));
+            $result = $result->merge(
+                $this->validDelegationsForPolls($specializedPolls, $activeMemberIds)
+                    ->filter(fn (Delegation $delegation) => (int) $delegation->user_id === $userId)
+            );
+        }
+
+        return $result->keyBy('poll_id');
+    }
+
+    /**
      * A server-side guard: delegated members cannot submit a separate ballot.
      */
     public function hasActiveDelegation(Poll $poll, int $userId): bool
