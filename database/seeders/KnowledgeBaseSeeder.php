@@ -274,7 +274,7 @@ class KnowledgeBaseSeeder extends Seeder
             [
                 'title' => 'شرکت در نظرسنجی‌ها',
                 'slug' => 'participate-in-polls',
-                'excerpt' => 'راهنمای شرکت در نظرسنجی‌ها و اعلام نظر در تصمیم‌گیری‌های جمعی',
+                'excerpt' => 'راهنمای شرکت در نظرسنجی‌های گروه، ثبت و تغییر رأی، مهلت‌ها و تفویض رأی',
                 'content' => $this->getPollGuideContent(),
                 'category_id' => $categories['polls']->id,
                 'is_featured' => false,
@@ -283,7 +283,7 @@ class KnowledgeBaseSeeder extends Seeder
             [
                 'title' => 'تفویض رای به کارشناسان',
                 'slug' => 'delegate-vote',
-                'excerpt' => 'نحوه تفویض رای خود به کارشناسان موضوعی برای تصمیم‌گیری‌های تخصصی',
+                'excerpt' => 'راهنمای ثبت، تغییر و لغو تفویض در نظرسنجی تخصصی و توضیح محدودیت‌های فعلی',
                 'content' => $this->getVoteDelegationContent(),
                 'category_id' => $categories['decision-making']->id,
                 'is_featured' => false,
@@ -341,7 +341,7 @@ class KnowledgeBaseSeeder extends Seeder
             [
                 'title' => 'پیگیری وضعیت پروژه‌ها',
                 'slug' => 'track-project-status',
-                'excerpt' => 'نحوه پیگیری وضعیت پروژه‌هایی که در آن‌ها سرمایه‌گذاری کرده‌اید',
+                'excerpt' => 'راهنمای پیگیری سرمایه‌گذاری‌ها، وضعیت‌ها و جزئیات تراکنش‌های مرتبط',
                 'content' => $this->getProjectTrackingContent(),
                 'category_id' => $categories['project-tracking']->id,
                 'is_featured' => false,
@@ -374,7 +374,7 @@ class KnowledgeBaseSeeder extends Seeder
             [
                 'title' => 'نحوه ایجاد تیکت پشتیبانی',
                 'slug' => 'create-support-ticket',
-                'excerpt' => 'راهنمای ایجاد تیکت پشتیبانی و دریافت کمک از تیم پشتیبانی',
+                'excerpt' => 'راهنمای ثبت، پیوست فایل و پیگیری تیکت‌های پشتیبانی',
                 'content' => $this->getSupportTicketContent(),
                 'category_id' => $categories['support']->id,
                 'is_featured' => false,
@@ -383,7 +383,7 @@ class KnowledgeBaseSeeder extends Seeder
             [
                 'title' => 'استفاده از چت پشتیبانی',
                 'slug' => 'use-support-chat',
-                'excerpt' => 'راهنمای استفاده از چت زنده پشتیبانی برای ارتباط مستقیم',
+                'excerpt' => 'راهنمای ارسال پیام، پیوست فایل و تبدیل چت پشتیبانی به تیکت',
                 'content' => $this->getSupportChatContent(),
                 'category_id' => $categories['support']->id,
                 'is_featured' => false,
@@ -392,7 +392,7 @@ class KnowledgeBaseSeeder extends Seeder
             [
                 'title' => 'دعوت از دوستان و کسب سکه بهار',
                 'slug' => 'invite-friends-earn-coins',
-                'excerpt' => 'راهنمای دعوت دوستان به پلتفرم و کسب سکه‌های بهار از طریق ارجاع',
+                'excerpt' => 'راهنمای ساخت کد دعوت، شرایط احراز و پاداش امتیاز مشارکت',
                 'content' => $this->getInvitationContent(),
                 'category_id' => $categories['registration-profile']->id,
                 'is_featured' => false,
