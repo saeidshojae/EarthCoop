@@ -28,6 +28,7 @@ class PollDelegationTest extends TestCase
         }
         $skill = ExperienceField::create(['name' => 'Skill ' . Str::uuid()]);
         $expert->experiences()->attach($skill->id);
+        $voter->experiences()->attach($skill->id);
         $poll = Poll::create([
             'group_id' => $group->id, 'created_by' => $voter->id, 'question' => 'Specialized?',
             'type' => 1, 'skill_id' => $skill->id, 'main_type' => 0, 'is_active' => true,
@@ -50,6 +51,16 @@ class PollDelegationTest extends TestCase
             ->assertJsonPath('data.poll.options.1.count', 2);
         $this->assertDatabaseHas('delegations', ['poll_id' => $poll->id, 'user_id' => $voter->id, 'expert_id' => $expert->id]);
         $this->assertDatabaseMissing('poll_votes', ['poll_id' => $poll->id, 'user_id' => $voter->id]);
+
+        // Keep delegation one-level: a recipient who is delegating out cannot
+        // receive another delegation, and an expert with incoming delegations
+        // cannot pass their own vote onward.
+        $this->actingAs($unqualified)
+            ->postJson(route('groups.delegation', [$group, $poll, $voter]))
+            ->assertStatus(422);
+        $this->actingAs($expert)
+            ->postJson(route('groups.delegation', [$group, $poll, $voter]))
+            ->assertStatus(422);
 
         $this->actingAs($voter)->postJson($url)
             ->assertOk()
