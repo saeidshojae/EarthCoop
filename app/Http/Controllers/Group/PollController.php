@@ -7,9 +7,7 @@ use App\Events\GroupPollUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Group\StorePollRequest;
 use App\Http\Requests\Group\VotePollRequest;
-use App\Models\Delegation;
 use App\Models\Group;
-use App\Models\GroupUser;
 use App\Models\Poll;
 use App\Models\PollVote;
 use Carbon\Carbon;
@@ -209,16 +207,8 @@ class PollController extends Controller
             ? [(int) $poll->id => (int) $userVoteOptionId]
             : [];
 
-        $delegationsByPollId = collect();
-        if ((int) ($poll->type ?? 0) === 1) {
-            $delegation = Delegation::query()
-                ->where('poll_id', $poll->id)
-                ->where('user_id', auth()->id())
-                ->first();
-            if ($delegation) {
-                $delegationsByPollId = collect([(int) $poll->id => $delegation]);
-            }
-        }
+        $delegationsByPollId = app(PollVoteTallyService::class)
+            ->activeDelegationsByUserForPolls(collect([(int) $poll->id => $poll]), (int) auth()->id());
 
         return view('groups.partials.poll', [
             'item' => $poll,
