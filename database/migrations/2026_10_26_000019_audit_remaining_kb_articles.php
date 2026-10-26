@@ -183,7 +183,7 @@ HTML;
 
         DB::table('kb_articles')->where('slug', 'track-project-status')->update([
             'title' => 'پیگیری وضعیت پروژه‌ها',
-            'excerpt' => 'راهنمای پیگیری وضعیت پروژه‌ها',
+            'excerpt' => 'نحوه پیگیری وضعیت پروژه‌هایی که در آن‌ها سرمایه‌گذاری کرده‌اید',
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -229,7 +229,7 @@ HTML;
 
         DB::table('kb_articles')->where('slug', 'create-support-ticket')->update([
             'title' => 'نحوه ایجاد تیکت پشتیبانی',
-            'excerpt' => 'راهنمای ایجاد تیکت پشتیبانی و پیگیری درخواست‌ها',
+            'excerpt' => 'راهنمای ایجاد تیکت پشتیبانی و دریافت کمک از تیم پشتیبانی',
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -243,7 +243,7 @@ HTML;
 
         DB::table('kb_articles')->where('slug', 'use-support-chat')->update([
             'title' => 'استفاده از چت پشتیبانی',
-            'excerpt' => 'راهنمای استفاده از چت پشتیبانی',
+            'excerpt' => 'راهنمای استفاده از چت زنده پشتیبانی برای ارتباط مستقیم',
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -257,7 +257,7 @@ HTML;
 
         DB::table('kb_articles')->where('slug', 'invite-friends-earn-coins')->update([
             'title' => 'دعوت از دوستان و کسب سکه بهار',
-            'excerpt' => 'راهنمای دعوت از دوستان و کسب سکه بهار',
+            'excerpt' => 'راهنمای دعوت دوستان به پلتفرم و کسب سکه‌های بهار از طریق ارجاع',
             'content' => $content,
             'updated_at' => now(),
         ]);
