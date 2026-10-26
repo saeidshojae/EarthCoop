@@ -1063,12 +1063,14 @@ class ChatController extends Controller
             ->whereHas('groups', fn ($query) => $query->where('groups.id', $group->id)->where('group_user.status', 1))
             // A recipient must be able to cast a direct ballot; do not expose
             // members who have already delegated their own vote elsewhere.
-            ->whereNotExists(function ($query) use ($poll) {
-                $query->select(DB::raw(1))
-                    ->from('delegations as outgoing_delegation')
-                    ->whereColumn('outgoing_delegation.user_id', 'users.id')
-                    ->where('outgoing_delegation.poll_id', $poll->id)
-                    ->whereNull('outgoing_delegation.deleted_at');
+            ->where(function ($query) use ($poll, $selectedExpertId) {
+                $query->whereNotExists(function ($subquery) use ($poll) {
+                    $subquery->select(DB::raw(1))
+                        ->from('delegations as outgoing_delegation')
+                        ->whereColumn('outgoing_delegation.user_id', 'users.id')
+                        ->where('outgoing_delegation.poll_id', $poll->id)
+                        ->whereNull('outgoing_delegation.deleted_at');
+                })->orWhere('users.id', $selectedExpertId);
             })
             ->orderBy('users.first_name')->orderBy('users.last_name')->limit(100)->get()
             ->map(fn (User $expert) => [
