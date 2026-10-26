@@ -127,15 +127,6 @@ class ChatController extends Controller
         \Log::info('ChatController@chat T2 (after messages+posts+polls): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         $pollIds = $polls->pluck('id')->filter()->values();
-        // از subquery به جای لود همه ID‌ها در حافظه استفاده می‌کنیم
-        // (جلوگیری از WHERE IN با هزاران مقدار که باعث timeout می‌شود)
-        $activeMemberIdsSubquery = function($q) use ($group) {
-            $q->select('user_id')
-              ->from('group_user')
-              ->where('group_id', $group->id)
-              ->where('status', 1);
-        };
-
         $weightedTally = app(PollVoteTallyService::class)->countOptionsForPolls($polls);
         $pollOptionVotes = $weightedTally['options'];
         $pollTotals = $weightedTally['totals'];
@@ -150,11 +141,8 @@ class ChatController extends Controller
                 ->map(fn ($value) => (int) $value)
                 ->toArray();
 
-            $delegationsByPollId = Delegation::query()
-                ->whereIn('poll_id', $pollIds)
-                ->where('user_id', auth()->id())
-                ->get()
-                ->keyBy('poll_id');
+            $delegationsByPollId = app(PollVoteTallyService::class)
+                ->activeDelegationsByUserForPolls($polls, (int) auth()->id());
         }
 
         $anns = Announcement::where('group_level', $group->location_level)
