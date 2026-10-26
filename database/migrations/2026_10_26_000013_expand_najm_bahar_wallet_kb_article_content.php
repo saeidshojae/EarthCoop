@@ -41,7 +41,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->update([
+        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->where('content', 'like', '%کیف پول نجم بهار نمایی از حساب اصلی شما، موجودی‌ها و تر%')->where('content', 'like', '%برای دیدن جزئیات بیشتر، از «گزارش‌های مالی» استفاده کنی%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -81,7 +81,7 @@ HTML;
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->update([
+        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->where('content', 'like', '%کیف پول نجم بهار نمایی از حساب اصلی، موجودی‌ها و تراکنش%')->where('content', 'like', '%اگر قابلیت تبدیل در سیاست پولی جاری فعال باشد، از گزینه%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

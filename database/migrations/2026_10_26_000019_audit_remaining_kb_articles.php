@@ -27,7 +27,7 @@ return new class extends Migration
 <p>وضعیت «تأییدشده» یا «فعال» به‌تنهایی تضمین‌کنندهٔ سود، بازپرداخت قطعی یا موفقیت تجاری پروژه نیست. شرایط، مدت، درصد سود اعلامی و ریسک‌های هر پروژه را در صفحهٔ همان پروژه و جزئیات سرمایه‌گذاری بررسی کنید. اگر وضعیت یا تراکنش با انتظار شما سازگار نیست، شناسهٔ سرمایه‌گذاری و اطلاعات تراکنش را برای پشتیبانی بفرستید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'track-project-status')->update([
+        DB::table('kb_articles')->where('slug', 'track-project-status')->where('content', 'like', '%می‌توانید وضعیت پروژه‌هایی که در آن‌ها سرمایه‌گذاری کرد%')->update([
             'title' => 'پیگیری وضعیت پروژه‌ها',
             'excerpt' => 'راهنمای پیگیری سرمایه‌گذاری‌ها، وضعیت‌ها و جزئیات تراکنش‌های مرتبط',
             'content' => $content,
@@ -50,7 +50,7 @@ HTML;
 <p>برای بررسی مشکل، نام کاربری، زمان تقریبی رخداد، صفحهٔ مربوط و متن خطا را تا حد لازم ارائه کنید؛ گذرواژه، کد یک‌بارمصرف یا اطلاعات محرمانهٔ ورود را در تیکت یا چت ارسال نکنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'account-security')->update([
+        DB::table('kb_articles')->where('slug', 'account-security')->where('content', 'like', '%رعایت نکات امنیتی برای محافظت از حساب کاربری شما بسیار %')->where('content', 'like', '%می‌توانید تنظیمات حریم خصوصی خود را در بخش ویرایش پروفا%')->update([
             'title' => 'حفظ امنیت حساب کاربری',
             'excerpt' => 'راهنمای حفظ امنیت حساب کاربری و محافظت از اطلاعات شخصی',
             'content' => $content,
@@ -75,7 +75,7 @@ HTML;
 <p>برای مسئله‌ای که نیاز به پیگیری دارد، تیکت ثبت کنید و کد پیگیری را نگه دارید. برای گفت‌وگوی مستقیم‌تر می‌توانید از چت پشتیبانی استفاده کنید؛ اگر موضوع نیازمند پیگیری رسمی‌تر شد، امکان تبدیل چت به تیکت نیز در دسترس است.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'frequently-asked-questions')->update([
+        DB::table('kb_articles')->where('slug', 'frequently-asked-questions')->where('content', 'like', '%شما می‌توانید از طریق دعوت دوستان، سرمایه‌گذاری در پروژ%')->where('content', 'like', '%بله، شما می‌توانید در هر زمان رای خود را تغییر دهید یا %')->update([
             'title' => 'سوالات متداول (FAQ)',
             'excerpt' => 'پاسخ به سوالات رایج کاربران درباره پلتفرم و استفاده از آن',
             'content' => $content,
@@ -105,7 +105,7 @@ HTML;
 <p>برای پیگیری، کد تیکت، زمان تقریبی رخداد و متن خطا را ارائه کنید. گذرواژه یا کدهای ورود را در پیام یا پیوست قرار ندهید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'create-support-ticket')->update([
+        DB::table('kb_articles')->where('slug', 'create-support-ticket')->where('content', 'like', '%برای دریافت کمک از تیم پشتیبانی، می‌توانید تیکت ایجاد ک%')->where('content', 'like', '%قبل از ایجاد تیکت، مقالات مرتبط به شما پیشنهاد می‌شود ک%')->update([
             'title' => 'نحوه ایجاد تیکت پشتیبانی',
             'excerpt' => 'راهنمای ثبت، پیوست فایل و پیگیری تیکت‌های پشتیبانی',
             'content' => $content,
@@ -132,7 +132,7 @@ HTML;
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'use-support-chat')->update([
+        DB::table('kb_articles')->where('slug', 'use-support-chat')->where('content', 'like', '%چت پشتیبانی امکان ارتباط مستقیم و فوری با تیم پشتیبانی %')->where('content', 'like', '%در صورت نیاز، می‌توانید چت را به تیکت تبدیل کنید تا پیگ%')->update([
             'title' => 'استفاده از چت پشتیبانی',
             'excerpt' => 'راهنمای ارسال پیام، پیوست فایل و تبدیل چت پشتیبانی به تیکت',
             'content' => $content,
@@ -161,7 +161,7 @@ HTML;
 <p>دعوت‌های موفق سهمیه را مصرف می‌کنند؛ کدهای استفاده‌نشده یا منقضی‌شده که به دعوت موفق منتهی نشده‌اند، طبق منطق فعلی پس از پایان اعتبار، سهمیهٔ دائمی را اشغال نمی‌کنند. اگر امکان صدور کد ندارید، وضعیت عضویت، حق عضویت، سهمیه و زمان انقضای کدها را بررسی کنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'invite-friends-earn-coins')->update([
+        DB::table('kb_articles')->where('slug', 'invite-friends-earn-coins')->where('content', 'like', '%با دعوت دوستان خود به EarthCoop، می‌توانید سکه بهار کسب%')->where('content', 'like', '%پس از ثبت‌نام دوست شما با کد شما، سکه بهار به حساب شما %')->update([
             'title' => 'دعوت از دوستان و کسب سکه بهار',
             'excerpt' => 'راهنمای ساخت کد دعوت، شرایط احراز و پاداش امتیاز مشارکت',
             'content' => $content,
@@ -181,7 +181,7 @@ HTML;
 <ol><li>به بخش «مشارکت‌های من» مراجعه کنید</li><li>پروژه موردنظر را انتخاب کنید</li><li>اطلاعات و به‌روزرسانی‌ها را مشاهده کنید</li></ol>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'track-project-status')->update([
+        DB::table('kb_articles')->where('slug', 'track-project-status')->where('content', 'like', '%برای مشاهدهٔ درخواست‌ها و سرمایه‌گذاری‌های خود، وارد بخ%')->where('content', 'like', '%وضعیت «تأییدشده» یا «فعال» به‌تنهایی تضمین‌کنندهٔ سود، %')->update([
             'title' => 'پیگیری وضعیت پروژه‌ها',
             'excerpt' => 'نحوه پیگیری وضعیت پروژه‌هایی که در آن‌ها سرمایه‌گذاری کرده‌اید',
             'content' => $content,
@@ -197,7 +197,7 @@ HTML;
 <h3>در صورت مشکوک شدن</h3><p>اگر فکر می‌کنید حساب شما در خطر است، فوراً با پشتیبانی تماس بگیرید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'account-security')->update([
+        DB::table('kb_articles')->where('slug', 'account-security')->where('content', 'like', '%برای محافظت از حساب EarthCoop، اطلاعات ورود و داده‌های %')->where('content', 'like', '%پروفایل خود را بازبینی کنید و فقط اطلاعاتی را وارد یا م%')->update([
             'title' => 'حفظ امنیت حساب کاربری',
             'excerpt' => 'راهنمای حفظ امنیت حساب کاربری و محافظت از اطلاعات شخصی',
             'content' => $content,
@@ -213,7 +213,7 @@ HTML;
 <h3>سوال 5: چگونه می‌توانم با پشتیبانی تماس بگیرم؟</h3><p>می‌توانید از طریق ایجاد تیکت یا چت پشتیبانی با ما تماس بگیرید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'frequently-asked-questions')->update([
+        DB::table('kb_articles')->where('slug', 'frequently-asked-questions')->where('content', 'like', '%ابتدا وضعیت حساب نجم بهار و موجودی فعال و کم‌رنگ را در %')->where('content', 'like', '%خیر. امتیاز مشارکت با موجودی پولی تفاوت دارد. فقط امتیا%')->update([
             'title' => 'سوالات متداول (FAQ)',
             'excerpt' => 'پاسخ به سوالات رایج کاربران درباره پلتفرم و استفاده از آن',
             'content' => $content,
@@ -227,7 +227,7 @@ HTML;
 <h3>پیگیری تیکت</h3><p>می‌توانید وضعیت تیکت خود را در بخش «تیکت‌های من» مشاهده کنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'create-support-ticket')->update([
+        DB::table('kb_articles')->where('slug', 'create-support-ticket')->where('content', 'like', '%برای گزارش مشکل، پرسیدن سؤال یا درخواست بررسی، از بخش «%')->where('content', 'like', '%هر فایل پیوست حداکثر ۱۰ مگابایت است. قالب‌های مجاز فعلی%')->update([
             'title' => 'نحوه ایجاد تیکت پشتیبانی',
             'excerpt' => 'راهنمای ایجاد تیکت پشتیبانی و دریافت کمک از تیم پشتیبانی',
             'content' => $content,
@@ -241,7 +241,7 @@ HTML;
 <h3>ساعات پاسخگویی</h3><p>تیم پشتیبانی در ساعات مشخصی پاسخگو است.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'use-support-chat')->update([
+        DB::table('kb_articles')->where('slug', 'use-support-chat')->where('content', 'like', '%چت پشتیبانی برای گفت‌وگو با تیم پشتیبانی دربارهٔ سؤال ی%')->where('content', 'like', '%اگر موضوع نیاز به پیگیری رسمی‌تر دارد، از گزینهٔ تبدیل %')->update([
             'title' => 'استفاده از چت پشتیبانی',
             'excerpt' => 'راهنمای استفاده از چت زنده پشتیبانی برای ارتباط مستقیم',
             'content' => $content,
@@ -255,7 +255,7 @@ HTML;
 <h3>استفاده از سکه‌های کسب شده</h3><p>می‌توانید از سکه‌های کسب شده برای سرمایه‌گذاری، خرید خدمات و موارد دیگر استفاده کنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'invite-friends-earn-coins')->update([
+        DB::table('kb_articles')->where('slug', 'invite-friends-earn-coins')->where('content', 'like', '%صفحهٔ «دعوت از دوستان» برای اعضای واجد شرایط امکان ساخت%')->where('content', 'like', '%پس از تکمیل موفق مراحل لازم، برای دعوت‌کننده طبق قاعدهٔ%')->update([
             'title' => 'دعوت از دوستان و کسب سکه بهار',
             'excerpt' => 'راهنمای دعوت دوستان به پلتفرم و کسب سکه‌های بهار از طریق ارجاع',
             'content' => $content,

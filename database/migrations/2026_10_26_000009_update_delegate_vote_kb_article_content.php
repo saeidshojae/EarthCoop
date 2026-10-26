@@ -31,7 +31,7 @@ return new class extends Migration
 <p>توجه: این قابلیت در جریان فعلی به‌صورت تفویض وابسته به همان نظرسنجی ثبت می‌شود؛ آن را با تفویض عمومی و دائمی رأی برای همهٔ تصمیم‌ها اشتباه نگیرید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'delegate-vote')->update([
+        DB::table('kb_articles')->where('slug', 'delegate-vote')->where('content', 'like', '%شما می‌توانید رای خود را به کارشناسان موضوعی تفویض کنید%')->where('content', 'like', '%می‌توانید در هر زمان تفویض خود را لغو کنید و خودتان رای%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -61,7 +61,7 @@ HTML;
 <p>می‌توانید در هر زمان تفویض خود را لغو کنید و خودتان رای دهید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'delegate-vote')->update([
+        DB::table('kb_articles')->where('slug', 'delegate-vote')->where('content', 'like', '%در نظرسنجی‌های تخصصی گروه، می‌توانید رأی خود را به یک ع%')->where('content', 'like', '%فهرست متخصصان بر اساس حوزهٔ تخصصی تعیین‌شده برای نظرسنج%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

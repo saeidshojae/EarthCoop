@@ -37,7 +37,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->update([
+        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->where('content', 'like', '%سکه‌های بهار، ارز دیجیتال داخلی منحصر به فرد EarthCoop %')->where('content', 'like', '%پس از ثبت‌نام، معادل 1 کیلوگرم طلا در قالب 10,000 سکه ب%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -72,7 +72,7 @@ HTML;
 <p>در مراحل بعدی، امکان ایجاد شرکت خصوصی و فروشگاه نیز وجود خواهد داشت.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->update([
+        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->where('content', 'like', '%نجم بهار، سامانهٔ مالی داخلی EarthCoop برای حساب‌ها و ت%')->where('content', 'like', '%برای ایجاد حساب شخصی نجم بهار، باید توافقنامهٔ مربوط را%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

@@ -36,7 +36,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-polls')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-polls')->where('content', 'like', '%نظرسنجی‌ها ابزاری برای جمع‌آوری نظرات اعضا در مورد موضو%')->where('content', 'like', '%هر رای و نظری که می‌دهید، در شکل‌گیری آینده پلتفرم تأثی%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -67,7 +67,7 @@ HTML;
 <p>هر رای و نظری که می‌دهید، در شکل‌گیری آینده پلتفرم تأثیر دارد.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-polls')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-polls')->where('content', 'like', '%نظرسنجی‌ها در جریان گروهی EarthCoop منتشر می‌شوند تا اع%')->where('content', 'like', '%در هر بار رأی‌دادن، یک گزینه انتخاب می‌شود. برای تغییر %')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

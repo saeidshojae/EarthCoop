@@ -29,7 +29,7 @@ return new class extends Migration
 <p>پس از تأیید، جزئیات پروژه و روش تأمین مالی آن را به‌روز نگه دارید و شرایط، ریسک‌ها و تعهدات را برای مشارکت‌کنندگان روشن بیان کنید. تأیید پروژه تضمین‌کنندهٔ جذب سرمایه، اجرای موفق یا تحقق سود نیست.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'propose-new-project')->update([
+        DB::table('kb_articles')->where('slug', 'propose-new-project')->where('content', 'like', '%اگر ایده‌ای برای یک پروژه جدید دارید، می‌توانید آن را پ%')->where('content', 'like', '%پس از تایید پروژه، می‌توانید سرمایه‌گذاری را شروع کنید.%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -57,7 +57,7 @@ HTML;
 <p>پس از تایید پروژه، می‌توانید سرمایه‌گذاری را شروع کنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'propose-new-project')->update([
+        DB::table('kb_articles')->where('slug', 'propose-new-project')->where('content', 'like', '%اگر ایده‌ای برای یک فعالیت اقتصادی، اجتماعی، خدماتی یا %')->where('content', 'like', '%اطلاعات مالی باید قابل توضیح و بررسی باشند. ارزش‌گذاری %')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

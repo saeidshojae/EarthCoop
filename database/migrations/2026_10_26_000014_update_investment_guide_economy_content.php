@@ -35,7 +35,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'investment-guide')->update([
+        DB::table('kb_articles')->where('slug', 'investment-guide')->where('content', 'like', '%با سکه‌های بهار خود می‌توانید در پروژه‌های مختلف سرمایه%')->where('content', 'like', '%همیشه قبل از سرمایه‌گذاری، اطلاعات پروژه را به دقت مطال%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -69,7 +69,7 @@ HTML;
 <p>همیشه قبل از سرمایه‌گذاری، اطلاعات پروژه را به دقت مطالعه کنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'investment-guide')->update([
+        DB::table('kb_articles')->where('slug', 'investment-guide')->where('content', 'like', '%بخش پروژه‌های نجم بهار برای معرفی طرح‌ها و ثبت روش تأمی%')->where('content', 'like', '%در این روش، صاحب پروژه بازهٔ ارزش پایهٔ پروژه، تعداد کل%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

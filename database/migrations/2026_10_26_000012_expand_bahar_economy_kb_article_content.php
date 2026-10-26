@@ -40,7 +40,7 @@ return new class extends Migration
 <p>برای راهنمای عملی، مقاله‌های «مدیریت کیف پول نجم بهار»، «راهنمای سرمایه‌گذاری در پروژه‌ها»، «نحوه پیشنهاد پروژه جدید» و «سرمایه‌گذاری در پروژه‌های موجود» را نیز ببینید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->update([
+        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->where('content', 'like', '%نجم بهار، سامانهٔ مالی داخلی EarthCoop برای حساب‌ها و ت%')->where('content', 'like', '%برای ایجاد حساب شخصی نجم بهار، باید توافقنامهٔ مربوط را%')->update([
             'title' => 'اقتصاد بهار: از اعتبار اولیه تا مشارکت و سرمایه‌گذاری',
             'excerpt' => 'شرح چرخهٔ اقتصاد بهار، واحدهای بهار و گل، اعتبار کم‌رنگ، تبدیل امتیاز مشارکت و روش‌های سرمایه‌گذاری در پروژه‌ها',
             'content' => $content,
@@ -80,7 +80,7 @@ HTML;
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->update([
+        DB::table('kb_articles')->where('slug', 'bahar-coins-introduction')->where('content', 'like', '%نجم بهار، سامانهٔ مالی مرکزی EarthCoop است. اقتصاد بهار%')->where('content', 'like', '%پس از پذیرش توافقنامهٔ مالی و پولی نجم بهار و احراز شرا%')->update([
             'title' => 'آشنایی با سکه‌های بهار',
             'excerpt' => 'معرفی کامل سکه‌های بهار، نحوه دریافت و استفاده از آن‌ها',
             'content' => $content,

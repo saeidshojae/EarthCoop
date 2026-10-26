@@ -41,7 +41,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-polls')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-polls')->where('content', 'like', '%نظرسنجی‌ها در جریان گروهی EarthCoop منتشر می‌شوند تا اع%')->where('content', 'like', '%در هر بار رأی‌دادن، یک گزینه انتخاب می‌شود. برای تغییر %')->update([
             'title' => 'شرکت در نظرسنجی‌ها',
             'excerpt' => 'راهنمای شرکت در نظرسنجی‌های گروه، ثبت و تغییر رأی، مهلت‌ها و تفویض رأی',
             'content' => $content,
@@ -64,7 +64,7 @@ HTML;
 <p>برای رأی‌دادن باید نظرسنجی فعال باشد و مهلت آن تمام نشده باشد.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-polls')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-polls')->where('content', 'like', '%نظرسنجی‌ها در جریان گروهی EarthCoop منتشر می‌شوند تا اع%')->where('content', 'like', '%برای تغییر رأی، گزینهٔ دیگری را انتخاب کنید؛ انتخاب جدی%')->update([
             'title' => 'شرکت در نظرسنجی‌ها',
             'excerpt' => 'راهنمای شرکت در نظرسنجی‌ها و اعلام نظر در تصمیم‌گیری‌های جمعی',
             'content' => $content,

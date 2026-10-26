@@ -39,7 +39,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-elections')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-elections')->where('content', 'like', '%در EarthCoop، شما می‌توانید در انتخابات مختلف شرکت کنید%')->where('content', 'like', '%تمام فرآیندهای انتخاباتی شفاف و قابل ردیابی هستند.%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -73,7 +73,7 @@ HTML;
 <p>تمام فرآیندهای انتخاباتی شفاف و قابل ردیابی هستند.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'participate-in-elections')->update([
+        DB::table('kb_articles')->where('slug', 'participate-in-elections')->where('content', 'like', '%در EarthCoop، امکان رأی‌دادن فقط زمانی وجود دارد که برا%')->where('content', 'like', '%در جریان فعلی برگهٔ رأی، انتخاب‌ها برای دو نقش «مدیر» و%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

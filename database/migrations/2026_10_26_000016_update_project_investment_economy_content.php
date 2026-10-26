@@ -27,7 +27,7 @@ return new class extends Migration
 <p>برای سرمایه‌گذاری از موجودی و مسیر پرداختی استفاده کنید که سامانه برای آن پروژه ارائه می‌دهد. موجودی کم‌رنگ با موجودی فعال یکسان نیست و امتیاز مشارکت نیز تا زمانی که طبق سیاست جاری به پول فعال تبدیل نشده باشد، موجودی پولی محسوب نمی‌شود.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'invest-in-projects')->update([
+        DB::table('kb_articles')->where('slug', 'invest-in-projects')->where('content', 'like', '%می‌توانید در پروژه‌های موجود سرمایه‌گذاری کنید.%')->where('content', 'like', '%قبل از سرمایه‌گذاری:%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -55,7 +55,7 @@ HTML;
 <p>تعیین کنید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'invest-in-projects')->update([
+        DB::table('kb_articles')->where('slug', 'invest-in-projects')->where('content', 'like', '%در فهرست پروژه‌های در دسترس، ابتدا وضعیت پروژه و روش تأ%')->where('content', 'like', '%بازهٔ ارزش پایه، تعداد کل سهام، درصد عرضه، سقف مالکیت ه%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);

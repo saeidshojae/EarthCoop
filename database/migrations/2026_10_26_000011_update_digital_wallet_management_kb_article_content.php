@@ -39,7 +39,7 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->update([
+        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->where('content', 'like', '%کیف پول دیجیتال EarthCoop به شما امکان می‌دهد که سکه‌ها%')->where('content', 'like', '%برای دسترسی به کیف پول:%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
@@ -74,7 +74,7 @@ HTML;
 <p>کیف پول از سیستم‌های امنیتی پیشرفته استفاده می‌کند.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->update([
+        DB::table('kb_articles')->where('slug', 'digital-wallet-management')->where('content', 'like', '%کیف پول نجم بهار نمایی از حساب اصلی شما، موجودی‌ها و تر%')->where('content', 'like', '%برای دیدن جزئیات بیشتر، از «گزارش‌های مالی» استفاده کنی%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
