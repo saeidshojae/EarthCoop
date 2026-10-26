@@ -1044,21 +1044,20 @@ class ChatController extends Controller
 
         $selectedExpertId = Delegation::query()->where('poll_id', $poll->id)
             ->where('user_id', auth()->id())->value('expert_id');
+        $activeDelegatorIds = app(PollVoteTallyService::class)->usersWithActiveDelegationsForPoll($poll);
         $experts = User::query()
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.avatar')
             ->where('users.id', '<>', auth()->id())
             ->whereHas('experiences', fn ($query) => $query->where('experience_fields.id', $poll->skill_id))
             ->whereHas('groups', fn ($query) => $query->where('groups.id', $group->id)->where('group_user.status', 1))
-            // A recipient must be able to cast a direct ballot; do not expose
-            // members who have already delegated their own vote elsewhere.
-            ->where(function ($query) use ($poll, $selectedExpertId) {
-                $query->whereNotExists(function ($subquery) use ($poll) {
-                    $subquery->select(DB::raw(1))
-                        ->from('delegations as outgoing_delegation')
-                        ->whereColumn('outgoing_delegation.user_id', 'users.id')
-                        ->where('outgoing_delegation.poll_id', $poll->id)
-                        ->whereNull('outgoing_delegation.deleted_at');
-                })->orWhere('users.id', $selectedExpertId);
+            // A recipient must be able to cast a direct ballot. Use the same
+            // eligibility rules as tallying, so stale/ineligible rows do not
+            // hide a qualified expert; preserve the current target for revocation.
+            ->where(function ($query) use ($activeDelegatorIds, $selectedExpertId) {
+                $query->whereNotIn('users.id', $activeDelegatorIds->all());
+                if ($selectedExpertId) {
+                    $query->orWhere('users.id', $selectedExpertId);
+                }
             })
             ->orderBy('users.first_name')->orderBy('users.last_name')->limit(100)->get()
             ->map(fn (User $expert) => [
