@@ -7,6 +7,7 @@ use App\Models\ExperienceField;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Poll;
+use App\Models\PollVote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
@@ -32,14 +33,29 @@ class PollDelegationTest extends TestCase
             'type' => 1, 'skill_id' => $skill->id, 'main_type' => 0, 'is_active' => true,
             'expires_at' => now()->addDay(),
         ]);
+        $yes = $poll->options()->create(['text' => 'Yes']);
+        $no = $poll->options()->create(['text' => 'No']);
+        PollVote::create(['poll_id' => $poll->id, 'user_id' => $voter->id, 'option_id' => $yes->id]);
+        PollVote::create(['poll_id' => $poll->id, 'user_id' => $expert->id, 'option_id' => $no->id]);
 
         $this->actingAs($voter)->getJson(route('groups.polls.experts', [$group, $poll]))
             ->assertOk()->assertJsonCount(1, 'data.experts')->assertJsonPath('data.experts.0.id', $expert->id);
 
         $url = route('groups.delegation', [$group, $poll, $expert]);
-        $this->actingAs($voter)->postJson($url)->assertOk()->assertJsonPath('data.delegated', true);
+        $this->actingAs($voter)->postJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.delegated', true)
+            ->assertJsonPath('data.poll.total_votes', 2)
+            ->assertJsonPath('data.poll.options.0.count', 0)
+            ->assertJsonPath('data.poll.options.1.count', 2);
         $this->assertDatabaseHas('delegations', ['poll_id' => $poll->id, 'user_id' => $voter->id, 'expert_id' => $expert->id]);
-        $this->actingAs($voter)->postJson($url)->assertOk()->assertJsonPath('data.delegated', false);
+        $this->assertDatabaseMissing('poll_votes', ['poll_id' => $poll->id, 'user_id' => $voter->id]);
+
+        $this->actingAs($voter)->postJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.delegated', false)
+            ->assertJsonPath('data.poll.total_votes', 1)
+            ->assertJsonPath('data.poll.options.1.count', 1);
         $this->assertSame(0, Delegation::where('poll_id', $poll->id)->where('user_id', $voter->id)->count());
 
         $this->actingAs($voter)->postJson(route('groups.delegation', [$group, $poll, $unqualified]))->assertStatus(422);
