@@ -61,6 +61,39 @@ class PollDelegatedVoteWeightTest extends TestCase
         }
     }
 
+    public function test_delegations_do_not_inflate_results_until_the_expert_casts_a_ballot(): void
+    {
+        config([
+            'broadcasting.default' => 'null',
+            'group-chat.features.transactional_outbox_v1' => false,
+            'group-chat.features.realtime_polls' => false,
+            'group-chat.transport' => 'polling',
+        ]);
+
+        [$group, $members, $skill] = $this->setupGroupWithMembers();
+        [$delegatorOne, $delegatorTwo, $expert, $directVoter] = $members;
+
+        $poll = Poll::create([
+            'group_id' => $group->id,
+            'created_by' => $directVoter->id,
+            'question' => 'Delegations require an expert ballot',
+            'type' => 1,
+            'skill_id' => $skill->id,
+            'main_type' => 1,
+            'is_active' => true,
+            'expires_at' => now()->addDay(),
+        ]);
+        $yes = $poll->options()->create(['text' => 'Yes']);
+        Delegation::create(['poll_id' => $poll->id, 'user_id' => $delegatorOne->id, 'expert_id' => $expert->id]);
+        Delegation::create(['poll_id' => $poll->id, 'user_id' => $delegatorTwo->id, 'expert_id' => $expert->id]);
+
+        $this->actingAs($directVoter)
+            ->postJson(route('poll.vote', $poll), ['option_id' => $yes->id])
+            ->assertOk()
+            ->assertJsonPath('poll.total_votes', 1)
+            ->assertJsonPath('poll.options.0.count', 1);
+    }
+
     public function test_delegated_member_cannot_submit_a_separate_direct_ballot(): void
     {
         config([
