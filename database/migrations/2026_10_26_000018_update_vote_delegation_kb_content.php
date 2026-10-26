@@ -36,7 +36,15 @@ return new class extends Migration
 </ul>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'delegate-vote')->update([
+        DB::table('kb_articles')->where('slug', 'delegate-vote')->where(function ($query) {
+            $query->where(function ($query) {
+                $query->where('content', 'like', '%در نظرسنجی‌های تخصصی گروه، می‌توانید رأی خود را به یک ع%');
+$query->where('content', 'like', '%فهرست متخصصان بر اساس حوزهٔ تخصصی تعیین‌شده برای نظرسنج%');
+            })->orWhere(function ($query) {
+                $query->where('content', 'like', '%در نظرسنجی‌های تخصصی گروه، می‌توانید رأی خود را به یک ع%');
+$query->where('content', 'like', '%فهرست متخصصان بر اساس حوزهٔ تخصصی تعیین‌شده برای نظرسنج%');
+            });
+        })->update([
             'title' => 'تفویض رأی به کارشناسان',
             'excerpt' => 'راهنمای ثبت، تغییر و لغو تفویض و نحوهٔ محاسبهٔ وزن رأی متخصص',
             'content' => $content,
@@ -70,7 +78,7 @@ HTML;
 <p>توجه: این قابلیت در جریان فعلی به‌صورت تفویض وابسته به همان نظرسنجی ثبت می‌شود؛ آن را با تفویض عمومی و دائمی رأی برای همهٔ تصمیم‌ها اشتباه نگیرید.</p>
 HTML;
 
-        DB::table('kb_articles')->where('slug', 'delegate-vote')->update([
+        DB::table('kb_articles')->where('slug', 'delegate-vote')->where('content', 'like', '%در کارت یک نظرسنجی تخصصی، ممکن است امکان ثبت تفویض برای%')->where('content', 'like', '%فهرست نمایش‌داده‌شده حداکثر ۱۰۰ نفر را در بر می‌گیرد. ا%')->update([
             'content' => $content,
             'updated_at' => now(),
         ]);
