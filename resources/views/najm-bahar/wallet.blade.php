@@ -196,7 +196,7 @@
 </div>
 
 <div id="membershipFeeModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4" style="z-index: var(--nb-z-modal);" role="dialog" aria-modal="true" aria-labelledby="membershipModalTitle" tabindex="-1">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all flex flex-col" style="max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem);">
         <div class="bg-gradient-to-br from-purple-600 to-blue-600 p-6 text-white">
             <div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center"><i class="fas fa-id-card text-2xl" aria-hidden="true"></i></div><div><h3 id="membershipModalTitle" class="text-xl font-bold">پرداخت حق عضویت سالانه</h3><p class="text-sm text-purple-100">تأیید پرداخت</p></div></div><button type="button" class="text-white/80 hover:text-white transition-colors nb-focusable" onclick="closeMembershipModal()" aria-label="بستن پنجره"><i class="fas fa-times text-xl" aria-hidden="true"></i></button></div>
         </div>
@@ -204,12 +204,12 @@
     </div>
 </div>
 
-<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] hidden flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain" style="overscroll-behavior: contain;">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all">
-        <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 text-white">
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 text-white shrink-0">
             <div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center"><i class="fas fa-coins text-2xl"></i></div><div><h3 class="text-xl font-bold">تبدیل مشارکت به پول فعال</h3><p class="text-sm text-purple-100">مصرف ظرفیت قابل تبدیل مشارکت</p></div></div><button type="button" class="text-white/80 hover:text-white transition-colors" onclick="closeReputationModal()"><i class="fas fa-times text-xl"></i></button></div>
         </div>
-        <div id="reputationModalContent" class="p-6 space-y-4"><div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-10 w-10 border-4 border-purple-200 border-t-purple-600"></div></div></div>
+        <div id="reputationModalContent" class="p-4 sm:p-6 space-y-4 overflow-y-auto overscroll-contain" style="min-height: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"><div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-10 w-10 border-4 border-purple-200 border-t-purple-600"></div></div></div>
     </div>
 </div>
 
@@ -315,11 +315,21 @@ function openMembershipModal() {
 
 function closeMembershipModal() { NajmBahar.modal.close('membershipFeeModal'); }
 
+let reputationModalPreviousBodyOverflow = null;
+let reputationModalPreviousRootOverflow = null;
+
 function openReputationModal() {
     const modal = document.getElementById('reputationConversionModal');
     const content = document.getElementById('reputationModalContent');
-    modal.classList.remove('hidden');
+    if (!modal || !content) return;
+
+    // Render above page headers and escape clipping/stacking contexts.
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    reputationModalPreviousBodyOverflow = document.body.style.overflow;
+    reputationModalPreviousRootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    modal.classList.remove('hidden');
 
     fetch('{{ route("reputation.conversion.info") }}')
         .then(response => response.json())
@@ -398,8 +408,11 @@ function openReputationModal() {
 
 function closeReputationModal() {
     const modal = document.getElementById('reputationConversionModal');
-    modal.classList.add('hidden');
-    document.body.style.overflow = '';
+    if (modal) modal.classList.add('hidden');
+    document.body.style.overflow = reputationModalPreviousBodyOverflow ?? '';
+    document.documentElement.style.overflow = reputationModalPreviousRootOverflow ?? '';
+    reputationModalPreviousBodyOverflow = null;
+    reputationModalPreviousRootOverflow = null;
 }
 
 function updateConversionPreview(ratio) {
@@ -416,7 +429,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn) btn.addEventListener('click', openReputationModal);
     NajmBahar.modal.setup('membershipFeeModal');
     const modal = document.getElementById('reputationConversionModal');
-    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeReputationModal(); });
+    if (modal) {
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeReputationModal();
+        });
+    }
 });
 </script>
 @endpush

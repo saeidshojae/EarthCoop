@@ -725,7 +725,7 @@
 
 <!-- مدال نقد کردن امتیازات -->
 
-<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-start sm:items-center justify-center p-4 overflow-y-auto overscroll-contain" style="overscroll-behavior: contain;">
+<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] hidden flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain" style="overscroll-behavior: contain;">
 
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all flex flex-col" style="max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem);">
 
